@@ -29,10 +29,16 @@ This script adds missing columns, creates a helper function for roles, and confi
 
 ```sql
 -- === STEP A: ADD MISSING COLUMNS ===
--- This fixes "Could not find column" errors for 'evidence_images' and 'last_seen_at'.
+-- This fixes "Could not find column" errors.
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_seen_at timestamz;
+
+-- Add columns for advanced mapping (geocoding & area highlighting)
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS location_boundary jsonb;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS location_boundingbox real[];
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS location_boundary jsonb;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS location_boundingbox real[];
 
 
 -- === STEP B: CREATE HELPER FUNCTION TO GET USER ROLE ===

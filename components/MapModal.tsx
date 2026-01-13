@@ -1,7 +1,6 @@
-
-import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
+import React, { useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } from 'react-leaflet';
+import L, { LatLngBoundsExpression } from 'leaflet';
 import { Report, VehicleReport, Severity, ReportStatus } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { XIcon } from './icons';
@@ -13,7 +12,6 @@ interface MapModalProps {
     report: Report | null;
 }
 
-// Re-using icon creation logic from MapView.tsx for consistency.
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
 const createVehicleIcon = (severity: Severity, status: ReportStatus) => {
@@ -40,23 +38,46 @@ const createCrimeIcon = (status: ReportStatus) => {
     return new L.DivIcon({ html: iconHtml, className: '', iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -16] });
 };
 
+const MapFocusController: React.FC<{ report: Report }> = ({ report }) => {
+    const map = useMap();
+    useEffect(() => {
+        // This effect runs once when the map is ready
+        if (report.location_boundingbox) {
+             const bounds: LatLngBoundsExpression = [
+                [report.location_boundingbox[0], report.location_boundingbox[2]],
+                [report.location_boundingbox[1], report.location_boundingbox[3]]
+            ];
+            map.fitBounds(bounds, { padding: [20, 20] });
+        } else if (report.location_coords) {
+            map.setView([report.location_coords.lat, report.location_coords.lng], 16);
+        }
+    }, [map, report]); // Depend on map and report to re-run if they change
+    return null;
+}
 
 const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
     const { theme } = useTheme();
 
-    if (!isOpen || !report || !report.location_coords) {
+    if (!isOpen || !report || (!report.location_coords && !report.location_boundary)) {
         return null;
     }
 
     const lightMapUrl = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
     const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
     const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
-
-    const position: [number, number] = [report.location_coords.lat, report.location_coords.lng];
+    
+    const areaStyle = {
+        fillColor: theme === 'dark' ? '#3B82F6' : '#60A5FA',
+        fillOpacity: 0.2,
+        color: theme === 'dark' ? '#60A5FA' : '#3B82F6',
+        weight: 2,
+    };
 
     const reportIcon = isVehicleReport(report)
         ? createVehicleIcon(report.severity, report.status)
         : createCrimeIcon(report.status);
+
+    const position: [number, number] | undefined = report.location_coords ? [report.location_coords.lat, report.location_coords.lng] : undefined;
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" aria-labelledby="map-modal-title" role="dialog" aria-modal="true">
@@ -70,20 +91,29 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
                     </button>
                 </header>
                 <div className="flex-grow h-full w-full">
-                    <MapContainer center={position} zoom={16} scrollWheelZoom={true} style={{ height: '100%', width: '100%', borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
+                    <MapContainer center={position || [0,0]} zoom={position ? 16 : 10} scrollWheelZoom={true} style={{ height: '100%', width: '100%', borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
                          <TileLayer 
                             key={theme}
                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' 
                             url={tileUrl} />
-                        <Marker position={position} icon={reportIcon}>
-                            <Popup>
-                                <div className="w-56">
-                                    <h4 className="font-bold mb-1">{isVehicleReport(report) ? report.license_plate : report.title}</h4>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{isVehicleReport(report) ? report.last_seen_location : report.location}</p>
-                                    <StatusBadge status={report.status} />
-                                </div>
-                            </Popup>
-                        </Marker>
+                        
+                        <MapFocusController report={report} />
+                        
+                        {report.location_boundary && (
+                            <GeoJSON data={report.location_boundary} style={areaStyle} />
+                        )}
+
+                        {position && (
+                            <Marker position={position} icon={reportIcon}>
+                                <Popup>
+                                    <div className="w-56">
+                                        <h4 className="font-bold mb-1">{isVehicleReport(report) ? report.license_plate : report.title}</h4>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{isVehicleReport(report) ? report.last_seen_location : report.location}</p>
+                                        <StatusBadge status={report.status} />
+                                    </div>
+                                </Popup>
+                            </Marker>
+                        )}
                     </MapContainer>
                 </div>
             </div>

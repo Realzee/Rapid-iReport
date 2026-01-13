@@ -4,7 +4,7 @@
  */
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, Severity, ReportStatus } from '../types';
+import { Report, Severity, ReportStatus, LocationCoords } from '../types';
 import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon } from './icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
 
@@ -17,6 +17,39 @@ interface ReportModalProps {
 type ReportType = 'vehicle' | 'crime';
 
 const isVehicleReport = (report: Report | null): report is Report => report !== null && 'license_plate' in report;
+
+const geocodeLocation = async (location: string): Promise<{coords: LocationCoords | null, boundary: any | null, boundingbox: [number, number, number, number] | null}> => {
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&polygon_geojson=1&limit=1`);
+        if (!response.ok) return { coords: null, boundary: null, boundingbox: null };
+
+        const data = await response.json();
+        if (data && data.length > 0) {
+            const result = data[0];
+            const coords = { lat: parseFloat(result.lat), lng: parseFloat(result.lon) };
+            
+            // Bounding box from Nominatim is [south, north, west, east]
+            const boundingbox: [number, number, number, number] | null = result.boundingbox ? 
+                [parseFloat(result.boundingbox[0]), parseFloat(result.boundingbox[1]), parseFloat(result.boundingbox[2]), parseFloat(result.boundingbox[3])] 
+                : null;
+            
+            // Only store boundary for non-point results (e.g., cities, not specific addresses)
+            const boundary = result.geojson && result.geojson.type !== 'Point' ? result.geojson : null;
+            
+            // If we get a boundary, calculate a center point for the main marker
+            if (boundary && boundingbox) {
+                const centerLat = (boundingbox[0] + boundingbox[1]) / 2;
+                const centerLng = (boundingbox[2] + boundingbox[3]) / 2;
+                return { coords: { lat: centerLat, lng: centerLng }, boundary, boundingbox };
+            }
+
+            return { coords, boundary: null, boundingbox: null };
+        }
+    } catch (error) {
+        console.error("Geocoding failed:", error);
+    }
+    return { coords: null, boundary: null, boundingbox: null };
+}
 
 const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit }) => {
     const [reportType, setReportType] = useState<ReportType>('vehicle');
@@ -100,7 +133,26 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             const existingImageUrls = imagePreviews.filter(p => !p.startsWith('blob:'));
             const finalImageUrls = [...existingImageUrls, ...newImageUrls];
 
-            // 3. Prepare data payload
+            // 3. Geocode location if necessary
+            let geocodedData: { coords: LocationCoords | null, boundary: any | null, boundingbox: [number, number, number, number] | null } = { coords: null, boundary: null, boundingbox: null };
+            const locationInput = formData.location || (reportType === 'vehicle' ? formData.last_seen_location : '');
+            
+            // First, try to parse coordinates directly from input
+            const coordParts = locationInput.split(',').map((s: string) => s.trim());
+            if (coordParts.length === 2) {
+                const lat = parseFloat(coordParts[0]);
+                const lng = parseFloat(coordParts[1]);
+                if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                    geocodedData.coords = { lat, lng };
+                }
+            }
+
+            // If direct parsing fails, call the geocoding service
+            if (!geocodedData.coords && locationInput) {
+                geocodedData = await geocodeLocation(locationInput);
+            }
+
+            // 4. Prepare data payload
             let reportData;
             const tableName = reportType === 'vehicle' ? 'vehicle_reports' : 'crime_reports';
             
@@ -108,6 +160,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 description: formData.description,
                 severity: formData.severity,
                 evidence_images: finalImageUrls,
+                location_coords: geocodedData.coords,
+                location_boundary: geocodedData.boundary,
+                location_boundingbox: geocodedData.boundingbox
             };
 
             if (reportType === 'vehicle') {
@@ -128,7 +183,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 };
             }
 
-            // 4. Upsert data (Update or Insert)
+            // 5. Upsert data (Update or Insert)
             if (reportToEdit) {
                  const { error } = await supabase.from(tableName).update(reportData).eq('id', reportToEdit.id);
                  if (error) throw error;
@@ -188,13 +243,13 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} required className={inputClasses} list="models-list" /></div>
                                 <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} required className={inputClasses} list="colors-list" /></div>
                             </div>
-                             <div><label htmlFor="location_vehicle" className={labelClasses}>Last Seen Location</label><input type="text" name="location" id="location_vehicle" value={formData.last_seen_location || formData.location || ''} onChange={handleChange} required className={inputClasses} /></div>
+                             <div><label htmlFor="location_vehicle" className={labelClasses}>Last Seen Location</label><input type="text" name="location" id="location_vehicle" value={formData.last_seen_location || formData.location || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g., Main St & 2nd Ave, or -26.2, 27.8"/></div>
                         </>
                     ) : (
                          <>
                             <div><label htmlFor="title" className={labelClasses}>Incident Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} required className={inputClasses} /></div>
                             <div><label htmlFor="crime_type" className={labelClasses}>Type of Crime</label><input type="text" name="crime_type" id="crime_type" value={formData.crime_type || ''} onChange={handleChange} required className={inputClasses} /></div>
-                            <div><label htmlFor="location_crime" className={labelClasses}>Location</label><input type="text" name="location" id="location_crime" value={formData.location || ''} onChange={handleChange} required className={inputClasses} /></div>
+                            <div><label htmlFor="location_crime" className={labelClasses}>Location</label><input type="text" name="location" id="location_crime" value={formData.location || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g., City Park, or -26.2, 27.8" /></div>
                         </>
                     )}
                     

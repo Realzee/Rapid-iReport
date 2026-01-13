@@ -1,3 +1,4 @@
+
 export enum UserRole {
   ADMIN = 'admin',
   MODERATOR = 'moderator',
@@ -62,7 +63,6 @@ export interface VehicleReport {
   license_plate: string;
   vehicle_make: string;
   vehicle_model: string;
-
   vehicle_color: string;
   last_seen_location: string;
   description: string;
@@ -73,6 +73,8 @@ export interface VehicleReport {
   reported_at: string; // ISO date string
   location_coords?: LocationCoords;
   evidence_images?: string[];
+  location_boundary?: any; // GeoJSON
+  location_boundingbox?: [number, number, number, number]; // south, north, west, east
 }
 
 export interface CrimeReport {
@@ -89,6 +91,8 @@ export interface CrimeReport {
   reported_at: string; // ISO date string
   location_coords?: LocationCoords;
   evidence_images?: string[];
+  location_boundary?: any; // GeoJSON
+  location_boundingbox?: [number, number, number, number]; // south, north, west, east
 }
 
 export type Report = VehicleReport | CrimeReport;

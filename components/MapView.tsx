@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip } from 'react-leaflet';
-import L from 'leaflet';
-import { Report, Responder, VehicleReport, CrimeReport, ReportStatus, Severity, LocationCoords, ResponderStatus, ChatMessage } from '../types';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip, GeoJSON } from 'react-leaflet';
+import L, { LatLngBoundsExpression } from 'leaflet';
+import { Report, Responder, VehicleReport, ReportStatus, Severity, ResponderStatus, ChatMessage } from '../types';
 import StatusBadge from './StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon, ShareIcon } from './icons';
@@ -88,13 +88,23 @@ const createResponderIcon = (status: ResponderStatus) => {
     return new L.DivIcon({ html: responderIconHtml, className: '', iconSize: [28, 28], iconAnchor: [14, 14], popupAnchor: [0, -14] });
 };
 
-const MapFlyTo: React.FC<{ selectedReportLocation: LocationCoords | null }> = ({ selectedReportLocation }) => {
+const MapFocusController: React.FC<{ selectedReport: Report | undefined }> = ({ selectedReport }) => {
     const map = useMap();
     useEffect(() => {
-        if (selectedReportLocation) {
-            map.flyTo([selectedReportLocation.lat, selectedReportLocation.lng], 15, { animate: true, duration: 1.0 });
+        if (selectedReport) {
+            if (selectedReport.location_boundingbox) {
+                // Bounding box is [south, north, west, east]
+                // Leaflet expects [[south, west], [north, east]]
+                const bounds: LatLngBoundsExpression = [
+                    [selectedReport.location_boundingbox[0], selectedReport.location_boundingbox[2]],
+                    [selectedReport.location_boundingbox[1], selectedReport.location_boundingbox[3]]
+                ];
+                map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0 });
+            } else if (selectedReport.location_coords) {
+                map.flyTo([selectedReport.location_coords.lat, selectedReport.location_coords.lng], 15, { animate: true, duration: 1.0 });
+            }
         }
-    }, [selectedReportLocation, map]);
+    }, [selectedReport, map]);
     return null;
 };
 
@@ -142,6 +152,13 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
     const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
     const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
 
+    const areaStyle = {
+        fillColor: theme === 'dark' ? '#3B82F6' : '#60A5FA',
+        fillOpacity: 0.2,
+        color: theme === 'dark' ? '#60A5FA' : '#3B82F6',
+        weight: 2,
+    };
+
     return (
         <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none">
             <MapContainer center={[-1.286389, 36.817223]} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
@@ -149,43 +166,50 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                     key={theme}
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' 
                     url={tileUrl} />
-                <MapFlyTo selectedReportLocation={selectedReport?.location_coords || null} />
+                <MapFocusController selectedReport={selectedReport} />
 
-                {reports.filter(r => r.location_coords).map(report => (
-                    <Marker key={report.id} position={[report.location_coords!.lat, report.location_coords!.lng]} icon={isVehicleReport(report) ? createVehicleIcon(report.severity, report.status, report.id === selectedReportId) : createCrimeIcon(report.status, report.id === selectedReportId)}>
-                        <Popup>
-                            <div className="w-64">
-                                <h3 className="font-bold text-lg mb-1">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mb-2">{report.ob_number}</p>
-                                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{report.description}</p>
-                                <hr className="border-gray-200 dark:border-gray-600 my-2" />
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Status</span><StatusBadge status={report.status} /></div>
-                                    <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Severity</span><span className={`capitalize px-2 py-1 text-xs font-semibold rounded-full ${report.severity === 'critical' ? 'bg-red-500/20 text-red-400' : report.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : report.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}`}>{report.severity}</span></div>
-                                </div>
-                                
-                                {[ReportStatus.ACTIVE, ReportStatus.IN_PROGRESS].includes(report.status) && (
-                                    <>
+                {reports.map(report => (
+                    <React.Fragment key={report.id}>
+                        {report.location_boundary && (
+                            <GeoJSON data={report.location_boundary} style={areaStyle} />
+                        )}
+                        {report.location_coords && (
+                             <Marker position={[report.location_coords.lat, report.location_coords.lng]} icon={isVehicleReport(report) ? createVehicleIcon(report.severity, report.status, report.id === selectedReportId) : createCrimeIcon(report.status, report.id === selectedReportId)}>
+                                <Popup>
+                                    <div className="w-64">
+                                        <h3 className="font-bold text-lg mb-1">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mb-2">{report.ob_number}</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{report.description}</p>
                                         <hr className="border-gray-200 dark:border-gray-600 my-2" />
-                                        <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase mb-2">Live Chat</h4>
-                                        <ChatBox messages={chatMessages[report.id] || []} />
-                                        <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(report.id); }} className="mt-2 flex space-x-2">
-                                            <input type="text" placeholder="Send a message..." value={currentChatInput[report.id] || ''} onChange={(e) => setCurrentChatInput(prev => ({ ...prev, [report.id]: e.target.value }))} className="flex-grow bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 rounded-md py-1 px-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all" />
-                                            <button type="submit" className="px-3 bg-blue-600 text-white font-semibold rounded-md text-sm hover:bg-blue-500 transition-colors">Send</button>
-                                        </form>
-                                    </>
-                                )}
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Status</span><StatusBadge status={report.status} /></div>
+                                            <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Severity</span><span className={`capitalize px-2 py-1 text-xs font-semibold rounded-full ${report.severity === 'critical' ? 'bg-red-500/20 text-red-400' : report.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : report.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}`}>{report.severity}</span></div>
+                                        </div>
+                                        
+                                        {[ReportStatus.ACTIVE, ReportStatus.IN_PROGRESS].includes(report.status) && (
+                                            <>
+                                                <hr className="border-gray-200 dark:border-gray-600 my-2" />
+                                                <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase mb-2">Live Chat</h4>
+                                                <ChatBox messages={chatMessages[report.id] || []} />
+                                                <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(report.id); }} className="mt-2 flex space-x-2">
+                                                    <input type="text" placeholder="Send a message..." value={currentChatInput[report.id] || ''} onChange={(e) => setCurrentChatInput(prev => ({ ...prev, [report.id]: e.target.value }))} className="flex-grow bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 rounded-md py-1 px-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all" />
+                                                    <button type="submit" className="px-3 bg-blue-600 text-white font-semibold rounded-md text-sm hover:bg-blue-500 transition-colors">Send</button>
+                                                </form>
+                                            </>
+                                        )}
 
-                                <hr className="border-gray-200 dark:border-gray-600 my-2" />
-                                <div className="flex justify-between items-center">
-                                    <p className="text-xs text-gray-400 dark:text-gray-500">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
-                                    <button onClick={() => handleShareReport(report.id)} className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors disabled:opacity-50" disabled={copiedReportId === report.id}>
-                                        {copiedReportId === report.id ? <><CheckCircleIcon className="w-4 h-4 text-green-400" /><span className="text-green-400">Copied!</span></> : <><ShareIcon className="w-4 h-4" /><span>Share</span></>}
-                                    </button>
-                                </div>
-                            </div>
-                        </Popup>
-                    </Marker>
+                                        <hr className="border-gray-200 dark:border-gray-600 my-2" />
+                                        <div className="flex justify-between items-center">
+                                            <p className="text-xs text-gray-400 dark:text-gray-500">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
+                                            <button onClick={() => handleShareReport(report.id)} className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors disabled:opacity-50" disabled={copiedReportId === report.id}>
+                                                {copiedReportId === report.id ? <><CheckCircleIcon className="w-4 h-4 text-green-400" /><span className="text-green-400">Copied!</span></> : <><ShareIcon className="w-4 h-4" /><span>Share</span></>}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </Popup>
+                            </Marker>
+                        )}
+                    </React.Fragment>
                 ))}
                 
                 {responders.map(responder => (
