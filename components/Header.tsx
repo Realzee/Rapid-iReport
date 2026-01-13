@@ -3,17 +3,17 @@ import { BellIcon, ChevronDownIcon, SunIcon, MoonIcon } from './icons';
 import { Profile, UserRole } from '../types';
 import { supabase } from '../utils/supabase';
 import { logoUrl } from '../assets/logo';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface HeaderProps {
     currentView: string;
     setView: (view: 'dashboard' | 'reports' | 'map' | 'users' | 'companies') => void;
     profile: Profile;
-    theme: 'light' | 'dark';
-    toggleTheme: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, theme, toggleTheme }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const navLinkClasses = (view: string) => 
       `text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors duration-300 px-3 py-2 rounded-md ${

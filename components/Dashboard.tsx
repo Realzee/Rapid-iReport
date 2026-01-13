@@ -10,10 +10,9 @@ import { supabase } from '../utils/supabase';
 
 interface DashboardProps {
     profile: Profile;
-    theme: 'light' | 'dark';
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ profile, theme }) => {
+const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
     const [reports, setReports] = useState<Report[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [loading, setLoading] = useState(true);
@@ -197,7 +196,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, theme }) => {
                         reports={reports} 
                         responders={responders}
                         selectedReportId={selectedReportId}
-                        theme={theme}
                     />
                 </div>
             </div>

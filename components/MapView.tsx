@@ -5,12 +5,12 @@ import { Report, Responder, VehicleReport, CrimeReport, ReportStatus, Severity, 
 import StatusBadge from './StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon, ShareIcon } from './icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface MapViewProps {
   reports: Report[];
   responders: Responder[];
   selectedReportId: string | null;
-  theme: 'light' | 'dark';
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
@@ -114,10 +114,11 @@ const ChatBox: React.FC<{ messages: ChatMessage[] }> = ({ messages }) => {
     );
 };
 
-const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, theme }) => {
+const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId }) => {
     const [chatMessages, setChatMessages] = useState<Record<string, ChatMessage[]>>({});
     const [currentChatInput, setCurrentChatInput] = useState<Record<string, string>>({});
     const [copiedReportId, setCopiedReportId] = useState<string | null>(null);
+    const { theme } = useTheme();
 
     const handleShareReport = (reportId: string) => {
         navigator.clipboard.writeText(`https://rapid-ireport.app/report/${reportId}`).then(() => {
