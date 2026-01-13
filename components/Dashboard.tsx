@@ -131,7 +131,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, theme }) => {
     }, [reports, selectedReportId]);
 
     const handleReportSelect = (reportId: string) => {
-        setSelectedReportId(prevId => prevId === reportId ? null : prevId);
+        setSelectedReportId(prevId => prevId === reportId ? null : reportId);
     };
 
     const handleReportCreated = (newReport: Report) => {
