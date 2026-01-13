@@ -95,18 +95,6 @@
   }
 }
 </script>
-<script>
-  // Prevents FOUC (Flash of Unstyled Content) for dark/light mode
-  (function () {
-    const theme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (theme === 'dark' || (!theme && prefersDark)) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  })();
-</script>
 </head>
 <body class="bg-white dark:bg-black text-gray-900 dark:text-gray-100 transition-colors duration-300">
   <div id="root"></div>
