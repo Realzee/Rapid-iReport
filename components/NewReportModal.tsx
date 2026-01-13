@@ -1,51 +1,81 @@
 /*
-    --- IMPORTANT SUPABASE SETUP INSTRUCTIONS ---
-    If you are facing errors, please complete BOTH sections below in your Supabase dashboard.
+    --- CRITICAL SUPABASE FIX REQUIRED ---
+    The errors "Could not find column" and "violates row-level security policy"
+    are DATABASE configuration issues. The frontend code is correct, but your database
+    schema is incomplete.
 
-    --- SECTION 1: FIX FOR IMAGE UPLOADS (400 Bad Request Error) ---
-    This error means the required Storage Bucket is missing.
+    To fix ALL issues, please follow these two steps.
 
-    1. Go to your Supabase Project Dashboard.
-    2. Click the "Storage" icon (cylinder icon) in the left sidebar.
-    3. Click "+ New Bucket", name it exactly "evidence", and turn ON the "Public bucket" toggle.
-    4. Click "Create Bucket".
+    --- STEP 1: CREATE STORAGE BUCKET ---
+    This fixes image upload errors.
+    1. Go to your Supabase Project -> "Storage".
+    2. Click "+ New Bucket", name it exactly "evidence", and enable the "Public bucket" toggle.
+    3. Click "Create Bucket".
 
-    --- SECTION 2: FIX FOR CREATING REPORTS (Row-Level Security Error) ---
-    The error "new row violates row-level security policy" means you need to create
-    policies that allow users to insert data into the report tables.
+    --- STEP 2: RUN THE COMPLETE SETUP SCRIPT ---
+    This adds the missing 'evidence_images' column AND sets the correct security policies.
+    1. Go to your Supabase Project -> "SQL Editor".
+    2. Click "+ New query".
+    3. Copy the ENTIRE SQL script below, paste it into the editor, and click "RUN".
 
-    1. Go to your Supabase Project Dashboard.
-    2. Click the "SQL Editor" icon (paper with ">_") in the left sidebar.
-    3. Click "+ New query".
-    4. Copy the ENTIRE code block below, paste it into the SQL Editor, and click "RUN".
+    --------------------- COPY THE ENTIRE SQL SCRIPT BELOW ---------------------
 
-    --------------------- COPY THE SQL BELOW ---------------------
+    -- === STEP A: ADD MISSING 'evidence_images' COLUMN ===
+    -- This fixes the "Could not find the 'evidence_images' column" error.
+    ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
+    ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
+
+
+    -- === STEP B: SETUP SECURITY POLICIES ===
+    -- This fixes the "violates row-level security policy" errors.
 
     -- Enable Row Level Security on the tables if not already enabled.
     ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY;
     ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
 
-    -- Drop existing insert policies if they exist, to prevent conflicts.
-    DROP POLICY IF EXISTS "Allow authenticated users to create their own reports" ON public.vehicle_reports;
-    DROP POLICY IF EXISTS "Allow authenticated users to create their own reports" ON public.crime_reports;
+    -- Drop policies if they exist to avoid conflicts when re-running the script.
+    DROP POLICY IF EXISTS "Allow users to create their own vehicle reports" ON public.vehicle_reports;
+    DROP POLICY IF EXISTS "Allow users to view their own vehicle reports" ON public.vehicle_reports;
+    DROP POLICY IF EXISTS "Allow users to create their own crime reports" ON public.crime_reports;
+    DROP POLICY IF EXISTS "Allow users to view their own crime reports" ON public.crime_reports;
 
-    -- Create new INSERT policies.
-    -- This policy allows any logged-in user to create a vehicle report,
-    -- as long as they are setting the 'reported_by' field to their own user ID.
-    CREATE POLICY "Allow authenticated users to create their own reports"
-    ON public.vehicle_reports
-    FOR INSERT
-    TO authenticated
-    WITH CHECK (auth.uid() = reported_by);
+    -- Allow users to INSERT reports for themselves
+    CREATE POLICY "Allow users to create their own vehicle reports"
+    ON public.vehicle_reports FOR INSERT
+    TO authenticated WITH CHECK (auth.uid() = reported_by);
 
-    -- This policy does the same for crime reports.
-    CREATE POLICY "Allow authenticated users to create their own reports"
-    ON public.crime_reports
-    FOR INSERT
-    TO authenticated
-    WITH CHECK (auth.uid() = reported_by);
+    CREATE POLICY "Allow users to create their own crime reports"
+    ON public.crime_reports FOR INSERT
+    TO authenticated WITH CHECK (auth.uid() = reported_by);
 
-    --------------------- END OF SQL TO COPY ---------------------
+    -- Allow users to SELECT (view) reports they created
+    CREATE POLICY "Allow users to view their own vehicle reports"
+    ON public.vehicle_reports FOR SELECT
+    TO authenticated USING (auth.uid() = reported_by);
+    
+    CREATE POLICY "Allow users to view their own crime reports"
+    ON public.crime_reports FOR SELECT
+    TO authenticated USING (auth.uid() = reported_by);
+
+    
+    -- === STEP C: SETUP STORAGE PERMISSIONS ===
+    -- This fixes issues with viewing/uploading images.
+    
+    -- Drop policies if they exist to avoid conflicts when re-running the script.
+    DROP POLICY IF EXISTS "Allow authenticated read access to evidence" ON storage.objects;
+    DROP POLICY IF EXISTS "Allow authenticated uploads to evidence" ON storage.objects;
+    
+    -- Allow authenticated users to view all files in the 'evidence' bucket.
+    CREATE POLICY "Allow authenticated read access to evidence"
+    ON storage.objects FOR SELECT
+    TO authenticated USING (bucket_id = 'evidence');
+
+    -- Allow users to upload files into the 'evidence' bucket.
+    CREATE POLICY "Allow authenticated uploads to evidence"
+    ON storage.objects FOR INSERT
+    TO authenticated WITH CHECK (bucket_id = 'evidence');
+
+    --------------------- END OF SQL SCRIPT ---------------------
 */
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
