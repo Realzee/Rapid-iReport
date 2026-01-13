@@ -8,6 +8,7 @@ import MapView from './MapView';
 import ReportModal from './ReportModal';
 import DeleteReportModal from './DeleteReportModal';
 import ReportDetailCard from './ReportDetailCard';
+import MapModal from './MapModal';
 import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon } from './icons';
 import { supabase } from '../utils/supabase';
 
@@ -25,6 +26,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [isMapModalOpen, setIsMapModalOpen] = useState(false);
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
 
@@ -230,6 +232,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                             profile={profile}
                             onEdit={handleOpenEditReportModal}
                             onDelete={handleOpenDeleteReportModal}
+                            onViewOnMap={() => setIsMapModalOpen(true)}
                         />
                     ) : (
                         <ReportList 
@@ -262,6 +265,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                 onClose={() => setReportToDelete(null)}
                 onConfirm={confirmDeleteReport}
                 reportIdentifier={reportToDelete ? (isVehicleReport(reportToDelete) ? reportToDelete.license_plate : reportToDelete.title) : ''}
+            />
+
+            <MapModal
+                isOpen={isMapModalOpen}
+                onClose={() => setIsMapModalOpen(false)}
+                report={selectedReport}
             />
         </div>
     );
