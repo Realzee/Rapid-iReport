@@ -1,8 +1,22 @@
+/*
+    --- IMPORTANT SUPABASE SETUP FOR IMAGE UPLOADS ---
+    The "400 Bad Request" error during image upload means the required Storage Bucket is missing.
+    Follow these steps carefully in your Supabase dashboard to fix this:
 
-import React, { useState } from 'react';
+    1. Go to your Supabase Project Dashboard.
+    2. Click on the "Storage" icon in the left sidebar (it looks like a cylinder).
+    3. Click the "+ New Bucket" button.
+    4. For the "Bucket name", enter exactly: evidence
+    5. IMPORTANT: Toggle ON the "Public bucket" option. This allows the app to display the images.
+    6. Click "Create Bucket".
+
+    After creating the bucket, image uploads in the app will start working correctly.
+*/
+import React, { useState, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Severity, ReportStatus } from '../types';
 import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon } from './icons';
+import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
 
 interface NewReportModalProps {
     isOpen: boolean;
@@ -37,6 +51,11 @@ const NewReportModal: React.FC<NewReportModalProps> = ({ isOpen, onClose, onRepo
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const currentVehicleModels = useMemo(() => {
+        const make = formData.vehicle_make?.toLowerCase();
+        return vehicleModelsByMake[make] || [];
+    }, [formData.vehicle_make]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -49,7 +68,8 @@ const NewReportModal: React.FC<NewReportModalProps> = ({ isOpen, onClose, onRepo
             const imageUrls: string[] = [];
 
             for (const file of files) {
-                const filePath = `public/${reportId}/${file.name}`;
+                // The path inside the bucket where the file will be stored.
+                const filePath = `${reportId}/${file.name}`;
                 const { error: uploadError } = await supabase.storage.from('evidence').upload(filePath, file);
                 if (uploadError) throw uploadError;
                 
@@ -135,17 +155,17 @@ const NewReportModal: React.FC<NewReportModalProps> = ({ isOpen, onClose, onRepo
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div><label htmlFor="license_plate" className={labelClasses}>License Plate</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} required className={inputClasses} /></div>
-                                <div><label htmlFor="vehicle_make" className={labelClasses}>Vehicle Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} required className={inputClasses} /></div>
-                                <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} required className={inputClasses} /></div>
-                                <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} required className={inputClasses} /></div>
+                                <div><label htmlFor="vehicle_make" className={labelClasses}>Vehicle Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} required className={inputClasses} list="makes-list" /></div>
+                                <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} required className={inputClasses} list="models-list" /></div>
+                                <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} required className={inputClasses} list="colors-list" /></div>
                             </div>
-                             <div><label htmlFor="location" className={labelClasses}>Last Seen Location</label><input type="text" name="location" id="location" value={formData.location || ''} onChange={handleChange} required className={inputClasses} /></div>
+                             <div><label htmlFor="location_vehicle" className={labelClasses}>Last Seen Location</label><input type="text" name="location" id="location_vehicle" value={formData.location || ''} onChange={handleChange} required className={inputClasses} /></div>
                         </>
                     ) : (
                          <>
                             <div><label htmlFor="title" className={labelClasses}>Incident Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} required className={inputClasses} /></div>
                             <div><label htmlFor="crime_type" className={labelClasses}>Type of Crime</label><input type="text" name="crime_type" id="crime_type" value={formData.crime_type || ''} onChange={handleChange} required className={inputClasses} /></div>
-                            <div><label htmlFor="location" className={labelClasses}>Location</label><input type="text" name="location" id="location" value={formData.location || ''} onChange={handleChange} required className={inputClasses} /></div>
+                            <div><label htmlFor="location_crime" className={labelClasses}>Location</label><input type="text" name="location" id="location_crime" value={formData.location || ''} onChange={handleChange} required className={inputClasses} /></div>
                         </>
                     )}
                     
@@ -201,6 +221,17 @@ const NewReportModal: React.FC<NewReportModalProps> = ({ isOpen, onClose, onRepo
                         </button>
                     </div>
                 </form>
+                
+                {/* Datalists for vehicle suggestions */}
+                <datalist id="makes-list">
+                    {vehicleMakes.map(make => <option key={make} value={make} />)}
+                </datalist>
+                <datalist id="models-list">
+                    {currentVehicleModels.map(model => <option key={model} value={model} />)}
+                </datalist>
+                <datalist id="colors-list">
+                    {vehicleColors.map(color => <option key={color} value={color} />)}
+                </datalist>
             </div>
         </div>
     );

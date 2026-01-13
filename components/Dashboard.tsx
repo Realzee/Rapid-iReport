@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Report, ReportStatus, Severity, VehicleReport, CrimeReport, Responder, ResponderStatus } from '../types';
+import { Report, ReportStatus, UserRole, VehicleReport, CrimeReport, Responder, ResponderStatus } from '../types';
 import StatCard from './StatCard';
 import ReportList from './ReportList';
 import MapView from './MapView';
 import NewReportModal from './NewReportModal';
-import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon, CarIcon, CrimeIcon, MapPinIcon } from './icons';
+import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon } from './icons';
 import { supabase } from '../utils/supabase';
 
 const Dashboard: React.FC = () => {
@@ -19,7 +19,12 @@ const Dashboard: React.FC = () => {
             setLoading(true);
             const { data: vehicleData, error: vError } = await supabase.from('vehicle_reports').select('*');
             const { data: crimeData, error: cError } = await supabase.from('crime_reports').select('*');
-            const { data: respondersData, error: rError } = await supabase.from('responders').select('*'); // Assuming a responders table
+            
+            // FIX: Fetch responders from the profiles table based on their role
+            const { data: respondersData, error: rError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('role', UserRole.RESPONDER);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
             if (cError) console.error('Error fetching crime reports:', cError);
@@ -30,11 +35,55 @@ const Dashboard: React.FC = () => {
                 ...(crimeData || []).map(r => ({...r, type: 'crime'})),
             ];
 
+            // Map Profile[] to Responder[] and add mock location/status for demonstration
+            const mappedResponders: Responder[] = (respondersData || []).map((profile, index) => ({
+                id: profile.id,
+                full_name: profile.full_name,
+                // Cycle through statuses for visual variety in demo
+                status: [ResponderStatus.AVAILABLE, ResponderStatus.ON_SCENE, ResponderStatus.OFF_DUTY][index % 3],
+                // Mock random locations around a central point for demo
+                location_coords: { 
+                    lat: -1.286389 + (Math.random() - 0.5) * 0.1, 
+                    lng: 36.817223 + (Math.random() - 0.5) * 0.1,
+                },
+            }));
+
             setReports(combinedReports);
-            setResponders(respondersData || []); // Mock responders if table doesn't exist
+            setResponders(mappedResponders);
             setLoading(false);
         };
+        
         fetchData();
+
+        // --- REALTIME SUBSCRIPTIONS ---
+        const handleNewReport = (payload: any, type: 'vehicle' | 'crime') => {
+             const newReport = { ...payload.new, type };
+             setReports(prevReports => [newReport, ...prevReports]);
+        };
+
+        const vehicleReportsChannel = supabase
+          .channel('public:vehicle_reports')
+          .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'vehicle_reports' },
+            (payload) => handleNewReport(payload, 'vehicle')
+          )
+          .subscribe();
+
+        const crimeReportsChannel = supabase
+          .channel('public:crime_reports')
+          .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'crime_reports' },
+            (payload) => handleNewReport(payload, 'crime')
+          )
+          .subscribe();
+
+        // Cleanup function to remove subscriptions on component unmount
+        return () => {
+          supabase.removeChannel(vehicleReportsChannel);
+          supabase.removeChannel(crimeReportsChannel);
+        };
     }, []);
 
     const sortedReports = useMemo(() => {
@@ -46,6 +95,8 @@ const Dashboard: React.FC = () => {
     };
 
     const handleReportCreated = (newReport: Report) => {
+        // This function is still useful for instantly adding the report for the current user
+        // before the realtime event arrives, providing a snappier UI response.
         setReports(prevReports => [newReport, ...prevReports]);
         setIsNewReportModalOpen(false);
     }
