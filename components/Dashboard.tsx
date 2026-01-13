@@ -4,6 +4,7 @@ import StatCard from './StatCard';
 import ReportList from './ReportList';
 import MapView from './MapView';
 import NewReportModal from './NewReportModal';
+import ReportDetailCard from './ReportDetailCard';
 import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon } from './icons';
 import { supabase } from '../utils/supabase';
 
@@ -90,6 +91,10 @@ const Dashboard: React.FC = () => {
         return reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
     }, [reports]);
 
+    const selectedReport = useMemo(() => {
+        return reports.find(r => r.id === selectedReportId);
+    }, [reports, selectedReportId]);
+
     const handleReportSelect = (reportId: string) => {
         setSelectedReportId(prevId => prevId === reportId ? null : reportId);
     };
@@ -136,11 +141,18 @@ const Dashboard: React.FC = () => {
 
             <div className="flex flex-col lg:flex-row gap-6">
                 <div className="lg:w-[400px] lg:h-[70vh] flex flex-col">
-                    <ReportList 
-                        reports={sortedReports}
-                        onReportSelect={handleReportSelect}
-                        selectedReportId={selectedReportId}
-                    />
+                     {selectedReport ? (
+                        <ReportDetailCard 
+                            report={selectedReport}
+                            onClose={() => setSelectedReportId(null)}
+                        />
+                    ) : (
+                        <ReportList 
+                            reports={sortedReports}
+                            onReportSelect={handleReportSelect}
+                            selectedReportId={selectedReportId}
+                        />
+                    )}
                 </div>
                 <div className="flex-1 lg:h-[70vh]">
                     <MapView 
