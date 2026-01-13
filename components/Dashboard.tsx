@@ -79,14 +79,22 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         };
         
         const handleReportUpdate = (payload: any) => {
-            const updatedReport = payload.new;
-            // If responder, check if they are still assigned.
-            if(isResponder && updatedReport.assigned_to !== profile.id) {
-                // If they are no longer assigned, remove the report from their list.
-                setReports(prev => prev.filter(r => r.id !== updatedReport.id));
-            } else {
-                 setReports(prev => prev.map(r => r.id === updatedReport.id ? {...r, ...updatedReport} : r));
-            }
+            const updatedReport = { ...payload.new, type: payload.table === 'vehicle_reports' ? 'vehicle' : 'crime' };
+            setReports(prev => {
+                const reportExists = prev.some(r => r.id === updatedReport.id);
+                if (isResponder) {
+                    // If the responder is no longer assigned, remove the report.
+                    if (updatedReport.assigned_to !== profile.id) {
+                        return prev.filter(r => r.id !== updatedReport.id);
+                    }
+                    // If the report is newly assigned, add it.
+                    if (!reportExists && updatedReport.assigned_to === profile.id) {
+                        return [...prev, updatedReport];
+                    }
+                }
+                // Otherwise, just update the existing report.
+                return prev.map(r => r.id === updatedReport.id ? updatedReport : r);
+            });
         };
 
         const reportsChannels = supabase
@@ -180,6 +188,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                         <ReportDetailCard 
                             report={selectedReport}
                             onClose={() => setSelectedReportId(null)}
+                            profile={profile}
                         />
                     ) : (
                         <ReportList 
