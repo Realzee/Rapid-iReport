@@ -70,6 +70,7 @@ export interface VehicleReport {
   reported_by: string; // profile id
   reported_at: string; // ISO date string
   location_coords?: LocationCoords;
+  evidence_images?: string[];
 }
 
 export interface CrimeReport {
@@ -84,6 +85,7 @@ export interface CrimeReport {
   reported_by: string; // profile id
   reported_at: string; // ISO date string
   location_coords?: LocationCoords;
+  evidence_images?: string[];
 }
 
 export type Report = VehicleReport | CrimeReport;

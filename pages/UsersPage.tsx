@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { UsersIcon } from '../components/icons';
+import { PlusIcon, UsersIcon } from '../components/icons';
 import { Profile, Company } from '../types';
 import UserManagementTable from '../components/UserManagementTable';
 import AddEditUserModal from '../components/AddEditUserModal';
@@ -39,6 +39,11 @@ const UsersPage: React.FC = () => {
         );
     }, [users, searchTerm]);
 
+    const handleAddUser = () => {
+        setSelectedUser(null);
+        setIsAddEditModalOpen(true);
+    };
+
     const handleEditUser = (user: Profile) => {
         setSelectedUser(user);
         setIsAddEditModalOpen(true);
@@ -49,25 +54,73 @@ const UsersPage: React.FC = () => {
         setIsDeleteModalOpen(true);
     };
 
-    const handleSaveUser = async (userToSave: Profile) => {
-        if (!userToSave.id) return; // Should not happen with "Add" button removed
+    const handleSaveUser = async (userToSave: Profile, password?: string) => {
+        if (userToSave.id) { // UPDATE
+            const { id, email, ...updateData } = userToSave;
+            const { data, error } = await supabase
+                .from('profiles')
+                .update(updateData)
+                .eq('id', id)
+                .select()
+                .single();
 
-        const { id, email, ...updateData } = userToSave;
-        
-        const { data, error } = await supabase
-            .from('profiles')
-            .update(updateData)
-            .eq('id', id)
-            .select()
-            .single();
+            if (error) {
+                alert('Error updating user: ' + error.message);
+            } else if (data) {
+                setUsers(users.map(u => (u.id === data.id ? data : u)));
+            }
+        } else { // CREATE
+            if (!password) {
+                alert("Password is required to create a new user.");
+                return;
+            }
 
-        if (error) {
-            alert('Error updating user: ' + error.message);
-        } else if (data) {
-            setUsers(users.map(u => (u.id === data.id ? data : u)));
-            setIsAddEditModalOpen(false);
-            setSelectedUser(null);
+            const { data: { session: adminSession } } = await supabase.auth.getSession();
+            if (!adminSession) {
+                alert("Your session has expired. Please log in again to create users.");
+                return;
+            }
+
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                email: userToSave.email,
+                password: password,
+                options: {
+                    data: {
+                        full_name: userToSave.full_name,
+                        role: userToSave.role,
+                    }
+                }
+            });
+            
+            if (signUpError) {
+                alert(`Error creating user: ${signUpError.message}`);
+                await supabase.auth.setSession({ access_token: adminSession.access_token, refresh_token: adminSession.refresh_token });
+                return;
+            }
+
+            if (signUpData.user) {
+                const { error: profileUpdateError } = await supabase
+                    .from('profiles')
+                    .update({
+                        status: userToSave.status,
+                        company_id: userToSave.company_id || null
+                    })
+                    .eq('id', signUpData.user.id);
+                
+                if (profileUpdateError) {
+                    alert(`User auth record created, but failed to update profile details: ${profileUpdateError.message}`);
+                }
+                
+                await supabase.auth.setSession({ access_token: adminSession.access_token, refresh_token: adminSession.refresh_token });
+                
+                const { data: newProfile } = await supabase.from('profiles').select('*').eq('id', signUpData.user.id).single();
+                if (newProfile) {
+                    setUsers(prev => [...prev, newProfile]);
+                }
+            }
         }
+        setIsAddEditModalOpen(false);
+        setSelectedUser(null);
     };
 
     const confirmDeleteUser = async () => {
@@ -94,6 +147,13 @@ const UsersPage: React.FC = () => {
                     </h2>
                     <p className="text-gray-400 mt-1">Manage all user accounts in the system.</p>
                 </div>
+                 <button 
+                    onClick={handleAddUser}
+                    className="mt-4 md:mt-0 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
+                >
+                    <PlusIcon className="w-5 h-5" />
+                    <span>Add New User</span>
+                </button>
             </div>
 
             <div className="bg-gray-900/50 border border-gray-700/50 rounded-2xl p-4 backdrop-blur-sm">

@@ -5,13 +5,14 @@ import { XIcon } from './icons';
 interface AddEditUserModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (user: Profile) => void;
+    onSave: (user: Profile, password?: string) => void;
     user: Profile | null;
     companies: Company[];
 }
 
 const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, onSave, user, companies }) => {
     const [formData, setFormData] = useState<Partial<Profile>>({});
+    const [password, setPassword] = useState('');
 
     useEffect(() => {
         if (user) {
@@ -25,6 +26,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                 company_id: undefined,
             });
         }
+        setPassword('');
     }, [user, isOpen]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -34,7 +36,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData as Profile);
+        onSave(formData as Profile, password);
     };
 
     if (!isOpen) return null;
@@ -54,8 +56,14 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                     </div>
                     <div>
                         <label htmlFor="email" className="block text-sm font-medium text-gray-300">Email</label>
-                        <input type="email" name="email" id="email" value={formData.email || ''} onChange={handleChange} required className="mt-1 w-full bg-gray-800/70 border border-gray-700 rounded-md py-2 px-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"/>
+                        <input type="email" name="email" id="email" value={formData.email || ''} onChange={handleChange} required disabled={!!user} className="mt-1 w-full bg-gray-800/70 border border-gray-700 rounded-md py-2 px-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50"/>
                     </div>
+                     {!user && (
+                        <div>
+                            <label htmlFor="password_add" className="block text-sm font-medium text-gray-300">Password</label>
+                            <input type="password" name="password" id="password_add" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="mt-1 w-full bg-gray-800/70 border border-gray-700 rounded-md py-2 px-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"/>
+                        </div>
+                    )}
                     <div>
                         <label htmlFor="role" className="block text-sm font-medium text-gray-300">Role</label>
                         <select name="role" id="role" value={formData.role || ''} onChange={handleChange} className="mt-1 w-full bg-gray-800/70 border border-gray-700 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition">

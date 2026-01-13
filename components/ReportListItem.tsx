@@ -36,6 +36,13 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
         </div>
         <StatusBadge status={report.status} />
       </div>
+      
+      {report.evidence_images && report.evidence_images.length > 0 && (
+          <div className="mt-3 rounded-md overflow-hidden border border-gray-700">
+              <img src={report.evidence_images[0]} alt="Evidence thumbnail" className="w-full h-auto object-cover" />
+          </div>
+      )}
+
       <div className="flex justify-between items-end mt-2">
          <p className="text-xs text-gray-500">
             {isVehicleReport(report) ? report.last_seen_location : report.location}

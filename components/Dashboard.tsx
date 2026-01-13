@@ -3,6 +3,7 @@ import { Report, ReportStatus, Severity, VehicleReport, CrimeReport, Responder, 
 import StatCard from './StatCard';
 import ReportList from './ReportList';
 import MapView from './MapView';
+import NewReportModal from './NewReportModal';
 import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon, CarIcon, CrimeIcon, MapPinIcon } from './icons';
 import { supabase } from '../utils/supabase';
 
@@ -11,6 +12,7 @@ const Dashboard: React.FC = () => {
     const [responders, setResponders] = useState<Responder[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+    const [isNewReportModalOpen, setIsNewReportModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -24,8 +26,8 @@ const Dashboard: React.FC = () => {
             if (rError) console.error('Error fetching responders:', rError);
 
             const combinedReports = [
-                ...(vehicleData || []),
-                ...(crimeData || []),
+                ...(vehicleData || []).map(r => ({...r, type: 'vehicle'})),
+                ...(crimeData || []).map(r => ({...r, type: 'crime'})),
             ];
 
             setReports(combinedReports);
@@ -43,6 +45,11 @@ const Dashboard: React.FC = () => {
         setSelectedReportId(prevId => prevId === reportId ? null : reportId);
     };
 
+    const handleReportCreated = (newReport: Report) => {
+        setReports(prevReports => [newReport, ...prevReports]);
+        setIsNewReportModalOpen(false);
+    }
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-[80vh]">
@@ -59,7 +66,10 @@ const Dashboard: React.FC = () => {
                     <p className="text-gray-400 mt-1">Live operational overview of community safety.</p>
                 </div>
                 <div className="flex items-center space-x-4 mt-4 md:mt-0">
-                     <button className="px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2">
+                     <button 
+                        onClick={() => setIsNewReportModalOpen(true)}
+                        className="px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
+                     >
                         <PlusIcon className="w-5 h-5" />
                         <span>New Report</span>
                     </button>
@@ -89,6 +99,12 @@ const Dashboard: React.FC = () => {
                     />
                 </div>
             </div>
+
+            <NewReportModal 
+                isOpen={isNewReportModalOpen}
+                onClose={() => setIsNewReportModalOpen(false)}
+                onReportCreated={handleReportCreated}
+            />
         </div>
     );
 };
