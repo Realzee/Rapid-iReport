@@ -1,0 +1,5 @@
+{
+  "name": "RAPID iREPORT - Community Safety System",
+  "description": "A professional, modern community safety reporting system that allows users to report and track vehicle thefts and crime incidents in real-time using Supabase as the backend.",
+  "requestFramePermissions": []
+}
