@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
-import { BellIcon, ChevronDownIcon, SunIcon, MoonIcon } from './icons';
+import { BellIcon, ChevronDownIcon } from './icons';
 import { Profile, UserRole } from '../types';
 import { supabase } from '../utils/supabase';
 import { logoUrl } from '../assets/logo';
-import { useTheme } from '../contexts/ThemeContext';
+import ThemeToggle from './ThemeToggle';
 
 interface HeaderProps {
     currentView: string;
@@ -13,7 +14,6 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const { theme, toggleTheme } = useTheme();
 
   const navLinkClasses = (view: string) => 
       `text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors duration-300 px-3 py-2 rounded-md ${
@@ -48,9 +48,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
             )}
           </nav>
           <div className="flex items-center space-x-4">
-            <button onClick={toggleTheme} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-300">
-                {theme === 'dark' ? <SunIcon className="w-6 h-6 text-yellow-400" /> : <MoonIcon className="w-6 h-6 text-gray-700" />}
-            </button>
+            <ThemeToggle />
             <button className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300">
               <BellIcon className="w-6 h-6" />
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full text-xs flex items-center justify-center text-white">3</span>

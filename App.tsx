@@ -8,7 +8,6 @@ import CompaniesPage from './pages/CompaniesPage';
 import { supabase } from './utils/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from './types';
-import { ThemeProvider } from './contexts/ThemeContext';
 
 type View = 'dashboard' | 'reports' | 'map' | 'users' | 'companies';
 
@@ -105,39 +104,37 @@ const App: React.FC = () => {
 
   if (loading) {
     return (
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black">
              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
     )
   }
 
   return (
-    <ThemeProvider>
-      <div className="min-h-screen relative overflow-x-hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white via-gray-50 to-white dark:from-black dark:via-gray-900/50 dark:to-black z-0 transition-all duration-500 ease-in-out"></div>
-        <div 
-          className="absolute top-[20%] left-[10%] w-72 h-72 bg-blue-400/30 dark:bg-blue-600/50 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
-          style={{ animationDuration: '8s' }}
-        ></div>
-        <div 
-          className="absolute bottom-[5%] right-[5%] w-96 h-96 bg-red-400/30 dark:bg-red-600/50 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
-          style={{ animationDuration: '10s' }}
-        ></div>
-        
-        <div className="relative z-10">
-          {session && profile ? (
-            <>
-              <Header currentView={view} setView={setView} profile={profile} />
-              <main className="pt-24 px-4 sm:px-6 lg:px-8">
-                {renderView()}
-              </main>
-            </>
-          ) : (
-            <AuthPage />
-          )}
-        </div>
+    <div className="min-h-screen relative overflow-x-hidden">
+      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white via-gray-50 to-white dark:from-black dark:via-gray-900/50 dark:to-black z-0 transition-all duration-500 ease-in-out"></div>
+      <div 
+        className="absolute top-[20%] left-[10%] w-72 h-72 bg-blue-400/30 dark:bg-blue-600/50 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
+        style={{ animationDuration: '8s' }}
+      ></div>
+      <div 
+        className="absolute bottom-[5%] right-[5%] w-96 h-96 bg-red-400/30 dark:bg-red-600/50 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
+        style={{ animationDuration: '10s' }}
+      ></div>
+      
+      <div className="relative z-10">
+        {session && profile ? (
+          <>
+            <Header currentView={view} setView={setView} profile={profile} />
+            <main className="pt-24 px-4 sm:px-6 lg:px-8">
+              {renderView()}
+            </main>
+          </>
+        ) : (
+          <AuthPage />
+        )}
       </div>
-    </ThemeProvider>
+    </div>
   );
 };
 
