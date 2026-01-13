@@ -47,6 +47,15 @@ const App: React.FC = () => {
 
             if (error) {
                 console.error('Error setting up presence and fetching profile:', error);
+                // FIX: Provide a more helpful error message to guide the user towards the solution.
+                // This error is almost always caused by missing Row Level Security policies on the 'profiles' table.
+                if (error.message.includes('security policy')) {
+                    console.error(
+                        '%c[SECURITY POLICY ERROR]',
+                        'color: yellow; font-weight: bold;',
+                        `The operation was blocked by your database's Row Level Security. Please ensure you have run the full script in DATABASE_SETUP.md, specifically STEP D which configures policies for the 'profiles' table.`
+                    );
+                }
             } else {
                 setProfile(data);
             }

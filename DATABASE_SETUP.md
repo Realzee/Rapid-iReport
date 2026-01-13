@@ -1,6 +1,6 @@
 # RAPID iREPORT - Supabase Database Setup
 
-If you encounter errors like "Could not find column 'evidence_images'" or "violates row-level security policy" when creating reports, your Supabase database schema is likely incomplete or misconfigured.
+If you encounter errors like "Could not find column 'evidence_images'", "violates row-level security policy" when creating reports, or "Error setting up presence" on login, your Supabase database schema is likely incomplete or misconfigured.
 
 To fix all known database issues, please follow these steps carefully.
 
@@ -34,8 +34,8 @@ ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS evidence_images text
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
 
 
--- === STEP B: SETUP SECURITY POLICIES ===
--- This fixes the "violates row-level security policy" errors.
+-- === STEP B: SETUP REPORT SECURITY POLICIES ===
+-- This fixes the "violates row-level security policy" errors for reports.
 
 -- Enable Row Level Security on the tables if not already enabled.
 ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY;
@@ -82,6 +82,30 @@ TO authenticated USING (bucket_id = 'evidence');
 CREATE POLICY "Allow authenticated uploads to evidence"
 ON storage.objects FOR INSERT
 TO authenticated WITH CHECK (bucket_id = 'evidence');
+
+
+-- === STEP D: SETUP PROFILES SECURITY POLICIES ===
+-- This fixes the HTTP 400 error and "Error setting up presence" on login
+-- by allowing users to update their own 'last_seen_at' status.
+
+-- Enable RLS on the profiles table if it's not already.
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies to prevent conflicts when re-running the script.
+DROP POLICY IF EXISTS "Allow users to view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Allow users to update their own profile" ON public.profiles;
+
+-- Allow any authenticated user to VIEW all profiles.
+-- In a high-security environment, you might restrict this to admins.
+CREATE POLICY "Allow users to view all profiles"
+ON public.profiles FOR SELECT
+TO authenticated USING (true);
+
+-- Allow a user to UPDATE their OWN profile. This is crucial for the 'last_seen_at' feature.
+CREATE POLICY "Allow users to update their own profile"
+ON public.profiles FOR UPDATE
+TO authenticated USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
 ```
 
 ---
