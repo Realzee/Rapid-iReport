@@ -5,7 +5,7 @@ import { XIcon } from './icons';
 interface AddEditCompanyModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (company: Company) => void;
+    onSave: (company: { id?: string, name: string }) => void;
     company: Company | null;
 }
 
@@ -22,7 +22,7 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ ...company, id: company?.id || '', name });
+        onSave({ id: company?.id, name });
     };
 
     if (!isOpen) return null;

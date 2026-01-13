@@ -1,17 +1,35 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusIcon, BuildingIcon } from '../components/icons';
 import { Company, Profile } from '../types';
-import { mockUsers, mockCompanies } from '../data/mockUsers';
 import CompanyManagementTable from '../components/CompanyManagementTable';
 import AddEditCompanyModal from '../components/AddEditCompanyModal';
 import DeleteCompanyModal from '../components/DeleteCompanyModal';
+import { supabase } from '../utils/supabase';
 
 const CompaniesPage: React.FC = () => {
-    const [companies, setCompanies] = useState<Company[]>(mockCompanies);
-    const [users, setUsers] = useState<Profile[]>(mockUsers);
+    const [companies, setCompanies] = useState<Company[]>([]);
+    const [users, setUsers] = useState<Profile[]>([]);
+    const [loading, setLoading] = useState(true);
     const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            const { data: companiesData, error: cError } = await supabase.from('companies').select('*');
+            const { data: usersData, error: uError } = await supabase.from('profiles').select('id, company_id');
+            
+            if (cError) console.error('Error fetching companies:', cError);
+            else setCompanies(companiesData || []);
+            
+            if (uError) console.error('Error fetching users:', uError);
+            else setUsers(usersData || []);
+
+            setLoading(false);
+        };
+        fetchData();
+    }, []);
 
     const handleAddCompany = () => {
         setSelectedCompany(null);
@@ -28,20 +46,40 @@ const CompaniesPage: React.FC = () => {
         setIsDeleteModalOpen(true);
     };
 
-    const handleSaveCompany = (company: Company) => {
-        if (selectedCompany) {
-            setCompanies(companies.map(c => (c.id === company.id ? company : c)));
-        } else {
-            setCompanies([...companies, { ...company, id: `c${companies.length + 1}` }]);
+    const handleSaveCompany = async (companyData: { id?: string, name: string }) => {
+        let savedCompany: Company | null = null;
+        let error;
+
+        if (companyData.id) { // Update
+            const { data, error: updateError } = await supabase.from('companies').update({ name: companyData.name }).eq('id', companyData.id).select().single();
+            savedCompany = data;
+            error = updateError;
+        } else { // Insert
+            const { data, error: insertError } = await supabase.from('companies').insert({ name: companyData.name }).select().single();
+            savedCompany = data;
+            error = insertError;
+        }
+
+        if (error) {
+            alert('Error saving company: ' + error.message);
+        } else if (savedCompany) {
+            if (companyData.id) {
+                 setCompanies(companies.map(c => c.id === savedCompany!.id ? savedCompany : c));
+            } else {
+                setCompanies([...companies, savedCompany]);
+            }
         }
         setIsAddEditModalOpen(false);
     };
 
-    const confirmDeleteCompany = () => {
+    const confirmDeleteCompany = async () => {
         if (selectedCompany) {
-            setCompanies(companies.filter(c => c.id !== selectedCompany.id));
-            // Also un-assign users from the deleted company
-            setUsers(users.map(u => u.company_id === selectedCompany.id ? { ...u, company_id: undefined } : u));
+            const { error } = await supabase.from('companies').delete().eq('id', selectedCompany.id);
+            if (error) {
+                alert('Error deleting company: ' + error.message);
+            } else {
+                 setCompanies(companies.filter(c => c.id !== selectedCompany.id));
+            }
         }
         setIsDeleteModalOpen(false);
         setSelectedCompany(null);
@@ -66,12 +104,18 @@ const CompaniesPage: React.FC = () => {
             </div>
 
             <div className="bg-gray-900/50 border border-gray-700/50 rounded-2xl p-4 backdrop-blur-sm">
-                <CompanyManagementTable 
-                    companies={companies}
-                    users={users}
-                    onEdit={handleEditCompany}
-                    onDelete={handleDeleteCompany}
-                />
+                {loading ? (
+                     <div className="flex justify-center items-center h-64">
+                        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                ) : (
+                    <CompanyManagementTable 
+                        companies={companies}
+                        users={users}
+                        onEdit={handleEditCompany}
+                        onDelete={handleDeleteCompany}
+                    />
+                )}
             </div>
 
             <AddEditCompanyModal 

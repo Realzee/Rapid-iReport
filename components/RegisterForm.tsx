@@ -1,23 +1,64 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UserIcon, MailIcon, LockIcon } from './icons';
+import { supabase } from '../utils/supabase';
+import { UserRole } from '../types';
 
 interface RegisterFormProps {
   onSwitchToLogin: () => void;
 }
 
 const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
-  const handleSubmit = (e: React.FormEvent) => {
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you'd handle registration logic and API calls
-    // For now, we can just switch to login as a mock success
-    alert("Registration successful! Please sign in.");
-    onSwitchToLogin();
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+
+    // SECURITY WARNING: Role assignment should always be handled server-side
+    // (e.g., in a Supabase Edge Function or a database trigger) to prevent
+    // malicious users from assigning themselves administrative roles by tampering
+    // with the client-side code. This check is for demonstration purposes only.
+    const adminEmails = ['zweli@msn.com', 'clint@rapid911.co.za'];
+    const userRole = adminEmails.includes(email.toLowerCase().trim()) ? UserRole.ADMIN : UserRole.USER;
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          role: userRole,
+        },
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+    } else if (data.user && data.user.identities && data.user.identities.length === 0) {
+      setError("A user with this email already exists but is unconfirmed.");
+    } else if (data.user) {
+      setMessage("Registration successful! Please check your email to confirm your account.");
+    } else {
+      setError("An unexpected error occurred during registration.");
+    }
+    setLoading(false);
   };
 
   return (
     <div className="w-full max-w-md">
       <h2 className="text-3xl font-bold text-center text-white mb-2">Create an Account</h2>
       <p className="text-center text-gray-400 mb-8">Join the community safety network.</p>
+
+      {error && <p className="mb-4 text-center text-red-400 bg-red-500/20 p-3 rounded-md">{error}</p>}
+      {message && <p className="mb-4 text-center text-green-400 bg-green-500/20 p-3 rounded-md">{message}</p>}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="full-name" className="block text-sm font-medium text-gray-300">Full Name</label>
@@ -31,6 +72,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
               type="text"
               autoComplete="name"
               required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               className="w-full bg-gray-900/50 border border-gray-700 rounded-md py-3 pl-10 pr-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
               placeholder="Jane Doe"
             />
@@ -48,6 +91,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
               type="email"
               autoComplete="email"
               required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-gray-900/50 border border-gray-700 rounded-md py-3 pl-10 pr-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
               placeholder="you@example.com"
             />
@@ -65,6 +110,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
               type="password"
               autoComplete="new-password"
               required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-gray-900/50 border border-gray-700 rounded-md py-3 pl-10 pr-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
               placeholder="••••••••"
             />
@@ -73,9 +120,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
         <div>
           <button
             type="submit"
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:scale-105 transition-transform duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-blue-500"
+            disabled={loading}
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:scale-105 transition-transform duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Create Account
+            {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Create Account'}
           </button>
         </div>
       </form>
