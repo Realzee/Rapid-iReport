@@ -8,7 +8,9 @@ import { supabase } from '../utils/supabase';
 
 const CompaniesPage: React.FC = () => {
     const [companies, setCompanies] = useState<Company[]>([]);
-    const [users, setUsers] = useState<Profile[]>([]);
+    // FIX: Changed the type of 'users' to match the partial data being fetched (only id and company_id).
+    // This avoids fetching all user data when only the count is needed, improving performance.
+    const [users, setUsers] = useState<Pick<Profile, 'id' | 'company_id'>[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);

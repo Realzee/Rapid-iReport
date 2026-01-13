@@ -33,24 +33,43 @@ const App: React.FC = () => {
   }, []);
   
   useEffect(() => {
+    let presenceInterval: number | undefined;
+
     if (session?.user) {
-        const fetchProfile = async () => {
+        const setupPresence = async () => {
+            // Update last_seen_at on initial load and get profile
             const { data, error } = await supabase
                 .from('profiles')
-                .select('*')
+                .update({ last_seen_at: new Date().toISOString() })
                 .eq('id', session.user.id)
+                .select()
                 .single();
-            
+
             if (error) {
-                console.error('Error fetching profile:', error);
+                console.error('Error setting up presence and fetching profile:', error);
             } else {
                 setProfile(data);
             }
+
+            // Periodically update last_seen_at to keep status 'online'
+            presenceInterval = window.setInterval(async () => {
+                await supabase
+                    .from('profiles')
+                    .update({ last_seen_at: new Date().toISOString() })
+                    .eq('id', session.user.id);
+            }, 60000); // every 1 minute
         };
-        fetchProfile();
+        setupPresence();
     } else {
         setProfile(null);
     }
+
+    // Cleanup interval on session change or component unmount
+    return () => {
+        if (presenceInterval) {
+            clearInterval(presenceInterval);
+        }
+    };
   }, [session]);
 
 

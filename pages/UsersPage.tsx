@@ -56,18 +56,60 @@ const UsersPage: React.FC = () => {
 
     const handleSaveUser = async (userToSave: Profile, password?: string) => {
         if (userToSave.id) { // UPDATE
+            // 1. Update Profile Data (status, role, company, etc.)
             const { id, email, ...updateData } = userToSave;
-            const { data, error } = await supabase
+            const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
                 .update(updateData)
                 .eq('id', id)
                 .select()
                 .single();
 
-            if (error) {
-                alert('Error updating user: ' + error.message);
-            } else if (data) {
-                setUsers(users.map(u => (u.id === data.id ? data : u)));
+            if (profileError) {
+                alert('Error updating user profile: ' + profileError.message);
+            } else if (profileData) {
+                setUsers(users.map(u => (u.id === profileData.id ? profileData : u)));
+                alert('User profile updated successfully.');
+            }
+
+            // 2. Update Auth User Password (if provided)
+            if (password) {
+                /*
+                    --- CRITICAL SECURITY INFORMATION ---
+                    Admin actions like updating another user's password MUST be handled in a secure server environment.
+                    The following code calls a Supabase Edge Function named 'update-user-password'.
+                    You MUST create this function in your Supabase project for this feature to work.
+
+                    The Edge Function should look like this:
+                    -------------------------------------------
+                    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+                    Deno.serve(async (req) => {
+                      const { userId, password } = await req.json();
+                      const supabaseAdmin = createClient(
+                        Deno.env.get('SUPABASE_URL')!,
+                        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+                      );
+
+                      const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
+
+                      if (error) {
+                        return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+                      }
+                      
+                      return new Response(JSON.stringify({ message: 'Password updated successfully' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+                    });
+                    -------------------------------------------
+                */
+                const { error: functionError } = await supabase.functions.invoke('update-user-password', {
+                    body: { userId: userToSave.id, password: password }
+                });
+
+                if (functionError) {
+                    alert(`Profile saved, but failed to update password: ${functionError.message}. Ensure the 'update-user-password' Edge Function is deployed correctly.`);
+                } else {
+                    alert('User password was also updated successfully.');
+                }
             }
         } else { // CREATE
             if (!password) {

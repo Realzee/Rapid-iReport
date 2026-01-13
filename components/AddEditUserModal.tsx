@@ -58,12 +58,20 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                         <label htmlFor="email" className="block text-sm font-medium text-gray-300">Email</label>
                         <input type="email" name="email" id="email" value={formData.email || ''} onChange={handleChange} required disabled={!!user} className="mt-1 w-full bg-gray-800/70 border border-gray-700 rounded-md py-2 px-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50"/>
                     </div>
-                     {!user && (
-                        <div>
-                            <label htmlFor="password_add" className="block text-sm font-medium text-gray-300">Password</label>
-                            <input type="password" name="password" id="password_add" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="mt-1 w-full bg-gray-800/70 border border-gray-700 rounded-md py-2 px-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"/>
-                        </div>
-                    )}
+                     <div>
+                        <label htmlFor="password_add" className="block text-sm font-medium text-gray-300">New Password</label>
+                        <input 
+                            type="password" 
+                            name="password" 
+                            id="password_add" 
+                            value={password} 
+                            onChange={(e) => setPassword(e.target.value)} 
+                            required={!user} 
+                            minLength={6} 
+                            className="mt-1 w-full bg-gray-800/70 border border-gray-700 rounded-md py-2 px-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                            placeholder={user ? "Leave blank to keep current password" : "••••••••"}
+                        />
+                    </div>
                     <div>
                         <label htmlFor="role" className="block text-sm font-medium text-gray-300">Role</label>
                         <select name="role" id="role" value={formData.role || ''} onChange={handleChange} className="mt-1 w-full bg-gray-800/70 border border-gray-700 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition">

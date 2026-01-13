@@ -1,82 +1,13 @@
-/*
-    --- CRITICAL SUPABASE FIX REQUIRED ---
-    The errors "Could not find column" and "violates row-level security policy"
-    are DATABASE configuration issues. The frontend code is correct, but your database
-    schema is incomplete.
-
-    To fix ALL issues, please follow these two steps.
-
-    --- STEP 1: CREATE STORAGE BUCKET ---
-    This fixes image upload errors.
-    1. Go to your Supabase Project -> "Storage".
-    2. Click "+ New Bucket", name it exactly "evidence", and enable the "Public bucket" toggle.
-    3. Click "Create Bucket".
-
-    --- STEP 2: RUN THE COMPLETE SETUP SCRIPT ---
-    This adds the missing 'evidence_images' column AND sets the correct security policies.
-    1. Go to your Supabase Project -> "SQL Editor".
-    2. Click "+ New query".
-    3. Copy the ENTIRE SQL script below, paste it into the editor, and click "RUN".
-
-    --------------------- COPY THE ENTIRE SQL SCRIPT BELOW ---------------------
-
-    -- === STEP A: ADD MISSING 'evidence_images' COLUMN ===
-    -- This fixes the "Could not find the 'evidence_images' column" error.
-    ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
-    ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
-
-
-    -- === STEP B: SETUP SECURITY POLICIES ===
-    -- This fixes the "violates row-level security policy" errors.
-
-    -- Enable Row Level Security on the tables if not already enabled.
-    ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY;
-    ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
-
-    -- Drop policies if they exist to avoid conflicts when re-running the script.
-    DROP POLICY IF EXISTS "Allow users to create their own vehicle reports" ON public.vehicle_reports;
-    DROP POLICY IF EXISTS "Allow users to view their own vehicle reports" ON public.vehicle_reports;
-    DROP POLICY IF EXISTS "Allow users to create their own crime reports" ON public.crime_reports;
-    DROP POLICY IF EXISTS "Allow users to view their own crime reports" ON public.crime_reports;
-
-    -- Allow users to INSERT reports for themselves
-    CREATE POLICY "Allow users to create their own vehicle reports"
-    ON public.vehicle_reports FOR INSERT
-    TO authenticated WITH CHECK (auth.uid() = reported_by);
-
-    CREATE POLICY "Allow users to create their own crime reports"
-    ON public.crime_reports FOR INSERT
-    TO authenticated WITH CHECK (auth.uid() = reported_by);
-
-    -- Allow users to SELECT (view) reports they created
-    CREATE POLICY "Allow users to view their own vehicle reports"
-    ON public.vehicle_reports FOR SELECT
-    TO authenticated USING (auth.uid() = reported_by);
-    
-    CREATE POLICY "Allow users to view their own crime reports"
-    ON public.crime_reports FOR SELECT
-    TO authenticated USING (auth.uid() = reported_by);
-
-    
-    -- === STEP C: SETUP STORAGE PERMISSIONS ===
-    -- This fixes issues with viewing/uploading images.
-    
-    -- Drop policies if they exist to avoid conflicts when re-running the script.
-    DROP POLICY IF EXISTS "Allow authenticated read access to evidence" ON storage.objects;
-    DROP POLICY IF EXISTS "Allow authenticated uploads to evidence" ON storage.objects;
-    
-    -- Allow authenticated users to view all files in the 'evidence' bucket.
-    CREATE POLICY "Allow authenticated read access to evidence"
-    ON storage.objects FOR SELECT
-    TO authenticated USING (bucket_id = 'evidence');
-
-    -- Allow users to upload files into the 'evidence' bucket.
-    CREATE POLICY "Allow authenticated uploads to evidence"
-    ON storage.objects FOR INSERT
-    TO authenticated WITH CHECK (bucket_id = 'evidence');
-
-    --------------------- END OF SQL SCRIPT ---------------------
-*/
+/**
+ * @file NewReportModal.tsx
+ * @description Modal for creating new vehicle or crime reports.
+ * 
+ * --- IMPORTANT DATABASE SETUP ---
+ * For this component to function correctly (especially image uploads and report creation),
+ * your Supabase project MUST be configured properly. If you encounter errors like
+ * "violates row-level security policy" or issues with image uploads, please
+ * follow the instructions in the `DATABASE_SETUP.md` file in the project root.
+ */
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Severity, ReportStatus } from '../types';

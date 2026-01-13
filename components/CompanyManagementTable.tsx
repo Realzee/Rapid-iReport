@@ -4,7 +4,9 @@ import { EditIcon, TrashIcon, UsersIcon } from './icons';
 
 interface CompanyManagementTableProps {
     companies: Company[];
-    users: Profile[];
+    // FIX: Updated the 'users' prop type to match the partial data provided by CompaniesPage.
+    // This ensures type safety while keeping the data fetching optimized.
+    users: Pick<Profile, 'id' | 'company_id'>[];
     onEdit: (company: Company) => void;
     onDelete: (company: Company) => void;
 }

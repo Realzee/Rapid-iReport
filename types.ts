@@ -49,6 +49,7 @@ export interface Profile {
   status: UserStatus;
   company_id?: string;
   avatar_url?: string;
+  last_seen_at?: string;
 }
 
 export interface LocationCoords {
