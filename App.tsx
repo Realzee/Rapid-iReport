@@ -2,13 +2,31 @@ import React, { useState } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import AuthPage from './pages/AuthPage';
+import UsersPage from './pages/UsersPage';
+import CompaniesPage from './pages/CompaniesPage';
+
+type View = 'dashboard' | 'reports' | 'map' | 'users' | 'companies';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [view, setView] = useState<View>('dashboard');
 
   const handleLogin = () => {
     setIsAuthenticated(true);
   };
+
+  const renderView = () => {
+    switch(view) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'users':
+        return <UsersPage />;
+      case 'companies':
+        return <CompaniesPage />;
+      default:
+        return <Dashboard />;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-x-hidden">
@@ -25,9 +43,9 @@ const App: React.FC = () => {
       <div className="relative z-10">
         {isAuthenticated ? (
           <>
-            <Header />
+            <Header currentView={view} setView={setView} />
             <main className="pt-24 px-4 sm:px-6 lg:px-8">
-              <Dashboard />
+              {renderView()}
             </main>
           </>
         ) : (

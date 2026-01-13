@@ -7,6 +7,12 @@ export enum UserRole {
   USER = 'user',
 }
 
+export enum UserStatus {
+  ACTIVE = 'active',
+  PENDING = 'pending',
+  SUSPENDED = 'suspended',
+}
+
 export enum ReportStatus {
   PENDING = 'pending',
   ACTIVE = 'active',
@@ -30,11 +36,18 @@ export enum ResponderStatus {
     OFF_DUTY = 'off_duty'
 }
 
+export interface Company {
+    id: string;
+    name: string;
+}
+
 export interface Profile {
   id: string;
   email: string;
   full_name: string;
   role: UserRole;
+  status: UserStatus;
+  company_id?: string;
   avatar_url?: string;
 }
 
