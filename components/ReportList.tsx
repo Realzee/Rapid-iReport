@@ -1,19 +1,29 @@
-import React, { useState } from 'react';
-import { Report, ReportStatus } from '../types';
+
+import React, { useState, useMemo } from 'react';
+import { Report, ReportStatus, Profile } from '../types';
 import ReportListItem from './ReportListItem';
-import { SearchIcon } from './icons';
 
 interface ReportListProps {
   reports: Report[];
   selectedReportId: string | null;
   onReportSelect: (id: string) => void;
+  profile: Profile;
+  allUsers: Profile[];
+  onStatusUpdate: (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => Promise<void>;
 }
 
 const statusFilters: (ReportStatus | 'all')[] = ['all', ReportStatus.ACTIVE, ReportStatus.IN_PROGRESS, ReportStatus.PENDING];
 
-const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onReportSelect }) => {
+const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onReportSelect, profile, allUsers, onStatusUpdate }) => {
     const [activeFilter, setActiveFilter] = useState<ReportStatus | 'all'>('all');
     
+    const userMap = useMemo(() => {
+        return allUsers.reduce((acc, user) => {
+            acc[user.id] = user.full_name;
+            return acc;
+        }, {} as Record<string, string>);
+    }, [allUsers]);
+
     const filteredReports = reports.filter(report => 
         activeFilter === 'all' ? true : report.status === activeFilter
     );
@@ -48,6 +58,9 @@ const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onRe
                 report={report} 
                 isSelected={report.id === selectedReportId}
                 onClick={() => onReportSelect(report.id)}
+                profile={profile}
+                reporterName={userMap[report.reported_by] || 'Unknown User'}
+                onStatusUpdate={onStatusUpdate}
             />
         ))}
       </div>

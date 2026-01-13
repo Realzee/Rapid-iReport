@@ -1,5 +1,6 @@
-import React from 'react';
-import { Report, VehicleReport, CrimeReport, Severity } from '../types';
+
+import React, { useState } from 'react';
+import { Report, VehicleReport, Severity, Profile, UserRole, ReportStatus } from '../types';
 import StatusBadge from './StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -7,6 +8,9 @@ interface ReportListItemProps {
   report: Report;
   isSelected: boolean;
   onClick: () => void;
+  profile: Profile;
+  reporterName: string;
+  onStatusUpdate: (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => Promise<void>;
 }
 
 const severityStyles: Record<Severity, string> = {
@@ -23,8 +27,24 @@ const severityBorderColors: Record<Severity, string> = {
     [Severity.LOW]: 'border-green-500'
 };
 
-const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onClick }) => {
+const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onClick, profile, reporterName, onStatusUpdate }) => {
+  const [isUpdating, setIsUpdating] = useState(false);
+  
   const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
+
+  const canUpdateStatus = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role) || 
+                          (profile.role === UserRole.RESPONDER && report.assigned_to === profile.id);
+  
+  const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newStatus = e.target.value as ReportStatus;
+    setIsUpdating(true);
+    await onStatusUpdate(report.id, newStatus, isVehicleReport(report) ? 'vehicle' : 'crime');
+    setIsUpdating(false);
+  };
+  
+  const statusOptions = Object.values(ReportStatus).filter(
+    status => !(!isVehicleReport(report) && status === ReportStatus.RECOVERED)
+  );
 
   const borderColor = isSelected ? 'border-blue-500' : severityBorderColors[report.severity];
   const bgColor = isSelected ? 'bg-blue-500/10 dark:bg-blue-500/30' : 'bg-gray-50/50 dark:bg-gray-800/60';
@@ -54,7 +74,28 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                     <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</p>
                 </div>
                 <div className="flex-shrink-0">
-                    <StatusBadge status={report.status} />
+                    {canUpdateStatus ? (
+                         <div className="relative">
+                            <select
+                                value={report.status}
+                                onChange={handleStatusChange}
+                                disabled={isUpdating}
+                                onClick={(e) => e.stopPropagation()}
+                                className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full py-1 pl-3 pr-8 text-xs font-bold text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70 appearance-none"
+                            >
+                                {statusOptions.map(status => (
+                                    <option key={status} value={status} className="capitalize font-bold">{status.replace(/_/g, ' ')}</option>
+                                ))}
+                            </select>
+                            {isUpdating && (
+                                <div className="absolute top-1/2 right-2 -translate-y-1/2">
+                                    <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <StatusBadge status={report.status} />
+                    )}
                 </div>
             </div>
 
@@ -75,9 +116,10 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
             </div>
             
             <div className="flex justify-between items-end mt-2">
-               <p className="text-xs text-gray-400 dark:text-gray-500 truncate pr-2">
-                  {isVehicleReport(report) ? report.last_seen_location : report.location}
-              </p>
+               <div className="text-xs text-gray-400 dark:text-gray-500 truncate pr-2">
+                    <p className="truncate">{isVehicleReport(report) ? report.last_seen_location : report.location}</p>
+                    <p className="mt-1">By: <span className="font-medium text-gray-500 dark:text-gray-400">{reporterName}</span></p>
+                </div>
               <p className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
                   {formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}
               </p>

@@ -21,6 +21,7 @@ const isVehicleReport = (report: Report): report is VehicleReport => 'license_pl
 const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
     const [reports, setReports] = useState<Report[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
+    const [allUsers, setAllUsers] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -41,17 +42,22 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                 crimeQuery = crimeQuery.eq('assigned_to', profile.id);
             }
             
-            const { data: vehicleData, error: vError } = await vehicleQuery;
-            const { data: crimeData, error: cError } = await crimeQuery;
-            
-            const { data: respondersData, error: rError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('role', UserRole.RESPONDER);
+            const [
+                { data: vehicleData, error: vError },
+                { data: crimeData, error: cError },
+                { data: respondersData, error: rError },
+                { data: usersData, error: uError }
+            ] = await Promise.all([
+                vehicleQuery,
+                crimeQuery,
+                supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER),
+                supabase.from('profiles').select('*')
+            ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
             if (cError) console.error('Error fetching crime reports:', cError);
             if (rError) console.error('Error fetching responders:', rError);
+            if (uError) console.error('Error fetching users:', uError);
 
             const combinedReports = [
                 ...(vehicleData || []).map(r => ({...r, type: 'vehicle'})),
@@ -70,6 +76,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
 
             setReports(combinedReports);
             setResponders(mappedResponders);
+            setAllUsers(usersData || []);
             setLoading(false);
         };
         
@@ -148,6 +155,17 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         setReportToDelete(report);
     };
 
+    const handleStatusUpdate = async (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => {
+        const tableName = reportType === 'vehicle' ? 'vehicle_reports' : 'crime_reports';
+        const { error } = await supabase
+            .from(tableName)
+            .update({ status: newStatus })
+            .eq('id', reportId);
+        if (error) {
+            alert(`Failed to update status: ${error.message}`);
+        }
+    };
+
     const confirmDeleteReport = async () => {
         if (!reportToDelete) return;
         
@@ -218,6 +236,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                             reports={sortedReports}
                             onReportSelect={handleReportSelect}
                             selectedReportId={selectedReportId}
+                            profile={profile}
+                            allUsers={allUsers}
+                            onStatusUpdate={handleStatusUpdate}
                         />
                     )}
                 </div>
