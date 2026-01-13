@@ -113,33 +113,33 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         
         const vehicleDetailsHtml = isVehicleReport(report) ? `
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                <div><p style="margin: 0; font-size: 12px; color: #9CA3AF; text-transform: uppercase; font-weight: 500;">Make</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #F9FAFB;">${report.vehicle_make}</p></div>
-                <div><p style="margin: 0; font-size: 12px; color: #9CA3AF; text-transform: uppercase; font-weight: 500;">Model</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #F9FAFB;">${report.vehicle_model}</p></div>
-                <div><p style="margin: 0; font-size: 12px; color: #9CA3AF; text-transform: uppercase; font-weight: 500;">Color</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #F9FAFB;">${report.vehicle_color}</p></div>
+                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Make</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${report.vehicle_make}</p></div>
+                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Model</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${report.vehicle_model}</p></div>
+                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Color</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${report.vehicle_color}</p></div>
             </div>
         ` : '';
 
         const boloHtml = `
-            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; flex-direction: column; width: 380px; height: 580px; background-color: #111827; color: #E5E7EB; border-radius: 12px; padding: 20px; border: 1px solid #374151; box-sizing: border-box;">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; flex-direction: column; width: 380px; height: 580px; background-color: #FFFFFF; color: #111827; border-radius: 12px; padding: 20px; border: 1px solid #E5E7EB; box-sizing: border-box; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #EF4444; padding-bottom: 12px; margin-bottom: 12px;">
-                    <h1 style="font-size: 28px; font-weight: 700; color: #F9FAFB; margin: 0; text-transform: uppercase;">BOLO Alert</h1>
+                    <h1 style="font-size: 28px; font-weight: 700; color: #111827; margin: 0; text-transform: uppercase;">BOLO Alert</h1>
                     <img src="${logoUrl}" alt="Logo" style="width: 50px; height: auto;" />
                 </div>
-                <div style="width: 100%; height: 200px; background-color: #1F2937; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                <div style="width: 100%; height: 200px; background-color: #F3F4F6; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #E5E7EB;">
                     ${reportImageHtml}
                 </div>
-                <div style="background-color: #1F2937; padding: 12px; border-radius: 8px; margin-bottom: 16px; text-align: center;">
-                    <p style="margin: 0; font-size: 12px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px;">${isVehicleReport(report) ? 'License Plate' : 'Incident'}</p>
-                    <p style="margin: 4px 0 0 0; font-size: 28px; font-weight: 700; letter-spacing: 2px; color: #FBBF24;">${isVehicleReport(report) ? report.license_plate : report.title}</p>
+                <div style="background-color: #F3F4F6; padding: 12px; border-radius: 8px; margin-bottom: 16px; text-align: center; border: 1px solid #E5E7EB;">
+                    <p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">${isVehicleReport(report) ? 'License Plate' : 'Incident'}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 28px; font-weight: 700; letter-spacing: 2px; color: #1E40AF;">${isVehicleReport(report) ? report.license_plate : report.title}</p>
                 </div>
                 ${vehicleDetailsHtml}
                 <div style="flex-grow: 1; min-height: 50px;">
-                    <p style="margin: 0; font-size: 12px; color: #9CA3AF; text-transform: uppercase; margin-bottom: 6px; font-weight: 500;">Details</p>
-                    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #D1D5DB; max-height: 60px; overflow: hidden;">
+                    <p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; margin-bottom: 6px; font-weight: 500;">Details</p>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #374151; max-height: 60px; overflow: hidden;">
                         ${report.description}
                     </p>
                 </div>
-                <div style="border-top: 1px solid #374151; padding-top: 12px; margin-top: auto; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #6B7280; font-family: monospace;">
+                <div style="border-top: 1px solid #E5E7EB; padding-top: 12px; margin-top: auto; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #9CA3AF; font-family: monospace;">
                     <span>OB: ${report.ob_number}</span>
                     <span>${format(new Date(report.reported_at), 'yyyy-MM-dd HH:mm')}</span>
                 </div>
