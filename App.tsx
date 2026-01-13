@@ -6,7 +6,7 @@ import UsersPage from './pages/UsersPage';
 import CompaniesPage from './pages/CompaniesPage';
 import { supabase } from './utils/supabase';
 import { Session } from '@supabase/supabase-js';
-import { Profile } from './types';
+import { Profile, UserRole } from './types';
 
 type View = 'dashboard' | 'reports' | 'map' | 'users' | 'companies';
 
@@ -80,6 +80,17 @@ const App: React.FC = () => {
         }
     };
   }, [session]);
+
+  useEffect(() => {
+    if (profile) {
+      const isAdminView = view === 'users' || view === 'companies';
+      const canAccessAdminViews = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
+
+      if (isAdminView && !canAccessAdminViews) {
+        setView('dashboard');
+      }
+    }
+  }, [view, profile]);
 
 
   const renderView = () => {

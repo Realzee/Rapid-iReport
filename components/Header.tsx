@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BellIcon, ChevronDownIcon } from './icons';
-import { Profile } from '../types';
+import { Profile, UserRole } from '../types';
 import { supabase } from '../utils/supabase';
 import { logoUrl } from '../assets/logo';
 
@@ -25,6 +25,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
     }
   };
 
+  const canAccessAdminPages = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-black/30 backdrop-blur-lg border-b border-gray-700/50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -36,8 +38,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
             <button onClick={() => setView('dashboard')} className={navLinkClasses('dashboard')}>Dashboard</button>
             <button onClick={() => setView('reports')} className={navLinkClasses('reports')}>Reports</button>
             <button onClick={() => setView('map')} className={navLinkClasses('map')}>Map</button>
-            <button onClick={() => setView('users')} className={navLinkClasses('users')}>Users</button>
-            <button onClick={() => setView('companies')} className={navLinkClasses('companies')}>Companies</button>
+            {canAccessAdminPages && (
+              <>
+                <button onClick={() => setView('users')} className={navLinkClasses('users')}>Users</button>
+                <button onClick={() => setView('companies')} className={navLinkClasses('companies')}>Companies</button>
+              </>
+            )}
           </nav>
           <div className="flex items-center space-x-6">
             <button className="relative text-gray-400 hover:text-white transition-colors duration-300">

@@ -1,6 +1,6 @@
 # RAPID iREPORT - Supabase Database Setup
 
-If you encounter errors like "Could not find column 'evidence_images'", "violates row-level security policy" when creating reports, or "Error setting up presence" on login, your Supabase database schema is likely incomplete or misconfigured.
+If you encounter errors like "Could not find column 'evidence_images'", "violates row-level security policy", or "Could not find the 'last_seen_at' column", your Supabase database schema is likely incomplete or misconfigured.
 
 To fix all known database issues, please follow these steps carefully.
 
@@ -17,7 +17,7 @@ This step is crucial for enabling image uploads.
 
 ## Step 2: Run the Complete Database Setup Script
 
-This script adds the missing `evidence_images` column to your report tables and configures the necessary Row Level Security (RLS) policies for both the database tables and the storage bucket.
+This script adds missing columns to your tables and configures the necessary Row Level Security (RLS) policies for both the database tables and the storage bucket.
 
 1.  In your Supabase Project dashboard, go to the **SQL Editor**.
 2.  Click **+ New query**.
@@ -106,8 +106,14 @@ CREATE POLICY "Allow users to update their own profile"
 ON public.profiles FOR UPDATE
 TO authenticated USING (auth.uid() = id)
 WITH CHECK (auth.uid() = id);
+
+
+-- === STEP E: ADD MISSING 'last_seen_at' COLUMN ===
+-- This fixes the "Could not find the 'last_seen_at' column" error.
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
+
 ```
 
 ---
 
-After completing both steps, your application should be able to create reports and upload evidence photos without any permission or schema-related errors.
+After running this complete script, your application should function correctly without any further schema or permission-related errors.
