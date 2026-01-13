@@ -12,7 +12,7 @@ const AuthPage: React.FC = () => {
                <img src={logoUrl} alt="RAPID REPORTING Logo" className="w-auto h-24" />
             </div>
 
-            <div className="w-full max-w-md p-8 space-y-8 bg-gray-900/30 backdrop-blur-lg border border-gray-700/50 rounded-2xl shadow-2xl">
+            <div className="w-full max-w-md p-8 space-y-8 bg-white/80 dark:bg-gray-900/30 backdrop-blur-lg border border-gray-200 dark:border-gray-700/50 rounded-2xl shadow-2xl">
                 {isLoginView ? (
                     <LoginForm 
                         onSwitchToRegister={() => setIsLoginView(false)} 

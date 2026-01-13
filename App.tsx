@@ -16,6 +16,27 @@ const App: React.FC = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>('dashboard');
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      return savedTheme;
+    }
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      return 'light';
+    }
+    return 'dark';
+  });
+
+  const toggleTheme = () => {
+    setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'));
+  };
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove(theme === 'dark' ? 'light' : 'dark');
+    root.classList.add(theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -38,7 +59,6 @@ const App: React.FC = () => {
 
     if (session?.user) {
         const setupPresence = async () => {
-            // Update last_seen_at on initial load and get profile
             const { data, error } = await supabase
                 .from('profiles')
                 .update({ last_seen_at: new Date().toISOString() })
@@ -48,8 +68,6 @@ const App: React.FC = () => {
 
             if (error) {
                 console.error('Error setting up presence and fetching profile:', error);
-                // FIX: Provide a more helpful error message to guide the user towards the solution.
-                // This error is almost always caused by missing Row Level Security policies on the 'profiles' table.
                 if (error.message.includes('security policy')) {
                     console.error(
                         '%c[SECURITY POLICY ERROR]',
@@ -61,20 +79,18 @@ const App: React.FC = () => {
                 setProfile(data);
             }
 
-            // Periodically update last_seen_at to keep status 'online'
             presenceInterval = window.setInterval(async () => {
                 await supabase
                     .from('profiles')
                     .update({ last_seen_at: new Date().toISOString() })
                     .eq('id', session.user.id);
-            }, 60000); // every 1 minute
+            }, 60000);
         };
         setupPresence();
     } else {
         setProfile(null);
     }
 
-    // Cleanup interval on session change or component unmount
     return () => {
         if (presenceInterval) {
             clearInterval(presenceInterval);
@@ -84,7 +100,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (profile) {
-      // FIX: Replaced bitwise OR `|` with logical OR `||` for correct boolean evaluation.
       const isAdminView = view === 'users' || view === 'companies';
       const canAccessAdminViews = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
 
@@ -94,9 +109,8 @@ const App: React.FC = () => {
     }
   }, [view, profile]);
 
-
   const renderView = () => {
-    if (!profile) return null; // Ensure profile is loaded before rendering views
+    if (!profile) return null;
     switch(view) {
       case 'dashboard':
         return <Dashboard profile={profile} />;
@@ -111,28 +125,28 @@ const App: React.FC = () => {
 
   if (loading) {
     return (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="min-h-screen bg-gray-100 dark:bg-black flex items-center justify-center">
              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-x-hidden">
-      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-black via-gray-900/50 to-black z-0"></div>
+    <div className="min-h-screen bg-gray-100 dark:bg-black text-gray-900 dark:text-white relative overflow-x-hidden transition-colors duration-300">
+      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-gray-100 via-white to-gray-100 dark:from-black dark:via-gray-900/50 dark:to-black z-0"></div>
       <div 
-        className="absolute top-[20%] left-[10%] w-72 h-72 bg-blue-600/50 rounded-full filter blur-3xl opacity-20 animate-pulse"
+        className="absolute top-[20%] left-[10%] w-72 h-72 bg-blue-400/30 dark:bg-blue-600/50 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
         style={{ animationDuration: '8s' }}
       ></div>
       <div 
-        className="absolute bottom-[5%] right-[5%] w-96 h-96 bg-red-600/50 rounded-full filter blur-3xl opacity-20 animate-pulse"
+        className="absolute bottom-[5%] right-[5%] w-96 h-96 bg-red-400/30 dark:bg-red-600/50 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
         style={{ animationDuration: '10s' }}
       ></div>
       
       <div className="relative z-10">
         {session && profile ? (
           <>
-            <Header currentView={view} setView={setView} profile={profile} />
+            <Header currentView={view} setView={setView} profile={profile} theme={theme} toggleTheme={toggleTheme} />
             <main className="pt-24 px-4 sm:px-6 lg:px-8">
               {renderView()}
             </main>

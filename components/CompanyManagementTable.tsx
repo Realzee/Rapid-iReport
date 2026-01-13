@@ -4,8 +4,6 @@ import { EditIcon, TrashIcon, UsersIcon } from './icons';
 
 interface CompanyManagementTableProps {
     companies: Company[];
-    // FIX: Updated the 'users' prop type to match the partial data provided by CompaniesPage.
-    // This ensures type safety while keeping the data fetching optimized.
     users: Pick<Profile, 'id' | 'company_id'>[];
     onEdit: (company: Company) => void;
     onDelete: (company: Company) => void;
@@ -19,21 +17,21 @@ const CompanyManagementTable: React.FC<CompanyManagementTableProps> = ({ compani
 
     return (
         <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-700">
-                <thead className="bg-gray-800/50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800/50">
                     <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Company Name</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">User Count</th>
-                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Company Name</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">User Count</th>
+                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                     {companies.map((company) => (
-                        <tr key={company.id} className="hover:bg-gray-800/40 transition-colors duration-200">
+                        <tr key={company.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors duration-200">
                             <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-white">{company.name}</div>
+                                <div className="text-sm font-medium text-gray-900 dark:text-white">{company.name}</div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                                 <div className="flex items-center">
                                     <UsersIcon className="w-4 h-4 mr-2 text-gray-400" />
                                     {getUserCount(company.id)}
@@ -41,10 +39,10 @@ const CompanyManagementTable: React.FC<CompanyManagementTableProps> = ({ compani
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div className="flex items-center justify-end space-x-4">
-                                    <button onClick={() => onEdit(company)} className="text-blue-400 hover:text-blue-300 transition-colors">
+                                    <button onClick={() => onEdit(company)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
                                         <EditIcon className="w-5 h-5"/>
                                     </button>
-                                    <button onClick={() => onDelete(company)} className="text-red-400 hover:text-red-300 transition-colors">
+                                    <button onClick={() => onDelete(company)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors">
                                         <TrashIcon className="w-5 h-5"/>
                                     </button>
                                 </div>

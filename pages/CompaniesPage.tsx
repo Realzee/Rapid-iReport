@@ -8,8 +8,6 @@ import { supabase } from '../utils/supabase';
 
 const CompaniesPage: React.FC = () => {
     const [companies, setCompanies] = useState<Company[]>([]);
-    // FIX: Changed the type of 'users' to match the partial data being fetched (only id and company_id).
-    // This avoids fetching all user data when only the count is needed, improving performance.
     const [users, setUsers] = useState<Pick<Profile, 'id' | 'company_id'>[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
@@ -91,10 +89,10 @@ const CompaniesPage: React.FC = () => {
         <div className="container mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                 <div>
-                    <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                         <BuildingIcon className="w-8 h-8"/> Company Management
                     </h2>
-                    <p className="text-gray-400 mt-1">Manage all companies and organizations.</p>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Manage all companies and organizations.</p>
                 </div>
                 <button 
                     onClick={handleAddCompany}
@@ -105,7 +103,7 @@ const CompaniesPage: React.FC = () => {
                 </button>
             </div>
 
-            <div className="bg-gray-900/50 border border-gray-700/50 rounded-2xl p-4 backdrop-blur-sm">
+            <div className="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700/50 rounded-2xl p-4 backdrop-blur-sm shadow-lg dark:shadow-none">
                 {loading ? (
                      <div className="flex justify-center items-center h-64">
                         <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>

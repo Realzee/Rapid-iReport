@@ -28,7 +28,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
             let vehicleQuery = supabase.from('vehicle_reports').select('*');
             let crimeQuery = supabase.from('crime_reports').select('*');
 
-            // If the user is a responder, only fetch reports assigned to them.
             if (isResponder) {
                 vehicleQuery = vehicleQuery.eq('assigned_to', profile.id);
                 crimeQuery = crimeQuery.eq('assigned_to', profile.id);
@@ -71,7 +70,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         // --- REALTIME SUBSCRIPTIONS ---
         const handleNewReport = (payload: any, type: 'vehicle' | 'crime') => {
              const newReport = { ...payload.new, type };
-             // If responder, only add the new report if it's assigned to them.
              if(isResponder && newReport.assigned_to !== profile.id) {
                 return;
              }
@@ -83,16 +81,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
             setReports(prev => {
                 const reportExists = prev.some(r => r.id === updatedReport.id);
                 if (isResponder) {
-                    // If the responder is no longer assigned, remove the report.
                     if (updatedReport.assigned_to !== profile.id) {
                         return prev.filter(r => r.id !== updatedReport.id);
                     }
-                    // If the report is newly assigned, add it.
                     if (!reportExists && updatedReport.assigned_to === profile.id) {
                         return [...prev, updatedReport];
                     }
                 }
-                // Otherwise, just update the existing report.
                 return prev.map(r => r.id === updatedReport.id ? updatedReport : r);
             });
         };
@@ -121,8 +116,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
           )
           .subscribe();
 
-
-        // Cleanup function to remove subscriptions on component unmount
         return () => {
           supabase.removeChannel(reportsChannels);
         };
@@ -157,8 +150,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         <div className="container mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                 <div>
-                    <h2 className="text-3xl font-bold text-white">{isResponder ? "Responder Dashboard" : "Control Center"}</h2>
-                    <p className="text-gray-400 mt-1">
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{isResponder ? "Responder Dashboard" : "Control Center"}</h2>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">
                         {isResponder ? "Live view of your assigned incidents." : "Live operational overview of community safety."}
                     </p>
                 </div>

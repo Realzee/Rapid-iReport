@@ -8,10 +8,10 @@ interface StatCardProps {
 }
 
 const colorClasses = {
-  blue: 'text-blue-400',
-  red: 'text-red-400',
-  green: 'text-green-400',
-  yellow: 'text-yellow-400',
+  blue: 'text-blue-500 dark:text-blue-400',
+  red: 'text-red-500 dark:text-red-400',
+  green: 'text-green-500 dark:text-green-400',
+  yellow: 'text-yellow-500 dark:text-yellow-400',
 };
 
 const iconBgClasses = {
@@ -23,13 +23,13 @@ const iconBgClasses = {
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
   return (
-    <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300 flex items-center space-x-4">
+    <div className="bg-white dark:bg-gray-900/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50 hover:border-gray-300 dark:hover:border-gray-600/50 transition-all duration-300 flex items-center space-x-4 shadow-sm dark:shadow-none">
        <div className={`p-3 rounded-lg ${iconBgClasses[color]}`}>
           {React.cloneElement(icon as React.ReactElement<{ className: string }>, { className: `w-6 h-6 ${colorClasses[color]}` })}
       </div>
       <div>
-        <p className="text-gray-400 text-sm font-medium">{title}</p>
-        <p className="text-3xl font-bold text-white">{value}</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">{title}</p>
+        <p className="text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
       </div>
     </div>
   );

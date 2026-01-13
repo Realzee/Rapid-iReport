@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
   
@@ -15,72 +15,72 @@
     body {
       font-family: 'Roboto', sans-serif;
     }
+    /* Light Mode Styles */
     .leaflet-popup-content-wrapper {
+        background: #FFFFFF;
+        color: #1F2937;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .leaflet-popup-tip { background: #FFFFFF; }
+    .leaflet-popup-content { margin: 12px; }
+    .leaflet-control-zoom-in, .leaflet-control-zoom-out {
+        background-color: #FFFFFF !important;
+        color: #1F2937 !important;
+        border-color: #D1D5DB !important;
+    }
+    .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover {
+        background-color: #F3F4F6 !important;
+    }
+    .leaflet-tooltip {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E5E7EB !important;
+        color: #111827 !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        border-radius: 6px !important;
+        padding: 6px 10px !important;
+    }
+
+    /* Dark Mode Overrides */
+    .dark .leaflet-popup-content-wrapper {
         background: #1F2937; /* dark gray */
         color: #FFFFFF;
-        border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
-    .leaflet-popup-content {
-        margin: 12px;
-    }
-    .leaflet-popup-tip {
-        background: #1F2937;
-    }
-    .leaflet-control-zoom-in, .leaflet-control-zoom-out {
+    .dark .leaflet-popup-tip { background: #1F2937; }
+    .dark .leaflet-control-zoom-in, .dark .leaflet-control-zoom-out {
         background-color: #1F2937 !important;
         color: #FFFFFF !important;
         border-color: #374151 !important;
     }
-     .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover {
+    .dark .leaflet-control-zoom-in:hover, .dark .leaflet-control-zoom-out:hover {
         background-color: #374151 !important;
     }
-    .glow-blue {
-        box-shadow: 0 0 15px 3px rgba(59, 130, 246, 0.7);
-    }
-    .glow-red {
-        box-shadow: 0 0 15px 3px rgba(239, 68, 68, 0.7);
-    }
-    .glow-green {
-        box-shadow: 0 0 15px 3px rgba(74, 222, 128, 0.7);
-    }
-    .leaflet-tooltip {
+    .dark .leaflet-tooltip {
         background-color: #111827 !important; /* bg-gray-900 */
         border: 1px solid #374151 !important; /* border-gray-700 */
         color: #FFFFFF !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
-        border-radius: 6px !important;
-        padding: 6px 10px !important;
     }
-    .leaflet-tooltip-top:before {
-        border-top-color: #374151 !important;
-    }
-    .leaflet-tooltip-bottom:before {
-        border-bottom-color: #374151 !important;
-    }
-    .leaflet-tooltip-left:before {
-        border-left-color: #374151 !important;
-    }
-    .leaflet-tooltip-right:before {
-        border-right-color: #374151 !important;
-    }
+    .leaflet-tooltip-top:before { border-top-color: #374151 !important; }
+    .leaflet-tooltip-bottom:before { border-bottom-color: #374151 !important; }
+    .leaflet-tooltip-left:before { border-left-color: #374151 !important; }
+    .leaflet-tooltip-right:before { border-right-color: #374151 !important; }
+    .dark .leaflet-tooltip-top:before { border-top-color: #374151 !important; }
+    .dark .leaflet-tooltip-bottom:before { border-bottom-color: #374151 !important; }
+    .dark .leaflet-tooltip-left:before { border-left-color: #374151 !important; }
+    .dark .leaflet-tooltip-right:before { border-right-color: #374151 !important; }
+
+    /* Other styles */
+    .glow-blue { box-shadow: 0 0 15px 3px rgba(59, 130, 246, 0.7); }
+    .glow-red { box-shadow: 0 0 15px 3px rgba(239, 68, 68, 0.7); }
+    .glow-green { box-shadow: 0 0 15px 3px rgba(74, 222, 128, 0.7); }
     @keyframes pulse-ring {
-      0% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-      }
-      70% {
-        transform: scale(1.4);
-        box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-      }
-      100% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-      }
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+      70% { transform: scale(1.4); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
     }
-    .pulse-ring-animation {
-      animation: pulse-ring 2s infinite;
-    }
+    .pulse-ring-animation { animation: pulse-ring 2s infinite; }
   </style>
 <script type="importmap">
 {
@@ -96,7 +96,7 @@
 }
 </script>
 </head>
-<body class="bg-black">
+<body class="bg-gray-100 dark:bg-black text-gray-900 dark:text-gray-100 transition-colors duration-300">
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>

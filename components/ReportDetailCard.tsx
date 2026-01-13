@@ -21,7 +21,6 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
     const isAssignedResponder = profile.role === UserRole.RESPONDER && report.assigned_to === profile.id;
 
-    // Define the status options a responder can select
     const responderStatusOptions = [
         ReportStatus.IN_PROGRESS,
         ReportStatus.RESOLVED,
@@ -56,7 +55,6 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         if (error) {
             alert('Failed to update status: ' + error.message);
         }
-        // The UI will update automatically via the realtime subscription in Dashboard.tsx
         setStatusUpdateLoading(false);
     };
 
@@ -87,6 +85,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         const fetchImageAsDataURL = async (url: string) => {
             try {
                 const response = await fetch(url);
+                if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
                 const blob = await response.blob();
                 return new Promise<string>((resolve, reject) => {
                     const reader = new FileReader();
@@ -104,21 +103,44 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         const imageAsDataUrl = imageUrl ? await fetchImageAsDataURL(imageUrl) : null;
 
         const reportImageHtml = imageAsDataUrl
-            ? `<img src="${imageAsDataUrl}" alt="Evidence" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;" />`
+            ? `<img src="${imageAsDataUrl}" alt="Evidence" style="width: 100%; height: 100%; object-fit: cover;" />`
             : `<span style="color: #9CA3AF; font-size: 16px;">No Image Available</span>`;
         
         const vehicleDetailsHtml = isVehicleReport(report) ? `
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-                <div><p style="margin: 0; font-size: 12px; color: #9CA3AF; text-transform: uppercase;">Make</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 500;">${report.vehicle_make}</p></div>
-                <div><p style="margin: 0; font-size: 12px; color: #9CA3AF; text-transform: uppercase;">Model</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 500;">${report.vehicle_model}</p></div>
-                <div><p style="margin: 0; font-size: 12px; color: #9CA3AF; text-transform: uppercase;">Color</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 500;">${report.vehicle_color}</p></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div><p style="margin: 0; font-size: 12px; color: #9CA3AF; text-transform: uppercase; font-weight: 500;">Make</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #F9FAFB;">${report.vehicle_make}</p></div>
+                <div><p style="margin: 0; font-size: 12px; color: #9CA3AF; text-transform: uppercase; font-weight: 500;">Model</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #F9FAFB;">${report.vehicle_model}</p></div>
+                <div><p style="margin: 0; font-size: 12px; color: #9CA3AF; text-transform: uppercase; font-weight: 500;">Color</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #F9FAFB;">${report.vehicle_color}</p></div>
             </div>
         ` : '';
 
-        const boloHtml = `...`; // BOLO HTML generation code omitted for brevity
+        const boloHtml = `
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; flex-direction: column; width: 380px; height: 580px; background-color: #111827; color: #E5E7EB; border-radius: 12px; padding: 20px; border: 1px solid #374151; box-sizing: border-box;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #EF4444; padding-bottom: 12px; margin-bottom: 12px;">
+                    <h1 style="font-size: 28px; font-weight: 700; color: #F9FAFB; margin: 0; text-transform: uppercase;">BOLO Alert</h1>
+                    <img src="${logoUrl}" alt="Logo" style="width: 50px; height: auto;" />
+                </div>
+                <div style="width: 100%; height: 200px; background-color: #1F2937; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                    ${reportImageHtml}
+                </div>
+                <div style="background-color: #1F2937; padding: 12px; border-radius: 8px; margin-bottom: 16px; text-align: center;">
+                    <p style="margin: 0; font-size: 12px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px;">${isVehicleReport(report) ? 'License Plate' : 'Incident'}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 28px; font-weight: 700; letter-spacing: 2px; color: #FBBF24;">${isVehicleReport(report) ? report.license_plate : report.title}</p>
+                </div>
+                ${vehicleDetailsHtml}
+                <div style="flex-grow: 1; min-height: 50px;">
+                    <p style="margin: 0; font-size: 12px; color: #9CA3AF; text-transform: uppercase; margin-bottom: 6px; font-weight: 500;">Details</p>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #D1D5DB; max-height: 60px; overflow: hidden;">
+                        ${report.description}
+                    </p>
+                </div>
+                <div style="border-top: 1px solid #374151; padding-top: 12px; margin-top: auto; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #6B7280; font-family: monospace;">
+                    <span>OB: ${report.ob_number}</span>
+                    <span>${format(new Date(report.reported_at), 'yyyy-MM-dd HH:mm')}</span>
+                </div>
+            </div>`;
 
-        const svgString = `...`; // SVG generation code omitted for brevity
-
+        const svgString = `<svg width="400" height="600" xmlns="http://www.w3.org/2000/svg"><foreignObject width="400" height="600">${boloHtml.replace(/#/g, '%23')}</foreignObject></svg>`;
         const svgDataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
 
         const image = new Image();
@@ -140,19 +162,18 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             setIsGeneratingBolo(false);
         };
         image.onerror = (e) => {
-            alert("Failed to generate BOLO card image.");
-            console.error("Image loading error for BOLO card:", e)
+            alert("Failed to generate BOLO card image. Check console for errors.");
+            console.error("Image loading error for BOLO card. This could be due to a malformed data URL or browser security policies.", e)
             setIsGeneratingBolo(false);
         }
         image.src = svgDataUrl;
     };
 
-
     return (
-        <div className="bg-gray-900/50 border border-gray-700/50 rounded-2xl p-4 backdrop-blur-sm h-full flex flex-col">
+        <div className="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700/50 rounded-2xl p-4 backdrop-blur-sm h-full flex flex-col shadow-lg dark:shadow-none">
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                <h3 className="text-xl font-bold text-white truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
-                <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
                     <XIcon className="w-6 h-6" />
                 </button>
             </div>
@@ -161,22 +182,21 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 {report.evidence_images && report.evidence_images.length > 0 && (
                      <div className="grid grid-cols-2 gap-2">
                         {report.evidence_images.map((img, index) => (
-                             <img key={index} src={img} alt={`Evidence ${index+1}`} className="w-full h-24 object-cover rounded-md border border-gray-700" />
+                             <img key={index} src={img} alt={`Evidence ${index+1}`} className="w-full h-24 object-cover rounded-md border border-gray-200 dark:border-gray-700" />
                         ))}
                     </div>
                 )}
                 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                        <p className="text-xs text-gray-400 uppercase">Status</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Status</p>
                         {isAssignedResponder ? (
                              <select
                                 value={report.status}
                                 onChange={handleStatusChange}
                                 disabled={statusUpdateLoading}
-                                className="w-full bg-gray-800 border border-gray-700 rounded-md py-1 px-2 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70"
+                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-1 px-2 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70"
                             >
-                                {/* Show current status even if not in the responder list */}
                                 {!responderStatusOptions.includes(report.status) && <option value={report.status} disabled>{report.status.replace('_', ' ')}</option>}
                                 {responderStatusOptions.map(status => (
                                     <option key={status} value={status}>
@@ -189,45 +209,45 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                         )}
                     </div>
                     <div>
-                        <p className="text-xs text-gray-400 uppercase">Severity</p>
-                        <p className="font-semibold text-white capitalize">{report.severity}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Severity</p>
+                        <p className="font-semibold text-gray-900 dark:text-white capitalize">{report.severity}</p>
                     </div>
                     <div>
-                        <p className="text-xs text-gray-400 uppercase">OB Number</p>
-                        <p className="font-mono text-white">{report.ob_number}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">OB Number</p>
+                        <p className="font-mono text-gray-900 dark:text-white">{report.ob_number}</p>
                     </div>
                      <div>
-                        <p className="text-xs text-gray-400 uppercase">Reported</p>
-                        <p className="text-white">{format(new Date(report.reported_at), 'MMM d, yyyy HH:mm')}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported</p>
+                        <p className="text-gray-900 dark:text-white">{format(new Date(report.reported_at), 'MMM d, yyyy HH:mm')}</p>
                     </div>
                 </div>
 
                 <div>
-                     <p className="text-xs text-gray-400 uppercase">{isVehicleReport(report) ? 'Last Seen Location' : 'Location'}</p>
-                     <p className="text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400"/> {isVehicleReport(report) ? report.last_seen_location : report.location}</p>
+                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{isVehicleReport(report) ? 'Last Seen Location' : 'Location'}</p>
+                     <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {isVehicleReport(report) ? report.last_seen_location : report.location}</p>
                 </div>
-                 <button onClick={onClose} className="w-full text-center py-2 text-sm bg-gray-700/50 hover:bg-gray-700 rounded-lg text-blue-300 transition-colors">
+                 <button onClick={onClose} className="w-full text-center py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700/50 dark:hover:bg-gray-700 rounded-lg text-blue-600 dark:text-blue-300 transition-colors">
                     View on Map
                 </button>
 
                 <div>
-                    <p className="text-xs text-gray-400 uppercase">Description</p>
-                    <p className="text-gray-300 whitespace-pre-wrap">{report.description}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Description</p>
+                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{report.description}</p>
                 </div>
 
                  {reporter && (
                     <div>
-                        <p className="text-xs text-gray-400 uppercase">Reported By</p>
-                        <p className="text-gray-300">{reporter.full_name} ({reporter.email})</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported By</p>
+                        <p className="text-gray-700 dark:text-gray-300">{reporter.full_name} ({reporter.email})</p>
                     </div>
                  )}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-gray-700/50 flex-shrink-0 grid grid-cols-2 gap-3">
-                <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/80 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold">
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 grid grid-cols-2 gap-3">
+                <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold">
                     <WhatsappIcon className="w-5 h-5"/> Share
                 </button>
-                 <button onClick={generateBoloImage} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 py-2 px-3 bg-red-600/80 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-wait">
+                 <button onClick={generateBoloImage} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 py-2 px-3 bg-red-600/90 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-wait">
                     {isGeneratingBolo ? (
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : (

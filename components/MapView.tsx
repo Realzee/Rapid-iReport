@@ -81,7 +81,7 @@ const createResponderIcon = (status: ResponderStatus) => {
         <div class="w-7 h-7 bg-blue-600 rounded-full border-2 border-white/60 shadow-lg flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         </div>
-        <div class="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${statusDotColor} ${pulseClass}"></div>
+        <div class="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-gray-900 ${statusDotColor} ${pulseClass}"></div>
     </div>`;
     
     return new L.DivIcon({ html: responderIconHtml, className: '', iconSize: [28, 28], iconAnchor: [14, 14], popupAnchor: [0, -14] });
@@ -102,10 +102,10 @@ const ChatBox: React.FC<{ messages: ChatMessage[] }> = ({ messages }) => {
     useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
     return (
-        <div className="h-28 overflow-y-auto p-2 space-y-2 bg-gray-900/50 rounded-md border border-gray-700/50">
+        <div className="h-28 overflow-y-auto p-2 space-y-2 bg-gray-100 dark:bg-gray-900/50 rounded-md border border-gray-200 dark:border-gray-700/50">
             {messages.map((msg) => (
                 <div key={msg.id} className={`flex text-white ${msg.sender === 'Controller' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`px-3 py-1 rounded-lg max-w-[80%] text-sm shadow-md ${msg.sender === 'Controller' ? 'bg-blue-600' : 'bg-gray-700'}`}>{msg.text}</div>
+                    <div className={`px-3 py-1 rounded-lg max-w-[80%] text-sm shadow-md ${msg.sender === 'Controller' ? 'bg-blue-600' : 'bg-gray-500 dark:bg-gray-700'}`}>{msg.text}</div>
                 </div>
             ))}
             <div ref={messagesEndRef} />
@@ -137,7 +137,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
     const selectedReport = reports.find(r => r.id === selectedReportId);
 
     return (
-        <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-700/50">
+        <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none">
             <MapContainer center={[-1.286389, 36.817223]} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                 <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
                 <MapFlyTo selectedReportLocation={selectedReport?.location_coords || null} />
@@ -145,32 +145,32 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 {reports.filter(r => r.location_coords).map(report => (
                     <Marker key={report.id} position={[report.location_coords!.lat, report.location_coords!.lng]} icon={isVehicleReport(report) ? createVehicleIcon(report.severity, report.status, report.id === selectedReportId) : createCrimeIcon(report.status, report.id === selectedReportId)}>
                         <Popup>
-                            <div className="w-64 text-white">
+                            <div className="w-64">
                                 <h3 className="font-bold text-lg mb-1">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
-                                <p className="text-sm text-gray-400 font-mono mb-2">{report.ob_number}</p>
-                                <p className="text-sm text-gray-300 mb-3">{report.description}</p>
-                                <hr className="border-gray-600 my-2" />
+                                <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mb-2">{report.ob_number}</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{report.description}</p>
+                                <hr className="border-gray-200 dark:border-gray-600 my-2" />
                                 <div className="space-y-2">
-                                    <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-500 uppercase">Status</span><StatusBadge status={report.status} /></div>
-                                    <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-500 uppercase">Severity</span><span className={`capitalize px-2 py-1 text-xs font-semibold rounded-full ${report.severity === 'critical' ? 'bg-red-500/20 text-red-400' : report.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : report.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}`}>{report.severity}</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Status</span><StatusBadge status={report.status} /></div>
+                                    <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Severity</span><span className={`capitalize px-2 py-1 text-xs font-semibold rounded-full ${report.severity === 'critical' ? 'bg-red-500/20 text-red-400' : report.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : report.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}`}>{report.severity}</span></div>
                                 </div>
                                 
                                 {[ReportStatus.ACTIVE, ReportStatus.IN_PROGRESS].includes(report.status) && (
                                     <>
-                                        <hr className="border-gray-600 my-2" />
-                                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Live Chat</h4>
+                                        <hr className="border-gray-200 dark:border-gray-600 my-2" />
+                                        <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase mb-2">Live Chat</h4>
                                         <ChatBox messages={chatMessages[report.id] || []} />
                                         <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(report.id); }} className="mt-2 flex space-x-2">
-                                            <input type="text" placeholder="Send a message..." value={currentChatInput[report.id] || ''} onChange={(e) => setCurrentChatInput(prev => ({ ...prev, [report.id]: e.target.value }))} className="flex-grow bg-gray-800/80 border border-gray-700 rounded-md py-1 px-2 text-sm text-white placeholder-gray-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all" />
+                                            <input type="text" placeholder="Send a message..." value={currentChatInput[report.id] || ''} onChange={(e) => setCurrentChatInput(prev => ({ ...prev, [report.id]: e.target.value }))} className="flex-grow bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 rounded-md py-1 px-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all" />
                                             <button type="submit" className="px-3 bg-blue-600 text-white font-semibold rounded-md text-sm hover:bg-blue-500 transition-colors">Send</button>
                                         </form>
                                     </>
                                 )}
 
-                                <hr className="border-gray-600 my-2" />
+                                <hr className="border-gray-200 dark:border-gray-600 my-2" />
                                 <div className="flex justify-between items-center">
-                                    <p className="text-xs text-gray-500">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
-                                    <button onClick={() => handleShareReport(report.id)} className="flex items-center space-x-1 text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-50" disabled={copiedReportId === report.id}>
+                                    <p className="text-xs text-gray-400 dark:text-gray-500">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
+                                    <button onClick={() => handleShareReport(report.id)} className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors disabled:opacity-50" disabled={copiedReportId === report.id}>
                                         {copiedReportId === report.id ? <><CheckCircleIcon className="w-4 h-4 text-green-400" /><span className="text-green-400">Copied!</span></> : <><ShareIcon className="w-4 h-4" /><span>Share</span></>}
                                     </button>
                                 </div>
@@ -183,8 +183,8 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                     <Marker key={responder.id} position={[responder.location_coords.lat, responder.location_coords.lng]} icon={createResponderIcon(responder.status)} zIndexOffset={1000}>
                         <Tooltip direction="top" offset={[0, -10]} opacity={1}>
                             <div className="text-center">
-                                <div className="font-bold text-white">{responder.full_name}</div>
-                                <div className={`capitalize text-xs mt-1 ${responder.status === 'off_duty' ? 'text-gray-400' : responder.status === 'available' ? 'text-green-400' : 'text-yellow-400'}`}>{responder.status.replace('_', ' ')}</div>
+                                <div className="font-bold">_</div>
+                                <div className={`capitalize text-xs mt-1 ${responder.status === 'off_duty' ? 'text-gray-500' : responder.status === 'available' ? 'text-green-500' : 'text-yellow-500'}`}>{responder.status.replace('_', ' ')}</div>
                             </div>
                         </Tooltip>
                     </Marker>
