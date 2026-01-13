@@ -4,7 +4,7 @@
  */
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, Severity, ReportStatus, LocationCoords } from '../types';
+import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport } from '../types';
 import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon } from './icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
 
@@ -16,7 +16,7 @@ interface ReportModalProps {
 
 type ReportType = 'vehicle' | 'crime';
 
-const isVehicleReport = (report: Report | null): report is Report => report !== null && 'license_plate' in report;
+const isVehicleReport = (report: Report | null): report is VehicleReport => report !== null && 'license_plate' in report;
 
 const geocodeLocation = async (location: string): Promise<{coords: LocationCoords | null, boundary: any | null, boundingbox: [number, number, number, number] | null}> => {
     try {
@@ -61,8 +61,15 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     useEffect(() => {
         if (isOpen) {
             if (reportToEdit) {
-                setReportType(isVehicleReport(reportToEdit) ? 'vehicle' : 'crime');
-                setFormData(reportToEdit);
+                const isVehicle = isVehicleReport(reportToEdit);
+                setReportType(isVehicle ? 'vehicle' : 'crime');
+                
+                // Unify location field for easier editing in the form state
+                const location = isVehicle 
+                    ? (reportToEdit as VehicleReport).last_seen_location 
+                    : (reportToEdit as CrimeReport).location;
+
+                setFormData({ ...reportToEdit, location });
                 setImagePreviews(reportToEdit.evidence_images || []);
                 setImageFiles([]);
             } else {
@@ -135,7 +142,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
             // 3. Geocode location if necessary
             let geocodedData: { coords: LocationCoords | null, boundary: any | null, boundingbox: [number, number, number, number] | null } = { coords: null, boundary: null, boundingbox: null };
-            const locationInput = formData.location || (reportType === 'vehicle' ? formData.last_seen_location : '');
+            const locationInput = formData.location || '';
             
             // First, try to parse coordinates directly from input
             const coordParts = locationInput.split(',').map((s: string) => s.trim());
@@ -243,7 +250,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} required className={inputClasses} list="models-list" /></div>
                                 <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} required className={inputClasses} list="colors-list" /></div>
                             </div>
-                             <div><label htmlFor="location_vehicle" className={labelClasses}>Last Seen Location</label><input type="text" name="location" id="location_vehicle" value={formData.last_seen_location || formData.location || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g., Main St & 2nd Ave, or -26.2, 27.8"/></div>
+                             <div><label htmlFor="location_vehicle" className={labelClasses}>Last Seen Location</label><input type="text" name="location" id="location_vehicle" value={formData.location || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g., Main St & 2nd Ave, or -26.2, 27.8"/></div>
                         </>
                     ) : (
                          <>
