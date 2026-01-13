@@ -1,46 +1,69 @@
 /**
- * @file NewReportModal.tsx
- * @description Modal for creating new vehicle or crime reports.
- * 
- * --- IMPORTANT DATABASE SETUP ---
- * For this component to function correctly (especially image uploads and report creation),
- * your Supabase project MUST be configured properly. If you encounter errors like
- * "violates row-level security policy" or issues with image uploads, please
- * follow the instructions in the `DATABASE_SETUP.md` file in the project root.
+ * @file ReportModal.tsx
+ * @description Modal for creating and editing vehicle or crime reports.
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Severity, ReportStatus } from '../types';
 import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon } from './icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
 
-interface NewReportModalProps {
+interface ReportModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onReportCreated: (report: Report) => void;
+    reportToEdit: Report | null;
 }
 
 type ReportType = 'vehicle' | 'crime';
 
-const NewReportModal: React.FC<NewReportModalProps> = ({ isOpen, onClose, onReportCreated }) => {
+const isVehicleReport = (report: Report | null): report is Report => report !== null && 'license_plate' in report;
+
+const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit }) => {
     const [reportType, setReportType] = useState<ReportType>('vehicle');
     const [formData, setFormData] = useState<any>({});
-    const [files, setFiles] = useState<File[]>([]);
-    const [previews, setPreviews] = useState<string[]>([]);
+    const [imageFiles, setImageFiles] = useState<File[]>([]);
+    const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
+    
+    useEffect(() => {
+        if (isOpen) {
+            if (reportToEdit) {
+                setReportType(isVehicleReport(reportToEdit) ? 'vehicle' : 'crime');
+                setFormData(reportToEdit);
+                setImagePreviews(reportToEdit.evidence_images || []);
+                setImageFiles([]);
+            } else {
+                // Reset for new report
+                setReportType('vehicle');
+                setFormData({ severity: Severity.MEDIUM });
+                setImagePreviews([]);
+                setImageFiles([]);
+            }
+        }
+    }, [isOpen, reportToEdit]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const selectedFiles = Array.from(e.target.files);
-            setFiles(prev => [...prev, ...selectedFiles]);
+            setImageFiles(prev => [...prev, ...selectedFiles]);
             const newPreviews = selectedFiles.map(file => URL.createObjectURL(file));
-            setPreviews(prev => [...prev, ...newPreviews]);
+            setImagePreviews(prev => [...prev, ...newPreviews]);
         }
     };
 
     const removeImage = (index: number) => {
-        setFiles(files.filter((_, i) => i !== index));
-        setPreviews(previews.filter((_, i) => i !== index));
+        const previewToRemove = imagePreviews[index];
+        
+        // If it's an object URL from a newly added file, remove the file from state.
+        if (previewToRemove.startsWith('blob:')) {
+            const fileIndex = imageFiles.findIndex(file => URL.createObjectURL(file) === previewToRemove);
+            if (fileIndex > -1) {
+                setImageFiles(files => files.filter((_, i) => i !== fileIndex));
+            }
+        }
+        
+        // Always remove the preview. On submit, the final list of URLs is constructed from this state.
+        setImagePreviews(previews => previews.filter((_, i) => i !== index));
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -60,32 +83,35 @@ const NewReportModal: React.FC<NewReportModalProps> = ({ isOpen, onClose, onRepo
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("User not authenticated");
 
-            const reportId = crypto.randomUUID();
-            const imageUrls: string[] = [];
+            // 1. Upload any new image files
+            const newImageUrls: string[] = [];
+            const reportId = reportToEdit?.id || crypto.randomUUID();
 
-            for (const file of files) {
-                const filePath = `${reportId}/${file.name}`;
+            for (const file of imageFiles) {
+                const filePath = `${reportId}/${file.name}-${crypto.randomUUID()}`;
                 const { error: uploadError } = await supabase.storage.from('evidence').upload(filePath, file);
                 if (uploadError) throw uploadError;
                 
                 const { data: { publicUrl } } = supabase.storage.from('evidence').getPublicUrl(filePath);
-                imageUrls.push(publicUrl);
+                newImageUrls.push(publicUrl);
             }
             
+            // 2. Combine existing URLs with new ones
+            const existingImageUrls = imagePreviews.filter(p => !p.startsWith('blob:'));
+            const finalImageUrls = [...existingImageUrls, ...newImageUrls];
+
+            // 3. Prepare data payload
+            let reportData;
+            const tableName = reportType === 'vehicle' ? 'vehicle_reports' : 'crime_reports';
+            
             const commonData = {
-                id: reportId,
-                ob_number: `OB${reportType === 'vehicle' ? 'V' : 'C'}/${Date.now()}`,
                 description: formData.description,
                 severity: formData.severity,
-                status: ReportStatus.PENDING,
-                reported_by: user.id,
-                reported_at: new Date().toISOString(),
-                evidence_images: imageUrls,
+                evidence_images: finalImageUrls,
             };
 
-            let newReport;
             if (reportType === 'vehicle') {
-                const vehicleData = {
+                reportData = {
                     ...commonData,
                     license_plate: formData.license_plate,
                     vehicle_make: formData.vehicle_make,
@@ -93,36 +119,39 @@ const NewReportModal: React.FC<NewReportModalProps> = ({ isOpen, onClose, onRepo
                     vehicle_color: formData.vehicle_color,
                     last_seen_location: formData.location,
                 };
-                const { data, error } = await supabase.from('vehicle_reports').insert(vehicleData).select().single();
-                if (error) throw error;
-                newReport = data;
             } else {
-                 const crimeData = {
+                 reportData = {
                     ...commonData,
                     title: formData.title,
                     crime_type: formData.crime_type,
                     location: formData.location,
                 };
-                const { data, error } = await supabase.from('crime_reports').insert(crimeData).select().single();
+            }
+
+            // 4. Upsert data (Update or Insert)
+            if (reportToEdit) {
+                 const { error } = await supabase.from(tableName).update(reportData).eq('id', reportToEdit.id);
+                 if (error) throw error;
+            } else {
+                const insertData = {
+                    ...reportData,
+                    id: reportId,
+                    ob_number: `OB${reportType === 'vehicle' ? 'V' : 'C'}/${Date.now()}`,
+                    status: ReportStatus.PENDING,
+                    reported_by: user.id,
+                    reported_at: new Date().toISOString(),
+                };
+                const { error } = await supabase.from(tableName).insert(insertData);
                 if (error) throw error;
-                newReport = data;
             }
             
-            onReportCreated(newReport as Report);
-            handleClose();
+            onClose();
 
         } catch (error: any) {
-            alert(`Error creating report: ${error.message}`);
+            alert(`Error saving report: ${error.message}`);
         } finally {
             setLoading(false);
         }
-    };
-    
-    const handleClose = () => {
-        setFormData({});
-        setFiles([]);
-        setPreviews([]);
-        onClose();
     };
 
     if (!isOpen) return null;
@@ -133,17 +162,22 @@ const NewReportModal: React.FC<NewReportModalProps> = ({ isOpen, onClose, onRepo
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-8 w-full max-w-lg lg:max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-                <button onClick={handleClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
                     <XIcon className="w-6 h-6" />
                 </button>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">File a New Report</h3>
-
-                <div className="mb-6">
-                    <div className="flex bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
-                        <button onClick={() => setReportType('vehicle')} className={`w-1/2 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'vehicle' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-5 h-5" /> Vehicle</button>
-                        <button onClick={() => setReportType('crime')} className={`w-1/2 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'crime' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CrimeIcon className="w-5 h-5" /> Crime</button>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                    {reportToEdit ? 'Edit Report' : 'File a New Report'}
+                </h3>
+                
+                {!reportToEdit && (
+                    <div className="mb-6">
+                        <div className="flex bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
+                            <button onClick={() => setReportType('vehicle')} className={`w-1/2 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'vehicle' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-5 h-5" /> Vehicle</button>
+                            <button onClick={() => setReportType('crime')} className={`w-1/2 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'crime' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CrimeIcon className="w-5 h-5" /> Crime</button>
+                        </div>
                     </div>
-                </div>
+                )}
+
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {reportType === 'vehicle' ? (
@@ -154,7 +188,7 @@ const NewReportModal: React.FC<NewReportModalProps> = ({ isOpen, onClose, onRepo
                                 <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} required className={inputClasses} list="models-list" /></div>
                                 <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} required className={inputClasses} list="colors-list" /></div>
                             </div>
-                             <div><label htmlFor="location_vehicle" className={labelClasses}>Last Seen Location</label><input type="text" name="location" id="location_vehicle" value={formData.location || ''} onChange={handleChange} required className={inputClasses} /></div>
+                             <div><label htmlFor="location_vehicle" className={labelClasses}>Last Seen Location</label><input type="text" name="location" id="location_vehicle" value={formData.last_seen_location || formData.location || ''} onChange={handleChange} required className={inputClasses} /></div>
                         </>
                     ) : (
                          <>
@@ -194,9 +228,9 @@ const NewReportModal: React.FC<NewReportModalProps> = ({ isOpen, onClose, onRepo
                         </div>
                     </div>
                     
-                    {previews.length > 0 && (
+                    {imagePreviews.length > 0 && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                            {previews.map((src, index) => (
+                            {imagePreviews.map((src, index) => (
                                 <div key={index} className="relative group">
                                     <img src={src} alt={`Preview ${index}`} className="h-24 w-full object-cover rounded-md" />
                                     <button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-black/50 rounded-full p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity">
@@ -209,10 +243,10 @@ const NewReportModal: React.FC<NewReportModalProps> = ({ isOpen, onClose, onRepo
 
 
                     <div className="pt-6 flex justify-end space-x-4">
-                        <button type="button" onClick={handleClose} className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                        <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
                         <button type="submit" disabled={loading} className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg hover:scale-105 transition-transform duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
                             {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>}
-                            {loading ? 'Submitting...' : 'Submit Report'}
+                            {loading ? 'Saving...' : 'Save Report'}
                         </button>
                     </div>
                 </form>
@@ -231,4 +265,4 @@ const NewReportModal: React.FC<NewReportModalProps> = ({ isOpen, onClose, onRepo
     );
 };
 
-export default NewReportModal;
+export default ReportModal;

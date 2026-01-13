@@ -1,10 +1,12 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Report, ReportStatus, UserRole, Profile, Responder, ResponderStatus } from '../types';
+// FIX: Import VehicleReport to be used in the type guard.
+import { Report, ReportStatus, UserRole, Profile, Responder, ResponderStatus, VehicleReport } from '../types';
 import StatCard from './StatCard';
 import ReportList from './ReportList';
 import MapView from './MapView';
-import NewReportModal from './NewReportModal';
+import ReportModal from './ReportModal';
+import DeleteReportModal from './DeleteReportModal';
 import ReportDetailCard from './ReportDetailCard';
 import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon } from './icons';
 import { supabase } from '../utils/supabase';
@@ -13,13 +15,18 @@ interface DashboardProps {
     profile: Profile;
 }
 
+// FIX: Update isVehicleReport to be a type guard, enabling type narrowing.
+const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
+
 const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
     const [reports, setReports] = useState<Report[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
-    const [isNewReportModalOpen, setIsNewReportModalOpen] = useState(false);
-    
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
+    const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+
     const isResponder = profile.role === UserRole.RESPONDER;
 
     useEffect(() => {
@@ -92,35 +99,28 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                 return prev.map(r => r.id === updatedReport.id ? updatedReport : r);
             });
         };
+        
+        const handleReportDelete = (payload: any) => {
+            setReports(prev => prev.filter(r => r.id !== payload.old.id));
+            if (selectedReportId === payload.old.id) {
+                setSelectedReportId(null);
+            }
+        };
 
         const reportsChannels = supabase
           .channel('public:reports')
-          .on(
-            'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'vehicle_reports' },
-            (payload) => handleNewReport(payload, 'vehicle')
-          )
-           .on(
-            'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'crime_reports' },
-            (payload) => handleNewReport(payload, 'crime')
-          )
-          .on(
-            'postgres_changes',
-            { event: 'UPDATE', schema: 'public', table: 'vehicle_reports' },
-            handleReportUpdate
-          )
-           .on(
-            'postgres_changes',
-            { event: 'UPDATE', schema: 'public', table: 'crime_reports' },
-            handleReportUpdate
-          )
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'vehicle_reports' }, (payload) => handleNewReport(payload, 'vehicle'))
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'crime_reports' }, (payload) => handleNewReport(payload, 'crime'))
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'vehicle_reports' }, handleReportUpdate)
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'crime_reports' }, handleReportUpdate)
+          .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'vehicle_reports' }, handleReportDelete)
+          .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'crime_reports' }, handleReportDelete)
           .subscribe();
 
         return () => {
           supabase.removeChannel(reportsChannels);
         };
-    }, [isResponder, profile.id]);
+    }, [isResponder, profile.id, selectedReportId]);
 
     const sortedReports = useMemo(() => {
         return reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
@@ -134,14 +134,37 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         setSelectedReportId(prevId => prevId === reportId ? null : reportId);
     };
 
-    const handleReportCreated = (newReport: Report) => {
-        // This is optimistic UI update. The realtime subscription will also update the state.
-        const alreadyExists = reports.some(r => r.id === newReport.id);
-        if (!alreadyExists) {
-            setReports(prevReports => [newReport, ...prevReports]);
+    const handleOpenNewReportModal = () => {
+        setReportToEdit(null);
+        setIsReportModalOpen(true);
+    };
+
+    const handleOpenEditReportModal = (report: Report) => {
+        setReportToEdit(report);
+        setIsReportModalOpen(true);
+    };
+
+    const handleOpenDeleteReportModal = (report: Report) => {
+        setReportToDelete(report);
+    };
+
+    const confirmDeleteReport = async () => {
+        if (!reportToDelete) return;
+        
+        const tableName = isVehicleReport(reportToDelete) ? 'vehicle_reports' : 'crime_reports';
+        const { error } = await supabase.from(tableName).delete().eq('id', reportToDelete.id);
+
+        if (error) {
+            alert("Error deleting report: " + error.message);
+        } else {
+            // Optimistic UI update, though realtime should also catch it.
+            setReports(prev => prev.filter(r => r.id !== reportToDelete.id));
+            if (selectedReportId === reportToDelete.id) {
+                setSelectedReportId(null);
+            }
         }
-        setIsNewReportModalOpen(false);
-    }
+        setReportToDelete(null);
+    };
 
     if (loading) {
         return (
@@ -163,7 +186,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                  {!isResponder && (
                     <div className="flex items-center space-x-4 mt-4 md:mt-0">
                         <button 
-                            onClick={() => setIsNewReportModalOpen(true)}
+                            onClick={handleOpenNewReportModal}
                             className="px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
                         >
                             <PlusIcon className="w-5 h-5" />
@@ -187,6 +210,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                             report={selectedReport}
                             onClose={() => setSelectedReportId(null)}
                             profile={profile}
+                            onEdit={handleOpenEditReportModal}
+                            onDelete={handleOpenDeleteReportModal}
                         />
                     ) : (
                         <ReportList 
@@ -205,10 +230,17 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                 </div>
             </div>
 
-            <NewReportModal 
-                isOpen={isNewReportModalOpen}
-                onClose={() => setIsNewReportModalOpen(false)}
-                onReportCreated={handleReportCreated}
+            <ReportModal 
+                isOpen={isReportModalOpen}
+                onClose={() => setIsReportModalOpen(false)}
+                reportToEdit={reportToEdit}
+            />
+            
+            <DeleteReportModal
+                isOpen={!!reportToDelete}
+                onClose={() => setReportToDelete(null)}
+                onConfirm={confirmDeleteReport}
+                reportIdentifier={reportToDelete ? (isVehicleReport(reportToDelete) ? reportToDelete.license_plate : reportToDelete.title) : ''}
             />
         </div>
     );

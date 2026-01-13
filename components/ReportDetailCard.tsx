@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Report, Profile, VehicleReport, UserRole, ReportStatus } from '../types';
 import StatusBadge from './StatusBadge';
-import { MapPinIcon, WhatsappIcon, DownloadIcon, XIcon } from './icons';
+import { MapPinIcon, WhatsappIcon, DownloadIcon, XIcon, EditIcon, TrashIcon } from './icons';
 import { format } from 'date-fns';
 import { supabase } from '../utils/supabase';
 import { logoUrl } from '../assets/logo';
@@ -11,16 +11,20 @@ interface ReportDetailCardProps {
     report: Report;
     onClose: () => void;
     profile: Profile;
+    onEdit: (report: Report) => void;
+    onDelete: (report: Report) => void;
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
-const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, profile }) => {
+const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, profile, onEdit, onDelete }) => {
     const [reporter, setReporter] = useState<Profile | null>(null);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
 
+    const canManageReport = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role);
     const isAssignedResponder = profile.role === UserRole.RESPONDER && report.assigned_to === profile.id;
+    const canUpdateStatus = canManageReport || isAssignedResponder;
 
     const responderStatusOptions = [
         ReportStatus.IN_PROGRESS,
@@ -191,19 +195,19 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Status</p>
-                        {isAssignedResponder ? (
+                        {canUpdateStatus ? (
                              <select
                                 value={report.status}
                                 onChange={handleStatusChange}
                                 disabled={statusUpdateLoading}
                                 className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-1 px-2 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70"
                             >
-                                {!responderStatusOptions.includes(report.status) && <option value={report.status} disabled>{report.status.replace('_', ' ')}</option>}
-                                {responderStatusOptions.map(status => (
-                                    <option key={status} value={status}>
-                                        {status.replace('_', ' ')}
-                                    </option>
-                                ))}
+                                <option value={ReportStatus.PENDING}>Pending</option>
+                                <option value={ReportStatus.ACTIVE}>Active</option>
+                                <option value={ReportStatus.IN_PROGRESS}>In Progress</option>
+                                <option value={ReportStatus.RESOLVED}>Resolved</option>
+                                <option value={ReportStatus.REJECTED}>Rejected</option>
+                                {isVehicleReport(report) && <option value={ReportStatus.RECOVERED}>Recovered</option>}
                             </select>
                         ) : (
                             <StatusBadge status={report.status} />
@@ -248,7 +252,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold">
                     <WhatsappIcon className="w-5 h-5"/> Share
                 </button>
-                 <button onClick={generateBoloImage} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 py-2 px-3 bg-red-600/90 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-wait">
+                 <button onClick={generateBoloImage} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-wait">
                     {isGeneratingBolo ? (
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : (
@@ -257,6 +261,16 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     <span>{isGeneratingBolo ? 'Generating...' : 'BOLO Card'}</span>
                 </button>
             </div>
+            {canManageReport && (
+                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 grid grid-cols-2 gap-3">
+                    <button onClick={() => onEdit(report)} className="flex items-center justify-center gap-2 py-2 px-3 bg-gray-600/90 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-semibold">
+                        <EditIcon className="w-5 h-5"/> Edit
+                    </button>
+                    <button onClick={() => onDelete(report)} className="flex items-center justify-center gap-2 py-2 px-3 bg-red-600/90 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-semibold">
+                        <TrashIcon className="w-5 h-5"/> Delete
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

@@ -81,9 +81,12 @@ ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Enable read access based on role" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Enable insert access based on role" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Enable update access based on role" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Enable delete access for admins/mods" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Enable read access based on role" ON public.crime_reports;
 DROP POLICY IF EXISTS "Enable insert access based on role" ON public.crime_reports;
 DROP POLICY IF EXISTS "Enable update access based on role" ON public.crime_reports;
+DROP POLICY IF EXISTS "Enable delete access for admins/mods" ON public.crime_reports;
+
 
 -- Policies for VEHICLE reports
 CREATE POLICY "Enable read access based on role" ON public.vehicle_reports FOR SELECT
@@ -92,16 +95,17 @@ TO authenticated USING (
     OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to)
     OR auth.uid() = reported_by
 );
-CREATE POLICY "Enable insert access based on role" ON public.vehicle_reports FOR INSERT
-TO authenticated WITH CHECK (
-    get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')
-    OR auth.uid() = reported_by
-);
+CREATE POLICY "Enable insert access for users" ON public.vehicle_reports FOR INSERT
+TO authenticated WITH CHECK (auth.uid() = reported_by);
+
 CREATE POLICY "Enable update access based on role" ON public.vehicle_reports FOR UPDATE
 TO authenticated USING (
     get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')
     OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to)
 );
+CREATE POLICY "Enable delete access for admins/mods" ON public.vehicle_reports FOR DELETE
+TO authenticated USING (get_user_role(auth.uid()) IN ('admin', 'moderator'));
+
 
 -- Policies for CRIME reports
 CREATE POLICY "Enable read access based on role" ON public.crime_reports FOR SELECT
@@ -110,16 +114,16 @@ TO authenticated USING (
     OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to)
     OR auth.uid() = reported_by
 );
-CREATE POLICY "Enable insert access based on role" ON public.crime_reports FOR INSERT
-TO authenticated WITH CHECK (
-    get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')
-    OR auth.uid() = reported_by
-);
+CREATE POLICY "Enable insert access for users" ON public.crime_reports FOR INSERT
+TO authenticated WITH CHECK (auth.uid() = reported_by);
+
 CREATE POLICY "Enable update access based on role" ON public.crime_reports FOR UPDATE
 TO authenticated USING (
     get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')
     OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to)
 );
+CREATE POLICY "Enable delete access for admins/mods" ON public.crime_reports FOR DELETE
+TO authenticated USING (get_user_role(auth.uid()) IN ('admin', 'moderator'));
 
 
 -- === STEP E: SETUP STORAGE PERMISSIONS ===
