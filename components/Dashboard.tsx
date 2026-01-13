@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Report, ReportStatus, UserRole, Profile, Responder, ResponderStatus } from '../types';
 import StatCard from './StatCard';
@@ -134,13 +135,17 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
     };
 
     const handleReportCreated = (newReport: Report) => {
-        setReports(prevReports => [newReport, ...prevReports]);
+        // This is optimistic UI update. The realtime subscription will also update the state.
+        const alreadyExists = reports.some(r => r.id === newReport.id);
+        if (!alreadyExists) {
+            setReports(prevReports => [newReport, ...prevReports]);
+        }
         setIsNewReportModalOpen(false);
     }
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-[80vh]">
+            <div className="flex justify-center items-center h-[calc(100vh-5rem)]">
                 <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
@@ -176,7 +181,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
             </div>
 
             <div className="flex flex-col lg:flex-row gap-6">
-                <div className="lg:w-[400px] lg:h-[70vh] flex flex-col">
+                <div className="lg:w-[400px] lg:flex-shrink-0 h-[50vh] lg:h-[70vh]">
                      {selectedReport ? (
                         <ReportDetailCard 
                             report={selectedReport}
@@ -191,7 +196,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                         />
                     )}
                 </div>
-                <div className="flex-1 lg:h-[70vh]">
+                <div className="flex-1 h-[60vh] lg:h-[70vh]">
                     <MapView 
                         reports={reports} 
                         responders={responders}

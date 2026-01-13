@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Profile, Company, UserRole, UserStatus } from '../types';
 import { EditIcon, TrashIcon } from './icons';
@@ -50,10 +51,10 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                 <thead className="bg-gray-50 dark:bg-gray-800/50">
                     <tr>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Company</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">Company</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Role</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Last Seen</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">Last Seen</th>
                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -71,19 +72,19 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                         />
                                     </div>
                                     <div className="ml-4">
-                                        <div className="text-sm font-medium text-gray-900 dark:text-white">{user.full_name}</div>
-                                        <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
+                                        <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.full_name}</div>
+                                        <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</div>
                                     </div>
                                 </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{getCompanyName(user.company_id)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 hidden sm:table-cell">{getCompanyName(user.company_id)}</td>
                             <td className="px-6 py-4 whitespace-nowrap">
                                 <RoleBadge role={user.role} />
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                                 <UserStatusBadge status={user.status} />
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden md:table-cell">
                                 {isOnline(user.last_seen_at) ? (
                                     <span className="text-green-500 dark:text-green-400 font-medium">Online</span>
                                 ) : user.last_seen_at ? (
