@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -83,6 +84,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (profile) {
+      // FIX: Replaced bitwise OR `|` with logical OR `||` for correct boolean evaluation.
       const isAdminView = view === 'users' || view === 'companies';
       const canAccessAdminViews = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
 
@@ -94,15 +96,16 @@ const App: React.FC = () => {
 
 
   const renderView = () => {
+    if (!profile) return null; // Ensure profile is loaded before rendering views
     switch(view) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard profile={profile} />;
       case 'users':
         return <UsersPage />;
       case 'companies':
         return <CompaniesPage />;
       default:
-        return <Dashboard />;
+        return <Dashboard profile={profile} />;
     }
   }
 

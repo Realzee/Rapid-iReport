@@ -1,4 +1,3 @@
-
 export enum UserRole {
   ADMIN = 'admin',
   MODERATOR = 'moderator',
@@ -63,12 +62,14 @@ export interface VehicleReport {
   license_plate: string;
   vehicle_make: string;
   vehicle_model: string;
+
   vehicle_color: string;
   last_seen_location: string;
   description: string;
   severity: Severity;
   status: ReportStatus;
   reported_by: string; // profile id
+  assigned_to?: string; // profile id of responder
   reported_at: string; // ISO date string
   location_coords?: LocationCoords;
   evidence_images?: string[];
@@ -84,6 +85,7 @@ export interface CrimeReport {
   severity: Severity;
   status: ReportStatus;
   reported_by: string; // profile id
+  assigned_to?: string; // profile id of responder
   reported_at: string; // ISO date string
   location_coords?: LocationCoords;
   evidence_images?: string[];
