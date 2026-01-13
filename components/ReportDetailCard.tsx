@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Report, Profile, VehicleReport, UserRole, ReportStatus } from '../types';
 import StatusBadge from './StatusBadge';
@@ -170,7 +171,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     };
 
     return (
-        <div className="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700/50 rounded-2xl p-4 backdrop-blur-sm h-full flex flex-col shadow-lg dark:shadow-none">
+        <div className="bg-white/70 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/50 rounded-2xl p-4 backdrop-blur-lg h-full flex flex-col shadow-lg dark:shadow-none transition-colors duration-300">
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
                 <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, BuildingIcon } from '../components/icons';
 import { Company, Profile } from '../types';
@@ -103,7 +104,7 @@ const CompaniesPage: React.FC = () => {
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700/50 rounded-2xl p-4 backdrop-blur-sm shadow-lg dark:shadow-none">
+            <div className="bg-white/70 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/50 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300">
                 {loading ? (
                      <div className="flex justify-center items-center h-64">
                         <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
