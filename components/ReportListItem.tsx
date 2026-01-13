@@ -27,13 +27,13 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
   const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
   const borderColor = isSelected ? 'border-blue-500' : severityBorderColors[report.severity];
-  const bgColor = isSelected ? 'bg-blue-500/10 dark:bg-blue-500/20' : 'bg-gray-50/50 dark:bg-gray-800/50';
+  const bgColor = isSelected ? 'bg-blue-500/10 dark:bg-blue-500/30' : 'bg-gray-50/50 dark:bg-gray-800/60';
   const hasImage = report.evidence_images && report.evidence_images.length > 0;
 
   return (
     <div 
         onClick={onClick}
-        className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4 group ${bgColor} ${borderColor} hover:bg-gray-100 dark:hover:bg-gray-700/50 flex items-start space-x-4`}
+        className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4 group ${bgColor} ${borderColor} hover:bg-gray-100 dark:hover:bg-gray-800 flex items-start space-x-4`}
     >
         {hasImage && (
             <div className="flex-shrink-0">

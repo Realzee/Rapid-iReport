@@ -112,13 +112,13 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen relative overflow-x-hidden">
-      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white via-gray-50 to-white dark:from-black dark:via-gray-900/50 dark:to-black z-0 transition-all duration-500 ease-in-out"></div>
+      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white via-gray-50 to-white dark:from-black dark:via-indigo-900/60 dark:to-black z-0 transition-all duration-500 ease-in-out"></div>
       <div 
-        className="absolute top-[20%] left-[10%] w-72 h-72 bg-blue-400/30 dark:bg-blue-500/70 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
+        className="absolute top-[20%] left-[10%] w-72 h-72 bg-blue-400/30 dark:bg-blue-400/60 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
         style={{ animationDuration: '8s' }}
       ></div>
       <div 
-        className="absolute bottom-[5%] right-[5%] w-96 h-96 bg-red-400/30 dark:bg-indigo-500/70 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
+        className="absolute bottom-[5%] right-[5%] w-96 h-96 bg-red-400/30 dark:bg-indigo-600/60 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
         style={{ animationDuration: '10s' }}
       ></div>
       

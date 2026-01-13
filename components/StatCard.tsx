@@ -23,7 +23,7 @@ const iconBgClasses = {
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
   return (
-    <div className="bg-white/80 dark:bg-gray-800/50 backdrop-blur-md p-4 rounded-xl border border-gray-200 dark:border-gray-700/50 hover:border-gray-300 dark:hover:border-gray-600/50 transition-all duration-300 flex items-center space-x-4 shadow-sm dark:shadow-none">
+    <div className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-md p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-blue-500/50 transition-all duration-300 flex items-center space-x-4 shadow-sm dark:shadow-none">
        <div className={`p-3 rounded-lg ${iconBgClasses[color]}`}>
           {React.cloneElement(icon as React.ReactElement<{ className: string }>, { className: `w-6 h-6 ${colorClasses[color]}` })}
       </div>
