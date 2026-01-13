@@ -129,14 +129,14 @@ const App: React.FC = () => {
 
   if (loading) {
     return (
-        <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center">
              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white relative overflow-x-hidden transition-colors duration-300">
+    <div className="min-h-screen relative overflow-x-hidden">
       <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white via-gray-50 to-white dark:from-black dark:via-gray-900/50 dark:to-black z-0"></div>
       <div 
         className="absolute top-[20%] left-[10%] w-72 h-72 bg-blue-400/30 dark:bg-blue-600/50 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
