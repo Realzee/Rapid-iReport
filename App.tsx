@@ -113,13 +113,13 @@ const App: React.FC = () => {
     if (!profile) return null;
     switch(view) {
       case 'dashboard':
-        return <Dashboard profile={profile} />;
+        return <Dashboard profile={profile} theme={theme} />;
       case 'users':
         return <UsersPage />;
       case 'companies':
         return <CompaniesPage />;
       default:
-        return <Dashboard profile={profile} />;
+        return <Dashboard profile={profile} theme={theme} />;
     }
   }
 

@@ -10,6 +10,7 @@ interface MapViewProps {
   reports: Report[];
   responders: Responder[];
   selectedReportId: string | null;
+  theme: 'light' | 'dark';
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
@@ -113,7 +114,7 @@ const ChatBox: React.FC<{ messages: ChatMessage[] }> = ({ messages }) => {
     );
 };
 
-const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId }) => {
+const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, theme }) => {
     const [chatMessages, setChatMessages] = useState<Record<string, ChatMessage[]>>({});
     const [currentChatInput, setCurrentChatInput] = useState<Record<string, string>>({});
     const [copiedReportId, setCopiedReportId] = useState<string | null>(null);
@@ -136,10 +137,17 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
 
     const selectedReport = reports.find(r => r.id === selectedReportId);
 
+    const lightMapUrl = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+    const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+    const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
+
     return (
         <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none">
             <MapContainer center={[-1.286389, 36.817223]} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
-                <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                <TileLayer 
+                    key={theme}
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' 
+                    url={tileUrl} />
                 <MapFlyTo selectedReportLocation={selectedReport?.location_coords || null} />
 
                 {reports.filter(r => r.location_coords).map(report => (
@@ -183,7 +191,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                     <Marker key={responder.id} position={[responder.location_coords.lat, responder.location_coords.lng]} icon={createResponderIcon(responder.status)} zIndexOffset={1000}>
                         <Tooltip direction="top" offset={[0, -10]} opacity={1}>
                             <div className="text-center">
-                                <div className="font-bold">_</div>
+                                <div className="font-bold">{responder.full_name}</div>
                                 <div className={`capitalize text-xs mt-1 ${responder.status === 'off_duty' ? 'text-gray-500' : responder.status === 'available' ? 'text-green-500' : 'text-yellow-500'}`}>{responder.status.replace('_', ' ')}</div>
                             </div>
                         </Tooltip>
