@@ -1,16 +1,51 @@
 /*
-    --- IMPORTANT SUPABASE SETUP FOR IMAGE UPLOADS ---
-    The "400 Bad Request" error during image upload means the required Storage Bucket is missing.
-    Follow these steps carefully in your Supabase dashboard to fix this:
+    --- IMPORTANT SUPABASE SETUP INSTRUCTIONS ---
+    If you are facing errors, please complete BOTH sections below in your Supabase dashboard.
+
+    --- SECTION 1: FIX FOR IMAGE UPLOADS (400 Bad Request Error) ---
+    This error means the required Storage Bucket is missing.
 
     1. Go to your Supabase Project Dashboard.
-    2. Click on the "Storage" icon in the left sidebar (it looks like a cylinder).
-    3. Click the "+ New Bucket" button.
-    4. For the "Bucket name", enter exactly: evidence
-    5. IMPORTANT: Toggle ON the "Public bucket" option. This allows the app to display the images.
-    6. Click "Create Bucket".
+    2. Click the "Storage" icon (cylinder icon) in the left sidebar.
+    3. Click "+ New Bucket", name it exactly "evidence", and turn ON the "Public bucket" toggle.
+    4. Click "Create Bucket".
 
-    After creating the bucket, image uploads in the app will start working correctly.
+    --- SECTION 2: FIX FOR CREATING REPORTS (Row-Level Security Error) ---
+    The error "new row violates row-level security policy" means you need to create
+    policies that allow users to insert data into the report tables.
+
+    1. Go to your Supabase Project Dashboard.
+    2. Click the "SQL Editor" icon (paper with ">_") in the left sidebar.
+    3. Click "+ New query".
+    4. Copy the ENTIRE code block below, paste it into the SQL Editor, and click "RUN".
+
+    --------------------- COPY THE SQL BELOW ---------------------
+
+    -- Enable Row Level Security on the tables if not already enabled.
+    ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
+
+    -- Drop existing insert policies if they exist, to prevent conflicts.
+    DROP POLICY IF EXISTS "Allow authenticated users to create their own reports" ON public.vehicle_reports;
+    DROP POLICY IF EXISTS "Allow authenticated users to create their own reports" ON public.crime_reports;
+
+    -- Create new INSERT policies.
+    -- This policy allows any logged-in user to create a vehicle report,
+    -- as long as they are setting the 'reported_by' field to their own user ID.
+    CREATE POLICY "Allow authenticated users to create their own reports"
+    ON public.vehicle_reports
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = reported_by);
+
+    -- This policy does the same for crime reports.
+    CREATE POLICY "Allow authenticated users to create their own reports"
+    ON public.crime_reports
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = reported_by);
+
+    --------------------- END OF SQL TO COPY ---------------------
 */
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
