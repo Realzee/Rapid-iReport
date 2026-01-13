@@ -44,7 +44,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
     } else if (data.user && data.user.identities && data.user.identities.length === 0) {
       setError("A user with this email already exists but is unconfirmed.");
     } else if (data.user) {
-      setMessage("Registration successful! Please check your email to confirm your account.");
+      setMessage("Registration successful! You can now log in.");
     } else {
       setError("An unexpected error occurred during registration.");
     }
