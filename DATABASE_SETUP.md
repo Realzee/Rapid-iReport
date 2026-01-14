@@ -1,12 +1,12 @@
 # RAPID iREPORT - Supabase Database Setup
 
-If you encounter errors like "Could not find column 'evidence_images'", "violates row-level security policy", or "Could not find the 'last_seen_at' column", your Supabase database schema is likely incomplete or misconfigured.
+If you encounter errors like "Could not find column 'location_boundary'", "violates row-level security policy", or "Error setting up presence", your Supabase database schema is out of sync with the application code.
 
-To fix all known database issues, please follow these steps carefully.
+To fix all known database issues, please follow these steps carefully. This script is safe to run multiple times.
 
 ## Step 1: Create the 'evidence' Storage Bucket
 
-This step is crucial for enabling image uploads.
+This step is crucial for enabling image uploads. If you've already done this, you can skip to Step 2.
 
 1.  Navigate to your Supabase Project dashboard.
 2.  In the left sidebar, go to **Storage**.
@@ -17,7 +17,7 @@ This step is crucial for enabling image uploads.
 
 ## Step 2: Run the Complete Database Setup Script
 
-This script adds missing columns, creates a helper function for roles, and configures the necessary Row Level Security (RLS) policies for both the database tables and the storage bucket.
+This comprehensive script creates all necessary types, tables, functions, and security policies. It is designed to be **idempotent**, meaning you can run it on a new project or an existing one without causing errors. It will only add the pieces that are missing.
 
 1.  In your Supabase Project dashboard, go to the **SQL Editor**.
 2.  Click **+ New query**.
@@ -28,124 +28,169 @@ This script adds missing columns, creates a helper function for roles, and confi
 ### Full SQL Setup Script
 
 ```sql
--- === STEP A: ADD MISSING COLUMNS ===
--- This fixes "Could not find column" errors.
-ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
-ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_seen_at timestamz;
+-- This script is idempotent and can be safely run multiple times.
 
--- Add columns for advanced mapping (geocoding & area highlighting)
+-- === PART 1: TYPE DEFINITIONS ===
+-- Create ENUM types for controlled vocabularies to ensure data integrity.
+DO $$ BEGIN CREATE TYPE public.user_role AS ENUM ('admin', 'moderator', 'controller', 'responder', 'user'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE public.user_status AS ENUM ('active', 'pending', 'suspended'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE public.report_status AS ENUM ('pending', 'active', 'in_progress', 'resolved', 'rejected', 'recovered'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE public.severity AS ENUM ('critical', 'high', 'medium', 'low'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+
+-- === PART 2: TABLE CREATION ===
+-- Create tables if they don't exist.
+CREATE TABLE IF NOT EXISTS public.companies (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    name text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id uuid NOT NULL PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email text UNIQUE,
+    full_name text,
+    -- NOTE: If you have an old schema with text-based roles/statuses, you may need to migrate them manually.
+    -- For new setups, these will be created as ENUM types.
+    role public.user_role NOT NULL DEFAULT 'user',
+    status public.user_status NOT NULL DEFAULT 'pending',
+    company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL,
+    avatar_url text,
+    last_seen_at timestamptz
+);
+
+CREATE TABLE IF NOT EXISTS public.vehicle_reports (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    ob_number text UNIQUE,
+    license_plate text,
+    vehicle_make text,
+    vehicle_model text,
+    vehicle_color text,
+    last_seen_location text,
+    description text,
+    severity public.severity,
+    status public.report_status,
+    reported_by uuid NOT NULL REFERENCES public.profiles(id),
+    assigned_to uuid REFERENCES public.profiles(id),
+    reported_at timestamptz NOT NULL DEFAULT now(),
+    location_coords jsonb,
+    evidence_images text[],
+    location_boundary jsonb,
+    location_boundingbox real[]
+);
+
+CREATE TABLE IF NOT EXISTS public.crime_reports (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    ob_number text UNIQUE,
+    title text,
+    description text,
+    location text,
+    crime_type text,
+    severity public.severity,
+    status public.report_status,
+    reported_by uuid NOT NULL REFERENCES public.profiles(id),
+    assigned_to uuid REFERENCES public.profiles(id),
+    reported_at timestamptz NOT NULL DEFAULT now(),
+    location_coords jsonb,
+    evidence_images text[],
+    location_boundary jsonb,
+    location_boundingbox real[]
+);
+
+
+-- === PART 3: AUTOMATIC PROFILE CREATION ===
+-- This function and trigger are CRITICAL. It creates a profile when a new user signs up.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, role)
+  VALUES (
+    new.id,
+    new.email,
+    new.raw_user_meta_data->>'full_name',
+    (new.raw_user_meta_data->>'role')::public.user_role
+  );
+  RETURN new;
+END;
+$$;
+
+-- Drop and recreate the trigger to ensure it's up-to-date.
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+
+-- === PART 4: SCHEMA MIGRATION (for existing projects) ===
+-- These commands add missing columns to tables without deleting data.
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS assigned_to uuid REFERENCES public.profiles(id);
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS location_boundary jsonb;
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS location_boundingbox real[];
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS assigned_to uuid REFERENCES public.profiles(id);
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS location_boundary jsonb;
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS location_boundingbox real[];
 
 
--- === STEP B: CREATE HELPER FUNCTION TO GET USER ROLE ===
--- This function is used in RLS policies to check a user's role securely.
+-- === PART 5: SECURITY (ROW LEVEL SECURITY) ===
+-- Helper function to get user role securely within RLS policies.
 CREATE OR REPLACE FUNCTION get_user_role(user_id uuid)
-RETURNS text
+RETURNS public.user_role
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  user_role text;
+  user_role public.user_role;
 BEGIN
   SELECT role INTO user_role FROM public.profiles WHERE id = user_id;
   RETURN user_role;
 END;
 $$;
 
-
--- === STEP C: SETUP PROFILES SECURITY POLICIES ===
--- This fixes the HTTP 400 error and "Error setting up presence" on login.
+-- PROFILES Table Policies
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow users to view all profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Allow users to update their own profile" ON public.profiles;
+CREATE POLICY "Allow users to view all profiles" ON public.profiles FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow users to update their own profile" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
--- Allow any authenticated user to VIEW all profiles. Required for User Management page.
-CREATE POLICY "Allow users to view all profiles"
-ON public.profiles FOR SELECT
-TO authenticated USING (true);
-
--- Allow a user to UPDATE their OWN profile. Crucial for the 'last_seen_at' presence feature.
-CREATE POLICY "Allow users to update their own profile"
-ON public.profiles FOR UPDATE
-TO authenticated USING (auth.uid() = id)
-WITH CHECK (auth.uid() = id);
-
-
--- === STEP D: SETUP REPORTS SECURITY POLICIES ===
--- These role-based policies fix "violates row-level security policy" errors.
-
--- Enable RLS on report tables.
+-- VEHICLE REPORTS Table Policies
 ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
-
--- Drop old policies to prevent conflicts.
 DROP POLICY IF EXISTS "Enable read access based on role" ON public.vehicle_reports;
-DROP POLICY IF EXISTS "Enable insert access based on role" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Enable insert access for users" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Enable update access based on role" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Enable delete access for admins/mods" ON public.vehicle_reports;
+
+CREATE POLICY "Enable read access based on role" ON public.vehicle_reports FOR SELECT TO authenticated USING (get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller') OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to) OR auth.uid() = reported_by);
+CREATE POLICY "Enable insert access for users" ON public.vehicle_reports FOR INSERT TO authenticated WITH CHECK (auth.uid() = reported_by);
+CREATE POLICY "Enable update access based on role" ON public.vehicle_reports FOR UPDATE TO authenticated USING (get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller') OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
+CREATE POLICY "Enable delete access for admins/mods" ON public.vehicle_reports FOR DELETE TO authenticated USING (get_user_role(auth.uid()) IN ('admin', 'moderator'));
+
+-- CRIME REPORTS Table Policies
+ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Enable read access based on role" ON public.crime_reports;
-DROP POLICY IF EXISTS "Enable insert access based on role" ON public.crime_reports;
+DROP POLICY IF EXISTS "Enable insert access for users" ON public.crime_reports;
 DROP POLICY IF EXISTS "Enable update access based on role" ON public.crime_reports;
 DROP POLICY IF EXISTS "Enable delete access for admins/mods" ON public.crime_reports;
 
-
--- Policies for VEHICLE reports
-CREATE POLICY "Enable read access based on role" ON public.vehicle_reports FOR SELECT
-TO authenticated USING (
-    get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')
-    OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to)
-    OR auth.uid() = reported_by
-);
-CREATE POLICY "Enable insert access for users" ON public.vehicle_reports FOR INSERT
-TO authenticated WITH CHECK (auth.uid() = reported_by);
-
-CREATE POLICY "Enable update access based on role" ON public.vehicle_reports FOR UPDATE
-TO authenticated USING (
-    get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')
-    OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to)
-);
-CREATE POLICY "Enable delete access for admins/mods" ON public.vehicle_reports FOR DELETE
-TO authenticated USING (get_user_role(auth.uid()) IN ('admin', 'moderator'));
+CREATE POLICY "Enable read access based on role" ON public.crime_reports FOR SELECT TO authenticated USING (get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller') OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to) OR auth.uid() = reported_by);
+CREATE POLICY "Enable insert access for users" ON public.crime_reports FOR INSERT TO authenticated WITH CHECK (auth.uid() = reported_by);
+CREATE POLICY "Enable update access based on role" ON public.crime_reports FOR UPDATE TO authenticated USING (get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller') OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
+CREATE POLICY "Enable delete access for admins/mods" ON public.crime_reports FOR DELETE TO authenticated USING (get_user_role(auth.uid()) IN ('admin', 'moderator'));
 
 
--- Policies for CRIME reports
-CREATE POLICY "Enable read access based on role" ON public.crime_reports FOR SELECT
-TO authenticated USING (
-    get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')
-    OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to)
-    OR auth.uid() = reported_by
-);
-CREATE POLICY "Enable insert access for users" ON public.crime_reports FOR INSERT
-TO authenticated WITH CHECK (auth.uid() = reported_by);
-
-CREATE POLICY "Enable update access based on role" ON public.crime_reports FOR UPDATE
-TO authenticated USING (
-    get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')
-    OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to)
-);
-CREATE POLICY "Enable delete access for admins/mods" ON public.crime_reports FOR DELETE
-TO authenticated USING (get_user_role(auth.uid()) IN ('admin', 'moderator'));
-
-
--- === STEP E: SETUP STORAGE PERMISSIONS ===
--- This fixes issues with viewing/uploading images.
+-- === PART 6: STORAGE PERMISSIONS ===
 DROP POLICY IF EXISTS "Allow authenticated read access to evidence" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated uploads to evidence" ON storage.objects;
+CREATE POLICY "Allow authenticated read access to evidence" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'evidence');
+CREATE POLICY "Allow authenticated uploads to evidence" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'evidence');
 
--- Allow authenticated users to view all files in the 'evidence' bucket.
-CREATE POLICY "Allow authenticated read access to evidence"
-ON storage.objects FOR SELECT
-TO authenticated USING (bucket_id = 'evidence');
-
--- Allow authenticated users to upload files into the 'evidence' bucket.
-CREATE POLICY "Allow authenticated uploads to evidence"
-ON storage.objects FOR INSERT
-TO authenticated WITH CHECK (bucket_id = 'evidence');
 ```
 
 ---

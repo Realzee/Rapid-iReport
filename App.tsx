@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -51,7 +52,7 @@ const App: React.FC = () => {
                     console.error(
                         '%c[SECURITY POLICY ERROR]',
                         'color: yellow; font-weight: bold;',
-                        `The operation was blocked by your database's Row Level Security. Please ensure you have run the full script in DATABASE_SETUP.md, specifically STEP D which configures policies for the 'profiles' table.`
+                        `The operation was blocked by your database's Row Level Security. Please ensure you have run the full script in DATABASE_SETUP.md, specifically STEP C which configures policies for the 'profiles' table.`
                     );
                 }
             } else {

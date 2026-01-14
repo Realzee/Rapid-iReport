@@ -36,8 +36,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         const fetchData = async () => {
             setLoading(true);
 
-            let vehicleQuery = supabase.from('vehicle_reports').select('*');
-            let crimeQuery = supabase.from('crime_reports').select('*');
+            let vehicleQuery = supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(100);
+            let crimeQuery = supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(100);
 
             if (isResponder) {
                 vehicleQuery = vehicleQuery.eq('assigned_to', profile.id);
@@ -223,8 +223,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                 <StatCard title="Available Responders" value={responders.filter(r => r.status === 'available').length.toString()} icon={<ZapIcon />} color="yellow" />
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-6">
-                <div className="lg:w-[400px] lg:flex-shrink-0 h-[50vh] lg:h-[70vh]">
+            <div className="flex flex-col lg:flex-row gap-6 lg:h-[70vh]">
+                <div className="lg:w-[400px] lg:flex-shrink-0 h-[50vh] lg:h-full">
                      {selectedReport ? (
                         <ReportDetailCard 
                             report={selectedReport}
@@ -245,7 +245,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                         />
                     )}
                 </div>
-                <div className="flex-1 h-[60vh] lg:h-[70vh]">
+                <div className="flex-1 min-w-0 h-[60vh] lg:h-full">
                     <MapView 
                         reports={reports} 
                         responders={responders}
