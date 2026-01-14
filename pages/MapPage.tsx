@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Responder, ResponderStatus } from '../types';
@@ -77,20 +78,20 @@ const MapPage: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-full">
+            <div className="flex justify-center items-center h-[calc(100vh-8rem)]">
                 <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
     
     return (
-        <div className="container mx-auto h-full flex flex-col">
+        <div className="container mx-auto h-[calc(100vh-8rem)] flex flex-col">
             <div className="flex-shrink-0 mb-6">
                 <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Live Incidents Map</h2>
                 <p className="text-gray-500 dark:text-gray-400 mt-1">Real-time operational map of all reported incidents and responders.</p>
             </div>
             <div className="flex-grow min-h-0">
-                 <div className="h-[480px] md:h-full">
+                 <div className="h-full">
                     <MapView 
                         reports={reports} 
                         responders={responders}
