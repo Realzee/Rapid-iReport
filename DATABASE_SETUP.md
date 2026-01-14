@@ -4,9 +4,9 @@ If you encounter errors like "Could not find column 'location_boundary'", "viola
 
 To fix all known database issues, please follow these steps carefully. This script is safe to run multiple times.
 
-## Step 1: Create the 'evidence' Storage Bucket
+## Step 1A: Create the 'evidence' Storage Bucket
 
-This step is crucial for enabling image uploads. If you've already done this, you can skip to Step 2.
+This is for incident-related images. If you've already done this, you can skip to Step 1B.
 
 1.  Navigate to your Supabase Project dashboard.
 2.  In the left sidebar, go to **Storage**.
@@ -14,6 +14,16 @@ This step is crucial for enabling image uploads. If you've already done this, yo
 4.  Enter the bucket name exactly as `evidence`.
 5.  Toggle the **Public bucket** switch to ON.
 6.  Click **Create Bucket**.
+
+## Step 1B: Create the 'avatars' Storage Bucket
+
+This is for user profile pictures.
+
+1.  While in the **Storage** section, click **+ New Bucket** again.
+2.  Enter the bucket name exactly as `avatars`.
+3.  Toggle the **Public bucket** switch to ON.
+4.  Click **Create Bucket**.
+
 
 ## Step 2: Run the Complete Database Setup Script
 
@@ -127,6 +137,7 @@ CREATE TRIGGER on_auth_user_created
 -- === PART 4: SCHEMA MIGRATION (for existing projects) ===
 -- These commands add missing columns to tables without deleting data.
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url text; -- Ensure avatar column exists
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS assigned_to uuid REFERENCES public.profiles(id);
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS location_boundary jsonb;
@@ -186,10 +197,22 @@ CREATE POLICY "Enable delete access for admins/mods" ON public.crime_reports FOR
 
 
 -- === PART 6: STORAGE PERMISSIONS ===
+-- EVIDENCE BUCKET POLICIES
 DROP POLICY IF EXISTS "Allow authenticated read access to evidence" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated uploads to evidence" ON storage.objects;
 CREATE POLICY "Allow authenticated read access to evidence" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'evidence');
 CREATE POLICY "Allow authenticated uploads to evidence" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'evidence');
+
+-- AVATARS BUCKET POLICIES
+DROP POLICY IF EXISTS "Allow public read access to avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Allow user to manage their own avatar" ON storage.objects;
+CREATE POLICY "Allow public read access to avatars" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
+-- This policy allows a user to upload/update an avatar only inside a folder that matches their own user ID.
+-- Example: A user with ID 'abc-123' can only write to 'avatars/abc-123/filename.jpg'
+CREATE POLICY "Allow user to manage their own avatar" ON storage.objects FOR INSERT, UPDATE TO authenticated WITH CHECK (
+  bucket_id = 'avatars' AND
+  auth.uid() = (storage.foldername(name))[1]::uuid
+);
 
 ```
 

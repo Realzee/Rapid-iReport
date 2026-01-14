@@ -8,7 +8,7 @@ import ThemeToggle from './ThemeToggle';
 
 interface HeaderProps {
     currentView: string;
-    setView: (view: 'dashboard' | 'reports' | 'map' | 'users' | 'companies') => void;
+    setView: (view: 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile') => void;
     profile: Profile;
 }
 
@@ -90,7 +90,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
               </button>
               {dropdownOpen && (
                 <div className="absolute right-0 mt-12 w-48 bg-white/90 dark:bg-gray-800/80 backdrop-blur-lg rounded-xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 py-1">
-                  <a href="#" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-black dark:hover:text-white">Profile</a>
+                  <button onClick={() => { setView('profile'); setDropdownOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-black dark:hover:text-white">Profile</button>
                   <a href="#" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-black dark:hover:text-white">Settings</a>
                   <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
                   <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-500 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300">Logout</button>

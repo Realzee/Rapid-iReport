@@ -8,11 +8,12 @@ import UsersPage from './pages/UsersPage';
 import CompaniesPage from './pages/CompaniesPage';
 import MapPage from './pages/MapPage';
 import ReportsPage from './pages/ReportsPage';
+import ProfilePage from './pages/ProfilePage';
 import { supabase } from './utils/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from './types';
 
-type View = 'dashboard' | 'reports' | 'map' | 'users' | 'companies';
+type View = 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -104,6 +105,8 @@ const App: React.FC = () => {
         return <UsersPage />;
       case 'companies':
         return <CompaniesPage />;
+      case 'profile':
+        return <ProfilePage profile={profile} setProfile={setProfile} />;
       default:
         return <Dashboard profile={profile} />;
     }
