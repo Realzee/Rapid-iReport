@@ -9,7 +9,6 @@ import DeleteReportModal from './DeleteReportModal';
 import ReportDetailCard from './ReportDetailCard';
 import MapModal from './MapModal';
 import ResponderStatusPanel from './ResponderStatusPanel';
-import UserDashboard from './UserDashboard';
 import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon, CarIcon, CrimeIcon } from './icons';
 import { supabase } from '../utils/supabase';
 
@@ -20,14 +19,6 @@ interface DashboardProps {
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
 const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
-    // --- ROLE-BASED ROUTING ---
-    const controllerRoles = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER];
-    if (!controllerRoles.includes(profile.role)) {
-        return <UserDashboard profile={profile} />;
-    }
-    // --- END ROLE-BASED ROUTING ---
-
-    // --- CONTROLLER DASHBOARD LOGIC ---
     const [reports, setReports] = useState<Report[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
@@ -38,12 +29,19 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
 
+    const isResponder = profile.role === UserRole.RESPONDER;
+
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
 
-            const vehicleQuery = supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(100);
-            const crimeQuery = supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(100);
+            let vehicleQuery = supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(100);
+            let crimeQuery = supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(100);
+
+            if (isResponder) {
+                vehicleQuery = vehicleQuery.eq('assigned_to', profile.id);
+                crimeQuery = crimeQuery.eq('assigned_to', profile.id);
+            }
             
             const [
                 { data: vehicleData, error: vError },
@@ -88,12 +86,26 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         // --- REALTIME SUBSCRIPTIONS ---
         const handleNewReport = (payload: any, type: 'vehicle' | 'crime') => {
              const newReport = { ...payload.new, type };
+             if(isResponder && newReport.assigned_to !== profile.id) {
+                return;
+             }
              setReports(prevReports => [newReport, ...prevReports]);
         };
         
         const handleReportUpdate = (payload: any) => {
             const updatedReport = { ...payload.new, type: payload.table === 'vehicle_reports' ? 'vehicle' : 'crime' };
-            setReports(prev => prev.map(r => r.id === updatedReport.id ? updatedReport : r));
+            setReports(prev => {
+                const reportExists = prev.some(r => r.id === updatedReport.id);
+                if (isResponder) {
+                    if (updatedReport.assigned_to !== profile.id) {
+                        return prev.filter(r => r.id !== updatedReport.id);
+                    }
+                    if (!reportExists && updatedReport.assigned_to === profile.id) {
+                        return [...prev, updatedReport];
+                    }
+                }
+                return prev.map(r => r.id === updatedReport.id ? updatedReport : r);
+            });
         };
         
         const handleReportDelete = (payload: any) => {
@@ -116,7 +128,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         return () => {
           supabase.removeChannel(reportsChannels);
         };
-    }, [profile.id, selectedReportId]);
+    }, [isResponder, profile.id, selectedReportId]);
     
     // Select the first report by default if none is selected
     useEffect(() => {
