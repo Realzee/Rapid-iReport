@@ -176,7 +176,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     };
 
     return (
-        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg flex flex-col shadow-lg dark:shadow-none transition-colors duration-300">
+        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300">
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
                 <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
