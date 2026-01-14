@@ -127,6 +127,10 @@ const App: React.FC = () => {
     )
   }
 
+  const mainClasses = view === 'controller'
+    ? 'pt-24 px-4 pb-8' // Custom padding for full-width controller view
+    : 'pt-24 px-4 sm:px-6 lg:px-8 pb-8'; // Standard padding for other views
+
   return (
     <div className="min-h-screen relative overflow-x-hidden">
       <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white via-gray-50 to-white dark:from-black dark:via-indigo-900/60 dark:to-black z-0 transition-all duration-500 ease-in-out"></div>
@@ -143,7 +147,7 @@ const App: React.FC = () => {
         {session && profile ? (
           <>
             <Header currentView={view} setView={setView} profile={profile} />
-            <main className="pt-24 px-4 sm:px-6 lg:px-8 pb-8">
+            <main className={mainClasses}>
               {renderView()}
             </main>
           </>
