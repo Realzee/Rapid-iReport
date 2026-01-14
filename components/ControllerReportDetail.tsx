@@ -27,14 +27,14 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         const fetchUpdates = async () => {
             const { data, error } = await supabase
                 .from('report_updates')
-                .select('*, profile:profiles(full_name)')
+                .select('*, profiles(full_name)')
                 .eq('report_id', report.id)
                 .order('created_at', { ascending: true });
 
             if (error) {
                 console.error("Error fetching report updates:", error);
             } else {
-                setUpdates(data.map(u => ({...u, user_full_name: u.profile.full_name })));
+                setUpdates(data.map(u => ({...u, user_full_name: u.profiles?.full_name || 'System' })));
             }
         };
         fetchUpdates();

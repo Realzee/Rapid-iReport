@@ -111,7 +111,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
     }
 
     return (
-        <div className="flex flex-col h-[calc(100vh-8rem)] px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col h-[calc(100vh-7rem)]">
             <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
                 {/* Left Column */}
                 <div className="lg:col-span-3 flex flex-col min-h-0">

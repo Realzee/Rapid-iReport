@@ -248,7 +248,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                     )}
                 </div>
                 <div className="flex-1 min-w-0">
-                    <div className="h-[60vh] lg:h-[calc(100vh-8.5rem)] lg:sticky lg:top-24">
+                    <div className="h-[60vh] lg:h-[calc(100vh-8.5rem)] lg:sticky lg:top-20">
                         <MapView 
                             reports={reports} 
                             responders={responders}

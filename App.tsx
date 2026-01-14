@@ -128,8 +128,8 @@ const App: React.FC = () => {
   }
 
   const mainClasses = view === 'controller'
-    ? 'pt-24 pb-8' // Remove horizontal padding & container for full-width controller view
-    : 'container mx-auto pt-24 px-4 sm:px-6 lg:px-8 pb-8'; // Standard padding for other views
+    ? 'pt-20 pb-8 px-4 sm:px-6 lg:px-8' // Aligned pt with header, added padding here for full-width view
+    : 'container mx-auto pt-20 px-4 sm:px-6 lg:px-8 pb-8'; // Aligned pt with header
 
   return (
     <div className="min-h-screen relative overflow-x-hidden">
