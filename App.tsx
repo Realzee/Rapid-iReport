@@ -133,7 +133,7 @@ const App: React.FC = () => {
         {session && profile ? (
           <>
             <Header currentView={view} setView={setView} profile={profile} />
-            <main className="pt-24 px-4 sm:px-6 lg:px-8 h-screen">
+            <main className="pt-24 px-4 sm:px-6 lg:px-8 pb-8">
               {renderView()}
             </main>
           </>

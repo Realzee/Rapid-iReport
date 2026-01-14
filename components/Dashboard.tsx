@@ -195,7 +195,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
     }
 
     return (
-        <div className="container mx-auto h-full flex flex-col">
+        <div className="container mx-auto flex flex-col">
             <div className="flex-shrink-0">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                     <div>
@@ -225,8 +225,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                 </div>
             </div>
 
-            <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-6">
-                <div className="lg:w-[400px] lg:flex-shrink-0 h-[50vh] lg:h-full overflow-y-auto">
+            <div className="flex flex-col lg:flex-row gap-6">
+                <div className="lg:w-[400px] lg:flex-shrink-0">
                      {selectedReport ? (
                         <ReportDetailCard 
                             report={selectedReport}
@@ -247,12 +247,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                         />
                     )}
                 </div>
-                <div className="flex-1 min-w-0 h-[60vh] lg:h-full">
-                    <MapView 
-                        reports={reports} 
-                        responders={responders}
-                        selectedReportId={selectedReportId}
-                    />
+                <div className="flex-1 min-w-0">
+                    <div className="h-[60vh] lg:h-[calc(100vh-8.5rem)] lg:sticky lg:top-24">
+                        <MapView 
+                            reports={reports} 
+                            responders={responders}
+                            selectedReportId={selectedReportId}
+                        />
+                    </div>
                 </div>
             </div>
 
