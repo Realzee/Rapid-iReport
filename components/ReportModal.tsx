@@ -5,8 +5,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport } from '../types';
-import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon } from './icons';
+import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon } from './icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface ReportModalProps {
     isOpen: boolean;
@@ -51,20 +54,88 @@ const geocodeLocation = async (location: string): Promise<{coords: LocationCoord
     return { coords: null, boundary: null, boundingbox: null };
 }
 
+const reverseGeocode = async (coords: LocationCoords): Promise<string> => {
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
+        if (!response.ok) return "Unknown location";
+        
+        const data = await response.json();
+        return data.display_name || "Unknown location";
+    } catch (error) {
+        console.error("Reverse geocoding failed:", error);
+        return "Could not fetch location name";
+    }
+}
+
+// --- Location Picker Component ---
+const markerIcon = new L.Icon({
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    shadowSize: [41, 41]
+});
+
+const MapClickHandler: React.FC<{ onLocationChange: (coords: LocationCoords, address: string) => void }> = ({ onLocationChange }) => {
+    useMapEvents({
+        click(e) {
+            const newPos = e.latlng;
+            reverseGeocode({ lat: newPos.lat, lng: newPos.lng }).then(address => {
+                onLocationChange({ lat: newPos.lat, lng: newPos.lng }, address);
+            });
+        },
+    });
+    return null;
+}
+
+const MapViewUpdater: React.FC<{ coords?: LocationCoords | null }> = ({ coords }) => {
+    const map = useMap();
+    useEffect(() => {
+        if (coords) {
+            map.flyTo([coords.lat, coords.lng], 16);
+        }
+    }, [coords, map]);
+    return null;
+}
+
+const LocationPicker: React.FC<{
+    initialCoords?: LocationCoords | null;
+    onLocationChange: (coords: LocationCoords, address: string) => void;
+}> = ({ initialCoords, onLocationChange }) => {
+    const { theme } = useTheme();
+    const lightMapUrl = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+    const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+    const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
+    
+    return (
+        <div className="h-64 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700">
+            <MapContainer center={initialCoords ? [initialCoords.lat, initialCoords.lng] : [-1.286389, 36.817223]} zoom={initialCoords ? 16 : 13} style={{ height: '100%', width: '100%' }}>
+                <TileLayer key={theme} url={tileUrl} attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>' />
+                <MapClickHandler onLocationChange={onLocationChange} />
+                {initialCoords && <Marker position={[initialCoords.lat, initialCoords.lng]} icon={markerIcon} />}
+                <MapViewUpdater coords={initialCoords} />
+            </MapContainer>
+        </div>
+    );
+};
+// --- End Location Picker Component ---
+
 const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit }) => {
     const [reportType, setReportType] = useState<ReportType>('vehicle');
     const [formData, setFormData] = useState<any>({});
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
+    const [isMapVisible, setMapVisible] = useState(false);
     
     useEffect(() => {
         if (isOpen) {
+            setMapVisible(false); // Hide map on modal open/re-open
             if (reportToEdit) {
                 const isVehicle = isVehicleReport(reportToEdit);
                 setReportType(isVehicle ? 'vehicle' : 'crime');
                 
-                // Unify location field for easier editing in the form state
                 const location = isVehicle 
                     ? (reportToEdit as VehicleReport).last_seen_location 
                     : (reportToEdit as CrimeReport).location;
@@ -73,7 +144,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 setImagePreviews(reportToEdit.evidence_images || []);
                 setImageFiles([]);
             } else {
-                // Reset for new report
                 setReportType('vehicle');
                 setFormData({ severity: Severity.MEDIUM });
                 setImagePreviews([]);
@@ -86,7 +156,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         if (e.target.files) {
             const selectedFiles = Array.from(e.target.files);
             setImageFiles(prev => [...prev, ...selectedFiles]);
-            // FIX: Explicitly cast file to Blob to satisfy URL.createObjectURL's type requirement as it was being inferred as 'unknown'.
             const newPreviews = selectedFiles.map(file => URL.createObjectURL(file as Blob));
             setImagePreviews(prev => [...prev, ...newPreviews]);
         }
@@ -94,21 +163,27 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
     const removeImage = (index: number) => {
         const previewToRemove = imagePreviews[index];
-        
-        // If it's an object URL from a newly added file, remove the file from state.
         if (previewToRemove.startsWith('blob:')) {
             const fileIndex = imageFiles.findIndex(file => URL.createObjectURL(file) === previewToRemove);
             if (fileIndex > -1) {
                 setImageFiles(files => files.filter((_, i) => i !== fileIndex));
             }
         }
-        
-        // Always remove the preview. On submit, the final list of URLs is constructed from this state.
         setImagePreviews(previews => previews.filter((_, i) => i !== index));
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleLocationChange = (coords: LocationCoords, address: string) => {
+        setFormData(prev => ({
+            ...prev,
+            location: address,
+            location_coords: coords,
+            location_boundary: null,
+            location_boundingbox: null,
+        }));
     };
 
     const currentVehicleModels = useMemo(() => {
@@ -124,7 +199,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("User not authenticated");
 
-            // 1. Upload any new image files
             const newImageUrls: string[] = [];
             const reportId = reportToEdit?.id || crypto.randomUUID();
 
@@ -132,35 +206,28 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 const filePath = `${reportId}/${file.name}-${crypto.randomUUID()}`;
                 const { error: uploadError } = await supabase.storage.from('evidence').upload(filePath, file);
                 if (uploadError) throw uploadError;
-                
                 const { data: { publicUrl } } = supabase.storage.from('evidence').getPublicUrl(filePath);
                 newImageUrls.push(publicUrl);
             }
             
-            // 2. Combine existing URLs with new ones
             const existingImageUrls = imagePreviews.filter(p => !p.startsWith('blob:'));
             const finalImageUrls = [...existingImageUrls, ...newImageUrls];
 
-            // 3. Geocode location if necessary
-            let geocodedData: { coords: LocationCoords | null, boundary: any | null, boundingbox: [number, number, number, number] | null } = { coords: null, boundary: null, boundingbox: null };
-            const locationInput = formData.location || '';
+            let geocodedData: { coords: LocationCoords | null, boundary: any | null, boundingbox: [number, number, number, number] | null } = { 
+                coords: formData.location_coords || null, 
+                boundary: formData.location_boundary || null, 
+                boundingbox: formData.location_boundingbox || null 
+            };
             
-            // First, try to parse coordinates directly from input
-            const coordParts = locationInput.split(',').map((s: string) => s.trim());
-            if (coordParts.length === 2) {
-                const lat = parseFloat(coordParts[0]);
-                const lng = parseFloat(coordParts[1]);
-                if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                    geocodedData.coords = { lat, lng };
-                }
-            }
+            const locationInput = formData.location || '';
+            const existingCoordsAreStale = formData.location_coords && (
+                isVehicleReport(reportToEdit) ? reportToEdit.last_seen_location !== locationInput : (reportToEdit as CrimeReport)?.location !== locationInput
+            );
 
-            // If direct parsing fails, call the geocoding service
-            if (!geocodedData.coords && locationInput) {
+            if (!formData.location_coords || existingCoordsAreStale) {
                 geocodedData = await geocodeLocation(locationInput);
             }
-
-            // 4. Prepare data payload
+            
             let reportData;
             const tableName = reportType === 'vehicle' ? 'vehicle_reports' : 'crime_reports';
             
@@ -191,7 +258,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 };
             }
 
-            // 5. Upsert data (Update or Insert)
             if (reportToEdit) {
                  const { error } = await supabase.from(tableName).update(reportData).eq('id', reportToEdit.id);
                  if (error) throw error;
@@ -245,24 +311,38 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     </div>
                 )}
 
-
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {reportType === 'vehicle' ? (
-                        <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label htmlFor="license_plate" className={labelClasses}>License Plate</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} required className={inputClasses} /></div>
-                                <div><label htmlFor="vehicle_make" className={labelClasses}>Vehicle Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} required className={inputClasses} list="makes-list" /></div>
-                                <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} required className={inputClasses} list="models-list" /></div>
-                                <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} required className={inputClasses} list="colors-list" /></div>
-                            </div>
-                             <div><label htmlFor="location_vehicle" className={labelClasses}>Last Seen Location</label><input type="text" name="location" id="location_vehicle" value={formData.location || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g., Main St & 2nd Ave, or -26.2, 27.8"/></div>
-                        </>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label htmlFor="license_plate" className={labelClasses}>License Plate</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} required className={inputClasses} /></div>
+                            <div><label htmlFor="vehicle_make" className={labelClasses}>Vehicle Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} required className={inputClasses} list="makes-list" /></div>
+                            <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} required className={inputClasses} list="models-list" /></div>
+                            <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} required className={inputClasses} list="colors-list" /></div>
+                        </div>
                     ) : (
                          <>
                             <div><label htmlFor="title" className={labelClasses}>Incident Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} required className={inputClasses} /></div>
                             <div><label htmlFor="crime_type" className={labelClasses}>Type of Crime</label><input type="text" name="crime_type" id="crime_type" value={formData.crime_type || ''} onChange={handleChange} required className={inputClasses} /></div>
-                            <div><label htmlFor="location_crime" className={labelClasses}>Location</label><input type="text" name="location" id="location_crime" value={formData.location || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g., City Park, or -26.2, 27.8" /></div>
                         </>
+                    )}
+
+                    <div>
+                        <label htmlFor="location" className={labelClasses}>{reportType === 'vehicle' ? 'Last Seen Location' : 'Location'}</label>
+                        <div className="relative mt-1">
+                            <input type="text" name="location" id="location" value={formData.location || ''} onChange={handleChange} required className={`${inputClasses} !mt-0 pr-10`} placeholder="Type an address or drop a pin"/>
+                            <button type="button" onClick={() => setMapVisible(!isMapVisible)} className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 transition-colors" title="Pin location on map">
+                                <MapPinIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {isMapVisible && (
+                        <div className="mt-2">
+                             <LocationPicker
+                                initialCoords={formData.location_coords}
+                                onLocationChange={handleLocationChange}
+                            />
+                        </div>
                     )}
                     
                     <div>
@@ -307,7 +387,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             ))}
                         </div>
                     )}
-
 
                     <div className="pt-6 flex justify-end space-x-4">
                         <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
