@@ -46,7 +46,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         if (e.target.files) {
             const selectedFiles = Array.from(e.target.files);
             setImageFiles(prev => [...prev, ...selectedFiles]);
-            const newPreviews = selectedFiles.map(file => URL.createObjectURL(file));
+            // FIX: Explicitly cast file to Blob to satisfy URL.createObjectURL's type requirement as it was being inferred as 'unknown'.
+            const newPreviews = selectedFiles.map(file => URL.createObjectURL(file as Blob));
             setImagePreviews(prev => [...prev, ...newPreviews]);
         }
     };

@@ -188,42 +188,44 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-[calc(100vh-5rem)]">
+            <div className="flex justify-center items-center h-full">
                 <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
 
     return (
-        <div className="container mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                <div>
-                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{isResponder ? "Responder Dashboard" : "Control Center"}</h2>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">
-                        {isResponder ? "Live view of your assigned incidents." : "Live operational overview of community safety."}
-                    </p>
-                </div>
-                 {!isResponder && (
-                    <div className="flex items-center space-x-4 mt-4 md:mt-0">
-                        <button 
-                            onClick={handleOpenNewReportModal}
-                            className="px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
-                        >
-                            <PlusIcon className="w-5 h-5" />
-                            <span>New Report</span>
-                        </button>
+        <div className="container mx-auto h-full flex flex-col">
+            <div className="flex-shrink-0">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{isResponder ? "Responder Dashboard" : "Control Center"}</h2>
+                        <p className="text-gray-500 dark:text-gray-400 mt-1">
+                            {isResponder ? "Live view of your assigned incidents." : "Live operational overview of community safety."}
+                        </p>
                     </div>
-                )}
+                     {!isResponder && (
+                        <div className="flex items-center space-x-4 mt-4 md:mt-0">
+                            <button 
+                                onClick={handleOpenNewReportModal}
+                                className="px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
+                            >
+                                <PlusIcon className="w-5 h-5" />
+                                <span>New Report</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <StatCard title={isResponder ? "Assigned Reports" : "Total Reports"} value={reports.length.toString()} icon={<ZapIcon />} color="blue" />
+                    <StatCard title="Active Incidents" value={reports.filter(r => r.status === 'active' || r.status === 'in_progress').length.toString()} icon={<AlertTriangleIcon />} color="red" />
+                    <StatCard title="Resolved Today" value={reports.filter(r => r.status === 'resolved' || r.status === 'recovered').length.toString()} icon={<CheckCircleIcon />} color="green" />
+                    <StatCard title="Available Responders" value={responders.filter(r => r.status === 'available').length.toString()} icon={<ZapIcon />} color="yellow" />
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                <StatCard title={isResponder ? "Assigned Reports" : "Total Reports"} value={reports.length.toString()} icon={<ZapIcon />} color="blue" />
-                <StatCard title="Active Incidents" value={reports.filter(r => r.status === 'active' || r.status === 'in_progress').length.toString()} icon={<AlertTriangleIcon />} color="red" />
-                <StatCard title="Resolved Today" value={reports.filter(r => r.status === 'resolved' || r.status === 'recovered').length.toString()} icon={<CheckCircleIcon />} color="green" />
-                <StatCard title="Available Responders" value={responders.filter(r => r.status === 'available').length.toString()} icon={<ZapIcon />} color="yellow" />
-            </div>
-
-            <div className="flex flex-col lg:flex-row gap-6 lg:h-[70vh]">
+            <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-6">
                 <div className="lg:w-[400px] lg:flex-shrink-0 h-[50vh] lg:h-full">
                      {selectedReport ? (
                         <ReportDetailCard 
