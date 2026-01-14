@@ -6,6 +6,8 @@ import Dashboard from './components/Dashboard';
 import AuthPage from './pages/AuthPage';
 import UsersPage from './pages/UsersPage';
 import CompaniesPage from './pages/CompaniesPage';
+import MapPage from './pages/MapPage';
+import ReportsPage from './pages/ReportsPage';
 import { supabase } from './utils/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from './types';
@@ -94,6 +96,10 @@ const App: React.FC = () => {
     switch(view) {
       case 'dashboard':
         return <Dashboard profile={profile} />;
+      case 'reports':
+        return <ReportsPage />;
+      case 'map':
+        return <MapPage />;
       case 'users':
         return <UsersPage />;
       case 'companies':
