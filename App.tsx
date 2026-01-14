@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -9,11 +8,12 @@ import CompaniesPage from './pages/CompaniesPage';
 import MapPage from './pages/MapPage';
 import ReportsPage from './pages/ReportsPage';
 import ProfilePage from './pages/ProfilePage';
+import ControllerPage from './pages/ControllerPage';
 import { supabase } from './utils/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from './types';
 
-type View = 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile';
+type View = 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -83,10 +83,15 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (profile) {
-      const isAdminView = view === 'users' || view === 'companies';
-      const canAccessAdminViews = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
+      const userManagementView = view === 'users' || view === 'companies';
+      const canAccessUserManagement = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
+      if (userManagementView && !canAccessUserManagement) {
+        setView('dashboard');
+      }
 
-      if (isAdminView && !canAccessAdminViews) {
+      const controllerView = view === 'controller';
+      const canAccessController = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role);
+      if (controllerView && !canAccessController) {
         setView('dashboard');
       }
     }
@@ -97,6 +102,8 @@ const App: React.FC = () => {
     switch(view) {
       case 'dashboard':
         return <Dashboard profile={profile} />;
+      case 'controller':
+        return <ControllerPage profile={profile} />;
       case 'reports':
         return <ReportsPage />;
       case 'map':

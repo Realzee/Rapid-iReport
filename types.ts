@@ -16,10 +16,13 @@ export enum UserStatus {
 export enum ReportStatus {
   PENDING = 'pending',
   ACTIVE = 'active',
+  ASSIGNED = 'assigned',
   IN_PROGRESS = 'in_progress',
+  ON_SCENE = 'on_scene',
   RESOLVED = 'resolved',
   REJECTED = 'rejected',
   RECOVERED = 'recovered', // specific to vehicle
+  CLOSED = 'closed',
 }
 
 export enum Severity {
@@ -50,6 +53,7 @@ export interface Profile {
   company_id?: string;
   avatar_url?: string;
   last_seen_at?: string;
+  responder_status?: ResponderStatus;
 }
 
 export interface LocationCoords {
@@ -110,4 +114,13 @@ export interface ChatMessage {
     sender: 'Controller' | 'Responder';
     text: string;
     timestamp: string;
+}
+
+export interface ReportUpdate {
+  id: string;
+  report_id: string;
+  user_id: string; // profile id
+  content: string;
+  created_at: string; // ISO date string
+  user_full_name?: string; // Joined from profiles table
 }

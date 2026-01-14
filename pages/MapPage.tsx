@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, Responder, ResponderStatus } from '../types';
+import { Report, Responder, ResponderStatus, Profile } from '../types';
 import MapView from '../components/MapView';
 
 const MapPage: React.FC = () => {
@@ -31,10 +31,10 @@ const MapPage: React.FC = () => {
                 ...(crimeData || []).map(r => ({...r, type: 'crime'})),
             ];
 
-            const mappedResponders: Responder[] = (respondersData || []).map((profile, index) => ({
+            const mappedResponders: Responder[] = (respondersData || []).map((profile: Profile) => ({
                 id: profile.id,
                 full_name: profile.full_name,
-                status: [ResponderStatus.AVAILABLE, ResponderStatus.ON_SCENE, ResponderStatus.OFF_DUTY][index % 3],
+                status: profile.responder_status || ResponderStatus.OFF_DUTY,
                 location_coords: { 
                     lat: -1.286389 + (Math.random() - 0.5) * 0.1, 
                     lng: 36.817223 + (Math.random() - 0.5) * 0.1,

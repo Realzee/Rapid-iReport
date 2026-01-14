@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Profile, Company, UserRole, UserStatus } from '../types';
+import { Profile, Company, UserRole, UserStatus, ResponderStatus } from '../types';
 import { XIcon } from './icons';
 
 interface AddEditUserModalProps {
@@ -24,6 +25,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                 role: UserRole.USER,
                 status: UserStatus.PENDING,
                 company_id: undefined,
+                responder_status: ResponderStatus.OFF_DUTY,
             });
         }
         setPassword('');
@@ -81,6 +83,14 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                             {Object.values(UserRole).map(role => <option key={role} value={role} className="capitalize">{role}</option>)}
                         </select>
                     </div>
+                    {formData.role === UserRole.RESPONDER && (
+                        <div>
+                            <label htmlFor="responder_status" className={labelClasses}>Responder Status</label>
+                            <select name="responder_status" id="responder_status" value={formData.responder_status || ''} onChange={handleChange} className={inputClasses}>
+                                {Object.values(ResponderStatus).map(status => <option key={status} value={status} className="capitalize">{status.replace(/_/g, ' ')}</option>)}
+                            </select>
+                        </div>
+                    )}
                     <div>
                         <label htmlFor="status" className={labelClasses}>Status</label>
                         <select name="status" id="status" value={formData.status || ''} onChange={handleChange} className={inputClasses}>

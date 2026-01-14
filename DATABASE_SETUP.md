@@ -1,3 +1,4 @@
+
 # RAPID iREPORT - Supabase Database Setup
 
 If you encounter errors like "Could not find column 'location_boundary'", "violates row-level security policy", or "Error setting up presence", your Supabase database schema is out of sync with the application code.
@@ -44,8 +45,9 @@ This comprehensive script creates all necessary types, tables, functions, and se
 -- Create ENUM types for controlled vocabularies to ensure data integrity.
 DO $$ BEGIN CREATE TYPE public.user_role AS ENUM ('admin', 'moderator', 'controller', 'responder', 'user'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE public.user_status AS ENUM ('active', 'pending', 'suspended'); EXCEPTION WHEN duplicate_object THEN null; END $$;
-DO $$ BEGIN CREATE TYPE public.report_status AS ENUM ('pending', 'active', 'in_progress', 'resolved', 'rejected', 'recovered'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE public.report_status AS ENUM ('pending', 'active', 'assigned', 'in_progress', 'on_scene', 'resolved', 'rejected', 'recovered', 'closed'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE public.severity AS ENUM ('critical', 'high', 'medium', 'low'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE public.responder_status AS ENUM ('available', 'en_route', 'on_scene', 'off_duty'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 
 -- === PART 2: TABLE CREATION ===
@@ -60,13 +62,12 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     id uuid NOT NULL PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email text UNIQUE,
     full_name text,
-    -- NOTE: If you have an old schema with text-based roles/statuses, you may need to migrate them manually.
-    -- For new setups, these will be created as ENUM types.
     role public.user_role NOT NULL DEFAULT 'user',
     status public.user_status NOT NULL DEFAULT 'pending',
     company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL,
     avatar_url text,
-    last_seen_at timestamptz
+    last_seen_at timestamptz,
+    responder_status public.responder_status
 );
 
 CREATE TABLE IF NOT EXISTS public.vehicle_reports (
@@ -107,6 +108,14 @@ CREATE TABLE IF NOT EXISTS public.crime_reports (
     location_boundingbox real[]
 );
 
+CREATE TABLE IF NOT EXISTS public.report_updates (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    report_id uuid NOT NULL, -- No FK constraint to support both report types
+    user_id uuid NOT NULL REFERENCES public.profiles(id),
+    content text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+
 
 -- === PART 3: AUTOMATIC PROFILE CREATION ===
 -- This function and trigger are CRITICAL. It creates a profile when a new user signs up.
@@ -138,6 +147,7 @@ CREATE TRIGGER on_auth_user_created
 -- These commands add missing columns to tables without deleting data.
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url text; -- Ensure avatar column exists
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS responder_status public.responder_status;
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS assigned_to uuid REFERENCES public.profiles(id);
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS location_boundary jsonb;
@@ -195,6 +205,19 @@ CREATE POLICY "Enable insert access for users" ON public.crime_reports FOR INSER
 CREATE POLICY "Enable update access based on role" ON public.crime_reports FOR UPDATE TO authenticated USING (get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller') OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
 CREATE POLICY "Enable delete access for admins/mods" ON public.crime_reports FOR DELETE TO authenticated USING (get_user_role(auth.uid()) IN ('admin', 'moderator'));
 
+-- REPORT UPDATES Table Policies
+ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow admin/controller to manage updates" ON public.report_updates;
+DROP POLICY IF EXISTS "Allow read access to relevant parties" ON public.report_updates;
+
+-- A user can see updates if they can see the report itself (this is a simplified check).
+-- In a more complex system, this would involve a function that checks permissions on the parent report.
+CREATE POLICY "Allow read access to relevant parties" ON public.report_updates
+FOR SELECT TO authenticated USING (get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder'));
+
+CREATE POLICY "Allow admin/controller to manage updates" ON public.report_updates
+FOR INSERT TO authenticated
+WITH CHECK (get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'));
 
 -- === PART 6: STORAGE PERMISSIONS ===
 -- EVIDENCE BUCKET POLICIES
@@ -205,18 +228,15 @@ CREATE POLICY "Allow authenticated uploads to evidence" ON storage.objects FOR I
 
 -- AVATARS BUCKET POLICIES
 DROP POLICY IF EXISTS "Allow public read access to avatars" ON storage.objects;
--- Drop the old, incorrect policy and the new ones to ensure script can be re-run
 DROP POLICY IF EXISTS "Allow user to manage their own avatar" ON storage.objects;
 DROP POLICY IF EXISTS "Allow user to insert their own avatar" ON storage.objects;
 DROP POLICY IF EXISTS "Allow user to update their own avatar" ON storage.objects;
 
 CREATE POLICY "Allow public read access to avatars" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
--- This policy allows a user to upload an avatar only inside a folder that matches their own user ID.
 CREATE POLICY "Allow user to insert their own avatar" ON storage.objects FOR INSERT TO authenticated WITH CHECK (
   bucket_id = 'avatars' AND
   auth.uid() = (storage.foldername(name))[1]::uuid
 );
--- This policy allows a user to update their own avatar, but only if it's in their folder.
 CREATE POLICY "Allow user to update their own avatar" ON storage.objects FOR UPDATE TO authenticated USING (
   bucket_id = 'avatars' AND
   auth.uid() = (storage.foldername(name))[1]::uuid

@@ -66,10 +66,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                 ...(crimeData || []).map(r => ({...r, type: 'crime'})),
             ];
 
-            const mappedResponders: Responder[] = (respondersData || []).map((profile, index) => ({
+            const mappedResponders: Responder[] = (respondersData || []).map((profile) => ({
                 id: profile.id,
                 full_name: profile.full_name,
-                status: [ResponderStatus.AVAILABLE, ResponderStatus.ON_SCENE, ResponderStatus.OFF_DUTY][index % 3],
+                status: profile.responder_status || ResponderStatus.OFF_DUTY,
                 location_coords: { 
                     lat: -1.286389 + (Math.random() - 0.5) * 0.1, 
                     lng: 36.817223 + (Math.random() - 0.5) * 0.1,

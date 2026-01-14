@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ReportStatus } from '../types';
 
@@ -13,6 +12,10 @@ const statusStyles: Record<ReportStatus, string> = {
   [ReportStatus.RESOLVED]: 'bg-green-500/20 text-green-400 border-green-500/30',
   [ReportStatus.REJECTED]: 'bg-red-500/20 text-red-400 border-red-500/30',
   [ReportStatus.RECOVERED]: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
+  // FIX: Added missing status styles for 'assigned', 'on_scene', and 'closed' to match the ReportStatus enum.
+  [ReportStatus.ASSIGNED]: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  [ReportStatus.ON_SCENE]: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+  [ReportStatus.CLOSED]: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
 
 const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {

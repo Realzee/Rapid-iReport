@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { PlusIcon, UsersIcon } from '../components/icons';
-import { Profile, Company } from '../types';
+import { Profile, Company, UserRole } from '../types';
 import UserManagementTable from '../components/UserManagementTable';
 import AddEditUserModal from '../components/AddEditUserModal';
 import DeleteUserModal from '../components/DeleteUserModal';
@@ -117,7 +117,8 @@ const UsersPage: React.FC = () => {
                     .from('profiles')
                     .update({
                         status: userToSave.status,
-                        company_id: userToSave.company_id || null
+                        company_id: userToSave.company_id || null,
+                        responder_status: userToSave.role === UserRole.RESPONDER ? userToSave.responder_status : null
                     })
                     .eq('id', signUpData.user.id);
                 

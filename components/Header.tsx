@@ -8,7 +8,7 @@ import ThemeToggle from './ThemeToggle';
 
 interface HeaderProps {
     currentView: string;
-    setView: (view: 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile') => void;
+    setView: (view: 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller') => void;
     profile: Profile;
 }
 
@@ -31,7 +31,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
     setMobileMenuOpen(false);
   };
 
-  const handleMobileLinkClick = (view: 'dashboard' | 'reports' | 'map' | 'users' | 'companies') => {
+  const handleMobileLinkClick = (view: 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller') => {
       setView(view);
       setMobileMenuOpen(false);
   }
@@ -47,10 +47,14 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
   }, [mobileMenuOpen]);
 
   const canAccessAdminPages = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
+  const canAccessController = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role);
 
   const NavLinks: React.FC<{mobile?: boolean}> = ({ mobile = false}) => (
     <>
       <button onClick={() => mobile ? handleMobileLinkClick('dashboard') : setView('dashboard')} className={mobile ? mobileNavLinkClasses('dashboard') : navLinkClasses('dashboard')}>Dashboard</button>
+      {canAccessController && (
+        <button onClick={() => mobile ? handleMobileLinkClick('controller') : setView('controller')} className={mobile ? mobileNavLinkClasses('controller') : navLinkClasses('controller')}>Controller</button>
+      )}
       <button onClick={() => mobile ? handleMobileLinkClick('reports') : setView('reports')} className={mobile ? mobileNavLinkClasses('reports') : navLinkClasses('reports')}>Reports</button>
       <button onClick={() => mobile ? handleMobileLinkClick('map') : setView('map')} className={mobile ? mobileNavLinkClasses('map') : navLinkClasses('map')}>Map</button>
       {canAccessAdminPages && (
@@ -110,7 +114,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
       <div className={`md:hidden absolute top-20 left-0 right-0 bg-white/95 dark:bg-gray-950/95 backdrop-blur-md shadow-lg transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-y-0' : '-translate-y-[150%]'}`}>
           <nav className="flex flex-col p-4 space-y-2">
             <NavLinks mobile={true} />
-            <div className="border-t border-gray-200 dark:border-gray-700 my-2 pt-2">
+            <div className="border-t border-gray-200 dark:border-gray-700 my-2 pt-2 space-y-2">
+                 <button onClick={() => handleMobileLinkClick('profile')} className={mobileNavLinkClasses('profile')}>Profile</button>
                  <button onClick={handleLogout} className="block w-full text-left px-4 py-3 text-lg text-red-500 dark:text-red-400 hover:bg-red-500/10 rounded-md">Logout</button>
             </div>
           </nav>
