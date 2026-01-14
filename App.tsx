@@ -128,7 +128,7 @@ const App: React.FC = () => {
   }
 
   const mainClasses = view === 'controller'
-    ? 'pt-24 pb-8' // Remove horizontal padding for full-width controller view
+    ? 'pt-24 pb-8' // Remove horizontal padding & container for full-width controller view
     : 'container mx-auto pt-24 px-4 sm:px-6 lg:px-8 pb-8'; // Standard padding for other views
 
   return (
