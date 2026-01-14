@@ -5,7 +5,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport } from '../types';
-import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon } from './icons';
+import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon } from './icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -104,18 +104,63 @@ const LocationPicker: React.FC<{
     onLocationChange: (coords: LocationCoords, address: string) => void;
 }> = ({ initialCoords, onLocationChange }) => {
     const { theme } = useTheme();
+    const [isLocating, setIsLocating] = useState(false);
     const lightMapUrl = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
     const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
     const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
+
+    const handleGetCurrentLocation = () => {
+        setIsLocating(true);
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                const coords = { lat: latitude, lng: longitude };
+                const address = await reverseGeocode(coords);
+                onLocationChange(coords, address);
+                setIsLocating(false);
+            },
+            (error) => {
+                let errorMessage = "Could not get your location.";
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage = "Location permission denied. Please enable it in your browser settings.";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage = "Location information is unavailable.";
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage = "The request to get user location timed out.";
+                        break;
+                }
+                alert(errorMessage);
+                setIsLocating(false);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
     
     return (
-        <div className="h-64 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700">
+        <div className="relative h-64 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700">
             <MapContainer center={initialCoords ? [initialCoords.lat, initialCoords.lng] : [-1.286389, 36.817223]} zoom={initialCoords ? 16 : 13} style={{ height: '100%', width: '100%' }}>
                 <TileLayer key={theme} url={tileUrl} attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>' />
                 <MapClickHandler onLocationChange={onLocationChange} />
                 {initialCoords && <Marker position={[initialCoords.lat, initialCoords.lng]} icon={markerIcon} />}
                 <MapViewUpdater coords={initialCoords} />
             </MapContainer>
+            
+            <button 
+                type="button" 
+                onClick={handleGetCurrentLocation}
+                disabled={isLocating}
+                className="absolute top-2 right-2 z-[1000] p-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-full shadow-lg text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                title="Use my current location"
+            >
+                {isLocating ? (
+                     <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                    <CrosshairIcon className="w-5 h-5" />
+                )}
+            </button>
         </div>
     );
 };
