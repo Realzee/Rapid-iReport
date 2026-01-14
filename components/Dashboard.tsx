@@ -8,7 +8,6 @@ import ReportModal from './ReportModal';
 import DeleteReportModal from './DeleteReportModal';
 import ReportDetailCard from './ReportDetailCard';
 import MapModal from './MapModal';
-import ResponderStatusPanel from './ResponderStatusPanel';
 import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon, CarIcon, CrimeIcon } from './icons';
 import { supabase } from '../utils/supabase';
 
@@ -205,13 +204,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
 
             <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
                 {/* Left Column */}
-                <div className="lg:col-span-3 flex flex-col gap-4 min-h-0">
+                <div className="lg:col-span-3 flex flex-col min-h-0">
                     <LiveEventStack
                         reports={sortedReports}
                         onReportSelect={handleReportSelect}
                         selectedReportId={selectedReportId}
                     />
-                    <ResponderStatusPanel responders={responders} />
                 </div>
                 
                 {/* Center Column */}
