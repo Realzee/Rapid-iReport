@@ -205,11 +205,19 @@ CREATE POLICY "Allow authenticated uploads to evidence" ON storage.objects FOR I
 
 -- AVATARS BUCKET POLICIES
 DROP POLICY IF EXISTS "Allow public read access to avatars" ON storage.objects;
+-- Drop the old, incorrect policy and the new ones to ensure script can be re-run
 DROP POLICY IF EXISTS "Allow user to manage their own avatar" ON storage.objects;
+DROP POLICY IF EXISTS "Allow user to insert their own avatar" ON storage.objects;
+DROP POLICY IF EXISTS "Allow user to update their own avatar" ON storage.objects;
+
 CREATE POLICY "Allow public read access to avatars" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
--- This policy allows a user to upload/update an avatar only inside a folder that matches their own user ID.
--- Example: A user with ID 'abc-123' can only write to 'avatars/abc-123/filename.jpg'
-CREATE POLICY "Allow user to manage their own avatar" ON storage.objects FOR INSERT, UPDATE TO authenticated WITH CHECK (
+-- This policy allows a user to upload an avatar only inside a folder that matches their own user ID.
+CREATE POLICY "Allow user to insert their own avatar" ON storage.objects FOR INSERT TO authenticated WITH CHECK (
+  bucket_id = 'avatars' AND
+  auth.uid() = (storage.foldername(name))[1]::uuid
+);
+-- This policy allows a user to update their own avatar, but only if it's in their folder.
+CREATE POLICY "Allow user to update their own avatar" ON storage.objects FOR UPDATE TO authenticated USING (
   bucket_id = 'avatars' AND
   auth.uid() = (storage.foldername(name))[1]::uuid
 );
@@ -218,4 +226,72 @@ CREATE POLICY "Allow user to manage their own avatar" ON storage.objects FOR INS
 
 ---
 
-After running this complete script, your application should function correctly without any further schema or permission-related errors.
+## Step 3: Deploy 'update-user-password' Edge Function (Required for Admins)
+
+The **Users** admin page has a feature for admins to update a user's password. This requires a Supabase Edge Function for security reasons. Without it, you can still update user profiles, but not their passwords from the admin dashboard.
+
+1.  **Install Supabase CLI:** If you haven't already, [install the Supabase CLI](https://supabase.com/docs/guides/cli/getting-started).
+
+2.  **Link your project:** In your computer's terminal, navigate to your project folder and run `supabase login`, then `supabase link --project-ref <your-project-ref>`. Your `<project-ref>` is in your Supabase project's URL (`<project-ref>.supabase.co`).
+
+3.  **Create the function:** Run `supabase functions new update-user-password`. This creates a new folder at `supabase/functions/update-user-password/`.
+
+4.  **Replace the function code:** Open the new file `supabase/functions/update-user-password/index.ts` and replace its entire content with the following code. This code includes necessary CORS headers to allow your app to call it.
+
+    ```typescript
+    import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
+
+    // Define CORS headers for preflight and actual requests
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    }
+
+    serve(async (req) => {
+      // Handle preflight OPTIONS request
+      if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders })
+      }
+
+      try {
+        const { userId, password } = await req.json()
+        if (!userId || !password) {
+          throw new Error("A userId and new password must be provided.");
+        }
+        if (password.length < 6) {
+            throw new Error("Password must be at least 6 characters long.");
+        }
+
+        // Create a Supabase client with the SERVICE_ROLE_KEY to perform admin actions
+        const supabaseAdmin = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+
+        // Update the user's password
+        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
+          userId,
+          { password: password }
+        )
+
+        if (error) {
+          throw error
+        }
+
+        return new Response(JSON.stringify(data), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        })
+      } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        })
+      }
+    })
+    ```
+
+5.  **Deploy the function:** In your terminal, run `supabase functions deploy update-user-password --no-verify-jwt`.
+
+This completes the setup for all application features. After running the SQL script and deploying the function, your application should function correctly without any further schema or permission-related errors.

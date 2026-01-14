@@ -16,9 +16,8 @@ const supabaseUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co';
 // 6. Click "Copy" and paste it below, replacing the placeholder.
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlnbHdkd2h3cGJxYXd1bmJrenl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyNzU3ODksImV4cCI6MjA4Mzg1MTc4OX0.yj6Zdkqr_Wp6oVfg98Rok1ih5wxEvUGj6BwmM782xmU';
 
-// FIX: The check for a placeholder key was causing a TypeScript error because the key is a constant.
-// Since the key is provided, this check is redundant.
 if (!supabaseUrl || !supabaseAnonKey) {
+    // This check remains valid for developers first setting up the project.
     throw new Error("Supabase URL and a valid PUBLIC ANON KEY must be provided in utils/supabase.ts. Do not use a secret key.");
 }
 
