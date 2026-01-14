@@ -226,7 +226,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
             </div>
 
             <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-6">
-                <div className="lg:w-[400px] lg:flex-shrink-0 h-[50vh] lg:h-full">
+                <div className="lg:w-[400px] lg:flex-shrink-0 h-[50vh] lg:h-full overflow-y-auto">
                      {selectedReport ? (
                         <ReportDetailCard 
                             report={selectedReport}
