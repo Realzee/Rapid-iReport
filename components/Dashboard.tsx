@@ -1,22 +1,21 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-// FIX: Import VehicleReport to be used in the type guard.
 import { Report, ReportStatus, UserRole, Profile, Responder, ResponderStatus, VehicleReport } from '../types';
 import StatCard from './StatCard';
-import ReportList from './ReportList';
+import LiveEventStack from './LiveEventStack';
 import MapView from './MapView';
 import ReportModal from './ReportModal';
 import DeleteReportModal from './DeleteReportModal';
 import ReportDetailCard from './ReportDetailCard';
 import MapModal from './MapModal';
-import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon } from './icons';
+import ResponderStatusPanel from './ResponderStatusPanel';
+import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon, CarIcon, CrimeIcon } from './icons';
 import { supabase } from '../utils/supabase';
 
 interface DashboardProps {
     profile: Profile;
 }
 
-// FIX: Update isVehicleReport to be a type guard, enabling type narrowing.
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
 const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
@@ -71,11 +70,11 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                 full_name: profile.full_name,
                 status: [ResponderStatus.AVAILABLE, ResponderStatus.ON_SCENE, ResponderStatus.OFF_DUTY][index % 3],
                 location_coords: { 
-                    lat: -1.286389 + (Math.random() - 0.5) * 0.1, 
-                    lng: 36.817223 + (Math.random() - 0.5) * 0.1,
+                    lat: -26.23 + (Math.random() - 0.5) * 0.1, 
+                    lng: 27.85 + (Math.random() - 0.5) * 0.1,
                 },
             }));
-
+            
             setReports(combinedReports);
             setResponders(mappedResponders);
             setAllUsers(usersData || []);
@@ -130,6 +129,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
           supabase.removeChannel(reportsChannels);
         };
     }, [isResponder, profile.id, selectedReportId]);
+    
+    // Select the first report by default if none is selected
+    useEffect(() => {
+        if (!selectedReportId && reports.length > 0) {
+            setSelectedReportId(reports[0].id);
+        }
+    }, [reports, selectedReportId]);
 
     const sortedReports = useMemo(() => {
         return reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
@@ -140,7 +146,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
     }, [reports, selectedReportId]);
 
     const handleReportSelect = (reportId: string) => {
-        setSelectedReportId(prevId => prevId === reportId ? null : reportId);
+        setSelectedReportId(reportId);
     };
 
     const handleOpenNewReportModal = () => {
@@ -157,15 +163,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         setReportToDelete(report);
     };
 
-    const handleStatusUpdate = async (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => {
-        const tableName = reportType === 'vehicle' ? 'vehicle_reports' : 'crime_reports';
-        const { error } = await supabase
-            .from(tableName)
-            .update({ status: newStatus })
-            .eq('id', reportId);
-        if (error) {
-            alert(`Failed to update status: ${error.message}`);
-        }
+    const handleCloseDetailCard = () => {
+        setSelectedReportId(null);
     };
 
     const confirmDeleteReport = async () => {
@@ -177,7 +176,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         if (error) {
             alert("Error deleting report: " + error.message);
         } else {
-            // Optimistic UI update, though realtime should also catch it.
             setReports(prev => prev.filter(r => r.id !== reportToDelete.id));
             if (selectedReportId === reportToDelete.id) {
                 setSelectedReportId(null);
@@ -195,66 +193,54 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
     }
 
     return (
-        <div className="container mx-auto flex flex-col">
+        <div className="container mx-auto flex flex-col h-[calc(100vh-8.5rem)]">
             <div className="flex-shrink-0">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                    <div>
-                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{isResponder ? "Responder Dashboard" : "Control Center"}</h2>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1">
-                            {isResponder ? "Live view of your assigned incidents." : "Live operational overview of community safety."}
-                        </p>
-                    </div>
-                     {!isResponder && (
-                        <div className="flex items-center space-x-4 mt-4 md:mt-0">
-                            <button 
-                                onClick={handleOpenNewReportModal}
-                                className="px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
-                            >
-                                <PlusIcon className="w-5 h-5" />
-                                <span>New Report</span>
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                    <StatCard title={isResponder ? "Assigned Reports" : "Total Reports"} value={reports.length.toString()} icon={<ZapIcon />} color="blue" />
-                    <StatCard title="Active Incidents" value={reports.filter(r => r.status === 'active' || r.status === 'in_progress').length.toString()} icon={<AlertTriangleIcon />} color="red" />
-                    <StatCard title="Resolved Today" value={reports.filter(r => r.status === 'resolved' || r.status === 'recovered').length.toString()} icon={<CheckCircleIcon />} color="green" />
-                    <StatCard title="Available Responders" value={responders.filter(r => r.status === 'available').length.toString()} icon={<ZapIcon />} color="yellow" />
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <StatCard title="Active Reports" value={reports.filter(r => r.status === 'active' || r.status === 'in_progress').length.toString()} icon={<ZapIcon />} color="blue" />
+                    <StatCard title="Vehicle Alerts" value={reports.filter(r => isVehicleReport(r)).length.toString()} icon={<CarIcon />} color="red" />
+                    <StatCard title="Crime Reports" value={reports.filter(r => !isVehicleReport(r)).length.toString()} icon={<CrimeIcon />} color="yellow" />
+                    <StatCard title="Active Dispatch" value={reports.filter(r => !!r.assigned_to).length.toString()} icon={<CheckCircleIcon />} color="green" />
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-6">
-                <div className="lg:w-[400px] lg:flex-shrink-0">
+            <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
+                {/* Left Column */}
+                <div className="lg:col-span-3 flex flex-col gap-4 min-h-0">
+                    <LiveEventStack
+                        reports={sortedReports}
+                        onReportSelect={handleReportSelect}
+                        selectedReportId={selectedReportId}
+                    />
+                    <ResponderStatusPanel responders={responders} />
+                </div>
+                
+                {/* Center Column */}
+                <div className="lg:col-span-5 min-h-[40vh] lg:min-h-0">
+                     <MapView 
+                        reports={reports} 
+                        responders={responders}
+                        selectedReportId={selectedReportId}
+                    />
+                </div>
+
+                {/* Right Column */}
+                <div className="lg:col-span-4 min-h-0">
                      {selectedReport ? (
                         <ReportDetailCard 
+                            key={selectedReport.id}
                             report={selectedReport}
-                            onClose={() => setSelectedReportId(null)}
+                            onClose={handleCloseDetailCard}
                             profile={profile}
+                            responders={responders}
                             onEdit={handleOpenEditReportModal}
                             onDelete={handleOpenDeleteReportModal}
                             onViewOnMap={() => setIsMapModalOpen(true)}
                         />
                     ) : (
-                        <ReportList 
-                            reports={sortedReports}
-                            onReportSelect={handleReportSelect}
-                            selectedReportId={selectedReportId}
-                            profile={profile}
-                            allUsers={allUsers}
-                            onStatusUpdate={handleStatusUpdate}
-                        />
+                        <div className="h-full bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center">
+                            <p className="text-gray-500 dark:text-gray-400">Select a report to view details.</p>
+                        </div>
                     )}
-                </div>
-                <div className="flex-1 min-w-0">
-                    <div className="h-[60vh] lg:h-[calc(100vh-8.5rem)] lg:sticky lg:top-24">
-                        <MapView 
-                            reports={reports} 
-                            responders={responders}
-                            selectedReportId={selectedReportId}
-                        />
-                    </div>
                 </div>
             </div>
 
