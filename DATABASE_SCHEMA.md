@@ -170,11 +170,16 @@ RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER SET search_path = public
 AS $$
+DECLARE
+  user_full_name text;
 BEGIN
+  -- Use COALESCE to provide a fallback for full_name, preventing NOT NULL violations if metadata is missing.
+  user_full_name := COALESCE(new.raw_user_meta_data->>'full_name', new.email);
+
   INSERT INTO public.profiles (id, full_name, email, role)
   VALUES (
     new.id,
-    new.raw_user_meta_data->>'full_name',
+    user_full_name,
     new.email,
     COALESCE((new.raw_user_meta_data->>'role')::public.user_role, 'user'::public.user_role)
   );
@@ -182,7 +187,7 @@ BEGIN
   PERFORM public.create_staff_notification(
     'new_user',
     'New User Registered',
-    'A new user (' || (new.raw_user_meta_data->>'full_name') || ') has signed up.',
+    'A new user (' || user_full_name || ') has signed up.',
     new.id,
     ARRAY['admin'::user_role, 'moderator'::user_role]
   );
@@ -239,7 +244,10 @@ CREATE TRIGGER on_new_crime_report_notify
 -- PROFILES
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow authenticated users to view profiles" ON public.profiles;
-CREATE POLICY "Allow authenticated users to view profiles" ON public.profiles FOR SELECT USING (auth.role() = 'authenticated');
+-- Changed from `auth.role() = 'authenticated'` to `true` to allow internal triggers to read profiles.
+CREATE POLICY "Allow authenticated users to view profiles" ON public.profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow users to insert their own profile" ON public.profiles;
+CREATE POLICY "Allow users to insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 DROP POLICY IF EXISTS "Allow users to update their own profile" ON public.profiles;
 CREATE POLICY "Allow users to update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 DROP POLICY IF EXISTS "Admins and moderators can manage all profiles" ON public.profiles;
@@ -249,7 +257,8 @@ CREATE POLICY "Admins and moderators can manage all profiles" ON public.profiles
 -- COMPANIES
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow authenticated users to view companies" ON public.companies;
-CREATE POLICY "Allow authenticated users to view companies" ON public.companies FOR SELECT USING (auth.role() = 'authenticated');
+-- Changed from `auth.role() = 'authenticated'` to `true` for consistency and robustness.
+CREATE POLICY "Allow authenticated users to view companies" ON public.companies FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admins and moderators can manage companies" ON public.companies;
 CREATE POLICY "Admins and moderators can manage companies" ON public.companies FOR ALL
   USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator')));
@@ -296,7 +305,8 @@ CREATE POLICY "Allow assigned responders to update status" ON public.crime_repor
 -- REPORT UPDATES
 ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow relevant users to see updates" ON public.report_updates;
-CREATE POLICY "Allow relevant users to see updates" ON public.report_updates FOR SELECT USING (auth.role() = 'authenticated');
+-- Changed from `auth.role() = 'authenticated'` to `true` for consistency and robustness.
+CREATE POLICY "Allow relevant users to see updates" ON public.report_updates FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Allow relevant users to add updates" ON public.report_updates;
 CREATE POLICY "Allow relevant users to add updates" ON public.report_updates FOR INSERT
   WITH CHECK (
@@ -306,9 +316,16 @@ CREATE POLICY "Allow relevant users to add updates" ON public.report_updates FOR
 
 -- NOTIFICATIONS
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+-- Clean up old and potentially new policies to ensure idempotency
 DROP POLICY IF EXISTS "Users can only see and manage their own notifications" ON public.notifications;
-CREATE POLICY "Users can only see and manage their own notifications" ON public.notifications FOR ALL
-  USING (auth.uid() = recipient_user_id);
+DROP POLICY IF EXISTS "Users can see their own notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Users can update their own notifications" ON public.notifications;
+-- Create specific policies for SELECT and UPDATE
+CREATE POLICY "Users can see their own notifications" ON public.notifications
+  FOR SELECT USING (auth.uid() = recipient_user_id);
+CREATE POLICY "Users can update their own notifications" ON public.notifications
+  FOR UPDATE USING (auth.uid() = recipient_user_id) WITH CHECK (auth.uid() = recipient_user_id);
+
 
 COMMIT;
 

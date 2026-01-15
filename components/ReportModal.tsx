@@ -307,10 +307,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                  const { error } = await supabase.from(tableName).update(reportData).eq('id', reportToEdit.id);
                  if (error) throw error;
             } else {
+                const timestampSuffix = Date.now().toString().slice(-8);
                 const insertData = {
                     ...reportData,
                     id: reportId,
-                    ob_number: `OB${reportType === 'vehicle' ? 'V' : 'C'}/${Date.now()}`,
+                    ob_number: `OB${reportType === 'vehicle' ? 'V' : 'C'}-${timestampSuffix}`,
                     status: ReportStatus.PENDING,
                     reported_by: user.id,
                     reported_at: new Date().toISOString(),
