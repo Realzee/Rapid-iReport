@@ -1,6 +1,5 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-// FIX: Import VehicleReport to be used in the type guard.
 import { Report, ReportStatus, UserRole, Profile, Responder, ResponderStatus, VehicleReport } from '../types';
 import StatCard from './StatCard';
 import ReportList from './ReportList';
@@ -16,7 +15,6 @@ interface DashboardProps {
     profile: Profile;
 }
 
-// FIX: Update isVehicleReport to be a type guard, enabling type narrowing.
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
 const Dashboard: React.FC<DashboardProps> = ({ profile }) => {

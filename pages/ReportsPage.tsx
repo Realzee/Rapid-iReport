@@ -4,9 +4,9 @@ import { Report, Profile, Severity, ReportStatus, VehicleReport } from '../types
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
 import { useTheme } from '../contexts/ThemeContext';
-// FIX: The `sub` function was not found in `date-fns`. Replaced with `subDays` which is the correct function for this operation.
-import { format, subDays } from 'date-fns';
-// FIX: Import missing CheckCircleIcon and AlertTriangleIcon components.
+// FIX: Changed import for subDays to be more specific to resolve module issue.
+import { format } from 'date-fns';
+import subDays from 'date-fns/subDays';
 import { BuildingIcon, ChartBarIcon, ChartPieIcon, MapIcon, ZapIcon, CheckCircleIcon, AlertTriangleIcon } from '../components/icons';
 import StatCard from '../components/StatCard';
 
@@ -134,18 +134,14 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
 
 const TrendsReport: React.FC<{ reports: Report[], options: any }> = ({ reports, options }) => {
     const data = useMemo(() => {
-        // FIX: Use `subDays` instead of `sub` and adjust the call signature.
         const labels = Array.from({ length: 30 }).map((_, i) => format(subDays(new Date(), 29 - i), 'MMM d'));
         const vehicleData = new Array(30).fill(0);
         const crimeData = new Array(30).fill(0);
-        // FIX: Use `subDays` instead of `sub` and adjust the call signature.
         const thirtyDaysAgo = subDays(new Date(), 29);
 
         reports.forEach(report => {
             const reportDate = new Date(report.reported_at);
-            // FIX: Use .getTime() for explicit date comparison to avoid potential type errors.
             if (reportDate.getTime() >= thirtyDaysAgo.getTime()) {
-                // FIX: Use .getTime() on Date objects before performing arithmetic operations.
                 const dayIndex = 29 - Math.floor((new Date().getTime() - reportDate.getTime()) / (1000 * 3600 * 24));
                 if (dayIndex >= 0 && dayIndex < 30) {
                     if (isVehicleReport(report)) vehicleData[dayIndex]++;
