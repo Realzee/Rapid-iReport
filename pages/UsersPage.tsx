@@ -19,7 +19,7 @@ const UsersPage: React.FC = () => {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            const { data: usersData, error: usersError } = await supabase.from('profiles').select('*');
+            const { data: usersData, error: usersError } = await supabase.from('profiles').select('id, email, full_name, role, status, company_id, avatar_url, last_seen_at, responder_status');
             const { data: companiesData, error: companiesError } = await supabase.from('companies').select('*');
 
             if (usersError) console.error('Error fetching users:', usersError);

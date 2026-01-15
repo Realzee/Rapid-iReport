@@ -39,7 +39,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         const fetchReporter = async () => {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('*')
+                .select('full_name, email')
                 .eq('id', report.reported_by)
                 .single();
             if (error) console.error("Error fetching reporter:", error);

@@ -52,8 +52,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
             ] = await Promise.all([
                 vehicleQuery,
                 crimeQuery,
-                supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER),
-                supabase.from('profiles').select('*')
+                supabase.from('profiles').select('id, full_name, responder_status').eq('role', UserRole.RESPONDER),
+                supabase.from('profiles').select('id, full_name')
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -26,7 +27,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         const fetchUpdates = async () => {
             const { data: updatesData, error: updatesError } = await supabase
                 .from('report_updates')
-                .select('*')
+                .select('id, report_id, user_id, content, created_at')
                 .eq('report_id', report.id)
                 .order('created_at', { ascending: true });
 
