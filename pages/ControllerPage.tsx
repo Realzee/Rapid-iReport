@@ -1,6 +1,5 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
-import { Report, Profile, Responder, ResponderStatus, VehicleReport } from '../types';
+import { Report, Profile, Responder, ResponderStatus } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
 import MapView from '../components/MapView';
 import { supabase } from '../utils/supabase';
@@ -111,41 +110,43 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
     }
 
     return (
-        <div className="flex flex-col h-[calc(100vh-7rem)]">
-            <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
-                {/* Left Column */}
-                <div className="lg:col-span-3 flex flex-col min-h-0">
-                    <LiveEventStack
-                        reports={sortedReports}
-                        onReportSelect={(id) => setSelectedReportId(id)}
-                        selectedReportId={selectedReportId}
-                    />
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+            {/* Left Column (scrolls with page) */}
+            <div className="lg:col-span-3">
+                <LiveEventStack
+                    reports={sortedReports}
+                    onReportSelect={(id) => setSelectedReportId(id)}
+                    selectedReportId={selectedReportId}
+                />
+            </div>
 
-                {/* Center Column */}
-                <div className="lg:col-span-6 min-h-[40vh] lg:min-h-0">
-                    <MapView
-                        reports={reports}
-                        responders={responders}
-                        selectedReportId={selectedReportId}
-                    />
-                </div>
-
-                {/* Right Column */}
-                <div className="lg:col-span-3 min-h-0">
-                    {selectedReport ? (
-                        <ControllerReportDetail
-                            key={selectedReport.id}
-                            report={selectedReport}
-                            responders={responders}
-                            profile={profile}
-                        />
-                    ) : (
-                        <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center">
-                            <p className="text-gray-500 dark:text-gray-400">No reports available or selected.</p>
+            {/* Right container for Map and Details */}
+            <div className="lg:col-span-9">
+                 <div className="lg:sticky lg:top-24">
+                     <div className="grid grid-cols-1 lg:grid-cols-9 gap-4">
+                        <div className="lg:col-span-6 min-h-[50vh] lg:h-[calc(100vh-8rem)]">
+                            <MapView
+                                reports={reports}
+                                responders={responders}
+                                selectedReportId={selectedReportId}
+                            />
                         </div>
-                    )}
-                </div>
+                        <div className="lg:col-span-3 min-h-[50vh] lg:h-[calc(100vh-8rem)]">
+                            {selectedReport ? (
+                                <ControllerReportDetail
+                                    key={selectedReport.id}
+                                    report={selectedReport}
+                                    responders={responders}
+                                    profile={profile}
+                                />
+                            ) : (
+                                <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center">
+                                    <p className="text-gray-500 dark:text-gray-400">No reports available or selected.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                 </div>
             </div>
         </div>
     );

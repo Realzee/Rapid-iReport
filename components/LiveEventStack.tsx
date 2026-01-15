@@ -76,7 +76,7 @@ interface LiveEventStackProps {
 
 const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, onReportSelect, selectedReportId }) => {
     return (
-        <div className="bg-gray-900/80 border border-gray-800 rounded-2xl p-4 h-full flex flex-col text-white backdrop-blur-lg">
+        <div className="bg-gray-900/80 border border-gray-800 rounded-2xl p-4 flex flex-col text-white backdrop-blur-lg">
             <div className="flex-shrink-0 mb-4">
                 <div className="flex justify-between items-center">
                     <h2 className="text-xl font-bold">Live Event Stack</h2>
@@ -92,7 +92,7 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, onReportSelect
                 </div>
             </div>
 
-            <div className="flex-grow overflow-y-auto space-y-2">
+            <div className="space-y-2">
                 {reports.map(report => (
                     <LiveEventItem
                         key={report.id}
