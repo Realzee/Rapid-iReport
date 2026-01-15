@@ -26,7 +26,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(100),
                 supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(100),
-                supabase.from('profiles').select('id, full_name, responder_status').eq('role', 'responder')
+                supabase.from('profiles').select('*').eq('role', 'responder')
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);

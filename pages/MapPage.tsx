@@ -19,7 +19,7 @@ const MapPage: React.FC = () => {
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*'),
                 supabase.from('crime_reports').select('*'),
-                supabase.from('profiles').select('id, full_name, responder_status').eq('role', 'responder')
+                supabase.from('profiles').select('*').eq('role', 'responder')
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
