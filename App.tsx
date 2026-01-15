@@ -19,12 +19,17 @@ const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>('dashboard');
   
   useEffect(() => {
     const fetchSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        setError(`Cannot reach authentication server: ${sessionError.message}`);
+      } else {
+        setSession(session);
+      }
       setLoading(false);
     };
 
@@ -32,6 +37,7 @@ const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      setError(null); // Clear errors on auth state change
     });
 
     return () => subscription.unsubscribe();
@@ -42,16 +48,18 @@ const App: React.FC = () => {
 
     if (session?.user) {
         const setupPresence = async () => {
-            const { data, error } = await supabase
+            const { data, error: profileError } = await supabase
                 .from('profiles')
                 .update({ last_seen_at: new Date().toISOString() })
                 .eq('id', session.user.id)
                 .select()
                 .single();
 
-            if (error) {
-                console.error('Error setting up presence and fetching profile:', error);
-                if (error.message.includes('security policy')) {
+            if (profileError) {
+                console.error('Error setting up presence and fetching profile:', profileError);
+                setError(`Failed to load your profile. Please check your connection and Row Level Security policies. Error: ${profileError.message}`);
+                setProfile(null);
+                if (profileError.message.includes('security policy')) {
                     console.error(
                         '%c[SECURITY POLICY ERROR]',
                         'color: yellow; font-weight: bold;',
@@ -60,6 +68,7 @@ const App: React.FC = () => {
                 }
             } else {
                 setProfile(data);
+                setError(null);
             }
 
             presenceInterval = window.setInterval(async () => {
@@ -130,6 +139,21 @@ const App: React.FC = () => {
   const mainClasses = view === 'controller'
     ? 'pt-20 pb-8 px-4 sm:px-6 lg:px-8' // Aligned pt with header, added padding here for full-width view
     : 'container mx-auto pt-20 px-4 sm:px-6 lg:px-8 pb-8'; // Aligned pt with header
+    
+  if (session && error) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-4">
+              <div className="text-center bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg max-w-lg">
+                  <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Application Error</h2>
+                  <p className="mb-4">{error}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">This can happen due to network issues or incorrect database permissions (Row Level Security). Please check the console for more details.</p>
+                  <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
+                      Logout and Try Again
+                  </button>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <div className="min-h-screen relative overflow-x-hidden">
