@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Report, VehicleReport, Severity } from '../types';
 import { format } from 'date-fns';
@@ -29,6 +28,7 @@ const severityTagStyles: Record<Severity, string> = {
     [Severity.LOW]: 'bg-green-500 text-white',
 };
 
+// Compacted LiveEventItem for better space utilization
 const LiveEventItem: React.FC<{ report: Report, isSelected: boolean, onSelect: () => void }> = ({ report, isSelected, onSelect }) => {
     const title = getReportTitle(report);
     const bgStyle = severityBgStyles[report.severity];
@@ -37,21 +37,21 @@ const LiveEventItem: React.FC<{ report: Report, isSelected: boolean, onSelect: (
     return (
         <div
             onClick={onSelect}
-            className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-2 ${isSelected ? 'border-blue-500 bg-blue-700/60' : `border-transparent ${bgStyle}`}`}
+            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border-2 ${isSelected ? 'border-blue-500 bg-blue-700/60' : `border-transparent ${bgStyle}`}`}
         >
-            <div className="flex justify-between items-start">
-                <p className="font-semibold text-white text-md">{title}</p>
+            <div className="flex justify-between items-start gap-2">
+                <div>
+                    <p className="font-semibold text-white text-sm line-clamp-1">{title}</p>
+                    <span className={`mt-1 inline-block px-2 py-0.5 text-xs font-bold rounded-full capitalize ${tagStyle}`}>
+                        {report.severity}
+                    </span>
+                </div>
                 <div className="text-right flex-shrink-0">
-                    <p className="font-mono text-sm text-gray-300">{report.ob_number}</p>
-                    <p className="text-xs text-gray-400">{format(new Date(report.reported_at), 'hh:mm:ss a')}</p>
+                    <p className="font-mono text-xs text-gray-300">{report.ob_number}</p>
+                    <p className="text-xs text-gray-400">{format(new Date(report.reported_at), 'HH:mm:ss')}</p>
                 </div>
             </div>
-            
-            <span className={`mt-2 inline-block px-2.5 py-0.5 text-xs font-bold rounded-full capitalize ${tagStyle}`}>
-                {report.severity}
-            </span>
-
-            <p className="mt-2 text-sm text-gray-300 line-clamp-2">{report.description}</p>
+            <p className="mt-1 text-xs text-gray-300 line-clamp-1">{report.description}</p>
         </div>
     );
 };
@@ -81,15 +81,18 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, onReportSelect
                 </div>
             </div>
 
-            <div className="flex-grow space-y-3 overflow-y-auto pr-1">
-                {reports.map(report => (
-                    <LiveEventItem
-                        key={report.id}
-                        report={report}
-                        isSelected={report.id === selectedReportId}
-                        onSelect={() => onReportSelect(report.id)}
-                    />
-                ))}
+            <div className="flex-grow relative overflow-hidden">
+                <div className="absolute inset-0 overflow-y-auto space-y-2 box-content pr-[17px]">
+                    {reports.map(report => (
+                        <LiveEventItem
+                            key={report.id}
+                            report={report}
+                            isSelected={report.id === selectedReportId}
+                            onSelect={() => onReportSelect(report.id)}
+                        />
+                    ))}
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent pointer-events-none"></div>
             </div>
         </div>
     );
