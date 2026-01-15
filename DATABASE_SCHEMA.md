@@ -1,0 +1,213 @@
+# RAPID iREPORT - Database Schema
+
+This file contains the complete, idempotent SQL script for setting up the Supabase database for the RAPID iREPORT application. This script can be run safely in the Supabase SQL Editor to create all necessary types, tables, functions, and Row Level Security policies.
+
+For detailed setup instructions, refer to `DATABASE_SETUP.md`.
+
+```sql
+BEGIN;
+
+-- 0. Make sure the 'uuid-ossp' extension is enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
+
+-- 1. Create ENUM types
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+        CREATE TYPE public.user_role AS ENUM ('admin', 'moderator', 'controller', 'responder', 'user');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN
+        CREATE TYPE public.user_status AS ENUM ('active', 'pending', 'suspended');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN
+        CREATE TYPE public.report_status AS ENUM ('pending', 'active', 'assigned', 'in_progress', 'on_scene', 'resolved', 'rejected', 'recovered', 'closed');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN
+        CREATE TYPE public.severity AS ENUM ('critical', 'high', 'medium', 'low');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN
+        CREATE TYPE public.responder_status AS ENUM ('available', 'en_route', 'on_scene', 'off_duty');
+    END IF;
+END$$;
+
+
+-- 2. Create Tables
+
+-- Companies Table
+CREATE TABLE IF NOT EXISTS public.companies (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    name text NOT NULL,
+    CONSTRAINT companies_pkey PRIMARY KEY (id)
+);
+
+-- Profiles Table (linked to auth.users)
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id uuid NOT NULL,
+    email text NOT NULL,
+    full_name text NOT NULL,
+    role public.user_role NOT NULL DEFAULT 'user'::public.user_role,
+    status public.user_status NOT NULL DEFAULT 'pending'::public.user_status,
+    company_id uuid,
+    avatar_url text,
+    last_seen_at timestamp with time zone,
+    responder_status public.responder_status,
+    CONSTRAINT profiles_pkey PRIMARY KEY (id),
+    CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE,
+    CONSTRAINT profiles_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE SET NULL
+);
+
+-- Vehicle Reports Table
+CREATE TABLE IF NOT EXISTS public.vehicle_reports (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    ob_number text NOT NULL UNIQUE,
+    license_plate text NOT NULL,
+    vehicle_make text NOT NULL,
+    vehicle_model text NOT NULL,
+    vehicle_color text NOT NULL,
+    last_seen_location text NOT NULL,
+    description text NOT NULL,
+    severity public.severity NOT NULL,
+    status public.report_status NOT NULL,
+    reported_by uuid NOT NULL,
+    assigned_to uuid,
+    reported_at timestamp with time zone NOT NULL DEFAULT now(),
+    location_coords jsonb,
+    evidence_images text[],
+    location_boundary jsonb,
+    location_boundingbox real[4],
+    CONSTRAINT vehicle_reports_pkey PRIMARY KEY (id),
+    CONSTRAINT vehicle_reports_reported_by_fkey FOREIGN KEY (reported_by) REFERENCES public.profiles(id) ON DELETE CASCADE,
+    CONSTRAINT vehicle_reports_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES public.profiles(id) ON DELETE SET NULL
+);
+
+-- Crime Reports Table
+CREATE TABLE IF NOT EXISTS public.crime_reports (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    ob_number text NOT NULL UNIQUE,
+    title text NOT NULL,
+    description text NOT NULL,
+    location text NOT NULL,
+    crime_type text NOT NULL,
+    severity public.severity NOT NULL,
+    status public.report_status NOT NULL,
+    reported_by uuid NOT NULL,
+    assigned_to uuid,
+    reported_at timestamp with time zone NOT NULL DEFAULT now(),
+    location_coords jsonb,
+    evidence_images text[],
+    location_boundary jsonb,
+    location_boundingbox real[4],
+    CONSTRAINT crime_reports_pkey PRIMARY KEY (id),
+    CONSTRAINT crime_reports_reported_by_fkey FOREIGN KEY (reported_by) REFERENCES public.profiles(id) ON DELETE CASCADE,
+    CONSTRAINT crime_reports_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES public.profiles(id) ON DELETE SET NULL
+);
+
+-- Report Updates Table
+CREATE TABLE IF NOT EXISTS public.report_updates (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    report_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    content text NOT NULL,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT report_updates_pkey PRIMARY KEY (id),
+    CONSTRAINT report_updates_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE
+);
+
+-- 3. Trigger Function to create a profile for new users
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name, email, role)
+  VALUES (
+    new.id,
+    new.raw_user_meta_data->>'full_name',
+    new.email,
+    -- Safely cast the role, falling back to 'user' if it's invalid or null
+    COALESCE((new.raw_user_meta_data->>'role')::public.user_role, 'user'::public.user_role)
+  );
+  RETURN new;
+END;
+$$;
+
+-- 4. Trigger to call the function
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 5. Row Level Security (RLS) Policies
+
+-- PROFILES
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users to view profiles" ON public.profiles;
+CREATE POLICY "Allow authenticated users to view profiles" ON public.profiles FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Allow users to update their own profile" ON public.profiles;
+CREATE POLICY "Allow users to update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Admins and moderators can manage all profiles" ON public.profiles;
+CREATE POLICY "Admins and moderators can manage all profiles" ON public.profiles FOR ALL
+  USING (((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator'))) WITH CHECK (((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator')));
+
+-- COMPANIES
+ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users to view companies" ON public.companies;
+CREATE POLICY "Allow authenticated users to view companies" ON public.companies FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Admins and moderators can manage companies" ON public.companies;
+CREATE POLICY "Admins and moderators can manage companies" ON public.companies FOR ALL
+  USING (((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator'))) WITH CHECK (((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator')));
+
+-- VEHICLE REPORTS
+ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow view access to relevant users" ON public.vehicle_reports;
+CREATE POLICY "Allow view access to relevant users" ON public.vehicle_reports FOR SELECT
+  USING (
+    ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller')) OR
+    (((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'responder') AND (assigned_to = auth.uid())) OR
+    (reported_by = auth.uid())
+  );
+DROP POLICY IF EXISTS "Allow users to create reports" ON public.vehicle_reports;
+CREATE POLICY "Allow users to create reports" ON public.vehicle_reports FOR INSERT
+  WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Allow admins, moderators, controllers to manage reports" ON public.vehicle_reports;
+CREATE POLICY "Allow admins, moderators, controllers to manage reports" ON public.vehicle_reports FOR ALL
+  USING (((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller'))) WITH CHECK (((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller')));
+DROP POLICY IF EXISTS "Allow assigned responders to update status" ON public.vehicle_reports;
+CREATE POLICY "Allow assigned responders to update status" ON public.vehicle_reports FOR UPDATE
+  USING ((((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'responder') AND (assigned_to = auth.uid())));
+
+-- CRIME REPORTS
+ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow view access to relevant users" ON public.crime_reports;
+CREATE POLICY "Allow view access to relevant users" ON public.crime_reports FOR SELECT
+  USING (
+    ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller')) OR
+    (((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'responder') AND (assigned_to = auth.uid())) OR
+    (reported_by = auth.uid())
+  );
+DROP POLICY IF EXISTS "Allow users to create reports" ON public.crime_reports;
+CREATE POLICY "Allow users to create reports" ON public.crime_reports FOR INSERT
+  WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Allow admins, moderators, controllers to manage reports" ON public.crime_reports;
+CREATE POLICY "Allow admins, moderators, controllers to manage reports" ON public.crime_reports FOR ALL
+  USING (((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller'))) WITH CHECK (((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller')));
+DROP POLICY IF EXISTS "Allow assigned responders to update status" ON public.crime_reports;
+CREATE POLICY "Allow assigned responders to update status" ON public.crime_reports FOR UPDATE
+  USING ((((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'responder') AND (assigned_to = auth.uid())));
+
+
+-- REPORT UPDATES
+ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow relevant users to see updates" ON public.report_updates;
+CREATE POLICY "Allow relevant users to see updates" ON public.report_updates FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Allow relevant users to add updates" ON public.report_updates;
+CREATE POLICY "Allow relevant users to add updates" ON public.report_updates FOR INSERT
+  WITH CHECK (
+    ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller')) OR
+    (((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'responder'))
+  );
+
+COMMIT;
+
+```
