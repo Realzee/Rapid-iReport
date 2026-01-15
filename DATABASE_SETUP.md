@@ -29,8 +29,8 @@ This is for user profile pictures.
 
 This comprehensive script creates all necessary types, tables, functions, and security policies. It is designed to be **idempotent**, meaning you can run it on a new project or an existing one without causing errors. It will only add the pieces that are missing.
 
-1.  Open the `DATABASE_SCHEMA.sql` file located in the root of this project.
-2.  Copy the entire content of the file.
+1.  Open the `DATABASE_SCHEMA.md` file located in the root of this project.
+2.  Copy the entire SQL code block from the file.
 3.  In your Supabase Project dashboard, go to the **SQL Editor**.
 4.  Click **+ New query**.
 5.  Paste the script into the editor and click the **RUN** button.
