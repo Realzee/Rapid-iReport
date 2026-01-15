@@ -246,8 +246,16 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow authenticated users to view profiles" ON public.profiles;
 -- Changed from `auth.role() = 'authenticated'` to `true` to allow internal triggers to read profiles.
 CREATE POLICY "Allow authenticated users to view profiles" ON public.profiles FOR SELECT USING (true);
+
 DROP POLICY IF EXISTS "Allow users to insert their own profile" ON public.profiles;
-CREATE POLICY "Allow users to insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+-- This policy is updated to allow the auth trigger (running as supabase_auth_admin) to create profiles.
+-- The previous policy `CHECK (auth.uid() = id)` failed because auth.uid() is not the new user's ID in the trigger context.
+CREATE POLICY "Allow users to insert their own profile" ON public.profiles FOR INSERT
+  WITH CHECK (
+    (auth.uid() = id) OR
+    (current_role = 'supabase_auth_admin')
+  );
+
 DROP POLICY IF EXISTS "Allow users to update their own profile" ON public.profiles;
 CREATE POLICY "Allow users to update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 DROP POLICY IF EXISTS "Admins and moderators can manage all profiles" ON public.profiles;
@@ -316,15 +324,32 @@ CREATE POLICY "Allow relevant users to add updates" ON public.report_updates FOR
 
 -- NOTIFICATIONS
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
--- Clean up old and potentially new policies to ensure idempotency
+-- Clean up old policies to ensure idempotency
 DROP POLICY IF EXISTS "Users can only see and manage their own notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Users can see their own notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Users can update their own notifications" ON public.notifications;
--- Create specific policies for SELECT and UPDATE
+DROP POLICY IF EXISTS "Allow system to insert new user notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Allow system to insert new report notifications" ON public.notifications;
+
+-- RLS for users interacting with their own notifications
 CREATE POLICY "Users can see their own notifications" ON public.notifications
   FOR SELECT USING (auth.uid() = recipient_user_id);
 CREATE POLICY "Users can update their own notifications" ON public.notifications
   FOR UPDATE USING (auth.uid() = recipient_user_id) WITH CHECK (auth.uid() = recipient_user_id);
+  
+-- RLS for system-level inserts via triggers, to fix signup errors
+-- These policies are combined with OR. An insert is allowed if it matches either check.
+CREATE POLICY "Allow system to insert new user notifications" ON public.notifications
+  FOR INSERT WITH CHECK (
+    type = 'new_user' AND
+    public.get_user_role(recipient_user_id) IN ('admin', 'moderator')
+  );
+
+CREATE POLICY "Allow system to insert new report notifications" ON public.notifications
+  FOR INSERT WITH CHECK (
+    type = 'new_report' AND
+    public.get_user_role(recipient_user_id) IN ('admin', 'moderator', 'controller')
+  );
 
 
 COMMIT;

@@ -112,7 +112,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
             {/* Left Column (scrolls with page) */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
                 <LiveEventStack
                     reports={sortedReports}
                     onReportSelect={(id) => setSelectedReportId(id)}
@@ -121,10 +121,10 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
             </div>
 
             {/* Right container for Map and Details */}
-            <div className="lg:col-span-10">
+            <div className="lg:col-span-9">
                  <div className="lg:sticky lg:top-24">
-                     <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
-                        <div className="lg:col-span-7 min-h-[50vh] lg:h-[calc(100vh-8rem)]">
+                     <div className="grid grid-cols-1 lg:grid-cols-9 gap-4">
+                        <div className="lg:col-span-6 min-h-[50vh] lg:h-[calc(100vh-8rem)]">
                             <MapView
                                 reports={reports}
                                 responders={responders}

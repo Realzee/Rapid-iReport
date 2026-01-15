@@ -14,53 +14,49 @@ const getReportTitle = (report: Report): string => {
     return report.title || 'Crime Report';
 };
 
-const severityCardBg: Record<Severity, string> = {
-    [Severity.CRITICAL]: 'bg-red-900/60 hover:bg-red-900/80',
-    [Severity.HIGH]: 'bg-orange-900/60 hover:bg-orange-900/80',
-    [Severity.MEDIUM]: 'bg-slate-800 hover:bg-slate-700',
-    [Severity.LOW]: 'bg-green-900/60 hover:bg-green-900/80',
-};
-
-const severityTag: Record<Severity, string> = {
-    [Severity.CRITICAL]: 'bg-red-500 text-white',
-    [Severity.HIGH]: 'bg-orange-500 text-white',
-    [Severity.MEDIUM]: 'bg-gray-200 text-gray-800 font-bold',
-    [Severity.LOW]: 'bg-green-400 text-green-900 font-bold',
+const severityTagStyles: Record<Severity, string> = {
+    [Severity.CRITICAL]: 'bg-red-500/10 text-red-600 dark:text-red-400 font-bold',
+    [Severity.HIGH]: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 font-bold',
+    [Severity.MEDIUM]: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 font-bold',
+    [Severity.LOW]: 'bg-green-500/10 text-green-600 dark:text-green-400 font-bold',
 };
 
 
 const LiveEventItem: React.FC<{ report: Report, isSelected: boolean, onSelect: () => void }> = ({ report, isSelected, onSelect }) => {
     const title = getReportTitle(report);
+    
+    const borderClass = isSelected ? 'border-blue-500 ring-1 ring-blue-500' : 'border-gray-200 dark:border-gray-700/50';
+    const bgClass = isSelected ? 'bg-blue-500/5 dark:bg-gray-900/50' : 'bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60';
 
     return (
         <div
             onClick={onSelect}
-            className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-2 ${isSelected ? 'border-blue-500 bg-blue-900/90' : `border-transparent ${severityCardBg[report.severity]}`}`}
+            className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm ${borderClass} ${bgClass}`}
         >
             <div className="flex justify-between items-start gap-2">
-                <p className="font-semibold text-white text-md">{title}</p>
+                <p className="font-semibold text-gray-900 dark:text-white text-md">{title}</p>
                 <div className="text-right flex-shrink-0">
-                    <p className="font-mono text-xs text-gray-300">{report.ob_number}</p>
-                    <p className="text-xs text-gray-400">{format(new Date(report.reported_at), 'HH:mm:ss a')}</p>
+                    <p className="font-mono text-xs text-gray-500 dark:text-gray-300">{report.ob_number}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{format(new Date(report.reported_at), 'HH:mm:ss a')}</p>
                 </div>
             </div>
             <div className="mt-2">
-                 <span className={`px-2 py-0.5 text-xs rounded capitalize ${severityTag[report.severity]}`}>
+                 <span className={`px-2 py-0.5 text-xs rounded capitalize ${severityTagStyles[report.severity]}`}>
                     {report.severity}
                 </span>
             </div>
-            <p className="mt-2 text-sm text-gray-300 line-clamp-3">{report.description}</p>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300 line-clamp-3">{report.description}</p>
             {report.location_coords && (
-                 <p className="mt-2 text-xs text-gray-400 font-mono flex items-center gap-1">
+                 <p className="mt-2 text-xs text-gray-400 dark:text-gray-500 font-mono flex items-center gap-1">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                     {report.location_coords.lat.toFixed(6)} {report.location_coords.lng.toFixed(6)}
                 </p>
             )}
             {isVehicleReport(report) && (
-                <div className="mt-2 pt-2 border-t border-gray-700/50 text-xs text-gray-400 font-mono flex justify-between items-center gap-2">
-                    <span>PLATE: <span className="font-sans font-semibold text-white bg-gray-700 px-1 rounded">{report.license_plate}</span></span>
-                    <span>MAKE: <span className="font-sans font-semibold text-white">{report.vehicle_make}</span></span>
-                    <span>COLOR: <span className="font-sans font-semibold text-white">{report.vehicle_color}</span></span>
+                <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700/50 text-xs text-gray-500 dark:text-gray-400 font-mono flex justify-between items-center gap-2">
+                    <span>PLATE: <span className="font-sans font-semibold text-gray-800 dark:text-white bg-gray-200 dark:bg-gray-700 px-1 rounded">{report.license_plate}</span></span>
+                    <span>MAKE: <span className="font-sans font-semibold text-gray-800 dark:text-white">{report.vehicle_make}</span></span>
+                    <span>COLOR: <span className="font-sans font-semibold text-gray-800 dark:text-white">{report.vehicle_color}</span></span>
                 </div>
             )}
         </div>
@@ -76,16 +72,16 @@ interface LiveEventStackProps {
 
 const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, onReportSelect, selectedReportId }) => {
     return (
-        <div className="bg-gray-900/80 border border-gray-800 rounded-2xl p-4 flex flex-col text-white backdrop-blur-lg">
+        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex flex-col backdrop-blur-lg">
             <div className="flex-shrink-0 mb-4">
                 <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold">Live Event Stack</h2>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Live Event Stack</h2>
                     <div className="text-right">
-                        <p className="text-sm">{reports.length} events</p>
-                        <p className="text-xs text-gray-400">Updated: Just now</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-200">{reports.length} events</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Updated: Just now</p>
                     </div>
                 </div>
-                <div className="flex items-center space-x-4 text-xs mt-2 text-gray-400">
+                <div className="flex items-center space-x-4 text-xs mt-2 text-gray-500 dark:text-gray-400">
                     <span><span className="inline-block w-2 h-2 bg-red-500 rounded-full mr-1.5"></span>Vehicle</span>
                     <span><span className="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-1.5"></span>Crime</span>
                     <span><span className="inline-block w-2 h-2 bg-gray-500 rounded-full mr-1.5"></span>Other</span>
