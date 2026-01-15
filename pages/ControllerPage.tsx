@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Report, Profile, Responder, ResponderStatus, VehicleReport } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
@@ -123,7 +122,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
                 </div>
 
                 {/* Center Column */}
-                <div className="lg:col-span-5 min-h-[40vh] lg:min-h-0">
+                <div className="lg:col-span-6 min-h-[40vh] lg:min-h-0">
                     <MapView
                         reports={reports}
                         responders={responders}
@@ -132,7 +131,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
                 </div>
 
                 {/* Right Column */}
-                <div className="lg:col-span-4 min-h-0">
+                <div className="lg:col-span-3 min-h-0">
                     {selectedReport ? (
                         <ControllerReportDetail
                             key={selectedReport.id}
