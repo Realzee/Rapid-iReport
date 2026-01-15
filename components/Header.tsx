@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BellIcon, ChevronDownIcon, MenuIcon, XIcon } from './icons';
-import { Profile, UserRole } from '../types';
+import { Profile, UserRole, Notification } from '../types';
 import { supabase } from '../utils/supabase';
 import { logoUrl } from '../assets/logo';
 import ThemeToggle from './ThemeToggle';
+import NotificationsPanel from './NotificationsPanel';
 
 interface HeaderProps {
     currentView: string;
@@ -15,6 +16,59 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  
+  const unreadCount = useMemo(() => notifications.filter(n => !n.is_read).length, [notifications]);
+
+  useEffect(() => {
+    if (!profile) return;
+
+    const fetchNotifications = async () => {
+        const { data, error } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('recipient_user_id', profile.id)
+            .order('created_at', { ascending: false });
+
+        if (error) console.error("Error fetching notifications:", error);
+        else setNotifications(data || []);
+    };
+
+    fetchNotifications();
+
+    const channel = supabase
+        .channel(`notifications-${profile.id}`)
+        .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `recipient_user_id=eq.${profile.id}`
+        }, () => {
+            fetchNotifications();
+        })
+        .subscribe();
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
+  }, [profile]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+        if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+            setIsNotificationsOpen(false);
+        }
+        if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+            setDropdownOpen(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const navLinkClasses = (view: string) => 
       `text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors duration-300 px-3 py-2 rounded-md ${
@@ -36,7 +90,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
       setMobileMenuOpen(false);
   }
   
-  // Disable body scroll when mobile menu is open
   useEffect(() => {
     if (mobileMenuOpen) {
         document.body.style.overflow = 'hidden';
@@ -45,6 +98,35 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
     }
     return () => { document.body.style.overflow = 'unset'; };
   }, [mobileMenuOpen]);
+
+  const toggleNotifications = () => {
+    setIsNotificationsOpen(prev => !prev);
+    setDropdownOpen(false);
+  };
+
+  const toggleUserDropdown = () => {
+    setDropdownOpen(prev => !prev);
+    setIsNotificationsOpen(false);
+  };
+
+  const handleMarkAsRead = async (id: string) => {
+    const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id);
+    if (error) console.error("Error marking notification as read:", error);
+  };
+
+  const handleMarkAllAsRead = async () => {
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
+    if (unreadIds.length === 0) return;
+
+    const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .in('id', unreadIds);
+    if (error) console.error("Error marking all as read:", error);
+  };
 
   const canAccessAdminPages = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
   const canAccessController = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role);
@@ -82,12 +164,24 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
           </nav>
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            <button className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300">
-              <BellIcon className="w-6 h-6" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full text-xs flex items-center justify-center text-white">3</span>
-            </button>
-            <div className="hidden md:flex relative">
-              <button onClick={() => setDropdownOpen(!dropdownOpen)} className="flex items-center space-x-2">
+            <div ref={notificationsRef} className="relative">
+                <button onClick={toggleNotifications} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300">
+                  <BellIcon className="w-6 h-6" />
+                  {unreadCount > 0 && (
+                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full text-xs flex items-center justify-center text-white">{unreadCount}</span>
+                  )}
+                </button>
+                 {isNotificationsOpen && (
+                    <NotificationsPanel 
+                        notifications={notifications}
+                        onMarkAsRead={handleMarkAsRead}
+                        onMarkAllAsRead={handleMarkAllAsRead}
+                        onClose={() => setIsNotificationsOpen(false)}
+                    />
+                )}
+            </div>
+            <div ref={profileRef} className="hidden md:flex relative">
+              <button onClick={toggleUserDropdown} className="flex items-center space-x-2">
                 <img 
                   src={profile.avatar_url || `https://i.pravatar.cc/40?u=${profile.id}`} 
                   alt="User Avatar"

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -6,6 +5,13 @@ import { supabase } from '../utils/supabase';
 import { CheckCircleIcon, AssignResponderIcon } from './icons';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
+
+const DetailField = ({ label, children, className }: { label: string, children: React.ReactNode, className?: string }) => (
+    <div className={className}>
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{label}</p>
+        <div className="mt-1 text-sm text-white">{children}</div>
+    </div>
+);
 
 const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]; profile: Profile }> = ({ report, responders, profile }) => {
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
@@ -120,43 +126,73 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 </p>
             </div>
 
-            <div className="p-4 flex-grow overflow-y-auto">
-                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Live Feed</h4>
-                <div className="space-y-3 h-48 overflow-y-auto bg-black/30 rounded p-2 border border-gray-700/50">
-                    {updates.length === 0 ? (
-                        <div className="flex items-center justify-center h-full">
-                           <p className="text-sm text-gray-500">No updates for this incident yet.</p>
-                        </div>
-                    ) : (
-                        updates.map(update => (
-                            <div key={update.id}>
-                                <p className="text-sm text-gray-200">{update.content}</p>
-                                <p className="text-xs text-gray-500 text-right">
-                                    - {update.user_full_name} ({formatDistanceToNow(new Date(update.created_at), { addSuffix: true })})
-                                </p>
-                            </div>
-                        ))
-                    )}
-                    <div ref={updatesEndRef} />
+            <div className="p-4 flex-grow overflow-y-auto space-y-4">
+                 <div className="grid grid-cols-2 gap-4">
+                    <DetailField label="Severity">
+                        <p className="font-semibold text-md capitalize">{report.severity}</p>
+                    </DetailField>
+                    <DetailField label="Status">
+                        <span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-gray-700 border-gray-600 text-gray-200">
+                            {report.status.replace('_', ' ')}
+                        </span>
+                    </DetailField>
                 </div>
+
+                <DetailField label="Location">
+                    {report.location_coords && <p className="font-mono">{report.location_coords.lat.toFixed(7)} {report.location_coords.lng.toFixed(7)}</p>}
+                    {report.location_boundingbox && <p className="font-mono text-gray-400 text-xs">{report.location_boundingbox.slice(0, 2).join(', ')}</p>}
+                </DetailField>
+                
+                <DetailField label="Description">
+                    <p>{report.description}</p>
+                </DetailField>
+                
+                {isVehicleReport(report) && (
+                    <DetailField label="Vehicle Details">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono text-white bg-gray-700 px-2 py-1 rounded text-xs">{report.license_plate}</span>
+                            <span>{report.vehicle_color} {report.vehicle_make} {report.vehicle_model}</span>
+                        </div>
+                    </DetailField>
+                )}
+                
+                <DetailField label="Live Feed">
+                    <div className="space-y-3 h-32 overflow-y-auto bg-black/30 rounded p-2 border border-gray-700/50">
+                        {updates.length === 0 ? (
+                            <div className="flex items-center justify-center h-full">
+                               <p className="text-sm text-gray-500">No updates for this incident yet.</p>
+                            </div>
+                        ) : (
+                            updates.map(update => (
+                                <div key={update.id}>
+                                    <p className="text-sm text-gray-200">{update.content}</p>
+                                    <p className="text-xs text-gray-500 text-right">
+                                        - {update.user_full_name} ({formatDistanceToNow(new Date(update.created_at), { addSuffix: true })})
+                                    </p>
+                                </div>
+                            ))
+                        )}
+                        <div ref={updatesEndRef} />
+                    </div>
+                </DetailField>
             </div>
 
-            <form onSubmit={handleUpdateSubmit} className="p-4 flex-shrink-0">
-                 <div className="relative">
-                    <textarea
-                        value={newUpdate}
-                        onChange={(e) => setNewUpdate(e.target.value)}
-                        placeholder="Type an update..."
-                        rows={2}
-                        className="w-full bg-gray-800 border border-gray-600 rounded-lg py-2 pl-3 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
-                    />
-                    <button type="submit" disabled={isSubmittingUpdate} className="absolute top-2 right-2 p-2 text-blue-400 hover:text-blue-300 disabled:opacity-50">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                    </button>
-                </div>
-            </form>
-
             <div className="p-4 border-t border-gray-700/50 space-y-4 flex-shrink-0">
+                <form onSubmit={handleUpdateSubmit} className="flex-shrink-0">
+                     <div className="relative">
+                        <textarea
+                            value={newUpdate}
+                            onChange={(e) => setNewUpdate(e.target.value)}
+                            placeholder="Type an update..."
+                            rows={2}
+                            className="w-full bg-gray-800 border border-gray-600 rounded-lg py-2 pl-3 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                        />
+                        <button type="submit" disabled={isSubmittingUpdate} className="absolute top-2 right-2 p-2 text-blue-400 hover:text-blue-300 disabled:opacity-50">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                        </button>
+                    </div>
+                </form>
+
                 <div>
                     <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block">Update Status</label>
                      <div className="flex items-center gap-2">

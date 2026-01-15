@@ -39,6 +39,11 @@ export enum ResponderStatus {
     OFF_DUTY = 'off_duty'
 }
 
+export enum NotificationType {
+  NEW_REPORT = 'new_report',
+  NEW_USER = 'new_user',
+}
+
 export interface Company {
     id: string;
     name: string;
@@ -123,4 +128,15 @@ export interface ReportUpdate {
   content: string;
   created_at: string; // ISO date string
   user_full_name?: string; // Joined from profiles table
+}
+
+export interface Notification {
+  id: string;
+  created_at: string;
+  recipient_user_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  is_read: boolean;
+  reference_id?: string;
 }

@@ -113,10 +113,24 @@ CREATE TABLE IF NOT EXISTS public.report_updates (
     CONSTRAINT report_updates_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE
 );
 
+-- Notifications Table
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    recipient_user_id uuid NOT NULL,
+    type text NOT NULL,
+    title text NOT NULL,
+    message text,
+    is_read boolean NOT NULL DEFAULT false,
+    reference_id uuid,
+    CONSTRAINT notifications_pkey PRIMARY KEY (id),
+    CONSTRAINT notifications_recipient_user_id_fkey FOREIGN KEY (recipient_user_id) REFERENCES public.profiles(id) ON DELETE CASCADE
+);
+
+
 -- 3. Create Helper Functions & Triggers
 
 -- Function to get a user's role (bypasses RLS)
--- This is crucial to prevent recursion in RLS policies.
 CREATE OR REPLACE FUNCTION public.get_user_role(user_id uuid)
 RETURNS public.user_role
 LANGUAGE plpgsql
@@ -125,16 +139,32 @@ AS $$
 DECLARE
   user_role_val public.user_role;
 BEGIN
-  -- We need to bypass RLS to check the role, so we use SECURITY DEFINER.
-  -- The function is owned by the user who creates it (usually postgres),
-  -- which has the necessary permissions.
   SELECT role INTO user_role_val FROM public.profiles WHERE id = user_id;
   RETURN user_role_val;
 END;
 $$;
 
+-- Function to create notifications for relevant staff
+CREATE OR REPLACE FUNCTION public.create_staff_notification(
+    notification_type text,
+    notification_title text,
+    notification_message text,
+    ref_id uuid,
+    target_roles user_role[]
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.notifications (recipient_user_id, type, title, message, reference_id)
+  SELECT id, notification_type, notification_title, notification_message, ref_id
+  FROM public.profiles
+  WHERE role = ANY(target_roles);
+END;
+$$;
 
--- Trigger Function to create a profile for new users
+-- Trigger Function to create a profile and notification for new users
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -146,18 +176,63 @@ BEGIN
     new.id,
     new.raw_user_meta_data->>'full_name',
     new.email,
-    -- Safely cast the role, falling back to 'user' if it's invalid or null
     COALESCE((new.raw_user_meta_data->>'role')::public.user_role, 'user'::public.user_role)
+  );
+
+  PERFORM public.create_staff_notification(
+    'new_user',
+    'New User Registered',
+    'A new user (' || (new.raw_user_meta_data->>'full_name') || ') has signed up.',
+    new.id,
+    ARRAY['admin'::user_role, 'moderator'::user_role]
+  );
+  
+  RETURN new;
+END;
+$$;
+
+-- Trigger function for new reports
+CREATE OR REPLACE FUNCTION public.handle_new_report_notification()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  report_title text;
+BEGIN
+  IF TG_TABLE_NAME = 'vehicle_reports' THEN
+    report_title := 'Stolen Vehicle: ' || new.license_plate;
+  ELSE
+    report_title := 'Crime Incident: ' || new.title;
+  END IF;
+
+  PERFORM public.create_staff_notification(
+    'new_report',
+    report_title,
+    'A new incident has been filed and requires attention.',
+    new.id,
+    ARRAY['admin'::user_role, 'moderator'::user_role, 'controller'::user_role]
   );
   RETURN new;
 END;
 $$;
 
--- 4. Trigger to call the function
+-- 4. Triggers
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+DROP TRIGGER IF EXISTS on_new_vehicle_report_notify ON public.vehicle_reports;
+CREATE TRIGGER on_new_vehicle_report_notify
+  AFTER INSERT ON public.vehicle_reports
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_report_notification();
+
+DROP TRIGGER IF EXISTS on_new_crime_report_notify ON public.crime_reports;
+CREATE TRIGGER on_new_crime_report_notify
+  AFTER INSERT ON public.crime_reports
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_report_notification();
+
 
 -- 5. Row Level Security (RLS) Policies
 
@@ -228,6 +303,12 @@ CREATE POLICY "Allow relevant users to add updates" ON public.report_updates FOR
     (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')) OR
     ((public.get_user_role(auth.uid()) = 'responder'))
   );
+
+-- NOTIFICATIONS
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can only see and manage their own notifications" ON public.notifications;
+CREATE POLICY "Users can only see and manage their own notifications" ON public.notifications FOR ALL
+  USING (auth.uid() = recipient_user_id);
 
 COMMIT;
 

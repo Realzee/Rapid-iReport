@@ -14,44 +14,55 @@ const getReportTitle = (report: Report): string => {
     return report.title || 'Crime Report';
 };
 
-const severityBgStyles: Record<Severity, string> = {
-    [Severity.CRITICAL]: 'bg-red-500/20 hover:bg-red-500/30',
-    [Severity.HIGH]: 'bg-orange-500/20 hover:bg-orange-500/30',
-    [Severity.MEDIUM]: 'bg-blue-500/20 hover:bg-blue-500/30',
-    [Severity.LOW]: 'bg-green-500/20 hover:bg-green-500/30',
+const severityCardBg: Record<Severity, string> = {
+    [Severity.CRITICAL]: 'bg-red-900/60 hover:bg-red-900/80',
+    [Severity.HIGH]: 'bg-orange-900/60 hover:bg-orange-900/80',
+    [Severity.MEDIUM]: 'bg-slate-800 hover:bg-slate-700',
+    [Severity.LOW]: 'bg-green-900/60 hover:bg-green-900/80',
 };
 
-const severityTagStyles: Record<Severity, string> = {
+const severityTag: Record<Severity, string> = {
     [Severity.CRITICAL]: 'bg-red-500 text-white',
     [Severity.HIGH]: 'bg-orange-500 text-white',
-    [Severity.MEDIUM]: 'bg-blue-500 text-white',
-    [Severity.LOW]: 'bg-green-500 text-white',
+    [Severity.MEDIUM]: 'bg-gray-200 text-gray-800 font-bold',
+    [Severity.LOW]: 'bg-green-400 text-green-900 font-bold',
 };
 
-// Compacted LiveEventItem for better space utilization
+
 const LiveEventItem: React.FC<{ report: Report, isSelected: boolean, onSelect: () => void }> = ({ report, isSelected, onSelect }) => {
     const title = getReportTitle(report);
-    const bgStyle = severityBgStyles[report.severity];
-    const tagStyle = severityTagStyles[report.severity];
 
     return (
         <div
             onClick={onSelect}
-            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border-2 ${isSelected ? 'border-blue-500 bg-blue-700/60' : `border-transparent ${bgStyle}`}`}
+            className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-2 ${isSelected ? 'border-blue-500 bg-blue-900/90' : `border-transparent ${severityCardBg[report.severity]}`}`}
         >
             <div className="flex justify-between items-start gap-2">
-                <div>
-                    <p className="font-semibold text-white text-sm line-clamp-1">{title}</p>
-                    <span className={`mt-1 inline-block px-2 py-0.5 text-xs font-bold rounded-full capitalize ${tagStyle}`}>
-                        {report.severity}
-                    </span>
-                </div>
+                <p className="font-semibold text-white text-md">{title}</p>
                 <div className="text-right flex-shrink-0">
                     <p className="font-mono text-xs text-gray-300">{report.ob_number}</p>
-                    <p className="text-xs text-gray-400">{format(new Date(report.reported_at), 'HH:mm:ss')}</p>
+                    <p className="text-xs text-gray-400">{format(new Date(report.reported_at), 'HH:mm:ss a')}</p>
                 </div>
             </div>
-            <p className="mt-1 text-xs text-gray-300 line-clamp-1">{report.description}</p>
+            <div className="mt-2">
+                 <span className={`px-2 py-0.5 text-xs rounded capitalize ${severityTag[report.severity]}`}>
+                    {report.severity}
+                </span>
+            </div>
+            <p className="mt-2 text-sm text-gray-300 line-clamp-3">{report.description}</p>
+            {report.location_coords && (
+                 <p className="mt-2 text-xs text-gray-400 font-mono flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    {report.location_coords.lat.toFixed(6)} {report.location_coords.lng.toFixed(6)}
+                </p>
+            )}
+            {isVehicleReport(report) && (
+                <div className="mt-2 pt-2 border-t border-gray-700/50 text-xs text-gray-400 font-mono flex justify-between items-center gap-2">
+                    <span>PLATE: <span className="font-sans font-semibold text-white bg-gray-700 px-1 rounded">{report.license_plate}</span></span>
+                    <span>MAKE: <span className="font-sans font-semibold text-white">{report.vehicle_make}</span></span>
+                    <span>COLOR: <span className="font-sans font-semibold text-white">{report.vehicle_color}</span></span>
+                </div>
+            )}
         </div>
     );
 };
@@ -81,18 +92,15 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, onReportSelect
                 </div>
             </div>
 
-            <div className="flex-grow relative overflow-hidden">
-                <div className="absolute inset-0 overflow-y-auto space-y-2 box-content pr-[17px]">
-                    {reports.map(report => (
-                        <LiveEventItem
-                            key={report.id}
-                            report={report}
-                            isSelected={report.id === selectedReportId}
-                            onSelect={() => onReportSelect(report.id)}
-                        />
-                    ))}
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent pointer-events-none"></div>
+            <div className="flex-grow overflow-y-auto space-y-2">
+                {reports.map(report => (
+                    <LiveEventItem
+                        key={report.id}
+                        report={report}
+                        isSelected={report.id === selectedReportId}
+                        onSelect={() => onReportSelect(report.id)}
+                    />
+                ))}
             </div>
         </div>
     );
