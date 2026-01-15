@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -25,16 +24,33 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         setSelectedResponder(report.assigned_to || '');
 
         const fetchUpdates = async () => {
-            const { data, error } = await supabase
+            const { data: updatesData, error: updatesError } = await supabase
                 .from('report_updates')
-                .select('*, profiles(full_name)')
+                .select('*')
                 .eq('report_id', report.id)
                 .order('created_at', { ascending: true });
 
-            if (error) {
-                console.error("Error fetching report updates:", error);
-            } else {
-                setUpdates(data.map(u => ({...u, user_full_name: u.profiles?.full_name || 'System' })));
+            if (updatesError) {
+                console.error("Error fetching report updates:", updatesError);
+                setUpdates([]);
+                return;
+            }
+
+            if (updatesData) {
+                const updatesWithNames = await Promise.all(
+                    updatesData.map(async (update) => {
+                        const { data: profileData } = await supabase
+                            .from('profiles')
+                            .select('full_name')
+                            .eq('id', update.user_id)
+                            .single();
+                        return {
+                            ...update,
+                            user_full_name: profileData?.full_name || 'System'
+                        };
+                    })
+                );
+                setUpdates(updatesWithNames as ReportUpdate[]);
             }
         };
         fetchUpdates();
