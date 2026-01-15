@@ -4,9 +4,8 @@ import { Report, Profile, Severity, ReportStatus, VehicleReport } from '../types
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
 import { useTheme } from '../contexts/ThemeContext';
-// FIX: `subDays` is not a top-level export in the project's version of `date-fns`. It needs to be imported from its submodule.
-import { format } from 'date-fns';
-import subDays from 'date-fns/subDays';
+// FIX: `subDays` was imported incorrectly, causing a type error. It should be a named import from the main `date-fns` package.
+import { format, subDays } from 'date-fns';
 import { BuildingIcon, ChartBarIcon, ChartPieIcon, MapIcon, ZapIcon, CheckCircleIcon, AlertTriangleIcon } from '../components/icons';
 import StatCard from '../components/StatCard';
 
