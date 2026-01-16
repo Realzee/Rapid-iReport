@@ -68,10 +68,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                 id: profile.id,
                 full_name: profile.full_name,
                 status: profile.responder_status || ResponderStatus.OFF_DUTY,
-                location_coords: { 
-                    lat: -1.286389 + (Math.random() - 0.5) * 0.1, 
-                    lng: 36.817223 + (Math.random() - 0.5) * 0.1,
-                },
+                location_coords: profile.location_coords || undefined,
             }));
 
             setReports(combinedReports);
@@ -123,9 +120,34 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
           .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'vehicle_reports' }, handleReportDelete)
           .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'crime_reports' }, handleReportDelete)
           .subscribe();
+        
+        const handleResponderUpdate = (payload: any) => {
+            const updatedProfile = payload.new as Profile;
+            setResponders(prev => {
+                const existingResponder = prev.find(r => r.id === updatedProfile.id);
+                const newResponderData: Responder = {
+                    id: updatedProfile.id,
+                    full_name: updatedProfile.full_name,
+                    status: updatedProfile.responder_status || ResponderStatus.OFF_DUTY,
+                    location_coords: updatedProfile.location_coords || undefined,
+                };
+
+                if (existingResponder) {
+                    return prev.map(r => r.id === updatedProfile.id ? newResponderData : r);
+                }
+                // Only add if they are a new responder not previously in the list
+                return [...prev, newResponderData];
+            });
+        };
+
+        const respondersChannel = supabase
+          .channel('public:profiles-dashboard')
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderUpdate)
+          .subscribe();
 
         return () => {
           supabase.removeChannel(reportsChannels);
+          supabase.removeChannel(respondersChannel);
         };
     }, [isResponder, profile.id, selectedReportId]);
 

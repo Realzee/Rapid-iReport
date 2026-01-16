@@ -7,6 +7,16 @@ For detailed setup instructions, refer to `DATABASE_SETUP.md`.
 ```sql
 BEGIN;
 
+-- This is a comprehensive permissions reset for the public schema.
+-- It ensures that all Supabase roles can interact with the schema and its objects.
+GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres, anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres, anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres, anon, authenticated, service_role;
+
 -- 0. Make sure the 'uuid-ossp' extension is enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
@@ -54,6 +64,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     avatar_url text,
     last_seen_at timestamp with time zone,
     responder_status public.responder_status,
+    location_coords jsonb,
     CONSTRAINT profiles_pkey PRIMARY KEY (id),
     CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE,
     CONSTRAINT profiles_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE SET NULL
@@ -162,7 +173,7 @@ BEGIN
   INSERT INTO public.notifications (recipient_user_id, type, title, message, reference_id)
   SELECT id, notification_type, notification_title, notification_message, ref_id
   FROM public.profiles
-  WHERE role = ANY(target_roles::public.user_role[]);
+  WHERE role::text = ANY(target_roles);
 END;
 $$;
 

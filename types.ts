@@ -60,6 +60,7 @@ export interface Profile {
   avatar_url?: string;
   last_seen_at?: string;
   responder_status?: ResponderStatus;
+  location_coords?: LocationCoords;
 }
 
 export interface LocationCoords {
@@ -111,7 +112,7 @@ export interface Responder {
     id: string;
     full_name: string;
     status: ResponderStatus;
-    location_coords: LocationCoords;
+    location_coords?: LocationCoords;
 }
 
 export interface ChatMessage {

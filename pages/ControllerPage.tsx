@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
-import { Report, Profile, Responder, ResponderStatus } from '../types';
+import { Report, Profile, Responder, ResponderStatus, UserRole } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
 import MapView from '../components/MapView';
 import { supabase } from '../utils/supabase';
@@ -41,10 +42,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
                 id: profile.id,
                 full_name: profile.full_name,
                 status: profile.responder_status || ResponderStatus.OFF_DUTY,
-                location_coords: {
-                    lat: -26.23 + (Math.random() - 0.5) * 0.1,
-                    lng: 27.85 + (Math.random() - 0.5) * 0.1,
-                },
+                location_coords: profile.location_coords || undefined,
             }));
 
             setReports(combinedReports);
@@ -71,6 +69,25 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
                 setSelectedReportId(null);
             }
         };
+        
+        const handleResponderUpdate = (payload: any) => {
+            const updatedProfile = payload.new as Profile;
+            setResponders(prev => {
+                const existingResponder = prev.find(r => r.id === updatedProfile.id);
+                const newResponderData: Responder = {
+                    id: updatedProfile.id,
+                    full_name: updatedProfile.full_name,
+                    status: updatedProfile.responder_status || ResponderStatus.OFF_DUTY,
+                    location_coords: updatedProfile.location_coords || undefined,
+                };
+
+                if (existingResponder) {
+                    return prev.map(r => r.id === updatedProfile.id ? newResponderData : r);
+                }
+                return [...prev, newResponderData];
+            });
+        };
+
 
         const reportsChannels = supabase
             .channel('public:reports:controller')
@@ -82,8 +99,14 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
             .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'crime_reports' }, handleDelete)
             .subscribe();
 
+        const respondersChannel = supabase
+          .channel('public:profiles-controller')
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderUpdate)
+          .subscribe();
+
         return () => {
             supabase.removeChannel(reportsChannels);
+            supabase.removeChannel(respondersChannel);
         };
     }, [selectedReportId]);
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip, GeoJSON } from 'react-leaflet';
 import L, { LatLngBoundsExpression } from 'leaflet';
@@ -25,6 +26,28 @@ const createRedPinIcon = () => {
         iconSize: [40, 40],
         iconAnchor: [20, 40],
         popupAnchor: [0, -40],
+    });
+};
+
+const createResponderIcon = (status: ResponderStatus) => {
+    let color = '#6B7280'; // gray-500
+    let usePulse = false;
+
+    switch (status) {
+        case ResponderStatus.AVAILABLE: color = '#22C55E'; break; // green-500
+        case ResponderStatus.EN_ROUTE: color = '#3B82F6'; usePulse = true; break; // blue-500
+        case ResponderStatus.ON_SCENE: color = '#F59E0B'; break; // amber-500
+        case ResponderStatus.OFF_DUTY: color = '#6B7280'; break; // gray-500
+    }
+    
+    const animationClass = usePulse ? 'pulse-ring-animation' : '';
+    const iconHtml = `<div class="w-5 h-5 rounded-full ${animationClass}" style="background-color: ${color}; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+
+    return new L.DivIcon({
+        html: iconHtml,
+        className: '',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
     });
 };
 
@@ -102,6 +125,22 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' 
                     url={tileUrl} />
                 <MapFocusController selectedReport={selectedReport} />
+
+                {responders.map(responder => (
+                    responder.location_coords && (
+                        <Marker
+                            key={`responder-${responder.id}`}
+                            position={[responder.location_coords.lat, responder.location_coords.lng]}
+                            icon={createResponderIcon(responder.status)}
+                            zIndexOffset={100}
+                        >
+                            <Tooltip direction="top" offset={[0, -10]}>
+                                <div className="font-bold">{responder.full_name}</div>
+                                <div className="capitalize">{responder.status.replace('_', ' ')}</div>
+                            </Tooltip>
+                        </Marker>
+                    )
+                ))}
 
                 {selectedReport && (
                     <React.Fragment>
