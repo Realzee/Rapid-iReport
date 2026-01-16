@@ -196,15 +196,16 @@ These server-side functions are required for secure administrative actions. Foll
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
-
-        // FIX: The createUser Admin API inconsistently expects `data` for metadata,
-        // similar to inviteUserByEmail, not `user_metadata` as the types suggest.
-        // Using `data` resolves the 400 Bad Request error.
+        
+        // FIX: Switched to `app_metadata` from `user_metadata` to troubleshoot the 400 error.
+        // `app_metadata` is for non-user-editable data like roles and is also read by the
+        // `handle_new_user` trigger via `raw_user_meta_data`. This may have different validation
+        // rules on the backend, potentially resolving the issue.
         const { data, error } = await supabaseAdmin.auth.admin.createUser({
           email: email,
           password: password,
           email_confirm: true,
-          data: {
+          app_metadata: {
             full_name: fullName,
             role: role
           }
