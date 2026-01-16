@@ -123,7 +123,7 @@ const App: React.FC = () => {
     if (!profile) return null;
     switch(view) {
       case 'dashboard':
-        return <Dashboard profile={profile} />;
+        return <Dashboard profile={profile} setProfile={setProfile} />;
       case 'controller':
         return <ControllerPage profile={profile} />;
       case 'reports':
@@ -139,7 +139,7 @@ const App: React.FC = () => {
       case 'profile':
         return <ProfilePage profile={profile} setProfile={setProfile} />;
       default:
-        return <Dashboard profile={profile} />;
+        return <Dashboard profile={profile} setProfile={setProfile} />;
     }
   }
 

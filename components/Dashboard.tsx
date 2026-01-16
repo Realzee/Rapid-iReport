@@ -15,18 +15,23 @@ import StatusBadge from './StatusBadge';
 
 interface DashboardProps {
     profile: Profile;
+    setProfile: (profile: Profile) => void;
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
 // --- RESPONDER DASHBOARD ---
-const ResponderDashboard: React.FC<{ profile: Profile }> = ({ profile }) => {
+const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Profile) => void; }> = ({ profile, setProfile }) => {
     const [isOnDuty, setIsOnDuty] = useState(profile.responder_status !== ResponderStatus.OFF_DUTY);
     const [isSharingLocation, setIsSharingLocation] = useState(false);
     const [assignedReports, setAssignedReports] = useState<Report[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const locationWatchId = useRef<number | null>(null);
+
+    useEffect(() => {
+        setIsOnDuty(profile.responder_status !== ResponderStatus.OFF_DUTY);
+    }, [profile.responder_status]);
 
     // Fetch initial data
     useEffect(() => {
@@ -83,8 +88,6 @@ const ResponderDashboard: React.FC<{ profile: Profile }> = ({ profile }) => {
                 (error) => {
                     console.warn(`Location sharing error: ${error.message}`);
                     setIsSharingLocation(false);
-                    // Optionally stop sharing if there's a persistent error
-                    // stopLocationSharing();
                 },
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
             );
@@ -100,16 +103,25 @@ const ResponderDashboard: React.FC<{ profile: Profile }> = ({ profile }) => {
 
     const handleDutyToggle = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const newDutyStatus = e.target.checked;
-        setIsOnDuty(newDutyStatus);
-
         const newResponderStatus = newDutyStatus ? ResponderStatus.AVAILABLE : ResponderStatus.OFF_DUTY;
-        const { error } = await supabase.from('profiles').update({ responder_status: newResponderStatus, location_coords: null }).eq('id', profile.id);
+
+        const { data: updatedProfile, error } = await supabase
+            .from('profiles')
+            .update({ responder_status: newResponderStatus, location_coords: null })
+            .eq('id', profile.id)
+            .select()
+            .single();
+
         if (error) {
             console.error("Failed to update duty status:", error);
-            setIsOnDuty(!newDutyStatus); // Revert on failure
-        } else {
-            if (newDutyStatus) startLocationSharing();
-            else stopLocationSharing();
+            alert("Failed to update duty status. Please try again.");
+        } else if (updatedProfile) {
+            setProfile(updatedProfile);
+            if (newDutyStatus) {
+                startLocationSharing();
+            } else {
+                stopLocationSharing();
+            }
         }
     };
     
@@ -284,9 +296,9 @@ const ControlCenterDashboard: React.FC<{ profile: Profile }> = ({ profile }) => 
 
 
 // --- Main Dashboard Component ---
-const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
+const Dashboard: React.FC<DashboardProps> = ({ profile, setProfile }) => {
     if (profile.role === UserRole.RESPONDER) {
-        return <ResponderDashboard profile={profile} />;
+        return <ResponderDashboard profile={profile} setProfile={setProfile} />;
     }
     return <ControlCenterDashboard profile={profile} />;
 };

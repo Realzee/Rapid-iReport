@@ -197,11 +197,15 @@ These server-side functions are required for secure administrative actions. Foll
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
         
-        // Step 1: Create the user in auth.users. Do not pass metadata.
+        // Step 1: Create the user in auth.users, passing metadata for the trigger.
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email: email,
           password: password,
           email_confirm: true,
+          user_metadata: {
+            full_name: fullName,
+            role: role,
+          }
         })
 
         if (authError) {
@@ -212,13 +216,9 @@ These server-side functions are required for secure administrative actions. Foll
             throw new Error('User was not created, but no error was returned.');
         }
 
-        // Step 2: Directly insert the full profile into public.profiles.
-        // This bypasses the handle_new_user trigger, making the function's logic self-contained and robust.
-        const profileData = {
-            id: authData.user.id,
-            full_name: fullName,
-            email: email,
-            role: role,
+        // Step 2: The 'handle_new_user' trigger has created the profile. Now, update it with
+        // the remaining details like status and company, which are not handled by the trigger.
+        const profileUpdateData = {
             status: status,
             company_id: company_id || null,
             responder_status: role === 'responder' ? responder_status : null,
@@ -226,12 +226,13 @@ These server-side functions are required for secure administrative actions. Foll
         
         const { error: profileError } = await supabaseAdmin
             .from('profiles')
-            .insert(profileData);
+            .update(profileUpdateData)
+            .eq('id', authData.user.id);
 
         if (profileError) {
-            // If profile creation fails, roll back the auth user.
+            // If profile update fails, roll back the auth user.
             await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-            throw new Error(`Profile creation failed: ${profileError.message}. Auth user has been rolled back.`);
+            throw new Error(`Profile update failed: ${profileError.message}. Auth user has been rolled back.`);
         }
 
         // Return the created user object, which is what the auth call returns.
