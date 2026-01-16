@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserIcon, MailIcon, BuildingIcon, PhoneIcon } from './icons';
 import { supabase } from '../utils/supabase';
+import { UserRole } from '../types';
 
 interface RegisterFormProps {
   onSwitchToLogin: () => void;
@@ -11,6 +12,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [companyRegNumber, setCompanyRegNumber] = useState('');
+  const [requestedRole, setRequestedRole] = useState<UserRole>(UserRole.USER);
   const [message, setMessage] = useState('');
   
   const [loading, setLoading] = useState(false);
@@ -29,7 +33,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
         full_name: fullName,
         email: email,
         phone_number: phoneNumber,
-        company_name: companyName,
+        requested_role: requestedRole,
+        company_name: companyName || null,
+        company_address: companyAddress || null,
+        company_reg_number: companyRegNumber || null,
         message: message,
       });
 
@@ -37,10 +44,14 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
       setError(`Registration failed: ${insertError.message}. Please try again.`);
     } else {
       setSuccess("Your registration request has been submitted successfully. An administrator will review your application and create an account for you. You can also email us at i-report@rapid911.co.za for any inquiries.");
+      // Reset form
       setFullName('');
       setEmail('');
       setPhoneNumber('');
       setCompanyName('');
+      setCompanyAddress('');
+      setCompanyRegNumber('');
+      setRequestedRole(UserRole.USER);
       setMessage('');
     }
     setLoading(false);
@@ -59,48 +70,68 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
   }
 
   const inputClasses = "w-full bg-gray-100 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-700 rounded-md py-3 pl-10 pr-3 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition";
+  const labelClasses = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+  const rolesForRequest = [UserRole.USER, UserRole.CONTROLLER, UserRole.RESPONDER];
 
   return (
     <div className="w-full max-w-md">
       <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-2">Request an Account</h2>
-      <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Submit your details for review.</p>
+      <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Submit your details for review by our administrators.</p>
 
       {error && <p className="mb-4 text-center text-red-500 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 p-3 rounded-md">{error}</p>}
       
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Personal Info */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="full-name" className="sr-only">Full Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><UserIcon className="w-5 h-5 text-gray-400" /></div>
-                <input id="full-name" name="full_name" type="text" autoComplete="name" required value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClasses} placeholder="Full Name"/>
-              </div>
+              <label htmlFor="full-name" className={labelClasses}>Full Name</label>
+              <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><UserIcon className="w-5 h-5 text-gray-400" /></div><input id="full-name" name="full_name" type="text" autoComplete="name" required value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClasses} placeholder="John Doe"/></div>
             </div>
              <div>
-              <label htmlFor="email-register" className="sr-only">Email Address</label>
-              <div className="relative">
-                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><MailIcon className="w-5 h-5 text-gray-400" /></div>
-                <input id="email-register" name="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClasses} placeholder="Email Address"/>
-              </div>
-            </div>
-             <div>
-              <label htmlFor="phone" className="sr-only">Phone Number</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><PhoneIcon className="w-5 h-5 text-gray-400" /></div>
-                <input id="phone" name="phone" type="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className={inputClasses} placeholder="Phone Number"/>
-              </div>
-            </div>
-            <div>
-              <label htmlFor="company" className="sr-only">Company Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><BuildingIcon className="w-5 h-5 text-gray-400" /></div>
-                <input id="company" name="company" type="text" autoComplete="organization" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className={inputClasses} placeholder="Company (Optional)"/>
-              </div>
+              <label htmlFor="email-register" className={labelClasses}>Email</label>
+              <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><MailIcon className="w-5 h-5 text-gray-400" /></div><input id="email-register" name="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClasses} placeholder="you@example.com"/></div>
             </div>
         </div>
+        
+        {/* Role & Phone */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="requested_role" className={labelClasses}>I am a...</label>
+            <select id="requested_role" name="requested_role" value={requestedRole} onChange={(e) => setRequestedRole(e.target.value as UserRole)} className={`${inputClasses} !pl-3`}>
+                {rolesForRequest.map(role => (
+                    <option key={role} value={role} className="capitalize">{role.charAt(0).toUpperCase() + role.slice(1)}</option>
+                ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="phone" className={labelClasses}>Phone Number</label>
+            <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><PhoneIcon className="w-5 h-5 text-gray-400" /></div><input id="phone" name="phone" type="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className={inputClasses} placeholder="012 345 6789"/></div>
+          </div>
+        </div>
+
+        {/* Company Info */}
         <div>
-            <label htmlFor="message" className="sr-only">Message</label>
-            <textarea id="message" name="message" rows={3} value={message} onChange={(e) => setMessage(e.target.value)} className="w-full bg-gray-100 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-700 rounded-md py-3 px-3 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Short message about why you're requesting access (optional)"></textarea>
+          <label htmlFor="company" className={labelClasses}>Company Name (Optional)</label>
+          <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><BuildingIcon className="w-5 h-5 text-gray-400" /></div><input id="company" name="company" type="text" autoComplete="organization" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className={inputClasses} placeholder="Your Company Inc."/></div>
+        </div>
+        
+        {companyName && (
+          <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700/50 rounded-lg">
+             <div>
+              <label htmlFor="company_address" className={labelClasses}>Company Address</label>
+              <input id="company_address" name="company_address" type="text" autoComplete="street-address" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} className={inputClasses} placeholder="123 Business Rd, Sandton"/>
+            </div>
+             <div>
+              <label htmlFor="company_reg_number" className={labelClasses}>Company Registration # (Optional)</label>
+              <input id="company_reg_number" name="company_reg_number" type="text" value={companyRegNumber} onChange={(e) => setCompanyRegNumber(e.target.value)} className={inputClasses} placeholder="e.g., 2023/123456/07"/>
+            </div>
+          </div>
+        )}
+        
+        {/* Message */}
+        <div>
+            <label htmlFor="message" className={labelClasses}>Reason for Account Request</label>
+            <textarea id="message" name="message" rows={3} value={message} onChange={(e) => setMessage(e.target.value)} className="w-full bg-gray-100 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-700 rounded-md py-3 px-3 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g., 'I am a response officer for ABC Security.'"></textarea>
         </div>
         <div>
           <button
