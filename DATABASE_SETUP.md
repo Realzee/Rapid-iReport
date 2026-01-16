@@ -201,7 +201,7 @@ These server-side functions are required for secure administrative actions. Foll
           email: email,
           password: password,
           email_confirm: true,
-          user_metadata: {
+          data: {
             full_name: fullName,
             role: role
           }
