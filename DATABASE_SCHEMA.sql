@@ -141,7 +141,6 @@ CREATE TABLE IF NOT EXISTS public.registration_requests (
     full_name text NOT NULL,
     email text NOT NULL,
     phone_number text,
-    requested_role public.user_role NOT NULL DEFAULT 'user'::public.user_role,
     company_name text,
     message text,
     status public.request_status NOT NULL DEFAULT 'pending'::public.request_status,
@@ -265,7 +264,7 @@ AS $$
 DECLARE
   notification_msg text;
 BEGIN
-  notification_msg := new.full_name || ' has requested a "' || new.requested_role::text || '" account.';
+  notification_msg := new.full_name || ' has requested an account.';
   
   IF new.company_name IS NOT NULL THEN
     notification_msg := notification_msg || ' For company: ' || new.company_name;
@@ -273,7 +272,7 @@ BEGIN
 
   PERFORM public.create_staff_notification(
     'new_registration_request',
-    'New Account Request: ' || new.requested_role::text,
+    'New Account Request',
     notification_msg,
     new.id,
     ARRAY['admin', 'moderator']

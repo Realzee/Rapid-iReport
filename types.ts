@@ -154,7 +154,6 @@ export interface RegistrationRequest {
     full_name: string;
     email: string;
     phone_number?: string;
-    requested_role: UserRole;
     company_name?: string;
     message?: string;
     status: RequestStatus;

@@ -118,11 +118,11 @@ These server-side functions are required for secure administrative actions. Foll
                 }
             }
 
-            // 3. Invite the user
+            // 3. Invite the user with a default role of 'user'
             const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(request.email, {
                 data: {
                     full_name: request.full_name,
-                    role: request.requested_role,
+                    role: 'user', // Default role upon approval
                 }
             });
             if (inviteError) throw new Error(`Failed to invite user: ${inviteError.message}`);

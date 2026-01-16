@@ -12,7 +12,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [requestedRole, setRequestedRole] = useState<UserRole>(UserRole.USER);
   const [message, setMessage] = useState('');
   
   const [loading, setLoading] = useState(false);
@@ -31,7 +30,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
         full_name: fullName,
         email: email,
         phone_number: phoneNumber,
-        requested_role: requestedRole,
         company_name: companyName || null,
         message: message,
       });
@@ -45,7 +43,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
       setEmail('');
       setPhoneNumber('');
       setCompanyName('');
-      setRequestedRole(UserRole.USER);
       setMessage('');
     }
     setLoading(false);
@@ -65,7 +62,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
 
   const inputClasses = "w-full bg-gray-100 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-700 rounded-md py-3 pl-10 pr-3 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition";
   const labelClasses = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
-  const rolesForRequest = [UserRole.USER, UserRole.CONTROLLER, UserRole.RESPONDER];
 
   return (
     <div className="w-full max-w-md">
@@ -87,20 +83,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
             </div>
         </div>
         
-        {/* Role & Phone */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="requested_role" className={labelClasses}>I am a...</label>
-            <select id="requested_role" name="requested_role" value={requestedRole} onChange={(e) => setRequestedRole(e.target.value as UserRole)} className={`${inputClasses} !pl-3`}>
-                {rolesForRequest.map(role => (
-                    <option key={role} value={role} className="capitalize">{role.charAt(0).toUpperCase() + role.slice(1)}</option>
-                ))}
-            </select>
-          </div>
-          <div>
+        {/* Phone */}
+        <div>
             <label htmlFor="phone" className={labelClasses}>Phone Number</label>
             <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><PhoneIcon className="w-5 h-5 text-gray-400" /></div><input id="phone" name="phone" type="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className={inputClasses} placeholder="012 345 6789"/></div>
-          </div>
         </div>
 
         {/* Company Info */}

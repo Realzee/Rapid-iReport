@@ -11,7 +11,7 @@ const RequestCard: React.FC<{ request: RegistrationRequest; onApprove: (id: stri
             <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-start">
                 <div>
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">{request.full_name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">wants to register as a <span className="font-semibold capitalize">{request.requested_role}</span></p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">has requested an account.</p>
                 </div>
                 <span className="text-xs text-gray-400 dark:text-gray-500">{formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
             </div>
