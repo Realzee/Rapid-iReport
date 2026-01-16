@@ -25,7 +25,7 @@ const RequestCard: React.FC<{ request: RegistrationRequest; onApprove: (id: stri
                 <div className="space-y-3">
                     {request.company_name ? (
                         <>
-                            <div className="flex items-start gap-3"><BuildingIcon className="w-5 h-5 text-gray-400 mt-0.5"/><div><p className="font-semibold">{request.company_name}</p><p className="text-gray-500 dark:text-gray-400">{request.company_address}</p><p className="text-xs text-gray-400 font-mono mt-1">{request.company_reg_number}</p></div></div>
+                            <div className="flex items-start gap-3"><BuildingIcon className="w-5 h-5 text-gray-400 mt-0.5"/><div><p className="font-semibold">{request.company_name}</p><p className="text-xs text-gray-400 font-mono mt-1">{request.company_reg_number}</p></div></div>
                         </>
                     ) : (
                          <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400 italic"><BuildingIcon className="w-5 h-5 text-gray-400"/>No company specified</div>

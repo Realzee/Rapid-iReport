@@ -143,7 +143,6 @@ CREATE TABLE IF NOT EXISTS public.registration_requests (
     phone_number text,
     requested_role public.user_role NOT NULL DEFAULT 'user'::public.user_role,
     company_name text,
-    company_address text,
     company_reg_number text,
     message text,
     status public.request_status NOT NULL DEFAULT 'pending'::public.request_status,
