@@ -115,6 +115,16 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     };
     
     const availableResponders = responders.filter(r => r.status === ResponderStatus.AVAILABLE);
+
+    const currentlyAssignedResponder = report.assigned_to
+        ? responders.find(r => r.id === report.assigned_to)
+        : undefined;
+
+    const responderOptions = [...availableResponders];
+    if (currentlyAssignedResponder && !availableResponders.some(r => r.id === currentlyAssignedResponder.id)) {
+        responderOptions.push(currentlyAssignedResponder);
+    }
+
     const statusOptions = [ReportStatus.PENDING, ReportStatus.ASSIGNED, ReportStatus.ON_SCENE, ReportStatus.RESOLVED, ReportStatus.CLOSED];
 
     return (
@@ -217,7 +227,12 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                             className="flex-grow bg-gray-800 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                         >
                             <option value="">{report.assigned_to ? 'Unassign' : (availableResponders.length > 0 ? 'Select Responder...' : 'No responders available')}</option>
-                            {availableResponders.map(r => <option key={r.id} value={r.id}>{r.full_name}</option>)}
+                            {responderOptions.map(r => (
+                                <option key={r.id} value={r.id}>
+                                    {r.full_name}
+                                    {r.status !== ResponderStatus.AVAILABLE ? ` (${r.status.replace(/_/g, ' ')})` : ''}
+                                </option>
+                            ))}
                         </select>
                         <button onClick={() => handleDispatchResponder(selectedResponder)} className="p-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
                             <AssignResponderIcon className="w-5 h-5 text-gray-300" />
