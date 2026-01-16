@@ -281,7 +281,7 @@ DROP POLICY IF EXISTS "Allow users to update their own profile" ON public.profil
 CREATE POLICY "Allow users to update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 DROP POLICY IF EXISTS "Admins and moderators can manage all profiles" ON public.profiles;
 CREATE POLICY "Admins and moderators can manage all profiles" ON public.profiles FOR ALL
-  USING ((( SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin'::public.user_role, 'moderator'::public.user_role))) WITH CHECK ((( SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin'::public.user_role, 'moderator'::public.user_role)));
+  USING ((( SELECT role::text FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator'))) WITH CHECK ((( SELECT role::text FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator')));
 
 -- COMPANIES
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
@@ -289,37 +289,37 @@ DROP POLICY IF EXISTS "Allow authenticated users to view companies" ON public.co
 CREATE POLICY "Allow authenticated users to view companies" ON public.companies FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admins and moderators can manage companies" ON public.companies;
 CREATE POLICY "Admins and moderators can manage companies" ON public.companies FOR ALL
-  USING ((( SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin'::public.user_role, 'moderator'::public.user_role))) WITH CHECK ((( SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin'::public.user_role, 'moderator'::public.user_role)));
+  USING ((( SELECT role::text FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator'))) WITH CHECK ((( SELECT role::text FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator')));
 
 -- VEHICLE REPORTS
 ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow view access to relevant users" ON public.vehicle_reports;
 CREATE POLICY "Allow view access to relevant users" ON public.vehicle_reports FOR SELECT
-  USING ( ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin'::public.user_role, 'moderator'::public.user_role, 'controller'::public.user_role)) OR (((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'responder'::public.user_role) AND (assigned_to = auth.uid())) OR (reported_by = auth.uid()) );
+  USING ( ((SELECT role::text FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller')) OR (((SELECT role::text FROM public.profiles WHERE id = auth.uid()) = 'responder') AND (assigned_to = auth.uid())) OR (reported_by = auth.uid()) );
 DROP POLICY IF EXISTS "Allow users to create reports" ON public.vehicle_reports;
 CREATE POLICY "Allow users to create reports" ON public.vehicle_reports FOR INSERT
   WITH CHECK (auth.role() = 'authenticated');
 DROP POLICY IF EXISTS "Allow admins, moderators, controllers to manage reports" ON public.vehicle_reports;
 CREATE POLICY "Allow admins, moderators, controllers to manage reports" ON public.vehicle_reports FOR ALL
-  USING (((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin'::public.user_role, 'moderator'::public.user_role, 'controller'::public.user_role))) WITH CHECK (((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin'::public.user_role, 'moderator'::public.user_role, 'controller'::public.user_role)));
+  USING (((SELECT role::text FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller'))) WITH CHECK (((SELECT role::text FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller')));
 DROP POLICY IF EXISTS "Allow assigned responders to update status" ON public.vehicle_reports;
 CREATE POLICY "Allow assigned responders to update status" ON public.vehicle_reports FOR UPDATE
-  USING ((((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'responder'::public.user_role) AND (assigned_to = auth.uid())));
+  USING ((((SELECT role::text FROM public.profiles WHERE id = auth.uid()) = 'responder') AND (assigned_to = auth.uid())));
 
 -- CRIME REPORTS
 ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow view access to relevant users" ON public.crime_reports;
 CREATE POLICY "Allow view access to relevant users" ON public.crime_reports FOR SELECT
-  USING ( ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin'::public.user_role, 'moderator'::public.user_role, 'controller'::public.user_role)) OR (((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'responder'::public.user_role) AND (assigned_to = auth.uid())) OR (reported_by = auth.uid()) );
+  USING ( ((SELECT role::text FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller')) OR (((SELECT role::text FROM public.profiles WHERE id = auth.uid()) = 'responder') AND (assigned_to = auth.uid())) OR (reported_by = auth.uid()) );
 DROP POLICY IF EXISTS "Allow users to create reports" ON public.crime_reports;
 CREATE POLICY "Allow users to create reports" ON public.crime_reports FOR INSERT
   WITH CHECK (auth.role() = 'authenticated');
 DROP POLICY IF EXISTS "Allow admins, moderators, controllers to manage reports" ON public.crime_reports;
 CREATE POLICY "Allow admins, moderators, controllers to manage reports" ON public.crime_reports FOR ALL
-  USING (((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin'::public.user_role, 'moderator'::public.user_role, 'controller'::public.user_role))) WITH CHECK (((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin'::public.user_role, 'moderator'::public.user_role, 'controller'::public.user_role)));
+  USING (((SELECT role::text FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller'))) WITH CHECK (((SELECT role::text FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller')));
 DROP POLICY IF EXISTS "Allow assigned responders to update status" ON public.crime_reports;
 CREATE POLICY "Allow assigned responders to update status" ON public.crime_reports FOR UPDATE
-  USING ((((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'responder'::public.user_role) AND (assigned_to = auth.uid())));
+  USING ((((SELECT role::text FROM public.profiles WHERE id = auth.uid()) = 'responder') AND (assigned_to = auth.uid())));
 
 -- REPORT UPDATES
 ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;
@@ -327,7 +327,7 @@ DROP POLICY IF EXISTS "Allow relevant users to see updates" ON public.report_upd
 CREATE POLICY "Allow relevant users to see updates" ON public.report_updates FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Allow relevant users to add updates" ON public.report_updates;
 CREATE POLICY "Allow relevant users to add updates" ON public.report_updates FOR INSERT
-  WITH CHECK ( ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin'::public.user_role, 'moderator'::public.user_role, 'controller'::public.user_role)) OR (((SELECT role FROM public.profiles WHERE id = auth.uid()) = 'responder'::public.user_role)) );
+  WITH CHECK ( ((SELECT role::text FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator', 'controller')) OR (((SELECT role::text FROM public.profiles WHERE id = auth.uid()) = 'responder')) );
 
 -- REGISTRATION REQUESTS
 ALTER TABLE public.registration_requests ENABLE ROW LEVEL SECURITY;
@@ -336,7 +336,7 @@ CREATE POLICY "Allow users to submit registration requests" ON public.registrati
   WITH CHECK (auth.role() = 'anon');
 DROP POLICY IF EXISTS "Admins and moderators can manage registration requests" ON public.registration_requests;
 CREATE POLICY "Admins and moderators can manage registration requests" ON public.registration_requests FOR ALL
-  USING (((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin'::public.user_role, 'moderator'::public.user_role)));
+  USING (((SELECT role::text FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'moderator')));
 
 -- NOTIFICATIONS
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
@@ -348,12 +348,12 @@ CREATE POLICY "Users can update their own notifications" ON public.notifications
   FOR UPDATE USING (auth.uid() = recipient_user_id) WITH CHECK (auth.uid() = recipient_user_id);
 DROP POLICY IF EXISTS "Allow system to insert new user notifications" ON public.notifications;
 CREATE POLICY "Allow system to insert new user notifications" ON public.notifications
-  FOR INSERT WITH CHECK ( type = 'new_user' AND (SELECT role FROM public.profiles WHERE id = recipient_user_id) IN ('admin'::public.user_role, 'moderator'::public.user_role) );
+  FOR INSERT WITH CHECK ( type = 'new_user' AND (SELECT role::text FROM public.profiles WHERE id = recipient_user_id) IN ('admin', 'moderator') );
 DROP POLICY IF EXISTS "Allow system to insert new report notifications" ON public.notifications;
 CREATE POLICY "Allow system to insert new report notifications" ON public.notifications
-  FOR INSERT WITH CHECK ( type = 'new_report' AND (SELECT role FROM public.profiles WHERE id = recipient_user_id) IN ('admin'::public.user_role, 'moderator'::public.user_role, 'controller'::public.user_role) );
+  FOR INSERT WITH CHECK ( type = 'new_report' AND (SELECT role::text FROM public.profiles WHERE id = recipient_user_id) IN ('admin', 'moderator', 'controller') );
 DROP POLICY IF EXISTS "Allow system to insert new registration notifications" ON public.notifications;
 CREATE POLICY "Allow system to insert new registration notifications" ON public.notifications
-  FOR INSERT WITH CHECK ( type = 'new_registration_request' AND (SELECT role FROM public.profiles WHERE id = recipient_user_id) IN ('admin'::public.user_role, 'moderator'::public.user_role) );
+  FOR INSERT WITH CHECK ( type = 'new_registration_request' AND (SELECT role::text FROM public.profiles WHERE id = recipient_user_id) IN ('admin', 'moderator') );
 
 COMMIT;
