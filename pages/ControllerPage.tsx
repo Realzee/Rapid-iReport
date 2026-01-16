@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Report, Profile, Responder, ResponderStatus, UserRole } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
@@ -138,6 +137,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
             <div className="lg:col-span-3">
                 <LiveEventStack
                     reports={sortedReports}
+                    responders={responders}
                     onReportSelect={(id) => setSelectedReportId(id)}
                     selectedReportId={selectedReportId}
                 />
