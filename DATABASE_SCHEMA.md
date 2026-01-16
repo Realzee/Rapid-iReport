@@ -248,12 +248,13 @@ DROP POLICY IF EXISTS "Allow authenticated users to view profiles" ON public.pro
 CREATE POLICY "Allow authenticated users to view profiles" ON public.profiles FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Allow users to insert their own profile" ON public.profiles;
--- This policy is updated to allow the auth trigger (running as supabase_auth_admin) to create profiles.
--- The previous policy `CHECK (auth.uid() = id)` failed because auth.uid() is not the new user's ID in the trigger context.
+-- This policy is updated to allow the auth trigger (running as postgres) to create profiles.
+-- The previous policies failed because the trigger's execution context has auth.uid() = null,
+-- and the role is 'postgres', not 'supabase_auth_admin' as previously assumed.
 CREATE POLICY "Allow users to insert their own profile" ON public.profiles FOR INSERT
   WITH CHECK (
     (auth.uid() = id) OR
-    (current_role = 'supabase_auth_admin')
+    (current_role = 'postgres')
   );
 
 DROP POLICY IF EXISTS "Allow users to update their own profile" ON public.profiles;
