@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import AuthPage from './pages/AuthPage';
 import UsersPage from './pages/UsersPage';
 import CompaniesPage from './pages/CompaniesPage';
+import RequestsPage from './pages/RequestsPage';
 import MapPage from './pages/MapPage';
 import ReportsPage from './pages/ReportsPage';
 import ProfilePage from './pages/ProfilePage';
@@ -13,7 +13,7 @@ import { supabase } from './utils/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from './types';
 
-type View = 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller';
+type View = 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'requests';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -92,9 +92,11 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (profile) {
-      const userManagementView = view === 'users' || view === 'companies';
-      const canAccessUserManagement = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
-      if (userManagementView && !canAccessUserManagement) {
+      const adminPages: View[] = ['users', 'companies', 'requests'];
+      const currentViewIsAdmin = adminPages.includes(view);
+      const canAccessAdminPages = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
+      
+      if (currentViewIsAdmin && !canAccessAdminPages) {
         setView('dashboard');
       }
 
@@ -121,6 +123,8 @@ const App: React.FC = () => {
         return <UsersPage />;
       case 'companies':
         return <CompaniesPage />;
+      case 'requests':
+        return <RequestsPage />;
       case 'profile':
         return <ProfilePage profile={profile} setProfile={setProfile} />;
       default:

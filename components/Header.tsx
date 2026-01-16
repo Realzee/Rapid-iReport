@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BellIcon, ChevronDownIcon, MenuIcon, XIcon } from './icons';
+import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, ClipboardCheckIcon } from './icons';
 import { Profile, UserRole, Notification } from '../types';
 import { supabase } from '../utils/supabase';
 import { logoUrl } from '../assets/logo';
@@ -9,7 +8,7 @@ import NotificationsPanel from './NotificationsPanel';
 
 interface HeaderProps {
     currentView: string;
-    setView: (view: 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller') => void;
+    setView: (view: 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'requests') => void;
     profile: Profile;
 }
 
@@ -18,60 +17,79 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   
   const unreadCount = useMemo(() => notifications.filter(n => !n.is_read).length, [notifications]);
+  const canAccessAdminPages = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
+  const canAccessController = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role);
 
   useEffect(() => {
     if (!profile) return;
-
-    const fetchNotifications = async () => {
-        const { data, error } = await supabase
+    
+    const fetchInitialData = async () => {
+        // Fetch Notifications
+        const { data: notificationsData, error: notificationsError } = await supabase
             .from('notifications')
             .select('*')
             .eq('recipient_user_id', profile.id)
             .order('created_at', { ascending: false });
+        if (notificationsError) console.error("Error fetching notifications:", notificationsError);
+        else setNotifications(notificationsData || []);
 
-        if (error) console.error("Error fetching notifications:", error);
-        else setNotifications(data || []);
+        // Fetch pending requests count for admins
+        if (canAccessAdminPages) {
+            const { count, error: countError } = await supabase
+                .from('registration_requests')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending');
+            if (countError) console.error("Error fetching requests count:", countError);
+            else setPendingRequestsCount(count || 0);
+        }
     };
+    
+    fetchInitialData();
 
-    fetchNotifications();
-
-    const channel = supabase
+    // Subscribe to Notifications
+    const notificationsChannel = supabase
         .channel(`notifications-${profile.id}`)
-        .on('postgres_changes', {
-            event: '*',
-            schema: 'public',
-            table: 'notifications',
-            filter: `recipient_user_id=eq.${profile.id}`
-        }, () => {
-            fetchNotifications();
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `recipient_user_id=eq.${profile.id}`}, 
+        () => {
+            fetchInitialData(); // Refetch all notifications on change
         })
         .subscribe();
+        
+    // Subscribe to Registration Requests for count update
+    let requestsChannel: ReturnType<typeof supabase.channel> | null = null;
+    if (canAccessAdminPages) {
+        requestsChannel = supabase
+            .channel('public:registration_requests')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'registration_requests' }, async () => {
+                const { count, error } = await supabase.from('registration_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+                if (!error) setPendingRequestsCount(count || 0);
+            })
+            .subscribe();
+    }
 
     return () => {
-        supabase.removeChannel(channel);
+        supabase.removeChannel(notificationsChannel);
+        if (requestsChannel) supabase.removeChannel(requestsChannel);
     };
-  }, [profile]);
+  }, [profile, canAccessAdminPages]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-        if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
-            setIsNotificationsOpen(false);
-        }
-        if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
-            setDropdownOpen(false);
-        }
+        if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) setIsNotificationsOpen(false);
+        if (profileRef.current && !profileRef.current.contains(event.target as Node)) setDropdownOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const navLinkClasses = (view: string) => 
-      `text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors duration-300 px-3 py-2 rounded-md ${
+      `relative text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors duration-300 px-3 py-2 rounded-md ${
         currentView === view ? 'bg-gray-200 dark:bg-gray-700/50 text-black dark:text-white' : ''
       }`;
       
@@ -85,51 +103,30 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
     setMobileMenuOpen(false);
   };
 
-  const handleMobileLinkClick = (view: 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller') => {
+  const handleMobileLinkClick = (view: 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'requests') => {
       setView(view);
       setMobileMenuOpen(false);
   }
   
   useEffect(() => {
-    if (mobileMenuOpen) {
-        document.body.style.overflow = 'hidden';
-    } else {
-        document.body.style.overflow = 'unset';
-    }
+    if (mobileMenuOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = 'unset';
     return () => { document.body.style.overflow = 'unset'; };
   }, [mobileMenuOpen]);
 
-  const toggleNotifications = () => {
-    setIsNotificationsOpen(prev => !prev);
-    setDropdownOpen(false);
-  };
-
-  const toggleUserDropdown = () => {
-    setDropdownOpen(prev => !prev);
-    setIsNotificationsOpen(false);
-  };
+  const toggleNotifications = () => { setIsNotificationsOpen(prev => !prev); setDropdownOpen(false); };
+  const toggleUserDropdown = () => { setDropdownOpen(prev => !prev); setIsNotificationsOpen(false); };
 
   const handleMarkAsRead = async (id: string) => {
-    const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', id);
-    if (error) console.error("Error marking notification as read:", error);
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
   };
 
   const handleMarkAllAsRead = async () => {
     const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
-    if (unreadIds.length === 0) return;
-
-    const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .in('id', unreadIds);
-    if (error) console.error("Error marking all as read:", error);
+    if (unreadIds.length > 0) {
+        await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds);
+    }
   };
-
-  const canAccessAdminPages = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
-  const canAccessController = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role);
 
   const NavLinks: React.FC<{mobile?: boolean}> = ({ mobile = false}) => (
     <>
@@ -143,6 +140,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
         <>
           <button onClick={() => mobile ? handleMobileLinkClick('users') : setView('users')} className={mobile ? mobileNavLinkClasses('users') : navLinkClasses('users')}>Users</button>
           <button onClick={() => mobile ? handleMobileLinkClick('companies') : setView('companies')} className={mobile ? mobileNavLinkClasses('companies') : navLinkClasses('companies')}>Companies</button>
+          <button onClick={() => mobile ? handleMobileLinkClick('requests') : setView('requests')} className={mobile ? mobileNavLinkClasses('requests') : navLinkClasses('requests')}>
+            Access Requests
+            {pendingRequestsCount > 0 && !mobile && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full text-xs flex items-center justify-center text-white">{pendingRequestsCount}</span>
+            )}
+          </button>
         </>
       )}
     </>

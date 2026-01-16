@@ -1,4 +1,3 @@
-
 export enum UserRole {
   ADMIN = 'admin',
   MODERATOR = 'moderator',
@@ -43,6 +42,12 @@ export enum NotificationType {
   NEW_REPORT = 'new_report',
   NEW_USER = 'new_user',
   NEW_REGISTRATION_REQUEST = 'new_registration_request',
+}
+
+export enum RequestStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
 }
 
 export interface Company {
@@ -141,4 +146,18 @@ export interface Notification {
   message: string;
   is_read: boolean;
   reference_id?: string;
+}
+
+export interface RegistrationRequest {
+    id: string;
+    created_at: string;
+    full_name: string;
+    email: string;
+    phone_number?: string;
+    requested_role: UserRole;
+    company_name?: string;
+    company_address?: string;
+    company_reg_number?: string;
+    message?: string;
+    status: RequestStatus;
 }
