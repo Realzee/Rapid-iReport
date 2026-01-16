@@ -47,11 +47,12 @@ These server-side functions are required for secure administrative actions. Foll
     *   Create the function: `supabase functions new update-user-password`.
     *   Open the new file `supabase/functions/update-user-password/index.ts` and replace its content with the code below.
     ```typescript
-    import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
+    import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4'
 
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     }
 
@@ -78,11 +79,12 @@ These server-side functions are required for secure administrative actions. Foll
     *   Create the function: `supabase functions new approve-request`.
     *   Open `supabase/functions/approve-request/index.ts` and replace its content with this code:
     ```typescript
-    import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
+    import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4'
 
     const corsHeaders = {
         'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     }
 
@@ -169,11 +171,12 @@ These server-side functions are required for secure administrative actions. Foll
     *   Create the function: `supabase functions new create-user`.
     *   Open `supabase/functions/create-user/index.ts` and replace its content with this code:
     ```typescript
-    import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
+    import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4'
 
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     }
 
@@ -224,11 +227,12 @@ These server-side functions are required for secure administrative actions. Foll
     *   Create the function: `supabase functions new delete-user`.
     *   Open `supabase/functions/delete-user/index.ts` and replace its content with this code:
     ```typescript
-    import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
+    import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4'
 
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     }
 

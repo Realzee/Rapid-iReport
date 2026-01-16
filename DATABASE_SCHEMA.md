@@ -205,18 +205,28 @@ SECURITY DEFINER SET search_path = public
 AS $$
 DECLARE
   user_full_name text;
+  user_role_text text;
 BEGIN
-  -- Use COALESCE to provide a fallback for full_name, preventing NOT NULL violations if metadata is missing.
+  -- Defensive coding: ensure metadata is treated safely
   user_full_name := COALESCE(new.raw_user_meta_data->>'full_name', new.email);
+  user_role_text := new.raw_user_meta_data->>'role';
 
+  -- Ensure full_name is not an empty string if metadata provides it as such
+  IF user_full_name = '' OR user_full_name IS NULL THEN
+    user_full_name := new.email;
+  END IF;
+
+  -- Insert into profiles table
   INSERT INTO public.profiles (id, full_name, email, role)
   VALUES (
     new.id,
     user_full_name,
     new.email,
-    COALESCE((new.raw_user_meta_data->>'role')::public.user_role, 'user'::public.user_role)
+    -- Safely cast the role, defaulting to 'user' on any issue
+    (SELECT CASE WHEN user_role_text IN ('admin', 'moderator', 'controller', 'responder', 'user') THEN user_role_text::public.user_role ELSE 'user'::public.user_role END)
   );
 
+  -- Create notification for admins
   PERFORM public.create_staff_notification(
     'new_user',
     'New User Registered',
