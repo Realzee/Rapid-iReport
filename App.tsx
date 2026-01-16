@@ -47,16 +47,16 @@ const App: React.FC = () => {
     let presenceInterval: number | undefined;
 
     if (session?.user) {
-        const setupPresence = async () => {
+        const setupProfileAndPresence = async () => {
+            // 1. Fetch the profile first.
             const { data, error: profileError } = await supabase
                 .from('profiles')
-                .update({ last_seen_at: new Date().toISOString() })
+                .select('*')
                 .eq('id', session.user.id)
-                .select()
                 .single();
 
             if (profileError) {
-                console.error('Error setting up presence and fetching profile:', profileError);
+                console.error('Error fetching profile:', profileError);
                 setError(`Failed to load your profile. Please check your connection and Row Level Security policies. Error: ${profileError.message}`);
                 setProfile(null);
                 if (profileError.message.includes('security policy')) {
@@ -69,16 +69,27 @@ const App: React.FC = () => {
             } else {
                 setProfile(data);
                 setError(null);
-            }
 
-            presenceInterval = window.setInterval(async () => {
-                await supabase
+                // 2. Once profile is successfully fetched, update presence.
+                const { error: presenceError } = await supabase
                     .from('profiles')
                     .update({ last_seen_at: new Date().toISOString() })
                     .eq('id', session.user.id);
-            }, 60000);
+
+                if (presenceError) {
+                    console.warn("Could not update presence:", presenceError.message);
+                }
+
+                // 3. Set up interval
+                presenceInterval = window.setInterval(async () => {
+                    await supabase
+                        .from('profiles')
+                        .update({ last_seen_at: new Date().toISOString() })
+                        .eq('id', session.user.id);
+                }, 60000);
+            }
         };
-        setupPresence();
+        setupProfileAndPresence();
     } else {
         setProfile(null);
     }

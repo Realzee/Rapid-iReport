@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Report, Profile, VehicleReport, UserRole, ReportStatus } from '../types';
 import StatusBadge from './StatusBadge';
@@ -39,7 +40,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         const fetchReporter = async () => {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('full_name, email')
+                // FIX: Select all fields to match the Profile type.
+                .select('*')
                 .eq('id', report.reported_by)
                 .single();
             if (error) console.error("Error fetching reporter:", error);
