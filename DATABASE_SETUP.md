@@ -43,9 +43,9 @@ These server-side functions are required for secure administrative actions. Foll
 
 2.  **Link your project:** In your computer's terminal, navigate to your project folder and run `supabase login`, then `supabase link --project-ref <your-project-ref>`. Your `<project-ref>` is in your Supabase project's URL (`<project-ref>.supabase.co`).
 
-3.  **Deploy `update-user-password` Function:**
-    *   Create the function: `supabase functions new update-user-password`.
-    *   Open the new file `supabase/functions/update-user-password/index.ts` and replace its content with the code below.
+3.  **Deploy `reset-password` Function:**
+    *   Create the function: `supabase functions new reset-password`.
+    *   Open the new file `supabase/functions/reset-password/index.ts` and replace its content with the code below.
     ```typescript
     import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4'
@@ -73,11 +73,11 @@ These server-side functions are required for secure administrative actions. Foll
       }
     })
     ```
-    *   Deploy it: `supabase functions deploy update-user-password --no-verify-jwt`.
+    *   Deploy it: `supabase functions deploy reset-password --no-verify-jwt`.
 
-4.  **Deploy `approve-request` Function:**
-    *   Create the function: `supabase functions new approve-request`.
-    *   Open `supabase/functions/approve-request/index.ts` and replace its content with this code:
+4.  **Deploy `approve-registration` Function:**
+    *   Create the function: `supabase functions new approve-registration`.
+    *   Open `supabase/functions/approve-registration/index.ts` and replace its content with this code:
     ```typescript
     import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4'
@@ -165,7 +165,7 @@ These server-side functions are required for secure administrative actions. Foll
         }
     })
     ```
-    *   Deploy it: `supabase functions deploy approve-request --no-verify-jwt`.
+    *   Deploy it: `supabase functions deploy approve-registration --no-verify-jwt`.
 
 5.  **Deploy `create-user` Function:**
     *   Create the function: `supabase functions new create-user`.
@@ -197,6 +197,9 @@ These server-side functions are required for secure administrative actions. Foll
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
+        // FIX: The createUser Admin API inconsistently expects `data` for metadata,
+        // similar to inviteUserByEmail, not `user_metadata` as the types suggest.
+        // Using `data` resolves the 400 Bad Request error.
         const { data, error } = await supabaseAdmin.auth.admin.createUser({
           email: email,
           password: password,
@@ -214,6 +217,7 @@ These server-side functions are required for secure administrative actions. Foll
           status: 200,
         })
       } catch (error) {
+        console.error("CREATE-USER-FUNCTION-ERROR:", error);
         return new Response(JSON.stringify({ error: error.message }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400,

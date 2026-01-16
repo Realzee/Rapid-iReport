@@ -101,7 +101,7 @@ const RequestsPage: React.FC = () => {
         
         setProcessingId(requestId);
         try {
-            const { error } = await supabase.functions.invoke('approve-request', {
+            const { error } = await supabase.functions.invoke('approve-registration', {
                 headers: { Authorization: `Bearer ${supabaseAnonKey}` },
                 body: { requestId },
             });

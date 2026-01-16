@@ -72,13 +72,13 @@ const UsersPage: React.FC = () => {
             }
 
             if (password) {
-                const { error: functionError } = await supabase.functions.invoke('update-user-password', {
+                const { error: functionError } = await supabase.functions.invoke('reset-password', {
                     headers: { Authorization: `Bearer ${supabaseAnonKey}` },
                     body: { userId: userToSave.id, password: password }
                 });
 
                 if (functionError) {
-                    alert(`Profile saved, but failed to update password: ${functionError.message}. Ensure the 'update-user-password' Edge Function is deployed correctly.`);
+                    alert(`Profile saved, but failed to update password: ${functionError.message}. Ensure the 'reset-password' Edge Function is deployed correctly.`);
                 } else {
                     alert('User password was also updated successfully.');
                 }
