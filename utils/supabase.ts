@@ -14,7 +14,7 @@ const supabaseUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co';
 // 4. In the "Project API keys" section, find the key labeled "anon" and "public".
 // 5. This key is a very long string, often starting with "eyJ...".
 // 6. Click "Copy" and paste it below, replacing the placeholder.
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlnbHdkd2h3cGJxYXd1bmJrenl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyNzU3ODksImV4cCI6MjA4Mzg1MTc4OX0.yj6Zdkqr_Wp6oVfg98Rok1ih5wxEvUGj6BwmM782xmU';
+export const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlnbHdkd2h3cGJxYXd1bmJrenl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyNzU3ODksImV4cCI6MjA4Mzg1MTc4OX0.yj6Zdkqr_Wp6oVfg98Rok1ih5wxEvUGj6BwmM782xmU';
 
 if (!supabaseUrl || !supabaseAnonKey) {
     // This check remains valid for developers first setting up the project.

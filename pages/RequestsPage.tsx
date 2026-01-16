@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase';
+import { supabase, supabaseAnonKey } from '../utils/supabase';
 import { RegistrationRequest, RequestStatus } from '../types';
 import { ClipboardCheckIcon, UserIcon, MailIcon, PhoneIcon, BuildingIcon } from '../components/icons';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -102,6 +102,7 @@ const RequestsPage: React.FC = () => {
         setProcessingId(requestId);
         try {
             const { error } = await supabase.functions.invoke('approve-request', {
+                headers: { Authorization: `Bearer ${supabaseAnonKey}` },
                 body: { requestId },
             });
             if (error) throw error;
