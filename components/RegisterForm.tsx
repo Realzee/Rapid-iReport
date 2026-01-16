@@ -12,7 +12,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [companyRegNumber, setCompanyRegNumber] = useState('');
   const [requestedRole, setRequestedRole] = useState<UserRole>(UserRole.USER);
   const [message, setMessage] = useState('');
   
@@ -34,7 +33,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
         phone_number: phoneNumber,
         requested_role: requestedRole,
         company_name: companyName || null,
-        company_reg_number: companyRegNumber || null,
         message: message,
       });
 
@@ -47,7 +45,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
       setEmail('');
       setPhoneNumber('');
       setCompanyName('');
-      setCompanyRegNumber('');
       setRequestedRole(UserRole.USER);
       setMessage('');
     }
@@ -111,15 +108,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
           <label htmlFor="company" className={labelClasses}>Company Name (Optional)</label>
           <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><BuildingIcon className="w-5 h-5 text-gray-400" /></div><input id="company" name="company" type="text" autoComplete="organization" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className={inputClasses} placeholder="Your Company Inc."/></div>
         </div>
-        
-        {companyName && (
-          <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700/50 rounded-lg">
-             <div>
-              <label htmlFor="company_reg_number" className={labelClasses}>Company Registration # (Optional)</label>
-              <input id="company_reg_number" name="company_reg_number" type="text" value={companyRegNumber} onChange={(e) => setCompanyRegNumber(e.target.value)} className={inputClasses} placeholder="e.g., 2023/123456/07"/>
-            </div>
-          </div>
-        )}
         
         {/* Message */}
         <div>
