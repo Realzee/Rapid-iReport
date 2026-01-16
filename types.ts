@@ -42,6 +42,7 @@ export enum ResponderStatus {
 export enum NotificationType {
   NEW_REPORT = 'new_report',
   NEW_USER = 'new_user',
+  NEW_REGISTRATION_REQUEST = 'new_registration_request',
 }
 
 export interface Company {

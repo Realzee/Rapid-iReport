@@ -16,6 +16,8 @@ const NotificationIcon: React.FC<{ type: string }> = ({ type }) => {
             return <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center"><ZapIcon className="w-5 h-5 text-blue-500" /></div>;
         case 'new_user':
             return <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center"><UserIcon className="w-5 h-5 text-green-500" /></div>;
+        case 'new_registration_request':
+            return <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center"><UserIcon className="w-5 h-5 text-purple-500" /></div>;
         default:
             return <div className="w-8 h-8 rounded-full bg-gray-500/10 flex items-center justify-center"><CheckCircleIcon className="w-5 h-5 text-gray-500" /></div>;
     }
