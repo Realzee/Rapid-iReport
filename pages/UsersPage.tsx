@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { PlusIcon, UsersIcon } from '../components/icons';
 import { Profile, Company, UserRole } from '../types';
@@ -89,30 +88,23 @@ const UsersPage: React.FC = () => {
                 return;
             }
 
-            const { data: { session: adminSession } } = await supabase.auth.getSession();
-            if (!adminSession) {
-                alert("Your session has expired. Please log in again to create users.");
-                return;
-            }
-
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                email: userToSave.email,
-                password: password,
-                options: {
-                    data: {
-                        full_name: userToSave.full_name,
-                        role: userToSave.role,
-                    }
+            const { data, error } = await supabase.functions.invoke('create-user', {
+                body: {
+                    email: userToSave.email,
+                    password: password,
+                    fullName: userToSave.full_name,
+                    role: userToSave.role,
                 }
             });
             
-            if (signUpError) {
-                alert(`Error creating user: ${signUpError.message}`);
-                await supabase.auth.setSession({ access_token: adminSession.access_token, refresh_token: adminSession.refresh_token });
+            if (error) {
+                alert(`Error creating user: ${error.message}`);
                 return;
             }
 
-            if (signUpData.user) {
+            if (data.user) {
+                // The trigger 'handle_new_user' already creates the basic profile.
+                // We just need to apply the extra details like company and status.
                 const { error: profileUpdateError } = await supabase
                     .from('profiles')
                     .update({
@@ -120,18 +112,19 @@ const UsersPage: React.FC = () => {
                         company_id: userToSave.company_id || null,
                         responder_status: userToSave.role === UserRole.RESPONDER ? userToSave.responder_status : null
                     })
-                    .eq('id', signUpData.user.id);
+                    .eq('id', data.user.id);
                 
                 if (profileUpdateError) {
                     alert(`User auth record created, but failed to update profile details: ${profileUpdateError.message}`);
                 }
                 
-                await supabase.auth.setSession({ access_token: adminSession.access_token, refresh_token: adminSession.refresh_token });
-                
-                const { data: newProfile } = await supabase.from('profiles').select('*').eq('id', signUpData.user.id).single();
+                // Fetch the newly created profile to add to the local state
+                const { data: newProfile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
                 if (newProfile) {
                     setUsers(prev => [...prev, newProfile]);
                 }
+            } else {
+                 alert('An unknown error occurred while creating the user.');
             }
         }
         setIsAddEditModalOpen(false);
@@ -140,7 +133,10 @@ const UsersPage: React.FC = () => {
 
     const confirmDeleteUser = async () => {
         if (selectedUser) {
-            const { error } = await supabase.from('profiles').delete().eq('id', selectedUser.id);
+            const { error } = await supabase.functions.invoke('delete-user', {
+                body: { userId: selectedUser.id }
+            });
+
             if (error) {
                  alert('Error deleting user: ' + error.message);
             } else {

@@ -37,7 +37,7 @@ This comprehensive script creates all necessary types, tables, functions, and se
 
 ## Step 3: Deploy Supabase Edge Functions
 
-These server-side functions are required for secure administrative actions. Follow these steps to deploy both.
+These server-side functions are required for secure administrative actions. Follow these steps to deploy all required functions.
 
 1.  **Install Supabase CLI:** If you haven't already, [install the Supabase CLI](https://supabase.com/docs/guides/cli/getting-started).
 
@@ -164,5 +164,100 @@ These server-side functions are required for secure administrative actions. Foll
     })
     ```
     *   Deploy it: `supabase functions deploy approve-request --no-verify-jwt`.
+
+5.  **Deploy `create-user` Function:**
+    *   Create the function: `supabase functions new create-user`.
+    *   Open `supabase/functions/create-user/index.ts` and replace its content with this code:
+    ```typescript
+    import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
+
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    }
+
+    serve(async (req) => {
+      if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+      try {
+        const { email, password, fullName, role } = await req.json()
+
+        if (!email || !password || !fullName || !role) {
+          throw new Error('Email, password, full name, and role are required.')
+        }
+        if (password.length < 6) {
+            throw new Error("Password must be at least 6 characters long.");
+        }
+
+        const supabaseAdmin = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+
+        const { data, error } = await supabaseAdmin.auth.admin.createUser({
+          email: email,
+          password: password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: fullName,
+            role: role
+          }
+        })
+
+        if (error) throw error
+
+        return new Response(JSON.stringify(data), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        })
+      } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        })
+      }
+    })
+    ```
+    *   Deploy it: `supabase functions deploy create-user --no-verify-jwt`.
+    
+6.  **Deploy `delete-user` Function:**
+    *   Create the function: `supabase functions new delete-user`.
+    *   Open `supabase/functions/delete-user/index.ts` and replace its content with this code:
+    ```typescript
+    import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
+
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    }
+
+    serve(async (req) => {
+      if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+      try {
+        const { userId } = await req.json()
+        if (!userId) throw new Error('A userId must be provided.')
+
+        const supabaseAdmin = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+
+        const { data, error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+        if (error) throw error
+
+        return new Response(JSON.stringify(data), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        })
+      } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        })
+      }
+    })
+    ```
+    *   Deploy it: `supabase functions deploy delete-user --no-verify-jwt`.
 
 This completes the setup for all application features. Your application should now function correctly.

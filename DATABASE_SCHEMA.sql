@@ -163,7 +163,8 @@ AS $$
 DECLARE
   user_role_text text;
 BEGIN
-  SET LOCAL ROLE = 'service_role';
+  -- This function runs as the owner (postgres), which bypasses RLS.
+  -- The prohibited `SET LOCAL ROLE` statement has been removed.
   SELECT role::text INTO user_role_text FROM public.profiles WHERE id = p_user_id;
   RETURN user_role_text;
 END;
@@ -305,7 +306,7 @@ DROP POLICY IF EXISTS "Allow users to insert their own profile" ON public.profil
 CREATE POLICY "Allow users to insert their own profile" ON public.profiles FOR INSERT
   WITH CHECK ( (auth.uid() = id) OR (current_role = 'postgres') );
 DROP POLICY IF EXISTS "Allow users to update their own profile" ON public.profiles;
-CREATE POLICY "Allow users to update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Allow users to update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 DROP POLICY IF EXISTS "Admins and moderators can manage all profiles" ON public.profiles;
 CREATE POLICY "Admins and moderators can manage all profiles" ON public.profiles FOR ALL
   USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator')));
@@ -351,10 +352,34 @@ CREATE POLICY "Allow assigned responders to update status" ON public.crime_repor
 -- REPORT UPDATES
 ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow relevant users to see updates" ON public.report_updates;
-CREATE POLICY "Allow relevant users to see updates" ON public.report_updates FOR SELECT USING (true);
+CREATE POLICY "Allow relevant users to see updates" ON public.report_updates FOR SELECT
+USING (
+  (
+    EXISTS (
+      SELECT 1 FROM public.vehicle_reports vr
+      WHERE vr.id = report_updates.report_id
+    )
+  )
+  OR
+  (
+    EXISTS (
+      SELECT 1 FROM public.crime_reports cr
+      WHERE cr.id = report_updates.report_id
+    )
+  )
+);
 DROP POLICY IF EXISTS "Allow relevant users to add updates" ON public.report_updates;
 CREATE POLICY "Allow relevant users to add updates" ON public.report_updates FOR INSERT
-  WITH CHECK ( (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')) OR ((public.get_user_role(auth.uid()) = 'responder')) );
+  WITH CHECK (
+    (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')) OR
+    (
+      (public.get_user_role(auth.uid()) = 'responder') AND
+      (
+        (EXISTS (SELECT 1 FROM vehicle_reports vr WHERE vr.id = report_updates.report_id AND vr.assigned_to = auth.uid())) OR
+        (EXISTS (SELECT 1 FROM crime_reports cr WHERE cr.id = report_updates.report_id AND cr.assigned_to = auth.uid()))
+      )
+    )
+  );
 
 -- REGISTRATION REQUESTS
 ALTER TABLE public.registration_requests ENABLE ROW LEVEL SECURITY;
