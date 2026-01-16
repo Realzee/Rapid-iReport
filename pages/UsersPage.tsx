@@ -96,6 +96,9 @@ const UsersPage: React.FC = () => {
                     password: password,
                     fullName: userToSave.full_name,
                     role: userToSave.role,
+                    status: userToSave.status,
+                    company_id: userToSave.company_id || null,
+                    responder_status: userToSave.role === UserRole.RESPONDER ? userToSave.responder_status : null,
                 }
             });
             
@@ -104,26 +107,15 @@ const UsersPage: React.FC = () => {
                 return;
             }
 
+            // The Edge function now creates the auth user AND the profile.
+            // We just need to fetch the newly created profile to add it to the local state.
             if (data.user) {
-                // The trigger 'handle_new_user' already creates the basic profile.
-                // We just need to apply the extra details like company and status.
-                const { error: profileUpdateError } = await supabase
-                    .from('profiles')
-                    .update({
-                        status: userToSave.status,
-                        company_id: userToSave.company_id || null,
-                        responder_status: userToSave.role === UserRole.RESPONDER ? userToSave.responder_status : null
-                    })
-                    .eq('id', data.user.id);
-                
-                if (profileUpdateError) {
-                    alert(`User auth record created, but failed to update profile details: ${profileUpdateError.message}`);
-                }
-                
-                // Fetch the newly created profile to add to the local state
-                const { data: newProfile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
-                if (newProfile) {
+                const { data: newProfile, error: fetchError } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+                if (fetchError) {
+                    alert(`User created, but failed to fetch the new profile for the UI: ${fetchError.message}`);
+                } else if (newProfile) {
                     setUsers(prev => [...prev, newProfile]);
+                    alert('User created successfully!');
                 }
             } else {
                  alert('An unknown error occurred while creating the user.');

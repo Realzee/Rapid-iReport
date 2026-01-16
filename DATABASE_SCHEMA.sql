@@ -200,9 +200,9 @@ DECLARE
   user_full_name text;
   user_role_text text;
 BEGIN
-  -- Defensive coding: ensure metadata is treated safely
-  user_full_name := COALESCE(new.raw_user_meta_data->>'full_name', new.email);
-  user_role_text := new.raw_user_meta_data->>'role';
+  -- FIX: Read from both user_metadata and app_metadata for robustness, preventing trigger failure.
+  user_full_name := COALESCE(new.raw_user_meta_data->>'full_name', new.raw_app_meta_data->>'full_name', new.email);
+  user_role_text := COALESCE(new.raw_user_meta_data->>'role', new.raw_app_meta_data->>'role');
 
   -- Ensure full_name is not an empty string if metadata provides it as such
   IF user_full_name = '' OR user_full_name IS NULL THEN

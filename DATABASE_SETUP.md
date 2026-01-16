@@ -183,10 +183,10 @@ These server-side functions are required for secure administrative actions. Foll
     serve(async (req) => {
       if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
       try {
-        const { email, password, fullName, role } = await req.json()
+        const { email, password, fullName, role, status, company_id, responder_status } = await req.json()
 
-        if (!email || !password || !fullName || !role) {
-          throw new Error('Email, password, full name, and role are required.')
+        if (!email || !password || !fullName || !role || !status) {
+          throw new Error('Email, password, full name, role, and status are required.')
         }
         if (password.length < 6) {
             throw new Error("Password must be at least 6 characters long.");
@@ -197,23 +197,45 @@ These server-side functions are required for secure administrative actions. Foll
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
         
-        // FIX: Switched to `app_metadata` from `user_metadata` to troubleshoot the 400 error.
-        // `app_metadata` is for non-user-editable data like roles and is also read by the
-        // `handle_new_user` trigger via `raw_user_meta_data`. This may have different validation
-        // rules on the backend, potentially resolving the issue.
-        const { data, error } = await supabaseAdmin.auth.admin.createUser({
+        // Step 1: Create the user in auth.users. Do not pass metadata.
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email: email,
           password: password,
           email_confirm: true,
-          app_metadata: {
-            full_name: fullName,
-            role: role
-          }
         })
 
-        if (error) throw error
+        if (authError) {
+            throw new Error(`Auth user creation failed: ${authError.message}`);
+        }
+        
+        if (!authData.user) {
+            throw new Error('User was not created, but no error was returned.');
+        }
 
-        return new Response(JSON.stringify(data), {
+        // Step 2: Directly insert the full profile into public.profiles.
+        // This bypasses the handle_new_user trigger, making the function's logic self-contained and robust.
+        const profileData = {
+            id: authData.user.id,
+            full_name: fullName,
+            email: email,
+            role: role,
+            status: status,
+            company_id: company_id || null,
+            responder_status: role === 'responder' ? responder_status : null,
+        };
+        
+        const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .insert(profileData);
+
+        if (profileError) {
+            // If profile creation fails, roll back the auth user.
+            await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+            throw new Error(`Profile creation failed: ${profileError.message}. Auth user has been rolled back.`);
+        }
+
+        // Return the created user object, which is what the auth call returns.
+        return new Response(JSON.stringify(authData), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200,
         })
