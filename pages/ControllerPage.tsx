@@ -17,8 +17,9 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
     useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
+        const fetchData = async (isInitialLoad = false) => {
+            if (isInitialLoad) setLoading(true);
+
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
@@ -47,79 +48,35 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
 
             setReports(combinedReports);
             setResponders(mappedResponders);
-            setLoading(false);
+
+            if (isInitialLoad) setLoading(false);
         };
 
-        fetchData();
+        // Initial fetch
+        fetchData(true);
 
-        const handleUpsert = (payload: any) => {
-            const newReport = { ...payload.new, type: payload.table === 'vehicle_reports' ? 'vehicle' : 'crime' };
-            setReports(prev => {
-                const existing = prev.find(r => r.id === newReport.id);
-                if (existing) {
-                    return prev.map(r => r.id === newReport.id ? newReport : r);
-                }
-                return [newReport, ...prev];
-            });
-        };
-
-        const handleDelete = (payload: any) => {
-            setReports(prev => prev.filter(r => r.id !== payload.old.id));
-            if (selectedReportId === payload.old.id) {
-                setSelectedReportId(null);
-            }
-        };
-        
-        const handleResponderUpdate = (payload: any) => {
-            if (payload.eventType === 'DELETE') {
-                setResponders(prev => prev.filter(r => r.id !== payload.old.id));
-                return;
-            }
-
-            const updatedProfile = payload.new as Profile;
-            const newResponderData: Responder = {
-                id: updatedProfile.id,
-                full_name: updatedProfile.full_name,
-                status: updatedProfile.responder_status || ResponderStatus.OFF_DUTY,
-                location_coords: updatedProfile.location_coords || undefined,
-            };
-
-            setResponders(prev => {
-                const index = prev.findIndex(r => r.id === updatedProfile.id);
-                if (index > -1) {
-                    const newResponders = [...prev];
-                    newResponders[index] = newResponderData;
-                    return newResponders;
-                }
-                return [...prev, newResponderData];
-            });
-        };
-
-
-        const reportsChannels = supabase
-            .channel('public:reports:controller')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'vehicle_reports' }, handleUpsert)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'crime_reports' }, handleUpsert)
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'vehicle_reports' }, handleUpsert)
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'crime_reports' }, handleUpsert)
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'vehicle_reports' }, handleDelete)
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'crime_reports' }, handleDelete)
+        // This single subscription channel handles all updates by re-fetching data.
+        // This is a more robust approach than trying to manage incremental state updates.
+        const channel = supabase
+            .channel('controller-page-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, () => fetchData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, () => fetchData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, () => fetchData())
             .subscribe();
 
-        const respondersChannel = supabase
-          .channel('public:profiles-controller')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderUpdate)
-          .subscribe();
-
         return () => {
-            supabase.removeChannel(reportsChannels);
-            supabase.removeChannel(respondersChannel);
+            supabase.removeChannel(channel);
         };
     }, []);
 
     useEffect(() => {
+        // Auto-select the first report if none is selected
         if (!selectedReportId && reports.length > 0) {
             setSelectedReportId(reports[0].id);
+        }
+         // If the selected report is deleted, clear the selection
+        if (selectedReportId && !reports.some(r => r.id === selectedReportId)) {
+            setSelectedReportId(reports.length > 0 ? reports[0].id : null);
         }
     }, [reports, selectedReportId]);
 
