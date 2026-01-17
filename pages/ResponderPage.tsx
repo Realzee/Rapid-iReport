@@ -69,14 +69,26 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
         return () => { supabase.removeChannel(channel); };
     }, [profile.id, selectedReportId]);
 
+     const stopLocationSharing = () => {
+        if (locationWatchId.current !== null) {
+            navigator.geolocation.clearWatch(locationWatchId.current);
+            locationWatchId.current = null;
+        }
+        setIsSharingLocation(false);
+        // Clear location from DB for privacy when sharing is explicitly stopped
+        supabase.from('profiles').update({ location_coords: null }).eq('id', profile.id).then(({ error }) => {
+            if (error) console.warn("Could not clear location on stop:", error.message);
+        });
+    };
+
     const startLocationSharing = () => {
         if (navigator.geolocation && locationWatchId.current === null) {
+            setIsSharingLocation(true); // Optimistically set UI
             locationWatchId.current = navigator.geolocation.watchPosition(
                 async (position) => {
                     setIsSyncing(true);
                     setGlobalSchemaError(false);
                     setLocationError(null);
-                    setIsSharingLocation(true);
                     const { latitude, longitude } = position.coords;
                     const { error } = await supabase.from('profiles').update({ location_coords: { lat: latitude, lng: longitude } }).eq('id', profile.id);
 
@@ -100,26 +112,23 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
                 (geoError) => {
                     console.warn(`Location sharing error:`, geoError);
                     setLocationError(`Location Error: ${geoError.message}. Please enable location services.`);
-                    setIsSharingLocation(false);
+                    stopLocationSharing(); // Stop if there's a geo error
                 },
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
             );
         }
     };
-    const stopLocationSharing = () => {
-        if (locationWatchId.current !== null) {
-            navigator.geolocation.clearWatch(locationWatchId.current);
-            locationWatchId.current = null;
-        }
-        setIsSharingLocation(false);
-    };
 
     const handleDutyToggle = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const newDutyStatus = e.target.checked;
-        const newResponderStatus = newDutyStatus ? ResponderStatus.AVAILABLE : ResponderStatus.OFF_DUTY;
+        
+        // If going off-duty, always stop location sharing
         if (!newDutyStatus) {
-            setLastSyncTimestamp(null);
+            stopLocationSharing();
         }
+        
+        const newResponderStatus = newDutyStatus ? ResponderStatus.AVAILABLE : ResponderStatus.OFF_DUTY;
+        setLastSyncTimestamp(null);
         setLocationError(null);
         setGlobalSchemaError(false);
 
@@ -145,11 +154,19 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
         }
     };
     
+    const handleLocationToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const shouldShare = e.target.checked;
+        if (shouldShare) {
+            startLocationSharing();
+        } else {
+            stopLocationSharing();
+        }
+    };
+
     useEffect(() => {
-        if (isOnDuty) startLocationSharing();
-        else stopLocationSharing();
+        // This effect ensures location sharing stops if the component unmounts for any reason.
         return () => stopLocationSharing();
-    }, [isOnDuty, profile.id]);
+    }, []);
     
     const selectedReport = useMemo(() => assignedReports.find(r => r.id === selectedReportId), [assignedReports, selectedReportId]);
 
@@ -165,37 +182,48 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
                         </label>
                         <span className="font-semibold text-lg">{isOnDuty ? 'On Duty' : 'Off Duty'}</span>
                     </div>
-                     {isOnDuty && (
-                        <div className="text-sm">
-                            {locationError ? (
-                                <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                                    <span className="relative flex h-3 w-3"><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>
-                                    <span>Error</span>
-                                </div>
-                            ) : isSharingLocation ? (
-                                <div className="flex flex-col items-end">
-                                    <div className="flex items-center gap-2">
-                                        <span className="relative flex h-3 w-3">
-                                            {isSyncing && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>}
-                                            <span className={`relative inline-flex rounded-full h-3 w-3 ${isSyncing ? 'bg-blue-500' : 'bg-green-500'}`}></span>
-                                        </span>
-                                        <span className="text-green-600 dark:text-green-400">Location Active</span>
-                                    </div>
-                                    {lastSyncTimestamp && (
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            Last sync: {formatDistanceToNow(lastSyncTimestamp, { addSuffix: true })}
-                                        </p>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
-                                    <span className="relative flex h-3 w-3"><span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500 animate-pulse"></span></span>
-                                    <span>Acquiring...</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
                 </div>
+                 {isOnDuty && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
+                        <div className="flex items-center justify-between">
+                             <div className="flex items-center gap-3">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={isSharingLocation} onChange={handleLocationToggle} className="sr-only peer" />
+                                    <div className="w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                </label>
+                                <span className="font-semibold text-lg">Share Location</span>
+                            </div>
+                            <div className="text-sm">
+                                {locationError ? (
+                                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                                        <span className="relative flex h-3 w-3"><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>
+                                        <span>Error</span>
+                                    </div>
+                                ) : isSharingLocation ? (
+                                    <div className="flex flex-col items-end">
+                                        <div className="flex items-center gap-2">
+                                            <span className="relative flex h-3 w-3">
+                                                {isSyncing && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>}
+                                                <span className={`relative inline-flex rounded-full h-3 w-3 ${isSyncing ? 'bg-blue-500' : 'bg-green-500'}`}></span>
+                                            </span>
+                                            <span className="text-green-600 dark:text-green-400">Active</span>
+                                        </div>
+                                        {lastSyncTimestamp && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                Last sync: {formatDistanceToNow(lastSyncTimestamp, { addSuffix: true })}
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                                        <span className="relative flex h-3 w-3"><span className="relative inline-flex rounded-full h-3 w-3 bg-gray-500"></span></span>
+                                        <span>Inactive</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
             
             {locationError && <div className="bg-red-500/10 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-r-lg" role="alert"><p className="font-bold">System Error</p><p>{locationError}</p></div>}
@@ -203,7 +231,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
             {loading ? <div className="flex justify-center items-center h-64"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
             : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                    <div className="lg:col-span-1 space-y-3 lg:h-[calc(100vh-18rem)] lg:overflow-y-auto">
+                    <div className="lg:col-span-1 space-y-3 lg:h-[calc(100vh-22rem)] lg:overflow-y-auto">
                         <h2 className="text-xl font-bold px-1">Assigned Incidents ({assignedReports.length})</h2>
                         {assignedReports.length === 0 ? <p className="text-center py-10 text-gray-500 dark:text-gray-400">Stand by for assignments.</p> 
                         : assignedReports.map(report => (
