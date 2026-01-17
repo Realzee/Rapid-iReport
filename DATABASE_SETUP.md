@@ -1,8 +1,29 @@
 # RAPID iREPORT - Supabase Database Setup
 
-If you encounter errors like "Could not find column 'location_boundary'", "violates row-level security policy", or "Error setting up presence", your Supabase database schema is out of sync with the application code.
+## ⚠️ Important: Fixing Common Database Errors (Schema Cache & RLS)
 
-To fix all known database issues, please follow these steps carefully. This script is safe to run multiple times.
+If you are seeing errors related to the database, especially messages like:
+- `Could not find the '...' column... in the schema cache`
+- `violates row-level security policy`
+- `Error setting up presence`
+
+This indicates an issue with your Supabase schema or API cache. Please follow the steps below to resolve these common problems.
+
+### Fix for "Schema Cache" or "Column does not exist" Errors
+
+This is a common Supabase issue where the API's internal cache is out of date.
+
+**The quickest fix is to force a schema reload:**
+
+1.  **Navigate to your Supabase Project dashboard.**
+2.  In the left sidebar, click the **API Docs** icon (it looks like `<>`).
+3.  Select the **`public`** schema from the list on the left.
+4.  At the top right of the page, click the **"Reload schema"** button.
+5.  Wait for the confirmation, then refresh the application.
+
+If that doesn't work, proceed to **Step 2** below, which will update your entire database schema and should also trigger a cache refresh.
+
+---
 
 ## Step 1A: Create the 'evidence' Storage Bucket
 

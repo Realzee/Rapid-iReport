@@ -87,10 +87,14 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
 
                     if (error) {
                         console.error("Failed to update location:", error);
-                        if (error.message.includes('schema cache')) {
-                            setLocationError("Location sharing failed: Database schema is out of date. Please ask an admin to refresh it.");
-                            stopLocationSharing();
+                        let errorMessage = `Failed to update location: ${error.message}`;
+                        if (error.message.includes('schema cache') && error.message.includes('location_coords')) {
+                             errorMessage = "Database API schema is out of date and doesn't recognize the 'location_coords' column.\n\n" +
+                                                "This is a common Supabase issue. An administrator must force a schema reload in the Supabase dashboard (API Docs > Reload schema).\n\n" +
+                                                "Re-running the script in `DATABASE_SETUP.md` may also resolve this.";
                         }
+                        setLocationError(errorMessage);
+                        stopLocationSharing();
                     }
                 },
                 (error) => {
@@ -126,12 +130,9 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
             let errorMessage = `Failed to update duty status: ${error.message}`;
             if (error.message.includes('schema cache') && error.message.includes('location_coords')) {
                 errorMessage = "Database Schema Mismatch: The 'location_coords' column is missing from the API's cache.\n\n" +
-                               "This is a common Supabase issue. To resolve it, please ask your project administrator to:\n\n" +
-                               "1. Go to your Supabase project's SQL Editor.\n" +
-                               "2. Open and re-run the entire script from the `DATABASE_SCHEMA.sql` file.\n\n" +
-                               "This will safely update your database schema without data loss and refresh the API cache.";
+                               "This is a common Supabase issue. Please ask an administrator to perform a schema reload from the API Docs section of the Supabase dashboard.";
             }
-            alert(errorMessage);
+            setLocationError(errorMessage);
         } else if (updatedProfile) {
             setProfile(updatedProfile);
         }
@@ -191,8 +192,8 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
                     
                     {locationError && (
                         <div className="bg-red-500/10 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-r-lg mb-6" role="alert">
-                            <p className="font-bold">Location Error</p>
-                            <p>{locationError}</p>
+                            <p className="font-bold">System Error</p>
+                            <p className="whitespace-pre-wrap">{locationError}</p>
                         </div>
                     )}
 
