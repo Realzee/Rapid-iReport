@@ -44,7 +44,7 @@ const createResponderIcon = (status: ResponderStatus) => {
     const iconHtml = `
         <div class="relative flex items-center justify-center w-8 h-8">
             ${pulseHtml}
-            <svg class="relative w-8 h-8 ${colorClass}" style="filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <svg class="relative w-8 h-8 ${colorClass}" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
             <svg class="absolute w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">

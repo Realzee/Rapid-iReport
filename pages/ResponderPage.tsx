@@ -138,19 +138,28 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
     const handleDutyToggle = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const newDutyStatus = e.target.checked;
         
-        // If going off-duty, always stop location sharing
-        if (!newDutyStatus) {
-            stopLocationSharing();
-        }
-        
         const newResponderStatus = newDutyStatus ? ResponderStatus.AVAILABLE : ResponderStatus.OFF_DUTY;
         setLastSyncTimestamp(null);
         setLocationError(null);
         setGlobalSchemaError(false);
-
+    
+        const updatePayload: { responder_status: ResponderStatus; location_coords?: null } = {
+            responder_status: newResponderStatus,
+        };
+    
+        // If going off-duty, stop sharing location and clear coordinates in the same atomic update.
+        if (!newDutyStatus) {
+            if (locationWatchId.current !== null) {
+                navigator.geolocation.clearWatch(locationWatchId.current);
+                locationWatchId.current = null;
+            }
+            setIsSharingLocation(false);
+            updatePayload.location_coords = null;
+        }
+    
         const { data: updatedProfile, error } = await supabase
             .from('profiles')
-            .update({ responder_status: newResponderStatus, location_coords: null })
+            .update(updatePayload)
             .eq('id', profile.id)
             .select()
             .single();
@@ -181,7 +190,11 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
 
     useEffect(() => {
         // This effect ensures location sharing stops if the component unmounts for any reason.
-        return () => stopLocationSharing();
+        return () => {
+            if (locationWatchId.current !== null) {
+                navigator.geolocation.clearWatch(locationWatchId.current);
+            }
+        };
     }, []);
     
     const selectedReport = useMemo(() => assignedReports.find(r => r.id === selectedReportId), [assignedReports, selectedReportId]);
