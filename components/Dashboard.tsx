@@ -26,6 +26,7 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const locationWatchId = useRef<number | null>(null);
+    const [locationError, setLocationError] = useState<string | null>(null);
 
     const isOnDuty = profile.responder_status !== ResponderStatus.OFF_DUTY;
     const [isSharingLocation, setIsSharingLocation] = useState(false);
@@ -78,9 +79,19 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
         if (navigator.geolocation && locationWatchId.current === null) {
             locationWatchId.current = navigator.geolocation.watchPosition(
                 async (position) => {
+                    if (locationError) setLocationError(null);
+                    
                     setIsSharingLocation(true);
                     const { latitude, longitude } = position.coords;
-                    await supabase.from('profiles').update({ location_coords: { lat: latitude, lng: longitude } }).eq('id', profile.id);
+                    const { error } = await supabase.from('profiles').update({ location_coords: { lat: latitude, lng: longitude } }).eq('id', profile.id);
+
+                    if (error) {
+                        console.error("Failed to update location:", error);
+                        if (error.message.includes('schema cache')) {
+                            setLocationError("Location sharing failed: Database schema is out of date. Please ask an admin to refresh it.");
+                            stopLocationSharing();
+                        }
+                    }
                 },
                 (error) => {
                     console.warn(`Location sharing error: ${error.message}`);
@@ -101,6 +112,7 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
     const handleDutyToggle = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const newDutyStatus = e.target.checked;
         const newResponderStatus = newDutyStatus ? ResponderStatus.AVAILABLE : ResponderStatus.OFF_DUTY;
+        setLocationError(null);
 
         const { data: updatedProfile, error } = await supabase
             .from('profiles')
@@ -111,7 +123,15 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
 
         if (error) {
             console.error("Failed to update duty status:", error);
-            alert(`Failed to update duty status: ${error.message}`);
+            let errorMessage = `Failed to update duty status: ${error.message}`;
+            if (error.message.includes('schema cache') && error.message.includes('location_coords')) {
+                errorMessage = "Database Schema Mismatch: The 'location_coords' column is missing from the API's cache.\n\n" +
+                               "This is a common Supabase issue. To resolve it, please ask your project administrator to:\n\n" +
+                               "1. Go to your Supabase project's SQL Editor.\n" +
+                               "2. Open and re-run the entire script from the `DATABASE_SCHEMA.sql` file.\n\n" +
+                               "This will safely update your database schema without data loss and refresh the API cache.";
+            }
+            alert(errorMessage);
         } else if (updatedProfile) {
             setProfile(updatedProfile);
         }
@@ -168,6 +188,13 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
                             )}
                         </div>
                     </div>
+                    
+                    {locationError && (
+                        <div className="bg-red-500/10 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-r-lg mb-6" role="alert">
+                            <p className="font-bold">Location Error</p>
+                            <p>{locationError}</p>
+                        </div>
+                    )}
 
                     <h2 className="text-2xl font-bold mb-4">Assigned Incidents</h2>
                     {assignedReports.length === 0 ? (
