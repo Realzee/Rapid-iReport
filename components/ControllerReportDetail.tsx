@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -124,22 +125,60 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
     const handleDispatchResponder = async (responderId: string) => {
         const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
-        const { error } = await supabase.from(tableName).update({ 
+        const oldResponderId = report.assigned_to;
+    
+        // 1. Update the report itself (the primary action)
+        const { error: reportUpdateError } = await supabase.from(tableName).update({ 
             assigned_to: responderId || null,
             status: responderId ? ReportStatus.ASSIGNED : ReportStatus.PENDING
         }).eq('id', report.id);
-
-        if (error) alert("Failed to dispatch responder: " + error.message);
+    
+        if (reportUpdateError) {
+            alert("Failed to dispatch responder: " + reportUpdateError.message);
+            return; // Stop if the primary action fails
+        }
+    
+        // 2. Update responder statuses in the background
+        const responderStatusUpdates = [];
+    
+        // If a responder was unassigned (and not immediately reassigned), set them back to available.
+        if (oldResponderId && oldResponderId !== responderId) {
+            responderStatusUpdates.push(
+                supabase.from('profiles').update({ responder_status: ResponderStatus.AVAILABLE }).eq('id', oldResponderId)
+            );
+        }
+        
+        // If a new responder was assigned, set them to en_route.
+        if (responderId && oldResponderId !== responderId) {
+            responderStatusUpdates.push(
+                supabase.from('profiles').update({ responder_status: ResponderStatus.EN_ROUTE }).eq('id', responderId)
+            );
+        }
+    
+        if (responderStatusUpdates.length > 0) {
+            // We don't need to wait for these, but we should log if they fail.
+            Promise.all(responderStatusUpdates).then(results => {
+                const updateError = results.find(res => res.error);
+                if (updateError) {
+                    console.warn("Report was dispatched, but failed to update a responder's status:", updateError.error.message);
+                }
+            });
+        }
     };
     
-    const availableResponders = responders.filter(r => r.status === ResponderStatus.AVAILABLE);
+    // FIX: Show all responders who are not off-duty to give controllers more visibility.
+    const onDutyResponders = responders.filter(
+        r => r.status && r.status !== ResponderStatus.OFF_DUTY
+    );
 
     const currentlyAssignedResponder = report.assigned_to
         ? responders.find(r => r.id === report.assigned_to)
         : undefined;
 
-    const responderOptions = [...availableResponders];
-    if (currentlyAssignedResponder && !availableResponders.some(r => r.id === currentlyAssignedResponder.id)) {
+    // The list of options should include all on-duty responders.
+    // If the currently assigned responder is off-duty for some reason, they should still appear in the list for this specific report.
+    const responderOptions = [...onDutyResponders];
+    if (currentlyAssignedResponder && !onDutyResponders.some(r => r.id === currentlyAssignedResponder.id)) {
         responderOptions.push(currentlyAssignedResponder);
     }
 
@@ -262,7 +301,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                             onChange={(e) => setSelectedResponder(e.target.value)}
                             className="flex-grow bg-gray-800 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                         >
-                            <option value="">{report.assigned_to ? 'Unassign' : (availableResponders.length > 0 ? 'Select Responder...' : 'No responders available')}</option>
+                            <option value="">{report.assigned_to ? 'Unassign' : (onDutyResponders.length > 0 ? 'Select Responder...' : 'No responders on duty')}</option>
                             {responderOptions.map(r => (
                                 <option key={r.id} value={r.id}>
                                     {r.full_name}
