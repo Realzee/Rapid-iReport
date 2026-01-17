@@ -130,7 +130,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         // 1. Update the report itself (the primary action)
         const { error: reportUpdateError } = await supabase.from(tableName).update({ 
             assigned_to: responderId || null,
-            status: responderId ? ReportStatus.ASSIGNED : ReportStatus.PENDING
+            status: responderId ? ReportStatus.IN_PROGRESS : ReportStatus.PENDING
         }).eq('id', report.id);
     
         if (reportUpdateError) {
@@ -320,4 +320,3 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 };
 
 export default ControllerReportDetail;
-    
