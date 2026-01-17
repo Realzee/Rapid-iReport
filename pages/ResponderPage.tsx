@@ -14,6 +14,20 @@ interface ResponderPageProps {
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
+const ResponderStatusBadge: React.FC<{ status: ResponderStatus }> = ({ status }) => {
+    const styles: Record<ResponderStatus, string> = {
+        [ResponderStatus.AVAILABLE]: 'bg-green-500/20 text-green-400 border-green-500/30',
+        [ResponderStatus.EN_ROUTE]: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+        [ResponderStatus.ON_SCENE]: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+        [ResponderStatus.OFF_DUTY]: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+    };
+    return (
+        <span className={`px-3 py-1 text-xs font-bold rounded-full capitalize border ${styles[status] || styles.off_duty}`}>
+            {status.replace(/_/g, ' ')}
+        </span>
+    );
+};
+
 // Main page component
 const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setGlobalSchemaError }) => {
     const [assignedReports, setAssignedReports] = useState<Report[]>([]);
@@ -26,6 +40,8 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
     const [lastSyncTimestamp, setLastSyncTimestamp] = useState<Date | null>(null);
 
     const isOnDuty = profile.responder_status !== ResponderStatus.OFF_DUTY;
+    const isEngaged = profile.responder_status === ResponderStatus.EN_ROUTE || profile.responder_status === ResponderStatus.ON_SCENE;
+
 
     useEffect(() => {
         const fetchAssignedReports = async () => {
@@ -176,13 +192,19 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
                 <h3 className="text-lg font-bold mb-2">On-Duty Manager</h3>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" checked={isOnDuty} onChange={handleDutyToggle} className="sr-only peer" />
-                            <div className="w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                        <label className="relative inline-flex items-center cursor-pointer" title={isEngaged ? "You must resolve active incidents to go off-duty." : "Toggle duty status"}>
+                            <input type="checkbox" checked={isOnDuty} onChange={handleDutyToggle} className="sr-only peer" disabled={isEngaged} />
+                            <div className="w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"></div>
                         </label>
                         <span className="font-semibold text-lg">{isOnDuty ? 'On Duty' : 'Off Duty'}</span>
                     </div>
+                    {profile.responder_status && <ResponderStatusBadge status={profile.responder_status} />}
                 </div>
+                 {isEngaged && (
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
+                        You are on an active assignment. Resolve it before going off-duty.
+                    </p>
+                )}
                  {isOnDuty && (
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
                         <div className="flex items-center justify-between">

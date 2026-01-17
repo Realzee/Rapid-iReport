@@ -30,24 +30,35 @@ const createRedPinIcon = () => {
 };
 
 const createResponderIcon = (status: ResponderStatus) => {
-    let color = '#6B7280'; // gray-500
-    let usePulse = false;
+    let colorClass = 'text-gray-500'; // Off-duty (fallback)
+    let pulseColorClass = '';
 
     switch (status) {
-        case ResponderStatus.AVAILABLE: color = '#22C55E'; break; // green-500
-        case ResponderStatus.EN_ROUTE: color = '#3B82F6'; usePulse = true; break; // blue-500
-        case ResponderStatus.ON_SCENE: color = '#F59E0B'; break; // amber-500
-        case ResponderStatus.OFF_DUTY: color = '#6B7280'; break; // gray-500
+        case ResponderStatus.AVAILABLE: colorClass = 'text-green-500'; break;
+        case ResponderStatus.EN_ROUTE: colorClass = 'text-blue-500'; pulseColorClass = 'bg-blue-400'; break;
+        case ResponderStatus.ON_SCENE: colorClass = 'text-yellow-500'; break;
     }
-    
-    const animationClass = usePulse ? 'pulse-ring-animation' : '';
-    const iconHtml = `<div class="w-5 h-5 rounded-full ${animationClass}" style="background-color: ${color}; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+
+    const pulseHtml = pulseColorClass ? `<span class="animate-ping absolute inline-flex h-full w-full rounded-full ${pulseColorClass} opacity-75"></span>` : '';
+
+    const iconHtml = `
+        <div class="relative flex items-center justify-center w-8 h-8">
+            ${pulseHtml}
+            <svg class="relative w-8 h-8 ${colorClass}" style="filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <svg class="absolute w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+        </div>
+    `;
 
     return new L.DivIcon({
         html: iconHtml,
         className: '',
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32],
     });
 };
 
