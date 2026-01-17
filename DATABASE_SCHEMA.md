@@ -1,3 +1,4 @@
+
 # RAPID iREPORT - Database Schema
 
 This file contains the complete, idempotent SQL script for setting up the Supabase database for the RAPID iREPORT application. This script can be run safely in the Supabase SQL Editor to create all necessary types, tables, functions, and Row Level Security policies.
@@ -64,7 +65,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     avatar_url text,
     last_seen_at timestamp with time zone,
     responder_status public.responder_status,
-    location_coords jsonb,
+    location_coords jsonb, -- This column stores responder geographic coordinates.
     CONSTRAINT profiles_pkey PRIMARY KEY (id),
     CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE,
     CONSTRAINT profiles_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE SET NULL

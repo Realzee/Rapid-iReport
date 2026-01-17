@@ -16,12 +16,13 @@ import StatusBadge from './StatusBadge';
 interface DashboardProps {
     profile: Profile;
     setProfile: (profile: Profile) => void;
+    setGlobalSchemaError: (isError: boolean) => void;
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
 // --- RESPONDER DASHBOARD ---
-const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Profile) => void; }> = ({ profile, setProfile }) => {
+const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Profile) => void; setGlobalSchemaError: (isError: boolean) => void; }> = ({ profile, setProfile, setGlobalSchemaError }) => {
     const [assignedReports, setAssignedReports] = useState<Report[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
@@ -79,7 +80,8 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
         if (navigator.geolocation && locationWatchId.current === null) {
             locationWatchId.current = navigator.geolocation.watchPosition(
                 async (position) => {
-                    if (locationError) setLocationError(null);
+                    setGlobalSchemaError(false);
+                    setLocationError(null);
                     
                     setIsSharingLocation(true);
                     const { latitude, longitude } = position.coords;
@@ -87,13 +89,13 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
 
                     if (error) {
                         console.error("Failed to update location:", error);
-                        let errorMessage = `Failed to update location: ${error.message}`;
                         if (error.message.includes('schema cache') && error.message.includes('location_coords')) {
-                             errorMessage = "Database API schema is out of date and doesn't recognize the 'location_coords' column.\n\n" +
-                                                "This is a common Supabase issue. An administrator must force a schema reload in the Supabase dashboard (API Docs > Reload schema).\n\n" +
-                                                "Re-running the script in `DATABASE_SETUP.md` may also resolve this.";
+                            setGlobalSchemaError(true);
+                            setLocationError(null);
+                        } else {
+                            setLocationError(`Failed to update location: ${error.message}`);
+                            setGlobalSchemaError(false);
                         }
-                        setLocationError(errorMessage);
                         stopLocationSharing();
                     }
                 },
@@ -117,6 +119,7 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
         const newDutyStatus = e.target.checked;
         const newResponderStatus = newDutyStatus ? ResponderStatus.AVAILABLE : ResponderStatus.OFF_DUTY;
         setLocationError(null);
+        setGlobalSchemaError(false);
 
         const { data: updatedProfile, error } = await supabase
             .from('profiles')
@@ -127,26 +130,24 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
 
         if (error) {
             console.error("Failed to update duty status:", error);
-            let errorMessage = `Failed to update duty status: ${error.message}`;
             if (error.message.includes('schema cache') && error.message.includes('location_coords')) {
-                errorMessage = "Database Schema Mismatch: The 'location_coords' column is missing from the API's cache.\n\n" +
-                               "This is a common Supabase issue. Please ask an administrator to perform a schema reload from the API Docs section of the Supabase dashboard.";
+                setGlobalSchemaError(true);
+                setLocationError(null);
+            } else {
+                setLocationError(`Failed to update duty status: ${error.message}`);
+                setGlobalSchemaError(false);
             }
-            setLocationError(errorMessage);
         } else if (updatedProfile) {
             setProfile(updatedProfile);
         }
     };
     
-    // This effect now correctly handles starting/stopping location sharing
-    // based on the profile status from the central state.
     useEffect(() => {
         if (isOnDuty) {
             startLocationSharing();
         } else {
             stopLocationSharing();
         }
-        // Cleanup function ensures we stop sharing when component unmounts
         return () => stopLocationSharing();
     }, [isOnDuty, profile.id]);
     
@@ -162,6 +163,13 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
                 <ResponderReportDetail report={selectedReport} onBack={() => setSelectedReportId(null)} profile={profile} />
             ) : (
                 <>
+                    {locationError && (
+                        <div className="bg-red-500/10 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-r-lg mb-6" role="alert">
+                            <p className="font-bold">System Error</p>
+                            <p className="whitespace-pre-wrap">{locationError}</p>
+                        </div>
+                    )}
+                    
                     <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none mb-6">
                         <h3 className="text-lg font-bold mb-2">On-Duty Manager</h3>
                         <div className="flex items-center justify-between">
@@ -190,13 +198,6 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
                         </div>
                     </div>
                     
-                    {locationError && (
-                        <div className="bg-red-500/10 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-r-lg mb-6" role="alert">
-                            <p className="font-bold">System Error</p>
-                            <p className="whitespace-pre-wrap">{locationError}</p>
-                        </div>
-                    )}
-
                     <h2 className="text-2xl font-bold mb-4">Assigned Incidents</h2>
                     {assignedReports.length === 0 ? (
                         <p className="text-center py-10 text-gray-500 dark:text-gray-400">You have no active assignments. Stand by.</p>
@@ -353,9 +354,9 @@ const ControlCenterDashboard: React.FC<{ profile: Profile }> = ({ profile }) => 
 
 
 // --- Main Dashboard Component ---
-const Dashboard: React.FC<DashboardProps> = ({ profile, setProfile }) => {
+const Dashboard: React.FC<DashboardProps> = ({ profile, setProfile, setGlobalSchemaError }) => {
     if (profile.role === UserRole.RESPONDER) {
-        return <ResponderDashboard profile={profile} setProfile={setProfile} />;
+        return <ResponderDashboard profile={profile} setProfile={setProfile} setGlobalSchemaError={setGlobalSchemaError} />;
     }
     return <ControlCenterDashboard profile={profile} />;
 };

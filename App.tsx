@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -12,6 +13,7 @@ import ControllerPage from './pages/ControllerPage';
 import { supabase } from './utils/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from './types';
+import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
 
 type View = 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'requests';
 
@@ -21,6 +23,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>('dashboard');
+  const [isGlobalSchemaError, setIsGlobalSchemaError] = useState(false);
   
   useEffect(() => {
     const fetchSession = async () => {
@@ -123,7 +126,7 @@ const App: React.FC = () => {
     if (!profile) return null;
     switch(view) {
       case 'dashboard':
-        return <Dashboard profile={profile} setProfile={setProfile} />;
+        return <Dashboard profile={profile} setProfile={setProfile} setGlobalSchemaError={setIsGlobalSchemaError} />;
       case 'controller':
         return <ControllerPage profile={profile} />;
       case 'reports':
@@ -139,7 +142,7 @@ const App: React.FC = () => {
       case 'profile':
         return <ProfilePage profile={profile} setProfile={setProfile} />;
       default:
-        return <Dashboard profile={profile} setProfile={setProfile} />;
+        return <Dashboard profile={profile} setProfile={setProfile} setGlobalSchemaError={setIsGlobalSchemaError} />;
     }
   }
 
@@ -181,8 +184,10 @@ const App: React.FC = () => {
         className="absolute bottom-[5%] right-[5%] w-96 h-96 bg-red-400/30 dark:bg-indigo-600/60 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
         style={{ animationDuration: '10s' }}
       ></div>
+
+      {isGlobalSchemaError && <GlobalSchemaErrorModal />}
       
-      <div className="relative z-10">
+      <div className={`relative z-10 ${isGlobalSchemaError ? 'blur-sm' : ''}`}>
         {session && profile ? (
           <>
             <Header currentView={view} setView={setView} profile={profile} />

@@ -1,27 +1,19 @@
 # RAPID iREPORT - Supabase Database Setup
 
-## ⚠️ Important: Fixing Common Database Errors (Schema Cache & RLS)
-
-If you are seeing errors related to the database, especially messages like:
-- `Could not find the '...' column... in the schema cache`
-- `violates row-level security policy`
-- `Error setting up presence`
-
-This indicates an issue with your Supabase schema or API cache. Please follow the steps below to resolve these common problems.
-
-### Fix for "Schema Cache" or "Column does not exist" Errors
-
-This is a common Supabase issue where the API's internal cache is out of date.
-
-**The quickest fix is to force a schema reload:**
-
-1.  **Navigate to your Supabase Project dashboard.**
-2.  In the left sidebar, click the **API Docs** icon (it looks like `<>`).
-3.  Select the **`public`** schema from the list on the left.
-4.  At the top right of the page, click the **"Reload schema"** button.
-5.  Wait for the confirmation, then refresh the application.
-
-If that doesn't work, proceed to **Step 2** below, which will update your entire database schema and should also trigger a cache refresh.
+> [!WARNING]
+> **PLEASE READ FIRST: Fixing Common "Schema Cache" Errors**
+>
+> If you are experiencing errors like `Could not find the 'location_coords' column... in the schema cache`, it means your Supabase API is out of sync with the database. This is a common issue that is easy to fix.
+>
+> **The Solution is to force a schema reload:**
+>
+> 1.  Go to your **Supabase Project Dashboard**.
+> 2.  In the left sidebar, go to **API Docs** (the `<>` icon).
+> 3.  Select the **`public`** schema.
+> 4.  At the top right, click the **"Reload schema"** button.
+> 5.  Refresh the application. The error should be gone.
+>
+> You must perform this action whenever you manually change the database schema using the SQL Editor.
 
 ---
 
