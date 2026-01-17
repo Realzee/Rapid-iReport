@@ -166,19 +166,19 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         }
     };
     
-    // FIX: Show all responders who are not off-duty to give controllers more visibility.
-    const onDutyResponders = responders.filter(
-        r => r.status && r.status !== ResponderStatus.OFF_DUTY
+    const availableResponders = responders.filter(
+        r => r.status === ResponderStatus.AVAILABLE
     );
 
     const currentlyAssignedResponder = report.assigned_to
         ? responders.find(r => r.id === report.assigned_to)
         : undefined;
 
-    // The list of options should include all on-duty responders.
-    // If the currently assigned responder is off-duty for some reason, they should still appear in the list for this specific report.
-    const responderOptions = [...onDutyResponders];
-    if (currentlyAssignedResponder && !onDutyResponders.some(r => r.id === currentlyAssignedResponder.id)) {
+    // The list of options should include all available responders.
+    // If a responder is already assigned to this report, they must also be in the list
+    // so the controller can see who is assigned, even if they aren't 'available'.
+    const responderOptions = [...availableResponders];
+    if (currentlyAssignedResponder && !availableResponders.some(r => r.id === currentlyAssignedResponder.id)) {
         responderOptions.push(currentlyAssignedResponder);
     }
 
@@ -301,7 +301,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                             onChange={(e) => setSelectedResponder(e.target.value)}
                             className="flex-grow bg-gray-800 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                         >
-                            <option value="">{report.assigned_to ? 'Unassign' : (onDutyResponders.length > 0 ? 'Select Responder...' : 'No responders on duty')}</option>
+                            <option value="">{report.assigned_to ? 'Unassign' : (availableResponders.length > 0 ? 'Select Responder...' : 'No responders available')}</option>
                             {responderOptions.map(r => (
                                 <option key={r.id} value={r.id}>
                                     {r.full_name}
@@ -320,3 +320,4 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 };
 
 export default ControllerReportDetail;
+    
