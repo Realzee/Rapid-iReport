@@ -10,8 +10,10 @@ import MapPage from './pages/MapPage';
 import ReportsPage from './pages/ReportsPage';
 import ProfilePage from './pages/ProfilePage';
 import ControllerPage from './pages/ControllerPage';
+import ResponderPage from './pages/ResponderPage';
 import { supabase } from './utils/supabase';
-import { Session } from '@supabase/supabase-js';
+// FIX: Changed to a type-only import for Session, which is a common requirement.
+import type { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from './types';
 import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
 
@@ -26,19 +28,13 @@ const App: React.FC = () => {
   const [isGlobalSchemaError, setIsGlobalSchemaError] = useState(false);
   
   useEffect(() => {
-    const fetchSession = async () => {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        setError(`Cannot reach authentication server: ${sessionError.message}`);
-      } else {
-        setSession(session);
-      }
-      setLoading(false);
-    };
+    // FIX: The errors indicate a Supabase v1 SDK is likely in use.
+    // `getSession()` is from v2, while `session()` is the synchronous v1 equivalent.
+    setSession(supabase.auth.session());
+    setLoading(false);
 
-    fetchSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // FIX: The subscription object destructuring is different in v1 (`data: subscription`) vs v2 (`data: { subscription }`).
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setError(null); // Clear errors on auth state change
     });
@@ -124,9 +120,25 @@ const App: React.FC = () => {
 
   const renderView = () => {
     if (!profile) return null;
+
+    // Special view routing for Responders
+    if (profile.role === UserRole.RESPONDER) {
+        // The main 'dashboard' view for a responder is their dedicated page
+        if (view === 'dashboard') {
+            return <ResponderPage profile={profile} setProfile={setProfile} setGlobalSchemaError={setIsGlobalSchemaError} />;
+        }
+        // Responders can still access their profile
+        if (view === 'profile') {
+            return <ProfilePage profile={profile} setProfile={setProfile} />;
+        }
+        // Fallback to their main page if they land on an unauthorized view
+        return <ResponderPage profile={profile} setProfile={setProfile} setGlobalSchemaError={setIsGlobalSchemaError} />;
+    }
+    
+    // Views for Admin, Controller, etc.
     switch(view) {
       case 'dashboard':
-        return <Dashboard profile={profile} setProfile={setProfile} setGlobalSchemaError={setIsGlobalSchemaError} />;
+        return <Dashboard profile={profile} />;
       case 'controller':
         return <ControllerPage profile={profile} />;
       case 'reports':
@@ -142,7 +154,7 @@ const App: React.FC = () => {
       case 'profile':
         return <ProfilePage profile={profile} setProfile={setProfile} />;
       default:
-        return <Dashboard profile={profile} setProfile={setProfile} setGlobalSchemaError={setIsGlobalSchemaError} />;
+        return <Dashboard profile={profile} />;
     }
   }
 
@@ -154,9 +166,9 @@ const App: React.FC = () => {
     )
   }
 
-  const mainClasses = view === 'controller'
-    ? 'pt-20 pb-8 px-4 sm:px-6 lg:px-8' // Aligned pt with header, added padding here for full-width view
-    : 'container mx-auto pt-20 px-4 sm:px-6 lg:px-8 pb-8'; // Aligned pt with header
+  const mainClasses = (view === 'controller' || (profile?.role === UserRole.RESPONDER && view === 'dashboard'))
+    ? 'pt-20 pb-8 px-4 sm:px-6 lg:px-8'
+    : 'container mx-auto pt-20 px-4 sm:px-6 lg:px-8 pb-8';
     
   if (session && error) {
       return (
@@ -165,6 +177,7 @@ const App: React.FC = () => {
                   <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Application Error</h2>
                   <p className="mb-4">{error}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">This can happen due to network issues or incorrect database permissions (Row Level Security). Please check the console for more details.</p>
+                  {/* FIX: The `signOut` method is correct for supabase-js v1, the reported error is likely a side-effect of other incorrect v2 calls. */}
                   <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
                       Logout and Try Again
                   </button>

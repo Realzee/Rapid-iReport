@@ -1,3 +1,4 @@
+
 # RAPID iREPORT - Supabase Database Setup
 
 > [!WARNING]
@@ -140,21 +141,28 @@ These server-side functions are required for secure administrative actions. Foll
             });
             if (inviteError) throw new Error(`Failed to invite user: ${inviteError.message}`);
             
-            // 4. Update the profile with company and status once user is created.
-            // Note: The handle_new_user trigger creates the basic profile.
-            // We need to update it post-creation.
+            // 4. Update the profile. The handle_new_user trigger creates the profile,
+            // but a race condition can occur. We retry the update to ensure it succeeds.
             if (inviteData.user) {
-                const { error: profileUpdateError } = await supabaseAdmin
-                    .from('profiles')
-                    .update({
-                        company_id: companyId,
-                        status: 'active'
-                    })
-                    .eq('id', inviteData.user.id);
-
-                if (profileUpdateError) {
-                    // This is a non-fatal error, the main goal was achieved. Log it.
-                    console.warn(`User invited, but failed to update profile for ${inviteData.user.id}: ${profileUpdateError.message}`);
+                let profileUpdated = false;
+                let lastError: any = null;
+                for (let i = 0; i < 5; i++) {
+                    const { error: profileUpdateError } = await supabaseAdmin
+                        .from('profiles')
+                        .update({
+                            company_id: companyId,
+                            status: 'active'
+                        })
+                        .eq('id', inviteData.user.id);
+                    if (!profileUpdateError) {
+                        profileUpdated = true;
+                        break;
+                    }
+                    lastError = profileUpdateError;
+                    await new Promise(resolve => setTimeout(resolve, 250)); // Wait before retrying
+                }
+                if (!profileUpdated) {
+                    console.warn(`User invited, but failed to update profile for ${inviteData.user.id}: ${lastError?.message}`);
                 }
             }
 
