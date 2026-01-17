@@ -22,16 +22,13 @@ const isVehicleReport = (report: Report): report is VehicleReport => 'license_pl
 
 // --- RESPONDER DASHBOARD ---
 const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Profile) => void; }> = ({ profile, setProfile }) => {
-    const [isOnDuty, setIsOnDuty] = useState(profile.responder_status !== ResponderStatus.OFF_DUTY);
-    const [isSharingLocation, setIsSharingLocation] = useState(false);
     const [assignedReports, setAssignedReports] = useState<Report[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const locationWatchId = useRef<number | null>(null);
 
-    useEffect(() => {
-        setIsOnDuty(profile.responder_status !== ResponderStatus.OFF_DUTY);
-    }, [profile.responder_status]);
+    const isOnDuty = profile.responder_status !== ResponderStatus.OFF_DUTY;
+    const [isSharingLocation, setIsSharingLocation] = useState(false);
 
     // Fetch initial data
     useEffect(() => {
@@ -79,9 +76,9 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
     // Location Sharing Logic
     const startLocationSharing = () => {
         if (navigator.geolocation && locationWatchId.current === null) {
-            setIsSharingLocation(true);
             locationWatchId.current = navigator.geolocation.watchPosition(
                 async (position) => {
+                    setIsSharingLocation(true);
                     const { latitude, longitude } = position.coords;
                     await supabase.from('profiles').update({ location_coords: { lat: latitude, lng: longitude } }).eq('id', profile.id);
                 },
@@ -114,22 +111,23 @@ const ResponderDashboard: React.FC<{ profile: Profile; setProfile: (profile: Pro
 
         if (error) {
             console.error("Failed to update duty status:", error);
-            alert("Failed to update duty status. Please try again.");
+            alert(`Failed to update duty status: ${error.message}`);
         } else if (updatedProfile) {
             setProfile(updatedProfile);
-            if (newDutyStatus) {
-                startLocationSharing();
-            } else {
-                stopLocationSharing();
-            }
         }
     };
     
-    // Start sharing on mount if already on duty
+    // This effect now correctly handles starting/stopping location sharing
+    // based on the profile status from the central state.
     useEffect(() => {
-        if (isOnDuty) startLocationSharing();
+        if (isOnDuty) {
+            startLocationSharing();
+        } else {
+            stopLocationSharing();
+        }
+        // Cleanup function ensures we stop sharing when component unmounts
         return () => stopLocationSharing();
-    }, [isOnDuty]);
+    }, [isOnDuty, profile.id]);
     
     const selectedReport = useMemo(() => assignedReports.find(r => r.id === selectedReportId), [assignedReports, selectedReportId]);
 
@@ -231,10 +229,41 @@ const ControlCenterDashboard: React.FC<{ profile: Profile }> = ({ profile }) => 
         };
         fetchData();
 
+        const refetchReports = async () => {
+            const [{ data: vehicleData }, { data: crimeData }] = await Promise.all([
+                supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(100),
+                supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(100),
+            ]);
+            const combinedReports = [...(vehicleData || []).map(r => ({...r, type: 'vehicle'})), ...(crimeData || []).map(r => ({...r, type: 'crime'}))];
+            setReports(combinedReports);
+        };
+        
+        const handleResponderUpdate = (payload: any) => {
+            const updatedProfile = payload.new as Profile;
+            const newResponderData: Responder = {
+                id: updatedProfile.id,
+                full_name: updatedProfile.full_name,
+                status: updatedProfile.responder_status || ResponderStatus.OFF_DUTY,
+                location_coords: updatedProfile.location_coords || undefined,
+            };
+
+            setResponders(prev => {
+                const index = prev.findIndex(r => r.id === updatedProfile.id);
+                if (index > -1) {
+                    const newResponders = [...prev];
+                    newResponders[index] = newResponderData;
+                    return newResponders;
+                }
+                return [...prev, newResponderData];
+            });
+
+            setAllUsers(prev => prev.map(u => u.id === updatedProfile.id ? updatedProfile : u));
+        };
+
         const channel = supabase.channel('public:reports-and-responders')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, () => fetchData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, () => fetchData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, () => fetchData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, refetchReports)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, refetchReports)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderUpdate)
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };

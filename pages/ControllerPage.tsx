@@ -107,7 +107,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
             supabase.removeChannel(reportsChannels);
             supabase.removeChannel(respondersChannel);
         };
-    }, [selectedReportId]);
+    }, []);
 
     useEffect(() => {
         if (!selectedReportId && reports.length > 0) {
