@@ -171,7 +171,7 @@ const App: React.FC = () => {
     )
   }
 
-  const mainClasses = (view === 'controller' || (profile?.role === UserRole.RESPONDER && view === 'dashboard'))
+  const mainClasses = (view === 'controller' || view === 'map' || (profile?.role === UserRole.RESPONDER && view === 'dashboard'))
     ? 'pt-20 pb-8 px-4 sm:px-6 lg:px-8'
     : 'container mx-auto pt-20 px-4 sm:px-6 lg:px-8 pb-8';
     

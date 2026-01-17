@@ -57,12 +57,14 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     company_id uuid,
     avatar_url text,
     last_seen_at timestamp with time zone,
-    responder_status public.responder_status,
-    location_coords jsonb, -- This column stores responder geographic coordinates.
     CONSTRAINT profiles_pkey PRIMARY KEY (id),
     CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE,
     CONSTRAINT profiles_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE SET NULL
 );
+
+-- Ensure responder-specific columns exist for backward compatibility.
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS responder_status public.responder_status;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS location_coords jsonb;
 
 -- Vehicle Reports Table
 CREATE TABLE IF NOT EXISTS public.vehicle_reports (

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Report, Profile, Responder, ResponderStatus, UserRole } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
@@ -70,18 +71,25 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
         };
         
         const handleResponderUpdate = (payload: any) => {
-            const updatedProfile = payload.new as Profile;
-            setResponders(prev => {
-                const existingResponder = prev.find(r => r.id === updatedProfile.id);
-                const newResponderData: Responder = {
-                    id: updatedProfile.id,
-                    full_name: updatedProfile.full_name,
-                    status: updatedProfile.responder_status || ResponderStatus.OFF_DUTY,
-                    location_coords: updatedProfile.location_coords || undefined,
-                };
+            if (payload.eventType === 'DELETE') {
+                setResponders(prev => prev.filter(r => r.id !== payload.old.id));
+                return;
+            }
 
-                if (existingResponder) {
-                    return prev.map(r => r.id === updatedProfile.id ? newResponderData : r);
+            const updatedProfile = payload.new as Profile;
+            const newResponderData: Responder = {
+                id: updatedProfile.id,
+                full_name: updatedProfile.full_name,
+                status: updatedProfile.responder_status || ResponderStatus.OFF_DUTY,
+                location_coords: updatedProfile.location_coords || undefined,
+            };
+
+            setResponders(prev => {
+                const index = prev.findIndex(r => r.id === updatedProfile.id);
+                if (index > -1) {
+                    const newResponders = [...prev];
+                    newResponders[index] = newResponderData;
+                    return newResponders;
                 }
                 return [...prev, newResponderData];
             });
@@ -100,7 +108,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
 
         const respondersChannel = supabase
           .channel('public:profiles-controller')
-          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderUpdate)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderUpdate)
           .subscribe();
 
         return () => {

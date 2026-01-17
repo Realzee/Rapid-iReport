@@ -69,18 +69,25 @@ const MapPage: React.FC = () => {
           .subscribe();
         
         const handleResponderUpdate = (payload: any) => {
-            const updatedProfile = payload.new as Profile;
-            setResponders(prev => {
-                const existingResponder = prev.find(r => r.id === updatedProfile.id);
-                const newResponderData: Responder = {
-                    id: updatedProfile.id,
-                    full_name: updatedProfile.full_name,
-                    status: updatedProfile.responder_status || ResponderStatus.OFF_DUTY,
-                    location_coords: updatedProfile.location_coords || undefined,
-                };
+            if (payload.eventType === 'DELETE') {
+                setResponders(prev => prev.filter(r => r.id !== payload.old.id));
+                return;
+            }
 
-                if (existingResponder) {
-                    return prev.map(r => r.id === updatedProfile.id ? newResponderData : r);
+            const updatedProfile = payload.new as Profile;
+            const newResponderData: Responder = {
+                id: updatedProfile.id,
+                full_name: updatedProfile.full_name,
+                status: updatedProfile.responder_status || ResponderStatus.OFF_DUTY,
+                location_coords: updatedProfile.location_coords || undefined,
+            };
+
+            setResponders(prev => {
+                const index = prev.findIndex(r => r.id === updatedProfile.id);
+                if (index > -1) {
+                    const newResponders = [...prev];
+                    newResponders[index] = newResponderData;
+                    return newResponders;
                 }
                 return [...prev, newResponderData];
             });
@@ -88,7 +95,7 @@ const MapPage: React.FC = () => {
 
         const respondersChannel = supabase
           .channel('public:profiles-map-page')
-          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderUpdate)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderUpdate)
           .subscribe();
 
 
@@ -100,27 +107,15 @@ const MapPage: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-[calc(100vh-8rem)]">
+            <div className="flex justify-center items-center h-[calc(100vh-8.5rem)]">
                 <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
     
     return (
-        <div className="container mx-auto h-[calc(100vh-8rem)] flex flex-col">
-            <div className="flex-shrink-0 mb-6">
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Live Incidents Map</h2>
-                <p className="text-gray-500 dark:text-gray-400 mt-1">Real-time operational map of all reported incidents and responders.</p>
-            </div>
-            <div className="flex-grow min-h-0">
-                 <div className="h-full">
-                    <MapView 
-                        reports={reports} 
-                        responders={responders}
-                        selectedReportId={null}
-                    />
-                </div>
-            </div>
+        <div className="h-[calc(100vh-8.5rem)] w-full -my-8">
+            <MapView reports={reports} responders={responders} selectedReportId={null} />
         </div>
     );
 };

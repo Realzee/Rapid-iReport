@@ -22,6 +22,8 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
     const locationWatchId = useRef<number | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
     const [isSharingLocation, setIsSharingLocation] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [lastSyncTimestamp, setLastSyncTimestamp] = useState<Date | null>(null);
 
     const isOnDuty = profile.responder_status !== ResponderStatus.OFF_DUTY;
 
@@ -71,6 +73,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
         if (navigator.geolocation && locationWatchId.current === null) {
             locationWatchId.current = navigator.geolocation.watchPosition(
                 async (position) => {
+                    setIsSyncing(true);
                     setGlobalSchemaError(false);
                     setLocationError(null);
                     setIsSharingLocation(true);
@@ -89,7 +92,10 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
                             setGlobalSchemaError(false);
                         }
                         stopLocationSharing();
+                    } else {
+                        setLastSyncTimestamp(new Date());
                     }
+                    setIsSyncing(false);
                 },
                 (geoError) => {
                     console.warn(`Location sharing error:`, geoError);
@@ -111,6 +117,9 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
     const handleDutyToggle = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const newDutyStatus = e.target.checked;
         const newResponderStatus = newDutyStatus ? ResponderStatus.AVAILABLE : ResponderStatus.OFF_DUTY;
+        if (!newDutyStatus) {
+            setLastSyncTimestamp(null);
+        }
         setLocationError(null);
         setGlobalSchemaError(false);
 
@@ -156,12 +165,33 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
                         </label>
                         <span className="font-semibold text-lg">{isOnDuty ? 'On Duty' : 'Off Duty'}</span>
                     </div>
-                    {isOnDuty && (
-                        <div className="flex items-center gap-2 text-sm">
-                            {isSharingLocation ? (
-                                <><span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span><span className="text-green-600 dark:text-green-400">Location Active</span></>
+                     {isOnDuty && (
+                        <div className="text-sm">
+                            {locationError ? (
+                                <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                                    <span className="relative flex h-3 w-3"><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>
+                                    <span>Error</span>
+                                </div>
+                            ) : isSharingLocation ? (
+                                <div className="flex flex-col items-end">
+                                    <div className="flex items-center gap-2">
+                                        <span className="relative flex h-3 w-3">
+                                            {isSyncing && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>}
+                                            <span className={`relative inline-flex rounded-full h-3 w-3 ${isSyncing ? 'bg-blue-500' : 'bg-green-500'}`}></span>
+                                        </span>
+                                        <span className="text-green-600 dark:text-green-400">Location Active</span>
+                                    </div>
+                                    {lastSyncTimestamp && (
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            Last sync: {formatDistanceToNow(lastSyncTimestamp, { addSuffix: true })}
+                                        </p>
+                                    )}
+                                </div>
                             ) : (
-                                <><span className="relative flex h-3 w-3"><span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span></span><span className="text-yellow-600 dark:text-yellow-400">Acquiring...</span></>
+                                <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
+                                    <span className="relative flex h-3 w-3"><span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500 animate-pulse"></span></span>
+                                    <span>Acquiring...</span>
+                                </div>
                             )}
                         </div>
                     )}

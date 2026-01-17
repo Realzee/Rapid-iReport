@@ -62,6 +62,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         };
         
         const handleResponderUpdate = (payload: any) => {
+            if (payload.eventType === 'DELETE') {
+                setResponders(prev => prev.filter(r => r.id !== payload.old.id));
+                setAllUsers(prev => prev.filter(u => u.id !== payload.old.id));
+                return;
+            }
+            
             const updatedProfile = payload.new as Profile;
             const newResponderData: Responder = {
                 id: updatedProfile.id,
@@ -79,14 +85,20 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                 }
                 return [...prev, newResponderData];
             });
-
-            setAllUsers(prev => prev.map(u => u.id === updatedProfile.id ? updatedProfile : u));
+            
+            setAllUsers(prev => {
+                const index = prev.findIndex(u => u.id === updatedProfile.id);
+                if (index > -1) {
+                    return prev.map(u => u.id === updatedProfile.id ? updatedProfile : u);
+                }
+                return [...prev, updatedProfile];
+            });
         };
 
         const channel = supabase.channel('public:reports-and-responders')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, refetchReports)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, refetchReports)
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderUpdate)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderUpdate)
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
