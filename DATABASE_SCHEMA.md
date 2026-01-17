@@ -127,6 +127,20 @@ CREATE TABLE IF NOT EXISTS public.report_updates (
     CONSTRAINT report_updates_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE
 );
 
+-- Assignment Logs Table
+CREATE TABLE IF NOT EXISTS public.assignment_logs (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    report_id uuid NOT NULL,
+    assigned_from uuid,
+    assigned_to uuid,
+    assigned_by uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT assignment_logs_pkey PRIMARY KEY (id),
+    CONSTRAINT assignment_logs_assigned_from_fkey FOREIGN KEY (assigned_from) REFERENCES public.profiles(id) ON DELETE SET NULL,
+    CONSTRAINT assignment_logs_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES public.profiles(id) ON DELETE SET NULL,
+    CONSTRAINT assignment_logs_assigned_by_fkey FOREIGN KEY (assigned_by) REFERENCES public.profiles(id) ON DELETE CASCADE
+);
+
 -- Notifications Table
 CREATE TABLE IF NOT EXISTS public.notifications (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -288,6 +302,22 @@ BEGIN
 END;
 $$;
 
+-- Trigger function for assignment changes
+CREATE OR REPLACE FUNCTION public.log_assignment_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  IF OLD.assigned_to IS DISTINCT FROM NEW.assigned_to THEN
+    INSERT INTO public.assignment_logs (report_id, assigned_from, assigned_to, assigned_by)
+    VALUES (NEW.id, OLD.assigned_to, NEW.assigned_to, auth.uid());
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
 -- 4. Triggers
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
@@ -308,6 +338,16 @@ DROP TRIGGER IF EXISTS on_new_registration_request_notify ON public.registration
 CREATE TRIGGER on_new_registration_request_notify
   AFTER INSERT ON public.registration_requests
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_registration_request();
+
+DROP TRIGGER IF EXISTS on_vehicle_report_assignment_change ON public.vehicle_reports;
+CREATE TRIGGER on_vehicle_report_assignment_change
+  AFTER UPDATE OF assigned_to ON public.vehicle_reports
+  FOR EACH ROW EXECUTE FUNCTION public.log_assignment_change();
+
+DROP TRIGGER IF EXISTS on_crime_report_assignment_change ON public.crime_reports;
+CREATE TRIGGER on_crime_report_assignment_change
+  AFTER UPDATE OF assigned_to ON public.crime_reports
+  FOR EACH ROW EXECUTE FUNCTION public.log_assignment_change();
 
 
 -- 5. Row Level Security (RLS) Policies
@@ -394,6 +434,12 @@ CREATE POLICY "Allow relevant users to add updates" ON public.report_updates FOR
       )
     )
   );
+  
+-- ASSIGNMENT LOGS
+ALTER TABLE public.assignment_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow relevant staff to view assignment logs" ON public.assignment_logs;
+CREATE POLICY "Allow relevant staff to view assignment logs" ON public.assignment_logs
+  FOR SELECT USING (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'));
 
 -- REGISTRATION REQUESTS
 ALTER TABLE public.registration_requests ENABLE ROW LEVEL SECURITY;

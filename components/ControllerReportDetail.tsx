@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus } from '../types';
+import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
 import { CheckCircleIcon, AssignResponderIcon } from './icons';
@@ -15,6 +15,7 @@ const DetailField = ({ label, children, className }: { label: string, children: 
 
 const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]; profile: Profile }> = ({ report, responders, profile }) => {
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
+    const [assignmentHistory, setAssignmentHistory] = useState<AssignmentLog[]>([]);
     const [newUpdate, setNewUpdate] = useState('');
     const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState<ReportStatus>(report.status);
@@ -30,37 +31,38 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         setSelectedStatus(report.status);
         setSelectedResponder(report.assigned_to || '');
 
-        const fetchUpdates = async () => {
+        const fetchDetails = async () => {
+            // Fetch Updates
             const { data: updatesData, error: updatesError } = await supabase
                 .from('report_updates')
-                .select('id, report_id, user_id, content, created_at')
+                .select('*, profile:profiles(full_name)')
                 .eq('report_id', report.id)
                 .order('created_at', { ascending: true });
 
-            if (updatesError) {
-                console.error("Error fetching report updates:", updatesError);
-                setUpdates([]);
-                return;
-            }
+            if (updatesError) console.error("Error fetching report updates:", updatesError);
+            else setUpdates(updatesData?.map(u => ({...u, user_full_name: (u.profile as any)?.full_name || 'System'})) || []);
 
-            if (updatesData) {
-                const updatesWithNames = await Promise.all(
-                    updatesData.map(async (update) => {
-                        const { data: profileData } = await supabase
-                            .from('profiles')
-                            .select('full_name')
-                            .eq('id', update.user_id)
-                            .single();
-                        return {
-                            ...update,
-                            user_full_name: profileData?.full_name || 'System'
-                        };
-                    })
-                );
-                setUpdates(updatesWithNames as ReportUpdate[]);
+            // Fetch Assignment History
+            const { data: historyData, error: historyError } = await supabase
+                .from('assignment_logs')
+                .select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(full_name), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(full_name), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(full_name)`)
+                .eq('report_id', report.id)
+                .order('created_at', { ascending: false });
+
+            if (historyError) {
+                 console.error("Error fetching assignment history:", historyError);
+            } else if (historyData) {
+                const formattedHistory = historyData.map((log: any) => ({
+                    ...log,
+                    assigned_from_name: log.assigned_from_profile?.full_name || null,
+                    assigned_to_name: log.assigned_to_profile?.full_name || null,
+                    assigned_by_name: log.assigned_by_profile?.full_name || 'System',
+                }));
+                setAssignmentHistory(formattedHistory);
             }
         };
-        fetchUpdates();
+        
+        fetchDetails();
 
         const updatesChannel = supabase
             .channel(`report-updates-${report.id}`)
@@ -71,8 +73,24 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 setUpdates(prev => [...prev, newUpdateWithUser as ReportUpdate]);
             })
             .subscribe();
-        
-        return () => { supabase.removeChannel(updatesChannel); };
+            
+        const historyChannel = supabase
+            .channel(`report-history-${report.id}`)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'assignment_logs', filter: `report_id=eq.${report.id}`}, 
+            async () => {
+                // Refetch history on change
+                const { data: historyData, error: historyError } = await supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(full_name), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(full_name), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(full_name)`).eq('report_id', report.id).order('created_at', { ascending: false });
+                if (!historyError && historyData) {
+                    const formattedHistory = historyData.map((log: any) => ({ ...log, assigned_from_name: log.assigned_from_profile?.full_name || null, assigned_to_name: log.assigned_to_profile?.full_name || null, assigned_by_name: log.assigned_by_profile?.full_name || 'System' }));
+                    setAssignmentHistory(formattedHistory);
+                }
+            })
+            .subscribe();
+
+        return () => { 
+            supabase.removeChannel(updatesChannel); 
+            supabase.removeChannel(historyChannel);
+        };
     }, [report.id, report.status, report.assigned_to]);
     
     useEffect(() => {
@@ -147,11 +165,6 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         </span>
                     </DetailField>
                 </div>
-
-                <DetailField label="Location">
-                    {report.location_coords && <p className="font-mono">{report.location_coords.lat.toFixed(7)} {report.location_coords.lng.toFixed(7)}</p>}
-                    {report.location_boundingbox && <p className="font-mono text-gray-400 text-xs">{report.location_boundingbox.slice(0, 2).join(', ')}</p>}
-                </DetailField>
                 
                 <DetailField label="Description">
                     <p>{report.description}</p>
@@ -165,6 +178,29 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         </div>
                     </DetailField>
                 )}
+
+                 <DetailField label="Assignment History">
+                    <div className="space-y-3 h-24 overflow-y-auto bg-black/30 rounded p-2 border border-gray-700/50">
+                        {assignmentHistory.length === 0 ? (
+                            <div className="flex items-center justify-center h-full">
+                               <p className="text-sm text-gray-500">No assignment history.</p>
+                            </div>
+                        ) : (
+                            assignmentHistory.map(log => (
+                                <div key={log.id} className="text-xs">
+                                    <p className="text-gray-300">
+                                        <strong>{log.assigned_by_name}</strong>
+                                        {log.assigned_to_name ? ` assigned ` : ` unassigned `}
+                                        <strong>{log.assigned_to_name || log.assigned_from_name}</strong>.
+                                    </p>
+                                    <p className="text-gray-500 text-right">
+                                        {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                                    </p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </DetailField>
                 
                 <DetailField label="Live Feed">
                     <div className="space-y-3 h-32 overflow-y-auto bg-black/30 rounded p-2 border border-gray-700/50">

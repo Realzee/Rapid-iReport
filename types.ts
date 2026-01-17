@@ -158,3 +158,15 @@ export interface RegistrationRequest {
     message?: string;
     status: RequestStatus;
 }
+
+export interface AssignmentLog {
+    id: string;
+    report_id: string;
+    assigned_from: string | null;
+    assigned_to: string | null;
+    assigned_by: string;
+    created_at: string;
+    assigned_from_name?: string | null;
+    assigned_to_name?: string | null;
+    assigned_by_name?: string | null;
+}
