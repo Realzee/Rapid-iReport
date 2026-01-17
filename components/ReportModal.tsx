@@ -1,3 +1,4 @@
+
 /**
  * @file ReportModal.tsx
  * @description Modal for creating and editing vehicle or crime reports.
@@ -241,7 +242,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         setLoading(true);
 
         try {
-            // FIX: getUser() is async for supabase-js v2. The error indicates v1 is used, where user() is synchronous.
+            // FIX: Replaced `getUser()` (v2, async) with `user()` (v1, sync)
             const user = supabase.auth.user();
             if (!user) throw new Error("User not authenticated");
 

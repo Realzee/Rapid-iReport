@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { MailIcon, LockIcon } from './icons';
 import { supabase } from '../utils/supabase';
@@ -16,7 +17,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    // FIX: signInWithPassword is for supabase-js v2. The error indicates v1 is used, which has signIn.
+    // FIX: Replaced `signInWithPassword` (v2) with `signIn` (v1)
     const { error } = await supabase.auth.signIn({ email, password });
     if (error) {
       setError(error.message);

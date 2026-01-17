@@ -69,7 +69,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         e.preventDefault();
         setLoadingProfile(true);
 
-        // FIX: updateUser is for supabase-js v2. The error indicates v1 is used, which has update.
+        // FIX: Replaced `updateUser` (v2) with `update` (v1)
         const { error: userError } = await supabase.auth.update({
             data: { full_name: fullName }
         });
@@ -108,7 +108,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         }
 
         setLoadingPassword(true);
-        // FIX: updateUser is for supabase-js v2. The error indicates v1 is used, which has update.
+        // FIX: Replaced `updateUser` (v2) with `update` (v1)
         const { error } = await supabase.auth.update({ password });
         if (error) {
             alert('Error updating password: ' + error.message);

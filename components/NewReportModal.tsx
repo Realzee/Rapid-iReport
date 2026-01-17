@@ -1,3 +1,4 @@
+
 /**
  * @file ReportModal.tsx
  * @description Modal for creating and editing vehicle or crime reports.
@@ -46,7 +47,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         if (e.target.files) {
             const selectedFiles = Array.from(e.target.files);
             setImageFiles(prev => [...prev, ...selectedFiles]);
-            // FIX: Explicitly cast file to Blob to satisfy URL.createObjectURL's type requirement as it was being inferred as 'unknown'.
             const newPreviews = selectedFiles.map(file => URL.createObjectURL(file as Blob));
             setImagePreviews(prev => [...prev, ...newPreviews]);
         }
@@ -81,7 +81,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         setLoading(true);
 
         try {
-            // FIX: getUser() is async for supabase-js v2. The error indicates v1 is used, where user() is synchronous.
+            // FIX: Replaced `getUser()` (v2, async) with `user()` (v1, sync)
             const user = supabase.auth.user();
             if (!user) throw new Error("User not authenticated");
 
