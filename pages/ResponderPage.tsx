@@ -277,8 +277,60 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
 
     const handleStatusUpdate = async (status: ReportStatus) => {
         const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
-        await supabase.from(tableName).update({ status }).eq('id', report.id);
-        await supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Status changed to: ${status.replace(/_/g, ' ')}` });
+
+        const updatePromises: Promise<any>[] = [];
+
+        // 1. Update the report's status
+        updatePromises.push(supabase.from(tableName).update({ status }).eq('id', report.id));
+
+        // 2. Log the status change in the incident log
+        updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Status changed to: ${status.replace(/_/g, ' ')}` }));
+
+        // 3. Update the responder's own status in the profiles table
+        let newResponderStatus: ResponderStatus | null = null;
+        if (status === ReportStatus.IN_PROGRESS) {
+            newResponderStatus = ResponderStatus.EN_ROUTE;
+        } else if (status === ReportStatus.ON_SCENE) {
+            newResponderStatus = ResponderStatus.ON_SCENE;
+        } else if (status === ReportStatus.RESOLVED) {
+            // When resolving, check if there are any other active assignments.
+            // If not, the responder becomes available again.
+            const { data: otherVehicleReports, error: vError } = await supabase
+                .from('vehicle_reports')
+                .select('id')
+                .eq('assigned_to', profile.id)
+                .neq('id', report.id)
+                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+
+            const { data: otherCrimeReports, error: cError } = await supabase
+                .from('crime_reports')
+                .select('id')
+                .eq('assigned_to', profile.id)
+                .neq('id', report.id)
+                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+            
+            if (vError || cError) {
+                console.error("Could not check for other active reports:", vError || cError);
+                // Fail gracefully - don't change responder status if we can't verify.
+            } else {
+                const hasOtherActiveAssignments = (otherVehicleReports && otherVehicleReports.length > 0) || (otherCrimeReports && otherCrimeReports.length > 0);
+                if (!hasOtherActiveAssignments) {
+                    newResponderStatus = ResponderStatus.AVAILABLE;
+                }
+            }
+        }
+
+        if (newResponderStatus && profile.responder_status !== newResponderStatus) {
+            updatePromises.push(supabase.from('profiles').update({ responder_status: newResponderStatus }).eq('id', profile.id));
+        }
+        
+        // Execute all updates
+        const results = await Promise.all(updatePromises);
+        const errors = results.map(r => r.error).filter(Boolean);
+        if (errors.length > 0) {
+            alert('An error occurred while updating status. Please check the console.');
+            console.error('Status update errors:', errors);
+        }
     };
 
     const handlePostUpdate = async (e: React.FormEvent) => {

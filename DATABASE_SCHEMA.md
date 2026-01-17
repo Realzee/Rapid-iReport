@@ -367,6 +367,10 @@ CREATE POLICY "Allow users to update their own profile" ON public.profiles FOR U
 DROP POLICY IF EXISTS "Admins and moderators can manage all profiles" ON public.profiles;
 CREATE POLICY "Admins and moderators can manage all profiles" ON public.profiles FOR ALL
   USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator')));
+DROP POLICY IF EXISTS "Controllers can update responder profiles" ON public.profiles;
+CREATE POLICY "Controllers can update responder profiles" ON public.profiles FOR UPDATE
+  USING ( (public.get_user_role(auth.uid()) = 'controller') AND (role = 'responder') )
+  WITH CHECK ( (public.get_user_role(auth.uid()) = 'controller') AND (role = 'responder') );
 
 -- COMPANIES
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
