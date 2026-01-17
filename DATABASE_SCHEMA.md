@@ -386,8 +386,10 @@ DROP POLICY IF EXISTS "Allow admins, moderators, controllers to manage reports" 
 CREATE POLICY "Allow admins, moderators, controllers to manage reports" ON public.vehicle_reports FOR ALL
   USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')));
 DROP POLICY IF EXISTS "Allow assigned responders to update status" ON public.vehicle_reports;
-CREATE POLICY "Allow assigned responders to update status" ON public.vehicle_reports FOR UPDATE
-  USING (((public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid())));
+DROP POLICY IF EXISTS "Allow assigned responders to update their reports" ON public.vehicle_reports;
+CREATE POLICY "Allow assigned responders to update their reports" ON public.vehicle_reports FOR UPDATE
+  USING ( (public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid()) )
+  WITH CHECK ( (assigned_to = auth.uid()) );
 
 -- CRIME REPORTS
 ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
@@ -401,8 +403,10 @@ DROP POLICY IF EXISTS "Allow admins, moderators, controllers to manage reports" 
 CREATE POLICY "Allow admins, moderators, controllers to manage reports" ON public.crime_reports FOR ALL
   USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')));
 DROP POLICY IF EXISTS "Allow assigned responders to update status" ON public.crime_reports;
-CREATE POLICY "Allow assigned responders to update status" ON public.crime_reports FOR UPDATE
-  USING (((public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid())));
+DROP POLICY IF EXISTS "Allow assigned responders to update their reports" ON public.crime_reports;
+CREATE POLICY "Allow assigned responders to update their reports" ON public.crime_reports FOR UPDATE
+  USING ( (public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid()) )
+  WITH CHECK ( (assigned_to = auth.uid()) );
 
 -- REPORT UPDATES
 ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;

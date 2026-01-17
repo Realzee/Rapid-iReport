@@ -79,8 +79,9 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
 
                     if (error) {
                         console.error("Failed to update location:", error);
-                        const errorMessage = error.message;
-                        if (errorMessage.includes('schema cache') && errorMessage.includes('location_coords')) {
+                        const errorMessage = (error as any).message || JSON.stringify(error);
+                        
+                        if (typeof errorMessage === 'string' && errorMessage.includes('schema cache') && errorMessage.includes('location_coords')) {
                             setGlobalSchemaError(true);
                             setLocationError(null);
                         } else {
@@ -122,8 +123,8 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
 
         if (error) {
             console.error("Failed to update duty status:", error);
-            const errorMessage = error.message;
-            if (errorMessage.includes('schema cache') && errorMessage.includes('location_coords')) {
+            const errorMessage = (error as any).message || JSON.stringify(error);
+            if (typeof errorMessage === 'string' && errorMessage.includes('schema cache') && (errorMessage.includes('location_coords') || errorMessage.includes('responder_status'))) {
                 setGlobalSchemaError(true);
                 setLocationError(null);
             } else {
