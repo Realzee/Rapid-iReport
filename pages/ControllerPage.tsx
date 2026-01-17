@@ -2,19 +2,24 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Report, Profile, Responder, ResponderStatus, UserRole } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
+import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
 import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
+import { ZapIcon, UsersIcon } from '../components/icons';
 
 interface ControllerPageProps {
     profile: Profile;
 }
+
+type ControllerTab = 'events' | 'responders';
 
 const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
     const [reports, setReports] = useState<Report[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<ControllerTab>('events');
 
     useEffect(() => {
         const fetchData = async (isInitialLoad = false) => {
@@ -52,11 +57,8 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
             if (isInitialLoad) setLoading(false);
         };
 
-        // Initial fetch
         fetchData(true);
 
-        // This single subscription channel handles all updates by re-fetching data.
-        // This is a more robust approach than trying to manage incremental state updates.
         const channel = supabase
             .channel('controller-page-realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, () => fetchData())
@@ -70,13 +72,12 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
     }, []);
 
     useEffect(() => {
-        // Auto-select the first report if none is selected
-        if (!selectedReportId && reports.length > 0) {
-            setSelectedReportId(reports[0].id);
+        const sortedReports = reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+        if (!selectedReportId && sortedReports.length > 0) {
+            setSelectedReportId(sortedReports[0].id);
         }
-         // If the selected report is deleted, clear the selection
         if (selectedReportId && !reports.some(r => r.id === selectedReportId)) {
-            setSelectedReportId(reports.length > 0 ? reports[0].id : null);
+            setSelectedReportId(sortedReports.length > 0 ? sortedReports[0].id : null);
         }
     }, [reports, selectedReportId]);
 
@@ -96,19 +97,40 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
         );
     }
 
+    const tabButtonClasses = (tabName: ControllerTab) => 
+        `w-1/2 py-3 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${
+            activeTab === tabName 
+            ? 'bg-blue-600 text-white' 
+            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'
+        }`;
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-            {/* Left Column (scrolls with page) */}
             <div className="lg:col-span-3">
-                <LiveEventStack
-                    reports={sortedReports}
-                    responders={responders}
-                    onReportSelect={(id) => setSelectedReportId(id)}
-                    selectedReportId={selectedReportId}
-                />
+                 <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex flex-col backdrop-blur-lg max-h-[calc(100vh-8rem)]">
+                    <div className="flex-shrink-0 mb-4 p-1 bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="flex">
+                            <button onClick={() => setActiveTab('events')} className={tabButtonClasses('events')}><ZapIcon className="w-5 h-5" /> Live Events</button>
+                            <button onClick={() => setActiveTab('responders')} className={tabButtonClasses('responders')}><UsersIcon className="w-5 h-5" /> Responders</button>
+                        </div>
+                    </div>
+                    
+                    {activeTab === 'events' ? (
+                        <LiveEventStack
+                            reports={sortedReports}
+                            responders={responders}
+                            onReportSelect={(id) => setSelectedReportId(id)}
+                            selectedReportId={selectedReportId}
+                        />
+                    ) : (
+                        <ResponderStack
+                            responders={responders}
+                            reports={reports}
+                        />
+                    )}
+                 </div>
             </div>
 
-            {/* Right container for Map and Details */}
             <div className="lg:col-span-9">
                  <div className="lg:sticky lg:top-24">
                      <div className="grid grid-cols-1 lg:grid-cols-9 gap-4">

@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Report, VehicleReport, Severity, Responder } from '../types';
 import { format } from 'date-fns';
@@ -131,14 +132,12 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, on
     }, [responders]);
 
     return (
-        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex flex-col backdrop-blur-lg max-h-[calc(100vh-8rem)]">
-            <div className="flex-shrink-0 mb-4">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Live Event Stack</h2>
-                    <div className="text-right">
-                        <p className="text-sm text-gray-700 dark:text-gray-200">{reports.length} events</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Real-time updates</p>
-                    </div>
+        <>
+            <div className="flex-shrink-0 mb-4 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Live Event Stack</h2>
+                <div className="text-right">
+                    <p className="text-sm text-gray-700 dark:text-gray-200">{reports.length} events</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Real-time updates</p>
                 </div>
             </div>
 
@@ -153,7 +152,7 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, on
                     />
                 ))}
             </div>
-        </div>
+        </>
     );
 };
 
