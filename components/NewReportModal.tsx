@@ -81,9 +81,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         setLoading(true);
 
         try {
-            // FIX: Replaced `getUser()` (v2, async) with `user()` (v1, sync)
-            const user = supabase.auth.user();
-            if (!user) throw new Error("User not authenticated");
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) throw new Error("User not authenticated");
 
             // 1. Upload any new image files
             const newImageUrls: string[] = [];

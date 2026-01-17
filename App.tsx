@@ -12,8 +12,7 @@ import ProfilePage from './pages/ProfilePage';
 import ControllerPage from './pages/ControllerPage';
 import ResponderPage from './pages/ResponderPage';
 import { supabase } from './utils/supabase';
-// FIX: Changed type import to a standard import for broader compatibility.
-import { Session } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from './types';
 import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
 
@@ -28,17 +27,24 @@ const App: React.FC = () => {
   const [isGlobalSchemaError, setIsGlobalSchemaError] = useState(false);
   
   useEffect(() => {
-    // FIX: Use synchronous `session()` for v1 compatibility instead of async `getSession()` (v2).
-    setSession(supabase.auth.session());
-    setLoading(false);
+    const fetchSession = async () => {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        setError(`Cannot reach authentication server: ${sessionError.message}`);
+      } else {
+        setSession(session);
+      }
+      setLoading(false);
+    };
 
-    // FIX: Use v1-compatible subscription handling for `onAuthStateChange`.
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    fetchSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setError(null); // Clear errors on auth state change
     });
 
-    return () => authListener?.unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
   
   useEffect(() => {

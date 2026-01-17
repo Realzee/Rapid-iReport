@@ -69,8 +69,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         e.preventDefault();
         setLoadingProfile(true);
 
-        // FIX: Replaced `updateUser` (v2) with `update` (v1)
-        const { error: userError } = await supabase.auth.update({
+        const { error: userError } = await supabase.auth.updateUser({
             data: { full_name: fullName }
         });
         
@@ -108,8 +107,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         }
 
         setLoadingPassword(true);
-        // FIX: Replaced `updateUser` (v2) with `update` (v1)
-        const { error } = await supabase.auth.update({ password });
+        const { error } = await supabase.auth.updateUser({ password });
         if (error) {
             alert('Error updating password: ' + error.message);
         } else {
