@@ -14,7 +14,7 @@ import ResponderPage from './pages/ResponderPage';
 import { supabase } from './utils/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from './types';
-import DatabaseCheck from './components/DatabaseCheck';
+import { checkDatabaseSchema } from './utils/schemaCheck';
 import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
 
 type View = 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'requests';
@@ -45,10 +45,8 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setError(null); // Clear errors on auth state change
-      if (session) {
-        // Reset schema check when user logs in
-        setSchemaState('checking');
-        setSchemaError(null);
+      if (!session) {
+        setProfile(null);
       }
     });
 
@@ -60,7 +58,6 @@ const App: React.FC = () => {
 
     if (session?.user) {
         const setupProfileAndPresence = async () => {
-            // 1. Fetch the profile first.
             const { data, error: profileError } = await supabase
                 .from('profiles')
                 .select('*')
@@ -71,28 +68,17 @@ const App: React.FC = () => {
                 console.error('Error fetching profile:', profileError);
                 setError(`Failed to load your profile. Please check your connection and Row Level Security policies. Error: ${profileError.message}`);
                 setProfile(null);
-                if (profileError.message.includes('security policy')) {
-                    console.error(
-                        '%c[SECURITY POLICY ERROR]',
-                        'color: yellow; font-weight: bold;',
-                        `The operation was blocked by your database's Row Level Security. Please ensure you have run the full script in DATABASE_SETUP.md, specifically STEP C which configures policies for the 'profiles' table.`
-                    );
-                }
             } else {
                 setProfile(data);
                 setError(null);
 
-                // 2. Once profile is successfully fetched, update presence.
                 const { error: presenceError } = await supabase
                     .from('profiles')
                     .update({ last_seen_at: new Date().toISOString() })
                     .eq('id', session.user.id);
 
-                if (presenceError) {
-                    console.warn("Could not update presence:", presenceError.message);
-                }
+                if (presenceError) console.warn("Could not update presence:", presenceError.message);
 
-                // 3. Set up interval
                 presenceInterval = window.setInterval(async () => {
                     await supabase
                         .from('profiles')
@@ -107,74 +93,55 @@ const App: React.FC = () => {
     }
 
     return () => {
-        if (presenceInterval) {
-            clearInterval(presenceInterval);
-        }
+        if (presenceInterval) clearInterval(presenceInterval);
     };
   }, [session]);
 
   useEffect(() => {
+    if (profile) { // Only run if we have a logged-in user with a profile
+        setSchemaState('checking');
+        checkDatabaseSchema().then(({ status, error }) => {
+            if (status === 'invalid') {
+                setSchemaError(error || 'An unknown schema error occurred.');
+            } else {
+                setSchemaError(null);
+            }
+            setSchemaState(status);
+        });
+    }
+  }, [profile]); // Run this check whenever the profile changes (i.e., on login)
+
+  useEffect(() => {
     if (profile) {
       const adminPages: View[] = ['users', 'companies', 'requests'];
-      const currentViewIsAdmin = adminPages.includes(view);
-      const canAccessAdminPages = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
-      
-      if (currentViewIsAdmin && !canAccessAdminPages) {
+      if (adminPages.includes(view) && ![UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role)) {
         setView('dashboard');
       }
-
-      const controllerView = view === 'controller';
-      const canAccessController = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role);
-      if (controllerView && !canAccessController) {
+      if (view === 'controller' && ![UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role)) {
         setView('dashboard');
       }
     }
   }, [view, profile]);
 
-  const handleSchemaCheckComplete = (status: 'valid' | 'invalid', error?: string) => {
-    if (status === 'invalid') {
-        setSchemaError(error || 'An unknown schema error occurred.');
-    }
-    setSchemaState(status);
-  };
-
   const renderView = () => {
     if (!profile) return null;
 
-    // Special view routing for Responders
     if (profile.role === UserRole.RESPONDER) {
-        // The main 'dashboard' view for a responder is their dedicated page
-        if (view === 'dashboard') {
-            return <ResponderPage profile={profile} setProfile={setProfile} />;
-        }
-        // Responders can still access their profile
-        if (view === 'profile') {
-            return <ProfilePage profile={profile} setProfile={setProfile} />;
-        }
-        // Fallback to their main page if they land on an unauthorized view
-        return <ResponderPage profile={profile} setProfile={setProfile} />;
+        return view === 'profile' 
+            ? <ProfilePage profile={profile} setProfile={setProfile} />
+            : <ResponderPage profile={profile} setProfile={setProfile} />;
     }
     
-    // Views for Admin, Controller, etc.
     switch(view) {
-      case 'dashboard':
-        return <Dashboard profile={profile} />;
-      case 'controller':
-        return <ControllerPage profile={profile} />;
-      case 'reports':
-        return <ReportsPage />;
-      case 'map':
-        return <MapPage />;
-      case 'users':
-        return <UsersPage />;
-      case 'companies':
-        return <CompaniesPage />;
-      case 'requests':
-        return <RequestsPage />;
-      case 'profile':
-        return <ProfilePage profile={profile} setProfile={setProfile} />;
-      default:
-        return <Dashboard profile={profile} />;
+      case 'dashboard': return <Dashboard profile={profile} />;
+      case 'controller': return <ControllerPage profile={profile} />;
+      case 'reports': return <ReportsPage />;
+      case 'map': return <MapPage />;
+      case 'users': return <UsersPage />;
+      case 'companies': return <CompaniesPage />;
+      case 'requests': return <RequestsPage />;
+      case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} />;
+      default: return <Dashboard profile={profile} />;
     }
   }
 
@@ -186,7 +153,7 @@ const App: React.FC = () => {
     )
   }
 
-  const mainClasses = (view === 'controller' || view === 'map' || (profile?.role === UserRole.RESPONDER && view === 'dashboard'))
+  const mainClasses = (view === 'controller' || view === 'map' || (profile?.role === UserRole.RESPONDER))
     ? 'pt-20 pb-8 px-4 sm:px-6 lg:px-8'
     : 'container mx-auto pt-20 px-4 sm:px-6 lg:px-8 pb-8';
     
@@ -208,16 +175,8 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen relative overflow-x-hidden">
       <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white via-gray-50 to-white dark:from-black dark:via-indigo-900/60 dark:to-black z-0 transition-all duration-500 ease-in-out"></div>
-      <div 
-        className="absolute top-[20%] left-[10%] w-72 h-72 bg-blue-400/30 dark:bg-blue-400/60 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
-        style={{ animationDuration: '8s' }}
-      ></div>
-      <div 
-        className="absolute bottom-[5%] right-[5%] w-96 h-96 bg-red-400/30 dark:bg-indigo-600/60 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse"
-        style={{ animationDuration: '10s' }}
-      ></div>
-
-      {session && profile && <DatabaseCheck onCheckComplete={handleSchemaCheckComplete} />}
+      <div className="absolute top-[20%] left-[10%] w-72 h-72 bg-blue-400/30 dark:bg-blue-400/60 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse" style={{ animationDuration: '8s' }}></div>
+      <div className="absolute bottom-[5%] right-[5%] w-96 h-96 bg-red-400/30 dark:bg-indigo-600/60 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse" style={{ animationDuration: '10s' }}></div>
       
       <div className="relative z-10">
         {session && profile ? (
