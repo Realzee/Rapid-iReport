@@ -1,5 +1,4 @@
 
-
 -- RAPID iREPORT - Complete Database Setup Script
 -- Version: 1.5
 -- Description: This script is now in two parts. RUN PART 1 FIRST, THEN RUN PART 2.

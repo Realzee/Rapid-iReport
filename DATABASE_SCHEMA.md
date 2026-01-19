@@ -1,5 +1,4 @@
 
-
 # RAPID iREPORT - Database Schema
 
 This file contains the complete, idempotent SQL script for setting up the Supabase database for the RAPID iREPORT application. This script can be run safely in the Supabase SQL Editor to create all necessary types, tables, functions, and Row Level Security policies.
