@@ -52,13 +52,30 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         };
         fetchData();
 
-        const refetchReports = async () => {
-            const [{ data: vehicleData }, { data: crimeData }] = await Promise.all([
-                supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(100),
-                supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(100),
-            ]);
-            const combinedReports = [...(vehicleData || []).map(r => ({...r, type: 'vehicle'})), ...(crimeData || []).map(r => ({...r, type: 'crime'}))];
-            setReports(combinedReports);
+        const handleReportChange = (payload: any) => {
+            const reportType = payload.table === 'vehicle_reports' ? 'vehicle' : 'crime';
+
+            setReports(currentReports => {
+                if (payload.eventType === 'INSERT') {
+                    const newReport = { ...payload.new, type: reportType };
+                    // Avoid duplicates in case of race condition
+                    if (currentReports.some(r => r.id === newReport.id)) {
+                        return currentReports;
+                    }
+                    return [newReport, ...currentReports];
+                }
+                
+                if (payload.eventType === 'UPDATE') {
+                    const updatedReport = { ...payload.new, type: reportType };
+                    return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
+                }
+                
+                if (payload.eventType === 'DELETE') {
+                    return currentReports.filter(r => r.id !== payload.old.id);
+                }
+                
+                return currentReports;
+            });
         };
         
         const handleResponderUpdate = (payload: any) => {
@@ -96,8 +113,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         };
 
         const channel = supabase.channel('public:reports-and-responders')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, refetchReports)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, refetchReports)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderUpdate)
             .subscribe();
 
