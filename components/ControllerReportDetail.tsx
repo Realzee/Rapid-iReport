@@ -168,7 +168,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         // 1. Update the report itself (the primary action)
         const { error: reportUpdateError } = await supabase.from(tableName).update({ 
             assigned_to: responderId || null,
-            status: responderId ? ReportStatus.IN_PROGRESS : ReportStatus.PENDING
+            // FIX: Set to ACTIVE when unassigning, not PENDING. PENDING is for brand new, unreviewed reports.
+            status: responderId ? ReportStatus.IN_PROGRESS : ReportStatus.ACTIVE 
         }).eq('id', report.id);
     
         if (reportUpdateError) {
@@ -177,16 +178,36 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         }
     
         // 2. Update responder statuses in the background
-        const responderStatusUpdates = [];
+        const responderStatusUpdates: PromiseLike<any>[] = [];
     
-        // If a responder was unassigned (and not immediately reassigned), set them back to available.
+        // If a responder was unassigned...
         if (oldResponderId && oldResponderId !== responderId) {
-            responderStatusUpdates.push(
-                supabase.from('profiles').update({ responder_status: ResponderStatus.AVAILABLE }).eq('id', oldResponderId)
-            );
+            // FIX: Check if they have other active assignments before setting them to AVAILABLE.
+            const { count: otherVehicleAssignments, error: vError } = await supabase
+                .from('vehicle_reports')
+                .select('*', { count: 'exact', head: true })
+                .eq('assigned_to', oldResponderId)
+                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+    
+            const { count: otherCrimeAssignments, error: cError } = await supabase
+                .from('crime_reports')
+                .select('*', { count: 'exact', head: true })
+                .eq('assigned_to', oldResponderId)
+                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+    
+            if (!vError && !cError) {
+                const hasOtherActiveAssignments = (otherVehicleAssignments !== null && otherVehicleAssignments > 0) || (otherCrimeAssignments !== null && otherCrimeAssignments > 0);
+                if (!hasOtherActiveAssignments) {
+                    responderStatusUpdates.push(
+                        supabase.from('profiles').update({ responder_status: ResponderStatus.AVAILABLE }).eq('id', oldResponderId)
+                    );
+                }
+            } else {
+                console.warn("Could not check for other active reports when unassigning:", vError || cError);
+            }
         }
         
-        // If a new responder was assigned, set them to en_route.
+        // If a new responder was assigned...
         if (responderId && oldResponderId !== responderId) {
             responderStatusUpdates.push(
                 supabase.from('profiles').update({ responder_status: ResponderStatus.EN_ROUTE }).eq('id', responderId)
