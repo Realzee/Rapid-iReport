@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { PlusIcon, UsersIcon } from '../components/icons';
 import { Profile, Company, UserRole } from '../types';
@@ -73,7 +74,6 @@ const UsersPage: React.FC = () => {
 
             if (password) {
                 const { error: functionError } = await supabase.functions.invoke('reset-password', {
-                    headers: { Authorization: `Bearer ${supabaseAnonKey}` },
                     body: { userId: userToSave.id, password: password }
                 });
 
@@ -90,7 +90,6 @@ const UsersPage: React.FC = () => {
             }
 
             const { data, error } = await supabase.functions.invoke('create-user', {
-                headers: { Authorization: `Bearer ${supabaseAnonKey}` },
                 body: {
                     email: userToSave.email,
                     password: password,
@@ -128,7 +127,6 @@ const UsersPage: React.FC = () => {
     const confirmDeleteUser = async () => {
         if (selectedUser) {
             const { error } = await supabase.functions.invoke('delete-user', {
-                headers: { Authorization: `Bearer ${supabaseAnonKey}` },
                 body: { userId: selectedUser.id }
             });
 

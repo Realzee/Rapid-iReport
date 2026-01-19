@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase, supabaseAnonKey } from '../utils/supabase';
 import { RegistrationRequest, RequestStatus } from '../types';
@@ -100,7 +101,6 @@ const RequestsPage: React.FC = () => {
         setProcessingId(requestId);
         try {
             const { error } = await supabase.functions.invoke('approve-registration', {
-                headers: { Authorization: `Bearer ${supabaseAnonKey}` },
                 body: { requestId },
             });
             if (error) throw error;
