@@ -4,8 +4,8 @@ import { Report, Profile, Severity, ReportStatus, VehicleReport } from '../types
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
 import { useTheme } from '../contexts/ThemeContext';
-// FIX: Replaced `sub` with `subDays` to resolve a module export error.
-import { format, subDays } from 'date-fns';
+// FIX: The module does not export 'subDays'. Using 'sub' instead.
+import { format, sub } from 'date-fns';
 import { BuildingIcon, ChartBarIcon, ChartPieIcon, MapIcon, ZapIcon, CheckCircleIcon, AlertTriangleIcon } from '../components/icons';
 import StatCard from '../components/StatCard';
 
@@ -133,12 +133,12 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
 
 const TrendsReport: React.FC<{ reports: Report[], options: any }> = ({ reports, options }) => {
     const data = useMemo(() => {
-        // FIX: Use `subDays` to subtract days from the current date.
-        const labels = Array.from({ length: 30 }).map((_, i) => format(subDays(new Date(), 29 - i), 'MMM d'));
+        // FIX: Use `sub` to subtract days from the current date.
+        const labels = Array.from({ length: 30 }).map((_, i) => format(sub(new Date(), { days: 29 - i }), 'MMM d'));
         const vehicleData = new Array(30).fill(0);
         const crimeData = new Array(30).fill(0);
-        // FIX: Use `subDays` to subtract days from the current date.
-        const thirtyDaysAgo = subDays(new Date(), 29);
+        // FIX: Use `sub` to subtract days from the current date.
+        const thirtyDaysAgo = sub(new Date(), { days: 29 });
 
         reports.forEach(report => {
             const reportDate = new Date(report.reported_at);

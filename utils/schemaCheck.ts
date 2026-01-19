@@ -28,18 +28,26 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             { name: 'responder_status', frontend: Object.values(ResponderStatus) },
             { name: 'request_status', frontend: Object.values(RequestStatus) },
         ];
+        
+        const enumChecks = enumsToValidate.map(enumInfo => 
+            supabase.rpc('get_enum_values', { enum_type_name: enumInfo.name })
+        );
 
-        for (const enumInfo of enumsToValidate) {
-            const { data: dbValues, error: rpcError } = await supabase.rpc('get_enum_values', { enum_type_name: enumInfo.name });
+        const results = await Promise.all(enumChecks);
 
-            if (rpcError) {
-                console.error(`Database schema check failed on 'get_enum_values' RPC for enum '${enumInfo.name}':`, rpcError);
+        for (let i = 0; i < results.length; i++) {
+            const result = results[i];
+            const enumInfo = enumsToValidate[i];
+            
+            if (result.error) {
+                console.error(`Database schema check failed on 'get_enum_values' RPC for enum '${enumInfo.name}':`, result.error);
                 return {
                     status: 'invalid',
-                    error: `The check for database type '${enumInfo.name}' failed. This usually means the 'get_enum_values' function is missing from your database. Please run the setup script from DATABASE_SETUP.md. Error: ${rpcError.message}`
+                    error: `The check for database type '${enumInfo.name}' failed. This usually means the 'get_enum_values' function is missing from your database. Please run the setup script from DATABASE_SETUP.md. Error: ${result.error.message}`
                 };
             }
 
+            const dbValues = result.data;
             if (dbValues) {
                 const missingValues = enumInfo.frontend.filter(feValue => !dbValues.includes(feValue));
                 if (missingValues.length > 0) {

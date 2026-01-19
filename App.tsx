@@ -56,60 +56,63 @@ const App: React.FC = () => {
   useEffect(() => {
     let presenceInterval: number | undefined;
 
-    if (session?.user) {
-        const setupProfileAndPresence = async () => {
-            const { data, error: profileError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
+    const setupPresence = (userId: string) => {
+        supabase
+            .from('profiles')
+            .update({ last_seen_at: new Date().toISOString() })
+            .eq('id', userId)
+            .then(({ error }) => {
+                if (error) console.warn("Could not update presence:", error.message);
+            });
 
-            if (profileError) {
-                console.error('Error fetching profile:', profileError);
-                setError(`Failed to load your profile. Please check your connection and Row Level Security policies. Error: ${profileError.message}`);
+        presenceInterval = window.setInterval(async () => {
+            await supabase
+                .from('profiles')
+                .update({ last_seen_at: new Date().toISOString() })
+                .eq('id', userId);
+        }, 60000);
+    };
+
+    if (session?.user) {
+        const loadAppData = async () => {
+            setSchemaState('checking'); // Set state for post-login loading period
+
+            const [profileResult, schemaResult] = await Promise.all([
+                supabase.from('profiles').select('*').eq('id', session.user.id).single(),
+                checkDatabaseSchema()
+            ]);
+
+            // First, process the profile. We need it for the UI regardless of schema state.
+            if (profileResult.error) {
+                setError(`Failed to load your profile. Please check your connection and Row Level Security policies. Error: ${profileResult.error.message}`);
                 setProfile(null);
             } else {
-                setProfile(data);
+                setProfile(profileResult.data);
                 setError(null);
+                setupPresence(session.user.id);
+            }
 
-                const { error: presenceError } = await supabase
-                    .from('profiles')
-                    .update({ last_seen_at: new Date().toISOString() })
-                    .eq('id', session.user.id);
-
-                if (presenceError) console.warn("Could not update presence:", presenceError.message);
-
-                presenceInterval = window.setInterval(async () => {
-                    await supabase
-                        .from('profiles')
-                        .update({ last_seen_at: new Date().toISOString() })
-                        .eq('id', session.user.id);
-                }, 60000);
+            // Second, process the schema check. This determines if we show the app or an error modal.
+            if (schemaResult.status === 'invalid') {
+                setSchemaError(schemaResult.error || 'An unknown schema error occurred.');
+                setSchemaState('invalid');
+            } else {
+                setSchemaError(null);
+                setSchemaState('valid');
             }
         };
-        setupProfileAndPresence();
+
+        loadAppData();
     } else {
         setProfile(null);
     }
 
     return () => {
-        if (presenceInterval) clearInterval(presenceInterval);
+        if (presenceInterval) {
+            clearInterval(presenceInterval);
+        }
     };
   }, [session]);
-
-  useEffect(() => {
-    if (profile) { // Only run if we have a logged-in user with a profile
-        setSchemaState('checking');
-        checkDatabaseSchema().then(({ status, error }) => {
-            if (status === 'invalid') {
-                setSchemaError(error || 'An unknown schema error occurred.');
-            } else {
-                setSchemaError(null);
-            }
-            setSchemaState(status);
-        });
-    }
-  }, [profile]); // Run this check whenever the profile changes (i.e., on login)
 
   useEffect(() => {
     if (profile) {
@@ -151,6 +154,15 @@ const App: React.FC = () => {
              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
     )
+  }
+  
+  if (session && !profile && !error) {
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black">
+            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="mt-4 text-gray-500 dark:text-gray-400">Loading your workspace...</p>
+        </div>
+    );
   }
 
   const mainClasses = (view === 'controller' || view === 'map' || (profile?.role === UserRole.RESPONDER))
