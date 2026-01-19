@@ -9,8 +9,8 @@ const isVehicleReport = (report: Report): report is VehicleReport => 'license_pl
 
 const DetailField = ({ label, children, className }: { label: string, children: React.ReactNode, className?: string }) => (
     <div className={className}>
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{label}</p>
-        <div className="mt-1 text-sm text-white">{children}</div>
+        <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{label}</p>
+        <div className="mt-1 text-sm">{children}</div>
     </div>
 );
 
@@ -245,10 +245,10 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const statusOptions = [ReportStatus.PENDING, ReportStatus.ASSIGNED, ReportStatus.ON_SCENE, ReportStatus.RESOLVED, ReportStatus.CLOSED];
 
     return (
-        <div className="bg-gray-900/80 border border-gray-800 rounded-2xl h-full flex flex-col text-white backdrop-blur-lg">
-            <div className="p-4 border-b border-gray-700/50 flex-shrink-0">
+        <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl h-full flex flex-col text-gray-900 dark:text-white backdrop-blur-lg shadow-lg">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700/50 flex-shrink-0">
                 <h3 className="text-lg font-bold">Report Details: {report.ob_number}</h3>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                     {isVehicleReport(report) ? 'Stolen Vehicle' : report.title} - {format(new Date(report.reported_at), 'MM/dd/yyyy, hh:mm a')}
                 </p>
             </div>
@@ -259,7 +259,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         <p className="font-semibold text-md capitalize">{report.severity}</p>
                     </DetailField>
                     <DetailField label="Status">
-                        <span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-gray-700 border-gray-600 text-gray-200">
+                        <span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">
                             {report.status.replace('_', ' ')}
                         </span>
                     </DetailField>
@@ -272,14 +272,14 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 {isVehicleReport(report) && (
                     <DetailField label="Vehicle Details">
                         <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-mono text-white bg-gray-700 px-2 py-1 rounded text-xs">{report.license_plate}</span>
+                            <span className="font-mono text-gray-800 dark:text-white bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-xs">{report.license_plate}</span>
                             <span>{report.vehicle_color} {report.vehicle_make} {report.vehicle_model}</span>
                         </div>
                     </DetailField>
                 )}
 
                  <DetailField label="Assignment History">
-                    <div className="space-y-3 h-24 overflow-y-auto bg-black/30 rounded p-2 border border-gray-700/50">
+                    <div className="space-y-3 h-24 overflow-y-auto bg-gray-50 dark:bg-black/30 rounded p-2 border border-gray-200 dark:border-gray-700/50">
                         {assignmentHistory.length === 0 ? (
                             <div className="flex items-center justify-center h-full">
                                <p className="text-sm text-gray-500">No assignment history.</p>
@@ -287,7 +287,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         ) : (
                             assignmentHistory.map(log => (
                                 <div key={log.id} className="text-xs">
-                                    <p className="text-gray-300">
+                                    <p className="text-gray-700 dark:text-gray-300">
                                         <strong>{log.assigned_by_name}</strong>
                                         {log.assigned_to_name ? ` assigned ` : ` unassigned `}
                                         <strong>{log.assigned_to_name || log.assigned_from_name}</strong>.
@@ -302,7 +302,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 </DetailField>
                 
                 <DetailField label="Live Feed">
-                    <div className="space-y-3 h-32 overflow-y-auto bg-black/30 rounded p-2 border border-gray-700/50">
+                    <div className="space-y-3 h-32 overflow-y-auto bg-gray-50 dark:bg-black/30 rounded p-2 border border-gray-200 dark:border-gray-700/50">
                         {updates.length === 0 ? (
                             <div className="flex items-center justify-center h-full">
                                <p className="text-sm text-gray-500">No updates for this incident yet.</p>
@@ -310,7 +310,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         ) : (
                             updates.map(update => (
                                 <div key={update.id}>
-                                    <p className="text-sm text-gray-200">{update.content}</p>
+                                    <p className="text-sm text-gray-800 dark:text-gray-200">{update.content}</p>
                                     <p className="text-xs text-gray-500 text-right">
                                         - {update.user_full_name} ({formatDistanceToNow(new Date(update.created_at), { addSuffix: true })})
                                     </p>
@@ -322,7 +322,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 </DetailField>
             </div>
 
-            <div className="p-4 border-t border-gray-700/50 space-y-4 flex-shrink-0">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700/50 space-y-4 flex-shrink-0">
                 <form onSubmit={handleUpdateSubmit} className="flex-shrink-0">
                      <div className="relative">
                         <textarea
@@ -330,36 +330,36 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                             onChange={(e) => setNewUpdate(e.target.value)}
                             placeholder="Type an update..."
                             rows={2}
-                            className="w-full bg-gray-800 border border-gray-600 rounded-lg py-2 pl-3 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                            className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
                         />
-                        <button type="submit" disabled={isSubmittingUpdate} className="absolute top-2 right-2 p-2 text-blue-400 hover:text-blue-300 disabled:opacity-50">
+                        <button type="submit" disabled={isSubmittingUpdate} className="absolute top-2 right-2 p-2 text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 disabled:opacity-50">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                         </button>
                     </div>
                 </form>
 
                 <div>
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block">Update Status</label>
+                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block">Update Status</label>
                      <div className="flex items-center gap-2">
                         <select
                             value={selectedStatus}
                             onChange={(e) => setSelectedStatus(e.target.value as ReportStatus)}
-                            className="flex-grow bg-gray-800 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 capitalize"
+                            className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 capitalize"
                         >
                             {statusOptions.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                         </select>
-                         <button onClick={() => handleStatusUpdate(selectedStatus)} className="p-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
-                            <CheckCircleIcon className="w-5 h-5 text-gray-300" />
+                         <button onClick={() => handleStatusUpdate(selectedStatus)} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                            <CheckCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                         </button>
                     </div>
                 </div>
                  <div>
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block">Dispatch Responder</label>
+                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block">Dispatch Responder</label>
                     <div className="flex items-center gap-2">
                         <select
                             value={selectedResponder}
                             onChange={(e) => setSelectedResponder(e.target.value)}
-                            className="flex-grow bg-gray-800 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                         >
                             <option value="">{report.assigned_to ? 'Unassign' : (availableResponders.length > 0 ? 'Select Responder...' : 'No responders available')}</option>
                             {responderOptions.map(r => (
@@ -369,8 +369,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                                 </option>
                             ))}
                         </select>
-                        <button onClick={() => handleDispatchResponder(selectedResponder)} className="p-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
-                            <AssignResponderIcon className="w-5 h-5 text-gray-300" />
+                        <button onClick={() => handleDispatchResponder(selectedResponder)} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                            <AssignResponderIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                         </button>
                     </div>
                 </div>
