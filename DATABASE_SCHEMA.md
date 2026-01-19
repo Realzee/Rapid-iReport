@@ -5,8 +5,17 @@ This file contains the complete, idempotent SQL script for setting up the Supaba
 
 For detailed setup instructions, refer to `DATABASE_SETUP.md`.
 
-> [!IMPORTANT]
-> The script is now in two parts. You must copy and run each part **separately** in the Supabase SQL Editor for the setup to succeed. This is required because PostgreSQL cannot alter data types within a transaction.
+> [!DANGER]
+> **CRITICAL SETUP INSTRUCTION: DO NOT RUN SCRIPTS TOGETHER**
+>
+> The setup script is divided into **Part 1** and **Part 2**. You **MUST** run these in two separate steps:
+>
+> 1.  Copy and run **Part 1** in the Supabase SQL Editor.
+> 2.  Wait for it to complete successfully.
+> 3.  Open a **NEW, SEPARATE** query window.
+> 4.  Copy and run **Part 2** in the new window.
+>
+> Failing to do this will result in an `invalid input value for enum` error, because Part 1 (which updates the data types) must be completed *before* Part 2 (which uses those data types) is started.
 
 ---
 

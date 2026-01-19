@@ -1,4 +1,18 @@
 
+/************************************************************************************/
+/************************************************************************************/
+/*                                                                                  */
+/*   -----------  CRITICAL WARNING: DO NOT RUN THIS ENTIRE SCRIPT AT ONCE  -----------   */
+/*                                                                                  */
+/*   This setup script is in TWO (2) SEPARATE PARTS. You MUST run Part 1 first,       */
+/*   wait for it to complete successfully, and THEN run Part 2 in a NEW query       */
+/*   window in the Supabase SQL Editor.                                             */
+/*                                                                                  */
+/*   Running both parts together will FAIL with an ENUM-related error.              */
+/*                                                                                  */
+/************************************************************************************/
+/************************************************************************************/
+
 -- RAPID iREPORT - Complete Database Setup Script
 -- Version: 1.5
 -- Description: This script is now in two parts. RUN PART 1 FIRST, THEN RUN PART 2.
