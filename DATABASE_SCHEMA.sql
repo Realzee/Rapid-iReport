@@ -449,7 +449,7 @@ CREATE POLICY "Allow users to create reports" ON public.vehicle_reports FOR INSE
 DROP POLICY IF EXISTS "Allow admins, moderators, controllers to manage reports" ON public.vehicle_reports;
 CREATE POLICY "Allow admins, moderators, controllers to manage reports" ON public.vehicle_reports FOR ALL USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')));
 DROP POLICY IF EXISTS "Allow assigned responders to update their reports" ON public.vehicle_reports;
-CREATE POLICY "Allow assigned responders to update their reports" ON public.vehicle_reports FOR UPDATE USING ( (public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid()) ) WITH CHECK ( (assigned_to = auth.uid()) OR (assigned_to IS NULL AND status IN ('resolved', 'recovered', 'closed')) );
+CREATE POLICY "Allow assigned responders to update their reports" ON public.vehicle_reports FOR UPDATE USING ( (public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid()) ) WITH CHECK ( (assigned_to = auth.uid()) OR (assigned_to IS NULL AND status::text IN ('resolved', 'recovered', 'closed')) );
 
 -- CRIME REPORTS
 ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
@@ -460,7 +460,7 @@ CREATE POLICY "Allow users to create reports" ON public.crime_reports FOR INSERT
 DROP POLICY IF EXISTS "Allow admins, moderators, controllers to manage reports" ON public.crime_reports;
 CREATE POLICY "Allow admins, moderators, controllers to manage reports" ON public.crime_reports FOR ALL USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')));
 DROP POLICY IF EXISTS "Allow assigned responders to update their reports" ON public.crime_reports;
-CREATE POLICY "Allow assigned responders to update their reports" ON public.crime_reports FOR UPDATE USING ( (public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid()) ) WITH CHECK ( (assigned_to = auth.uid()) OR (assigned_to IS NULL AND status IN ('resolved', 'closed')) );
+CREATE POLICY "Allow assigned responders to update their reports" ON public.crime_reports FOR UPDATE USING ( (public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid()) ) WITH CHECK ( (assigned_to = auth.uid()) OR (assigned_to IS NULL AND status::text IN ('resolved', 'closed')) );
 
 -- REPORT UPDATES
 ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;
