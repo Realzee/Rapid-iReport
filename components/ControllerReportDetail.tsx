@@ -168,7 +168,6 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         // 1. Update the report itself (the primary action)
         const { error: reportUpdateError } = await supabase.from(tableName).update({ 
             assigned_to: responderId || null,
-            // FIX: Set to ACTIVE when unassigning, not PENDING. PENDING is for brand new, unreviewed reports.
             status: responderId ? ReportStatus.IN_PROGRESS : ReportStatus.ACTIVE 
         }).eq('id', report.id);
     
@@ -180,19 +179,21 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         // 2. Update responder statuses in the background
         const responderStatusUpdates: PromiseLike<any>[] = [];
     
-        // If a responder was unassigned...
+        // If a responder was unassigned or reassigned...
         if (oldResponderId && oldResponderId !== responderId) {
-            // FIX: Check if they have other active assignments before setting them to AVAILABLE.
+            // Check if they have other active assignments before setting them to AVAILABLE.
             const { count: otherVehicleAssignments, error: vError } = await supabase
                 .from('vehicle_reports')
                 .select('*', { count: 'exact', head: true })
                 .eq('assigned_to', oldResponderId)
+                .neq('id', report.id) // Exclude the current report from the count
                 .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
     
             const { count: otherCrimeAssignments, error: cError } = await supabase
                 .from('crime_reports')
                 .select('*', { count: 'exact', head: true })
                 .eq('assigned_to', oldResponderId)
+                .neq('id', report.id) // Exclude the current report from the count
                 .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
     
             if (!vError && !cError) {
