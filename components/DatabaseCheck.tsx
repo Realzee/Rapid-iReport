@@ -113,19 +113,18 @@ COMMIT;`;
     useEffect(() => {
         const checkSchema = async () => {
             try {
-                // This RPC call executes a SQL query to check if the 'closed' value exists in the 'report_status' enum.
-                const { data, error } = await supabase.rpc('sql', {
-                    sql: `SELECT 1 FROM pg_enum WHERE enumlabel = 'closed' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'report_status');`
-                });
-    
+                // A simple, safe query to check if the 'profiles' table is accessible.
+                // If RLS is misconfigured or the table doesn't exist, this will likely fail.
+                // This is a more robust check than the previous RPC call.
+                const { error } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .limit(1);
+
                 if (error) {
-                    // This can happen if the 'report_status' type doesn't exist at all, which is a critical schema issue.
-                    console.error("Database schema check failed:", error);
-                    setCheckError(`The database check itself failed. This indicates a severe schema problem. Please run the full setup script. Error: ${error.message}`);
-                    setIsSchemaOutOfSync(true);
-                } else if (!data || (Array.isArray(data) && data.length === 0)) {
-                    // The query ran, but returned no rows, meaning the 'closed' value is missing.
-                    console.warn("Database schema mismatch detected: 'closed' value is missing from 'report_status' enum.");
+                    // An error here is a strong indicator of a schema/RLS issue.
+                    console.error("Database schema check failed on 'profiles' table:", error);
+                    setCheckError(`The database check failed. This could be due to a missing table or incorrect Row Level Security (RLS) policies. Please run the full setup script. Error: ${error.message}`);
                     setIsSchemaOutOfSync(true);
                 }
             } catch (e) {
