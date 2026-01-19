@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { PlusIcon, UsersIcon } from '../components/icons';
 import { Profile, Company, UserRole } from '../types';
@@ -31,6 +30,24 @@ const UsersPage: React.FC = () => {
             setLoading(false);
         };
         fetchData();
+
+        // Real-time subscription for profiles
+        const profilesChannel = supabase
+            .channel('public:profiles')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setUsers(currentUsers => [...currentUsers, payload.new as Profile]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setUsers(currentUsers => currentUsers.map(u => u.id === payload.new.id ? payload.new as Profile : u));
+                } else if (payload.eventType === 'DELETE') {
+                    setUsers(currentUsers => currentUsers.filter(u => u.id !== payload.old.id));
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(profilesChannel);
+        };
     }, []);
 
     const filteredUsers = useMemo(() => {
@@ -67,8 +84,8 @@ const UsersPage: React.FC = () => {
 
             if (profileError) {
                 alert('Error updating user profile: ' + profileError.message);
-            } else if (profileData) {
-                setUsers(users.map(u => (u.id === profileData.id ? profileData : u)));
+            } else {
+                // UI will update automatically via the real-time subscription
                 alert('User profile updated successfully.');
             }
 
@@ -89,15 +106,17 @@ const UsersPage: React.FC = () => {
                 return;
             }
 
-            const { data, error } = await supabase.functions.invoke('create-user', {
+            const { error } = await supabase.functions.invoke('create-user', {
                 body: {
                     email: userToSave.email,
                     password: password,
-                    fullName: userToSave.full_name,
-                    role: userToSave.role,
-                    status: userToSave.status,
-                    company_id: userToSave.company_id || null,
-                    responder_status: userToSave.role === UserRole.RESPONDER ? userToSave.responder_status : null,
+                    user_metadata: {
+                        full_name: userToSave.full_name,
+                        role: userToSave.role,
+                        status: userToSave.status,
+                        company_id: userToSave.company_id || null,
+                        responder_status: userToSave.role === UserRole.RESPONDER ? userToSave.responder_status : null,
+                    }
                 }
             });
             
@@ -105,20 +124,8 @@ const UsersPage: React.FC = () => {
                 alert(`Error creating user: ${error.message}`);
                 return;
             }
-
-            // The Edge function now creates the auth user AND the profile.
-            // We just need to fetch the newly created profile to add it to the local state.
-            if (data.user) {
-                const { data: newProfile, error: fetchError } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
-                if (fetchError) {
-                    alert(`User created, but failed to fetch the new profile for the UI: ${fetchError.message}`);
-                } else if (newProfile) {
-                    setUsers(prev => [...prev, newProfile]);
-                    alert('User created successfully!');
-                }
-            } else {
-                 alert('An unknown error occurred while creating the user.');
-            }
+            // UI will update automatically via real-time subscription
+            alert('User created successfully!');
         }
         setIsAddEditModalOpen(false);
         setSelectedUser(null);
@@ -133,7 +140,8 @@ const UsersPage: React.FC = () => {
             if (error) {
                  alert('Error deleting user: ' + error.message);
             } else {
-                setUsers(users.filter(u => u.id !== selectedUser.id));
+                // UI will update automatically via real-time subscription
+                alert('User deleted successfully.');
             }
         }
         setIsDeleteModalOpen(false);

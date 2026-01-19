@@ -1,4 +1,3 @@
-
 # RAPID iREPORT - Supabase Database Setup
 
 > [!WARNING]
@@ -78,6 +77,23 @@ These server-side functions are required for secure administrative actions. Foll
     serve(async (req) => {
       if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
       try {
+        // 1. Create a Supabase client with the user's auth token to check their role
+        const userSupabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+          { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+        )
+        const { data: { user }, error: userError } = await userSupabaseClient.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("User not found.");
+
+        const { data: profile, error: profileError } = await userSupabaseClient.from('profiles').select('role').eq('id', user.id).single();
+        if (profileError) throw profileError;
+        if (!['admin', 'moderator'].includes(profile.role)) {
+          throw new Error("Unauthorized: You do not have permission to reset passwords.");
+        }
+
+        // 2. If authorized, proceed with the main logic using the admin client
         const { userId, password } = await req.json()
         if (!userId || !password) throw new Error("A userId and new password must be provided.");
         if (password.length < 6) throw new Error("Password must be at least 6 characters long.");
@@ -88,7 +104,8 @@ These server-side functions are required for secure administrative actions. Foll
         
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 })
       } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 })
+        const status = error.message.startsWith('Unauthorized') ? 401 : 400;
+        return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status })
       }
     })
     ```
@@ -110,21 +127,31 @@ These server-side functions are required for secure administrative actions. Foll
     serve(async (req) => {
         if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
         try {
+            // 1. Authorization check
+            const userSupabaseClient = createClient(
+                Deno.env.get('SUPABASE_URL') ?? '',
+                Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+                { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+            );
+            const { data: { user }, error: userError } = await userSupabaseClient.auth.getUser();
+            if (userError) throw userError;
+            if (!user) throw new Error("User not found.");
+            const { data: profile, error: profileError } = await userSupabaseClient.from('profiles').select('role').eq('id', user.id).single();
+            if (profileError) throw profileError;
+            if (!['admin', 'moderator'].includes(profile.role)) {
+                throw new Error("Unauthorized: You do not have permission to approve registrations.");
+            }
+
+            // 2. Main logic
             const { requestId } = await req.json()
             if (!requestId) throw new Error("Request ID is required.");
 
             const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
 
-            // 1. Fetch the registration request
-            const { data: request, error: requestError } = await supabaseAdmin
-                .from('registration_requests')
-                .select('*')
-                .eq('id', requestId)
-                .single();
+            const { data: request, error: requestError } = await supabaseAdmin.from('registration_requests').select('*').eq('id', requestId).single();
             if (requestError || !request) throw new Error("Registration request not found or failed to fetch.");
             if (request.status !== 'pending') throw new Error("This request has already been processed.");
 
-            // 2. Handle company creation/lookup
             let companyId = null;
             if (request.company_name) {
                 const { data: existingCompany } = await supabaseAdmin.from('companies').select('id').eq('name', request.company_name).single();
@@ -137,24 +164,20 @@ These server-side functions are required for secure administrative actions. Foll
                 }
             }
 
-            // 3. Invite the user, passing metadata for the trigger to use upon signup.
-            const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(request.email, {
-                data: {
-                    full_name: request.full_name,
-                    role: 'user', // Default role for approved requests
-                    status: 'active', // Set to active upon approval
-                    company_id: companyId
+            const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+                request.email, 
+                {
+                    data: {
+                        full_name: request.full_name,
+                        role: 'user',
+                        status: 'active',
+                        company_id: companyId
+                    }
                 }
-            });
+            );
             if (inviteError) throw new Error(`Failed to invite user: ${inviteError.message}`);
             
-            // The handle_new_user trigger will create the full profile when the user accepts the invite.
-
-            // 4. Update the request status to 'approved'
-            const { error: updateRequestError } = await supabaseAdmin
-                .from('registration_requests')
-                .update({ status: 'approved' })
-                .eq('id', requestId);
+            const { error: updateRequestError } = await supabaseAdmin.from('registration_requests').update({ status: 'approved' }).eq('id', requestId);
             if (updateRequestError) throw new Error(`User invited, but failed to update request status: ${updateRequestError.message}`);
 
             return new Response(JSON.stringify({ message: "User approved and invited successfully." }), {
@@ -164,9 +187,10 @@ These server-side functions are required for secure administrative actions. Foll
 
         } catch (error) {
             console.error("APPROVE-REGISTRATION-FUNCTION-ERROR:", error.message);
+            const status = error.message.startsWith('Unauthorized') ? 401 : 400;
             return new Response(JSON.stringify({ error: error.message }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 400,
+                status,
             });
         }
     })
@@ -189,10 +213,25 @@ These server-side functions are required for secure administrative actions. Foll
     serve(async (req) => {
       if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
       try {
-        const { email, password, fullName, role, status, company_id, responder_status } = await req.json()
-
-        if (!email || !password || !fullName || !role || !status) {
-          throw new Error('Email, password, full name, role, and status are required.')
+        // 1. Authorization check: Ensure the caller is an admin or moderator.
+        const userSupabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+        );
+        const { data: { user }, error: userError } = await userSupabaseClient.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("User not found.");
+        const { data: profile, error: profileError } = await userSupabaseClient.from('profiles').select('role').eq('id', user.id).single();
+        if (profileError) throw profileError;
+        if (!['admin', 'moderator'].includes(profile.role)) {
+            throw new Error("Unauthorized: You do not have permission to create users.");
+        }
+        
+        // 2. Main logic: Create the user using the admin client.
+        const { email, password, user_metadata } = await req.json()
+        if (!email || !password || !user_metadata?.full_name) {
+          throw new Error('Email, password, and full_name are required.')
         }
         if (password.length < 6) {
             throw new Error("Password must be at least 6 characters long.");
@@ -203,38 +242,29 @@ These server-side functions are required for secure administrative actions. Foll
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
         
-        // Create the user in auth.users, passing all profile data in metadata for the trigger.
-        const { data, error } = await supabaseAdmin.auth.admin.createUser({
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email: email,
           password: password,
           email_confirm: true,
-          user_metadata: {
-            full_name: fullName,
-            role: role,
-            status: status,
-            company_id: company_id || null,
-            responder_status: role === 'responder' ? responder_status : null
-          }
-        })
+          user_metadata: user_metadata // This metadata will be read by the `handle_new_user` trigger
+        });
 
-        if (error) {
-            throw new Error(`Auth user creation failed: ${error.message}`);
+        if (authError) {
+            throw new Error(`Auth user creation failed: ${authError.message}`);
         }
         
-        if (!data.user) {
-            throw new Error('User was not created, but no error was returned.');
-        }
-        
-        // The trigger now handles all profile creation. No further steps needed.
-        return new Response(JSON.stringify(data), {
+        // The `handle_new_user` trigger will automatically create the profile.
+        // We just return the auth user data.
+        return new Response(JSON.stringify(authData), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200,
         })
       } catch (error) {
         console.error("CREATE-USER-FUNCTION-ERROR:", error.message);
+        const status = error.message.startsWith('Unauthorized') ? 401 : 400;
         return new Response(JSON.stringify({ error: error.message }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
+          status,
         })
       }
     })
@@ -257,6 +287,22 @@ These server-side functions are required for secure administrative actions. Foll
     serve(async (req) => {
       if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
       try {
+        // 1. Authorization check
+        const userSupabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+        );
+        const { data: { user }, error: userError } = await userSupabaseClient.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("User not found.");
+        const { data: profile, error: profileError } = await userSupabaseClient.from('profiles').select('role').eq('id', user.id).single();
+        if (profileError) throw profileError;
+        if (!['admin', 'moderator'].includes(profile.role)) {
+            throw new Error("Unauthorized: You do not have permission to delete users.");
+        }
+
+        // 2. Main logic
         const { userId } = await req.json()
         if (!userId) throw new Error('A userId must be provided.')
 
@@ -273,9 +319,10 @@ These server-side functions are required for secure administrative actions. Foll
           status: 200,
         })
       } catch (error) {
+        const status = error.message.startsWith('Unauthorized') ? 401 : 400;
         return new Response(JSON.stringify({ error: error.message }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
+          status,
         })
       }
     })
