@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
+import { ReportStatus, UserRole, UserStatus, Severity, ResponderStatus, RequestStatus } from '../types';
 
 const CodeBlock: React.FC<{ code: string }> = ({ code }) => {
     const [copied, setCopied] = useState(false);
@@ -111,30 +112,49 @@ CREATE TABLE IF NOT EXISTS public.registration_requests (id uuid NOT NULL DEFAUL
 COMMIT;`;
 
     useEffect(() => {
-        const checkSchema = async () => {
-            try {
-                // A simple, safe query to check if the 'profiles' table is accessible.
-                // If RLS is misconfigured or the table doesn't exist, this will likely fail.
-                // This is a more robust check than the previous RPC call.
-                const { error } = await supabase
-                    .from('profiles')
-                    .select('id')
-                    .limit(1);
-
-                if (error) {
-                    // An error here is a strong indicator of a schema/RLS issue.
-                    console.error("Database schema check failed on 'profiles' table:", error);
-                    setCheckError(`The database check failed. This could be due to a missing table or incorrect Row Level Security (RLS) policies. Please run the full setup script. Error: ${error.message}`);
-                    setIsSchemaOutOfSync(true);
-                }
-            } catch (e) {
-                console.error("A JavaScript error occurred during the database check:", e);
-                setCheckError("An unexpected application error occurred while trying to verify the database schema.");
+        const checkDatabaseSchema = async () => {
+            // Check 1: Basic table access (catches RLS issues or missing tables)
+            const { error: profileError } = await supabase.from('profiles').select('id').limit(1);
+            if (profileError) {
+                console.error("Database schema check failed on 'profiles' table:", profileError);
+                setCheckError(`The database check failed, indicating a missing table or incorrect Row Level Security (RLS) policies. Please run the full setup script. Error: ${profileError.message}`);
                 setIsSchemaOutOfSync(true);
+                return;
+            }
+
+            // Check 2: Advanced Enum validation (catches the specific "invalid input for enum" error)
+            const enumsToValidate = [
+                { name: 'report_status', frontend: Object.values(ReportStatus) },
+                { name: 'user_role', frontend: Object.values(UserRole) },
+                { name: 'user_status', frontend: Object.values(UserStatus) },
+                { name: 'severity', frontend: Object.values(Severity) },
+                { name: 'responder_status', frontend: Object.values(ResponderStatus) },
+                { name: 'request_status', frontend: Object.values(RequestStatus) },
+            ];
+
+            for (const enumInfo of enumsToValidate) {
+                const { data: dbValues, error: rpcError } = await supabase.rpc('get_enum_values', { enum_type_name: enumInfo.name });
+
+                if (rpcError) {
+                    console.error(`Database schema check failed on 'get_enum_values' RPC for enum '${enumInfo.name}':`, rpcError);
+                    setCheckError(`The check for database type '${enumInfo.name}' failed. This usually means the 'get_enum_values' function is missing from your database. Please run the setup script from DATABASE_SETUP.md. Error: ${rpcError.message}`);
+                    setIsSchemaOutOfSync(true);
+                    return; // Stop on first error
+                }
+
+                if (dbValues) {
+                    const missingValues = enumInfo.frontend.filter(feValue => !dbValues.includes(feValue));
+                    if (missingValues.length > 0) {
+                        console.error(`Database enum mismatch for '${enumInfo.name}'. Missing values:`, missingValues);
+                        setCheckError(`The database type '${enumInfo.name}' is out of sync with the application code. It's missing the value(s): [${missingValues.join(', ')}]. Please run the setup script to fix this.`);
+                        setIsSchemaOutOfSync(true);
+                        return; // Stop on first mismatch
+                    }
+                }
             }
         };
 
-        checkSchema();
+        checkDatabaseSchema();
     }, []);
 
     if (!isSchemaOutOfSync) {
@@ -152,7 +172,7 @@ COMMIT;`;
                         <h3 id="error-modal-title" className="text-xl font-bold text-gray-900 dark:text-white">Database Update Required</h3>
                         <div className="mt-2 text-md text-gray-600 dark:text-gray-300">
                             <p className="mb-4">The application has detected that your database schema is out of sync. This is causing errors and must be fixed by an administrator.</p>
-                             {checkError && <p className="mb-4 text-red-600 dark:text-red-400 bg-red-500/10 p-2 rounded-md">{checkError}</p>}
+                             {checkError && <p className="mb-4 text-red-600 dark:text-red-400 bg-red-500/10 p-2 rounded-md font-mono text-sm">{checkError}</p>}
                         </div>
                         <div className="mt-4 space-y-6">
                             <div>
@@ -173,7 +193,7 @@ COMMIT;`;
 
                             <div>
                                 <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-2">Part 2: Update Tables & Logic (Run this second)</h4>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Note: This is an abbreviated script containing only the necessary setup commands. For the full, detailed script, please refer to the `DATABASE_SCHEMA.sql` file.</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Note: This script adds the necessary tables, functions (including the new `get_enum_values` check), triggers, and security policies.</p>
                                 <CodeBlock code={sqlPart2} />
                             </div>
                         </div>

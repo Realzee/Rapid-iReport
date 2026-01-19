@@ -227,6 +227,17 @@ BEGIN
 END;
 $$;
 
+-- Function to get all values for a given ENUM type. Used for schema validation.
+CREATE OR REPLACE FUNCTION public.get_enum_values(enum_type_name text)
+RETURNS text[]
+LANGUAGE sql STABLE
+AS $$
+  SELECT array_agg(e.enumlabel ORDER BY e.enumsortorder)::text[]
+  FROM pg_type t
+  JOIN pg_enum e ON t.oid = e.enumtypid
+  WHERE t.typname = enum_type_name;
+$$;
+
 -- Function to create notifications for relevant staff
 CREATE OR REPLACE FUNCTION public.create_staff_notification(
     notification_type text,
@@ -256,19 +267,40 @@ AS $$
 DECLARE
   user_full_name text;
   user_role_text text;
+  user_status_text text;
+  user_company_id uuid;
+  user_responder_status_text text;
 BEGIN
-  user_full_name := COALESCE(new.raw_user_meta_data->>'full_name', new.raw_app_meta_data->>'full_name', new.email);
-  user_role_text := COALESCE(new.raw_user_meta_data->>'role', new.raw_app_meta_data->>'role');
-  IF user_full_name = '' OR user_full_name IS NULL THEN user_full_name := new.email; END IF;
+  -- Extract metadata, providing sensible defaults
+  user_full_name := COALESCE(new.raw_user_meta_data->>'full_name', new.email);
+  user_role_text := COALESCE(new.raw_user_meta_data->>'role', 'user');
+  user_status_text := COALESCE(new.raw_user_meta_data->>'status', 'pending');
+  
+  -- Safely cast company_id to uuid
+  BEGIN
+    user_company_id := (new.raw_user_meta_data->>'company_id')::uuid;
+  EXCEPTION WHEN others THEN
+    user_company_id := NULL;
+  END;
 
-  INSERT INTO public.profiles (id, full_name, email, role)
+  user_responder_status_text := new.raw_user_meta_data->>'responder_status';
+
+  -- Insert into profiles table
+  INSERT INTO public.profiles (id, full_name, email, role, status, company_id, responder_status)
   VALUES (
     new.id,
     user_full_name,
     new.email,
-    (SELECT CASE WHEN user_role_text IN ('admin', 'moderator', 'controller', 'responder', 'user') THEN user_role_text::public.user_role ELSE 'user'::public.user_role END)
+    user_role_text::public.user_role,
+    user_status_text::public.user_status,
+    user_company_id,
+    CASE
+      WHEN user_role_text = 'responder' THEN user_responder_status_text::public.responder_status
+      ELSE NULL
+    END
   );
 
+  -- Create a notification for admins
   PERFORM public.create_staff_notification(
     'new_user', 'New User Registered', 'A new user (' || user_full_name || ') has signed up.', new.id, ARRAY['admin', 'moderator']
   );

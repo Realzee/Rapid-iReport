@@ -43,11 +43,16 @@ This is for user profile pictures.
 
 This comprehensive script creates all necessary types, tables, functions, and security policies. It is designed to be **idempotent**, meaning you can run it on a new project or an existing one without causing errors. It will only add the pieces that are missing.
 
+> [!IMPORTANT]
+> This script is now in **two parts**. You must run each part in a **separate query window** in the Supabase SQL Editor. Running them together in the same window will cause an error.
+
 1.  Open the `DATABASE_SCHEMA.md` file located in the root of this project.
-2.  Copy the entire SQL code block from the file.
-3.  In your Supabase Project dashboard, go to the **SQL Editor**.
-4.  Click **+ New query**.
-5.  Paste the script into the editor and click the **RUN** button.
+2.  Copy the entire SQL code block from **Part 1**.
+3.  In your Supabase Project dashboard, go to the **SQL Editor** and click **+ New query**.
+4.  Paste the script for Part 1 and click **RUN**.
+5.  After it succeeds, open a **new, separate query window** by clicking **+ New query** again.
+6.  Copy the entire SQL code block from **Part 2** from the `DATABASE_SCHEMA.md` file.
+7.  Paste it into the new window and click **RUN**.
 
 ## Step 3: Deploy Supabase Edge Functions
 
@@ -132,41 +137,20 @@ These server-side functions are required for secure administrative actions. Foll
                 }
             }
 
-            // 3. Invite the user with a default role of 'user'
+            // 3. Invite the user, passing metadata for the trigger to use upon signup.
             const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(request.email, {
                 data: {
                     full_name: request.full_name,
-                    role: 'user', // Default role upon approval
+                    role: 'user', // Default role for approved requests
+                    status: 'active', // Set to active upon approval
+                    company_id: companyId
                 }
             });
             if (inviteError) throw new Error(`Failed to invite user: ${inviteError.message}`);
             
-            // 4. Update the profile. The handle_new_user trigger creates the profile,
-            // but a race condition can occur. We retry the update to ensure it succeeds.
-            if (inviteData.user) {
-                let profileUpdated = false;
-                let lastError: any = null;
-                for (let i = 0; i < 5; i++) {
-                    const { error: profileUpdateError } = await supabaseAdmin
-                        .from('profiles')
-                        .update({
-                            company_id: companyId,
-                            status: 'active'
-                        })
-                        .eq('id', inviteData.user.id);
-                    if (!profileUpdateError) {
-                        profileUpdated = true;
-                        break;
-                    }
-                    lastError = profileUpdateError;
-                    await new Promise(resolve => setTimeout(resolve, 250)); // Wait before retrying
-                }
-                if (!profileUpdated) {
-                    console.warn(`User invited, but failed to update profile for ${inviteData.user.id}: ${lastError?.message}`);
-                }
-            }
+            // The handle_new_user trigger will create the full profile when the user accepts the invite.
 
-            // 5. Update the request status to 'approved'
+            // 4. Update the request status to 'approved'
             const { error: updateRequestError } = await supabaseAdmin
                 .from('registration_requests')
                 .update({ status: 'approved' })
@@ -179,6 +163,7 @@ These server-side functions are required for secure administrative actions. Foll
             });
 
         } catch (error) {
+            console.error("APPROVE-REGISTRATION-FUNCTION-ERROR:", error.message);
             return new Response(JSON.stringify({ error: error.message }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 400,
@@ -218,51 +203,35 @@ These server-side functions are required for secure administrative actions. Foll
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
         
-        // Step 1: Create the user in auth.users, passing metadata for the trigger.
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        // Create the user in auth.users, passing all profile data in metadata for the trigger.
+        const { data, error } = await supabaseAdmin.auth.admin.createUser({
           email: email,
           password: password,
           email_confirm: true,
           user_metadata: {
             full_name: fullName,
             role: role,
+            status: status,
+            company_id: company_id || null,
+            responder_status: role === 'responder' ? responder_status : null
           }
         })
 
-        if (authError) {
-            throw new Error(`Auth user creation failed: ${authError.message}`);
+        if (error) {
+            throw new Error(`Auth user creation failed: ${error.message}`);
         }
         
-        if (!authData.user) {
+        if (!data.user) {
             throw new Error('User was not created, but no error was returned.');
         }
-
-        // Step 2: The 'handle_new_user' trigger has created the profile. Now, update it with
-        // the remaining details like status and company, which are not handled by the trigger.
-        const profileUpdateData = {
-            status: status,
-            company_id: company_id || null,
-            responder_status: role === 'responder' ? responder_status : null,
-        };
         
-        const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .update(profileUpdateData)
-            .eq('id', authData.user.id);
-
-        if (profileError) {
-            // If profile update fails, roll back the auth user.
-            await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-            throw new Error(`Profile update failed: ${profileError.message}. Auth user has been rolled back.`);
-        }
-
-        // Return the created user object, which is what the auth call returns.
-        return new Response(JSON.stringify(authData), {
+        // The trigger now handles all profile creation. No further steps needed.
+        return new Response(JSON.stringify(data), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200,
         })
       } catch (error) {
-        console.error("CREATE-USER-FUNCTION-ERROR:", error);
+        console.error("CREATE-USER-FUNCTION-ERROR:", error.message);
         return new Response(JSON.stringify({ error: error.message }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400,
