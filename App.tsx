@@ -15,6 +15,7 @@ import { supabase } from './utils/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from './types';
 import DatabaseCheck from './components/DatabaseCheck';
+import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
 
 type View = 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'requests';
 
@@ -25,6 +26,9 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>('dashboard');
   
+  const [schemaState, setSchemaState] = useState<'checking' | 'valid' | 'invalid'>('checking');
+  const [schemaError, setSchemaError] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchSession = async () => {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -41,6 +45,11 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setError(null); // Clear errors on auth state change
+      if (session) {
+        // Reset schema check when user logs in
+        setSchemaState('checking');
+        setSchemaError(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -122,6 +131,13 @@ const App: React.FC = () => {
     }
   }, [view, profile]);
 
+  const handleSchemaCheckComplete = (status: 'valid' | 'invalid', error?: string) => {
+    if (status === 'invalid') {
+        setSchemaError(error || 'An unknown schema error occurred.');
+    }
+    setSchemaState(status);
+  };
+
   const renderView = () => {
     if (!profile) return null;
 
@@ -201,15 +217,26 @@ const App: React.FC = () => {
         style={{ animationDuration: '10s' }}
       ></div>
 
-      {session && profile && <DatabaseCheck />}
+      {session && profile && <DatabaseCheck onCheckComplete={handleSchemaCheckComplete} />}
       
       <div className="relative z-10">
         {session && profile ? (
           <>
-            <Header currentView={view} setView={setView} profile={profile} />
-            <main className={mainClasses}>
-              {renderView()}
-            </main>
+            {schemaState === 'checking' && (
+                <div className="min-h-screen flex flex-col items-center justify-center">
+                    <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="mt-4 text-gray-500 dark:text-gray-400">Verifying database schema...</p>
+                </div>
+            )}
+            {schemaState === 'invalid' && <GlobalSchemaErrorModal checkError={schemaError} />}
+            {schemaState === 'valid' && (
+              <>
+                <Header currentView={view} setView={setView} profile={profile} />
+                <main className={mainClasses}>
+                  {renderView()}
+                </main>
+              </>
+            )}
           </>
         ) : (
           <AuthPage />
