@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, ReportUpdate } from '../types';
 import { supabase } from '../utils/supabase';
@@ -282,6 +281,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
     const [newUpdate, setNewUpdate] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [isActionLoading, setIsActionLoading] = useState<ReportStatus | 'stand_down' | null>(null);
 
     useEffect(() => {
         const fetchUpdates = async () => { 
@@ -294,57 +294,33 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
     }, [report.id]);
 
     const handleStatusUpdate = async (status: ReportStatus) => {
+        setIsActionLoading(status);
         const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
     
-        // FIX: Supabase client methods return a "thenable" builder, not a raw Promise.
-        // To fix the TypeScript error, the `updatePromises` array should be typed to accept `PromiseLike<any>`.
         const updatePromises: PromiseLike<any>[] = [];
     
         const isResolving = status === ReportStatus.RESOLVED || status === ReportStatus.RECOVERED;
     
         const reportUpdatePayload: { status: ReportStatus; assigned_to?: null } = { status };
         if (isResolving) {
-            // When resolving or recovering, unassign the responder from the report.
             reportUpdatePayload.assigned_to = null;
         }
     
-        // 1. Update the report's status (and assignment if resolving)
         updatePromises.push(supabase.from(tableName).update(reportUpdatePayload).eq('id', report.id));
-    
-        // 2. Log the status change in the incident log
         updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Status changed to: ${status.replace(/_/g, ' ')}` }));
     
-        // 3. Update the responder's own status in the profiles table
         let newResponderStatus: ResponderStatus | null = null;
         if (status === ReportStatus.IN_PROGRESS) {
             newResponderStatus = ResponderStatus.EN_ROUTE;
         } else if (status === ReportStatus.ON_SCENE) {
             newResponderStatus = ResponderStatus.ON_SCENE;
         } else if (isResolving) {
-            // When resolving, check if there are any other active assignments.
-            // If not, the responder becomes available again.
-            const { count: vehicleCount, error: vError } = await supabase
-                .from('vehicle_reports')
-                .select('*', { count: 'exact', head: true })
-                .eq('assigned_to', profile.id)
-                .neq('id', report.id)
-                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
-    
-            const { count: crimeCount, error: cError } = await supabase
-                .from('crime_reports')
-                .select('*', { count: 'exact', head: true })
-                .eq('assigned_to', profile.id)
-                .neq('id', report.id)
-                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+            const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+            const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
             
-            if (vError || cError) {
-                console.error("Could not check for other active reports:", vError || cError);
-                // Fail gracefully - don't change responder status if we can't verify.
-            } else {
-                const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0);
-                if (!hasOtherActiveAssignments) {
-                    newResponderStatus = ResponderStatus.AVAILABLE;
-                }
+            const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0);
+            if (!hasOtherActiveAssignments) {
+                newResponderStatus = ResponderStatus.AVAILABLE;
             }
         }
     
@@ -352,12 +328,45 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
             updatePromises.push(supabase.from('profiles').update({ responder_status: newResponderStatus }).eq('id', profile.id));
         }
         
-        // Execute all updates
         const results = await Promise.all(updatePromises);
-        const errors = results.map(r => r.error).filter(Boolean);
+        const errors = results.map((r: any) => r.error).filter(Boolean);
         if (errors.length > 0) {
             alert('An error occurred while updating status. Please check the console.');
             console.error('Status update errors:', errors);
+        }
+        setIsActionLoading(null);
+    };
+
+    const handleStandDown = async () => {
+        if (!window.confirm("Are you sure you want to stand down from this incident? The report will be returned to the active queue.")) {
+            return;
+        }
+        setIsActionLoading('stand_down');
+
+        try {
+            const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
+            const updatePromises: PromiseLike<any>[] = [];
+
+            updatePromises.push(supabase.from(tableName).update({ assigned_to: null, status: ReportStatus.ACTIVE }).eq('id', report.id));
+            updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Responder ${profile.full_name} has stood down.` }));
+
+            const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+            const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+
+            const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0);
+            if (!hasOtherActiveAssignments) {
+                updatePromises.push(supabase.from('profiles').update({ responder_status: ResponderStatus.AVAILABLE }).eq('id', profile.id));
+            }
+
+            const results = await Promise.all(updatePromises);
+            const errors = results.map((r: any) => r.error).filter(Boolean);
+            if (errors.length > 0) {
+                throw new Error(errors.map(e => e.message).join('\n'));
+            }
+        } catch (e: any) {
+            alert('An error occurred while standing down: ' + e.message);
+        } finally {
+            setIsActionLoading(null);
         }
     };
     
@@ -386,8 +395,9 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
         setIsUploading(false);
     };
 
-    const actionButtonClasses = "w-full text-center py-3 px-4 font-semibold rounded-lg transition-transform duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed";
+    const actionButtonClasses = "w-full text-center py-3 px-4 font-semibold rounded-lg transition-transform duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center";
     const isTerminalStatus = report.status === ReportStatus.RESOLVED || report.status === ReportStatus.RECOVERED || report.status === ReportStatus.CLOSED;
+    const Spinner = () => <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>;
     
     return (
         <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg">
@@ -395,15 +405,17 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
             <p className="font-mono text-sm text-gray-500 dark:text-gray-400 mb-4">{report.ob_number}</p>
             
             <div className="grid grid-cols-2 gap-2 mb-4">
-                <button onClick={() => handleStatusUpdate(ReportStatus.IN_PROGRESS)} disabled={isTerminalStatus || report.status === ReportStatus.IN_PROGRESS} className={`${actionButtonClasses} bg-blue-600 text-white`}>En Route</button>
-                <button onClick={() => handleStatusUpdate(ReportStatus.ON_SCENE)} disabled={isTerminalStatus || report.status === ReportStatus.ON_SCENE} className={`${actionButtonClasses} bg-yellow-500 text-white`}>On Scene</button>
-                <button onClick={() => handleStatusUpdate(ReportStatus.RESOLVED)} disabled={isTerminalStatus} className={`${actionButtonClasses} bg-green-600 text-white`}>Resolve</button>
+                <button onClick={() => handleStatusUpdate(ReportStatus.IN_PROGRESS)} disabled={isTerminalStatus || !!isActionLoading} className={`${actionButtonClasses} bg-blue-600 text-white`}>{isActionLoading === ReportStatus.IN_PROGRESS ? <Spinner /> : 'En Route'}</button>
+                <button onClick={() => handleStatusUpdate(ReportStatus.ON_SCENE)} disabled={isTerminalStatus || !!isActionLoading} className={`${actionButtonClasses} bg-yellow-500 text-white`}>{isActionLoading === ReportStatus.ON_SCENE ? <Spinner /> : 'On Scene'}</button>
+                <button onClick={() => handleStatusUpdate(ReportStatus.RESOLVED)} disabled={isTerminalStatus || !!isActionLoading} className={`${actionButtonClasses} bg-green-600 text-white`}>{isActionLoading === ReportStatus.RESOLVED ? <Spinner /> : 'Resolve'}</button>
                 {isVehicleReport(report) && (
-                    <button onClick={() => handleStatusUpdate(ReportStatus.RECOVERED)} disabled={isTerminalStatus} className={`${actionButtonClasses} bg-teal-500 text-white`}>
-                        Recovered
-                    </button>
+                    <button onClick={() => handleStatusUpdate(ReportStatus.RECOVERED)} disabled={isTerminalStatus || !!isActionLoading} className={`${actionButtonClasses} bg-teal-500 text-white`}>{isActionLoading === ReportStatus.RECOVERED ? <Spinner /> : 'Recovered'}</button>
                 )}
             </div>
+
+            <button onClick={handleStandDown} disabled={isTerminalStatus || !!isActionLoading} className={`${actionButtonClasses} bg-orange-500 text-white mb-4`}>
+                {isActionLoading === 'stand_down' ? <Spinner /> : 'Stand Down'}
+            </button>
 
             <a href={`https://www.google.com/maps/search/?api=1&query=${report.location_coords?.lat},${report.location_coords?.lng}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full text-center py-3 bg-gray-200 dark:bg-gray-700 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors mb-4"><NavigationIcon className="w-5 h-5"/> Navigate to Scene</a>
 
