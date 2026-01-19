@@ -242,9 +242,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         setLoading(true);
 
         try {
-            // FIX: Supabase v1 uses supabase.auth.user() (synchronous) instead of getUser() (asynchronous).
-            const user = supabase.auth.user();
-            if (!user) throw new Error("User not authenticated");
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) throw new Error("User not authenticated");
 
             const newImageUrls: string[] = [];
             const reportId = reportToEdit?.id || crypto.randomUUID();

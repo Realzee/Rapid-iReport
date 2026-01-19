@@ -12,7 +12,6 @@ import ProfilePage from './pages/ProfilePage';
 import ControllerPage from './pages/ControllerPage';
 import ResponderPage from './pages/ResponderPage';
 import { supabase } from './utils/supabase';
-// FIX: The error "no exported member 'Session'" can sometimes be resolved by changing the import style from `import type` to a standard import.
 import { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from './types';
 import DatabaseCheck from './components/DatabaseCheck';
@@ -27,12 +26,18 @@ const App: React.FC = () => {
   const [view, setView] = useState<View>('dashboard');
   
   useEffect(() => {
-    // FIX: Supabase v1 uses supabase.auth.session() (synchronous) instead of getSession() (asynchronous).
-    // It returns the session directly, or null, and doesn't provide an error object.
-    setSession(supabase.auth.session());
-    setLoading(false);
+    const fetchSession = async () => {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        setError(`Cannot reach authentication server: ${sessionError.message}`);
+      } else {
+        setSession(session);
+      }
+      setLoading(false);
+    };
 
-    // FIX: The error on onAuthStateChange is likely a side-effect of a version mismatch. The call itself is correct for v1.
+    fetchSession();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setError(null); // Clear errors on auth state change
@@ -176,7 +181,6 @@ const App: React.FC = () => {
                   <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Application Error</h2>
                   <p className="mb-4">{error}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">This can happen due to network issues or incorrect database permissions (Row Level Security). Please check the console for more details.</p>
-                  {/* FIX: The error on signOut is likely a side-effect of a version mismatch. The call itself is correct for v1. */}
                   <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
                       Logout and Try Again
                   </button>

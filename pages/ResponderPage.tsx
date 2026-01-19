@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, ReportUpdate } from '../types';
 import { supabase } from '../utils/supabase';
@@ -295,7 +296,9 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
     const handleStatusUpdate = async (status: ReportStatus) => {
         const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
     
-        const updatePromises: Promise<any>[] = [];
+        // FIX: Supabase client methods return a "thenable" builder, not a raw Promise.
+        // To fix the TypeScript error, the `updatePromises` array should be typed to accept `PromiseLike<any>`.
+        const updatePromises: PromiseLike<any>[] = [];
     
         const isResolving = status === ReportStatus.RESOLVED || status === ReportStatus.RECOVERED;
     
