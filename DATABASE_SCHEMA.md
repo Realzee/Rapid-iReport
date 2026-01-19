@@ -385,17 +385,52 @@ CREATE TRIGGER on_crime_report_assignment_change AFTER UPDATE OF assigned_to ON 
 -- 6. Row Level Security (RLS) Policies
 
 -- PROFILES
+-- Dropping all old policies for a clean, explicit re-creation.
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow authenticated users to view profiles" ON public.profiles;
-CREATE POLICY "Allow authenticated users to view profiles" ON public.profiles FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Allow users to insert their own profile" ON public.profiles;
-CREATE POLICY "Allow users to insert their own profile" ON public.profiles FOR INSERT WITH CHECK ( (auth.uid() = id) OR (current_role = 'postgres') );
 DROP POLICY IF EXISTS "Allow users to update their own profile" ON public.profiles;
-CREATE POLICY "Allow users to update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 DROP POLICY IF EXISTS "Admins and moderators can manage all profiles" ON public.profiles;
-CREATE POLICY "Admins and moderators can manage all profiles" ON public.profiles FOR ALL USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator')));
 DROP POLICY IF EXISTS "Controllers can update responder profiles" ON public.profiles;
-CREATE POLICY "Controllers can update responder profiles" ON public.profiles FOR UPDATE USING ( (public.get_user_role(auth.uid()) = 'controller') AND (role = 'responder') ) WITH CHECK ( (public.get_user_role(auth.uid()) = 'controller') AND (role = 'responder') );
+DROP POLICY IF EXISTS "Allow authorized updates for responders and controllers" ON public.profiles;
+
+-- SELECT Policy: Any authenticated user can view profile information.
+-- This is necessary for mapping user IDs to names throughout the application.
+CREATE POLICY "Allow authenticated users to view profiles" ON public.profiles
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- INSERT Policy: Handled by a security-definer trigger, but this provides a fallback.
+CREATE POLICY "Allow users to insert their own profile" ON public.profiles
+  FOR INSERT WITH CHECK ( (auth.uid() = id) );
+
+-- Admin/Moderator Policy: Full control (SELECT, INSERT, UPDATE, DELETE) over all profiles.
+CREATE POLICY "Admins and moderators can manage all profiles" ON public.profiles
+  FOR ALL USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator')))
+  WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator')));
+
+-- UPDATE Policy for Self, Responders, & Controllers: Consolidated policy for non-admin updates.
+CREATE POLICY "Allow authorized updates for responders and controllers" ON public.profiles
+  FOR UPDATE USING (
+    -- Case 1: Any user (including Responders) can update their own profile.
+    -- This allows responders to update their own 'responder_status' and 'location_coords'.
+    (auth.uid() = id)
+    OR
+    -- Case 2: Controllers can update profiles of users who ARE responders.
+    (
+        (public.get_user_role(auth.uid()) = 'controller') AND (role = 'responder')
+    )
+  )
+  WITH CHECK (
+    -- Check for Self-Update: A user can't change their own ID.
+    -- NOTE: This default policy does not prevent a user from changing their own role. A trigger is required for that level of security.
+    (auth.uid() = id)
+    OR
+    -- Check for Controller Update: A controller updating a responder's profile cannot change the 'role' column away from 'responder'.
+    -- This prevents privilege escalation by controllers.
+    (
+        (public.get_user_role(auth.uid()) = 'controller') AND (role = 'responder')
+    )
+  );
 
 -- COMPANIES
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
