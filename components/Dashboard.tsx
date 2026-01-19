@@ -4,7 +4,7 @@ import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport } 
 import StatCard from './StatCard';
 import ReportList from './ReportList';
 import MapView from './MapView';
-import ReportModal from './NewReportModal';
+import ReportModal from './ReportModal';
 import DeleteReportModal from './DeleteReportModal';
 import ReportDetailCard from './ReportDetailCard';
 import MapModal from './MapModal';

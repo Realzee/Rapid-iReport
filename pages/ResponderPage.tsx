@@ -9,7 +9,6 @@ import { NavigationIcon, CameraIcon } from '../components/icons';
 interface ResponderPageProps {
     profile: Profile;
     setProfile: (profile: Profile) => void;
-    setGlobalSchemaError: (isError: boolean) => void;
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
@@ -29,7 +28,7 @@ const ResponderStatusBadge: React.FC<{ status: ResponderStatus }> = ({ status })
 };
 
 // Main page component
-const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setGlobalSchemaError }) => {
+const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) => {
     const [assignedReports, setAssignedReports] = useState<Report[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
@@ -103,22 +102,13 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
             locationWatchId.current = navigator.geolocation.watchPosition(
                 async (position) => {
                     setIsSyncing(true);
-                    setGlobalSchemaError(false);
                     setLocationError(null);
                     const { latitude, longitude } = position.coords;
                     const { error } = await supabase.from('profiles').update({ location_coords: { lat: latitude, lng: longitude } }).eq('id', profile.id);
 
                     if (error) {
                         console.error("Failed to update location:", error);
-                        const errorMessage = (error as any).message || JSON.stringify(error);
-                        
-                        if (typeof errorMessage === 'string' && errorMessage.includes('schema cache') && errorMessage.includes('location_coords')) {
-                            setGlobalSchemaError(true);
-                            setLocationError(null);
-                        } else {
-                            setLocationError(`Failed to sync location: ${errorMessage}`);
-                            setGlobalSchemaError(false);
-                        }
+                        setLocationError(`Failed to sync location: ${error.message}`);
                         stopLocationSharing();
                     } else {
                         setLastSyncTimestamp(new Date());
@@ -141,7 +131,6 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
         const newResponderStatus = newDutyStatus ? ResponderStatus.AVAILABLE : ResponderStatus.OFF_DUTY;
         setLastSyncTimestamp(null);
         setLocationError(null);
-        setGlobalSchemaError(false);
     
         const updatePayload: { responder_status: ResponderStatus; location_coords?: null } = {
             responder_status: newResponderStatus,
@@ -166,14 +155,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, setG
 
         if (error) {
             console.error("Failed to update duty status:", error);
-            const errorMessage = (error as any).message || JSON.stringify(error);
-            if (typeof errorMessage === 'string' && errorMessage.includes('schema cache') && (errorMessage.includes('location_coords') || errorMessage.includes('responder_status'))) {
-                setGlobalSchemaError(true);
-                setLocationError(null);
-            } else {
-                setLocationError(`Failed to update duty status: ${errorMessage}`);
-                setGlobalSchemaError(false);
-            }
+            setLocationError(`Failed to update duty status: ${error.message}`);
         } else if (updatedProfile) {
             setProfile(updatedProfile);
         }
@@ -312,34 +294,42 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
 
     const handleStatusUpdate = async (status: ReportStatus) => {
         const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
-
+    
         const updatePromises: Promise<any>[] = [];
-
-        // 1. Update the report's status
-        updatePromises.push(supabase.from(tableName).update({ status }).eq('id', report.id));
-
+    
+        const isResolving = status === ReportStatus.RESOLVED || status === ReportStatus.RECOVERED;
+    
+        const reportUpdatePayload: { status: ReportStatus; assigned_to?: null } = { status };
+        if (isResolving) {
+            // When resolving or recovering, unassign the responder from the report.
+            reportUpdatePayload.assigned_to = null;
+        }
+    
+        // 1. Update the report's status (and assignment if resolving)
+        updatePromises.push(supabase.from(tableName).update(reportUpdatePayload).eq('id', report.id));
+    
         // 2. Log the status change in the incident log
         updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Status changed to: ${status.replace(/_/g, ' ')}` }));
-
+    
         // 3. Update the responder's own status in the profiles table
         let newResponderStatus: ResponderStatus | null = null;
         if (status === ReportStatus.IN_PROGRESS) {
             newResponderStatus = ResponderStatus.EN_ROUTE;
         } else if (status === ReportStatus.ON_SCENE) {
             newResponderStatus = ResponderStatus.ON_SCENE;
-        } else if (status === ReportStatus.RESOLVED) {
+        } else if (isResolving) {
             // When resolving, check if there are any other active assignments.
             // If not, the responder becomes available again.
-            const { data: otherVehicleReports, error: vError } = await supabase
+            const { count: vehicleCount, error: vError } = await supabase
                 .from('vehicle_reports')
-                .select('id')
+                .select('*', { count: 'exact', head: true })
                 .eq('assigned_to', profile.id)
                 .neq('id', report.id)
                 .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
-
-            const { data: otherCrimeReports, error: cError } = await supabase
+    
+            const { count: crimeCount, error: cError } = await supabase
                 .from('crime_reports')
-                .select('id')
+                .select('*', { count: 'exact', head: true })
                 .eq('assigned_to', profile.id)
                 .neq('id', report.id)
                 .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
@@ -348,13 +338,13 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
                 console.error("Could not check for other active reports:", vError || cError);
                 // Fail gracefully - don't change responder status if we can't verify.
             } else {
-                const hasOtherActiveAssignments = (otherVehicleReports && otherVehicleReports.length > 0) || (otherCrimeReports && otherCrimeReports.length > 0);
+                const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0);
                 if (!hasOtherActiveAssignments) {
                     newResponderStatus = ResponderStatus.AVAILABLE;
                 }
             }
         }
-
+    
         if (newResponderStatus && profile.responder_status !== newResponderStatus) {
             updatePromises.push(supabase.from('profiles').update({ responder_status: newResponderStatus }).eq('id', profile.id));
         }
@@ -367,6 +357,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
             console.error('Status update errors:', errors);
         }
     };
+    
 
     const handlePostUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -393,16 +384,22 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
     };
 
     const actionButtonClasses = "w-full text-center py-3 px-4 font-semibold rounded-lg transition-transform duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed";
+    const isTerminalStatus = report.status === ReportStatus.RESOLVED || report.status === ReportStatus.RECOVERED || report.status === ReportStatus.CLOSED;
     
     return (
         <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg">
             <h2 className="text-2xl font-bold">{isVehicleReport(report) ? report.license_plate : report.title}</h2>
             <p className="font-mono text-sm text-gray-500 dark:text-gray-400 mb-4">{report.ob_number}</p>
             
-            <div className="grid grid-cols-3 gap-2 mb-4">
-                <button onClick={() => handleStatusUpdate(ReportStatus.IN_PROGRESS)} disabled={report.status === ReportStatus.IN_PROGRESS} className={`${actionButtonClasses} bg-blue-600 text-white`}>En Route</button>
-                <button onClick={() => handleStatusUpdate(ReportStatus.ON_SCENE)} disabled={report.status === ReportStatus.ON_SCENE} className={`${actionButtonClasses} bg-yellow-500 text-white`}>On Scene</button>
-                <button onClick={() => handleStatusUpdate(ReportStatus.RESOLVED)} disabled={report.status === ReportStatus.RESOLVED} className={`${actionButtonClasses} bg-green-600 text-white`}>Resolve</button>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+                <button onClick={() => handleStatusUpdate(ReportStatus.IN_PROGRESS)} disabled={isTerminalStatus || report.status === ReportStatus.IN_PROGRESS} className={`${actionButtonClasses} bg-blue-600 text-white`}>En Route</button>
+                <button onClick={() => handleStatusUpdate(ReportStatus.ON_SCENE)} disabled={isTerminalStatus || report.status === ReportStatus.ON_SCENE} className={`${actionButtonClasses} bg-yellow-500 text-white`}>On Scene</button>
+                <button onClick={() => handleStatusUpdate(ReportStatus.RESOLVED)} disabled={isTerminalStatus} className={`${actionButtonClasses} bg-green-600 text-white`}>Resolve</button>
+                {isVehicleReport(report) && (
+                    <button onClick={() => handleStatusUpdate(ReportStatus.RECOVERED)} disabled={isTerminalStatus} className={`${actionButtonClasses} bg-teal-500 text-white`}>
+                        Recovered
+                    </button>
+                )}
             </div>
 
             <a href={`https://www.google.com/maps/search/?api=1&query=${report.location_coords?.lat},${report.location_coords?.lng}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full text-center py-3 bg-gray-200 dark:bg-gray-700 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors mb-4"><NavigationIcon className="w-5 h-5"/> Navigate to Scene</a>

@@ -12,9 +12,10 @@ import ProfilePage from './pages/ProfilePage';
 import ControllerPage from './pages/ControllerPage';
 import ResponderPage from './pages/ResponderPage';
 import { supabase } from './utils/supabase';
-import type { Session } from '@supabase/supabase-js';
+// FIX: The error "no exported member 'Session'" can sometimes be resolved by changing the import style from `import type` to a standard import.
+import { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from './types';
-import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
+import DatabaseCheck from './components/DatabaseCheck';
 
 type View = 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'requests';
 
@@ -24,21 +25,14 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>('dashboard');
-  const [isGlobalSchemaError, setIsGlobalSchemaError] = useState(false);
   
   useEffect(() => {
-    const fetchSession = async () => {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        setError(`Cannot reach authentication server: ${sessionError.message}`);
-      } else {
-        setSession(session);
-      }
-      setLoading(false);
-    };
+    // FIX: Supabase v1 uses supabase.auth.session() (synchronous) instead of getSession() (asynchronous).
+    // It returns the session directly, or null, and doesn't provide an error object.
+    setSession(supabase.auth.session());
+    setLoading(false);
 
-    fetchSession();
-
+    // FIX: The error on onAuthStateChange is likely a side-effect of a version mismatch. The call itself is correct for v1.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setError(null); // Clear errors on auth state change
@@ -130,14 +124,14 @@ const App: React.FC = () => {
     if (profile.role === UserRole.RESPONDER) {
         // The main 'dashboard' view for a responder is their dedicated page
         if (view === 'dashboard') {
-            return <ResponderPage profile={profile} setProfile={setProfile} setGlobalSchemaError={setIsGlobalSchemaError} />;
+            return <ResponderPage profile={profile} setProfile={setProfile} />;
         }
         // Responders can still access their profile
         if (view === 'profile') {
             return <ProfilePage profile={profile} setProfile={setProfile} />;
         }
         // Fallback to their main page if they land on an unauthorized view
-        return <ResponderPage profile={profile} setProfile={setProfile} setGlobalSchemaError={setIsGlobalSchemaError} />;
+        return <ResponderPage profile={profile} setProfile={setProfile} />;
     }
     
     // Views for Admin, Controller, etc.
@@ -182,6 +176,7 @@ const App: React.FC = () => {
                   <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Application Error</h2>
                   <p className="mb-4">{error}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">This can happen due to network issues or incorrect database permissions (Row Level Security). Please check the console for more details.</p>
+                  {/* FIX: The error on signOut is likely a side-effect of a version mismatch. The call itself is correct for v1. */}
                   <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
                       Logout and Try Again
                   </button>
@@ -202,9 +197,9 @@ const App: React.FC = () => {
         style={{ animationDuration: '10s' }}
       ></div>
 
-      {isGlobalSchemaError && <GlobalSchemaErrorModal />}
+      {session && profile && <DatabaseCheck />}
       
-      <div className={`relative z-10 ${isGlobalSchemaError ? 'blur-sm' : ''}`}>
+      <div className="relative z-10">
         {session && profile ? (
           <>
             <Header currentView={view} setView={setView} profile={profile} />

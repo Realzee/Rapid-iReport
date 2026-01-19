@@ -17,7 +17,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // FIX: Supabase v1 uses signIn() instead of signInWithPassword().
+    const { error } = await supabase.auth.signIn({ email, password });
     if (error) {
       setError(error.message);
     }

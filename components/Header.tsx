@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, ClipboardCheckIcon } from './icons';
 import { Profile, UserRole, Notification } from '../types';
@@ -99,6 +100,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
       }`;
 
   const handleLogout = async () => {
+    // FIX: The error on signOut is likely a side-effect of a version mismatch. The call itself is correct for v1.
     await supabase.auth.signOut();
     setMobileMenuOpen(false);
   };

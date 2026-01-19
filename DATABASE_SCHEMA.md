@@ -1,15 +1,80 @@
 
+
 # RAPID iREPORT - Database Schema
 
 This file contains the complete, idempotent SQL script for setting up the Supabase database for the RAPID iREPORT application. This script can be run safely in the Supabase SQL Editor to create all necessary types, tables, functions, and Row Level Security policies.
 
 For detailed setup instructions, refer to `DATABASE_SETUP.md`.
 
+> [!IMPORTANT]
+> The script is now in two parts. You must copy and run each part **separately** in the Supabase SQL Editor for the setup to succeed. This is required because PostgreSQL cannot alter data types within a transaction.
+
+---
+
+### **Part 1: Update Data Types**
+Copy and run the code block below first. This part is non-transactional.
+
 ```sql
+-- RAPID iREPORT - Database Setup Script - PART 1
+-- Description: This script creates and updates custom ENUM types.
+-- It MUST be run separately from Part 2.
+
+-- 0. Make sure the 'uuid-ossp' extension is enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
+
+-- 1. Create ENUM types if they don't exist (initial creation with a single placeholder value)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN CREATE TYPE public.user_role AS ENUM ('user'); END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN CREATE TYPE public.user_status AS ENUM ('pending'); END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN CREATE TYPE public.report_status AS ENUM ('pending'); END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN CREATE TYPE public.severity AS ENUM ('low'); END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN CREATE TYPE public.responder_status AS ENUM ('off_duty'); END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'request_status') THEN CREATE TYPE public.request_status AS ENUM ('pending'); END IF;
+END$$;
+
+-- 2. Add all possible values to ENUM types to ensure they are up-to-date.
+-- This section MUST be run outside of a transaction block.
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'admin';
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'moderator';
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'controller';
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'responder';
+
+ALTER TYPE public.user_status ADD VALUE IF NOT EXISTS 'active';
+ALTER TYPE public.user_status ADD VALUE IF NOT EXISTS 'suspended';
+
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'active';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'assigned';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'in_progress';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'on_scene';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'resolved';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'rejected';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'recovered';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'closed';
+
+ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'critical';
+ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'high';
+ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'medium';
+
+ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'available';
+ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'en_route';
+ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'on_scene';
+
+ALTER TYPE public.request_status ADD VALUE IF NOT EXISTS 'approved';
+ALTER TYPE public.request_status ADD VALUE IF NOT EXISTS 'rejected';
+```
+---
+
+### **Part 2: Setup Tables, Functions, and Policies**
+After Part 1 completes successfully, open a **new query** in the SQL Editor and run this second code block. This part is transactional.
+
+```sql
+-- RAPID iREPORT - Database Setup Script - PART 2
+-- Description: This script sets up tables, functions, triggers, and RLS policies.
+-- It MUST be run after Part 1 has completed successfully.
 BEGIN;
 
 -- This is a comprehensive permissions reset for the public schema.
--- It ensures that all Supabase roles can interact with the schema and its objects.
 GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO postgres, anon, authenticated, service_role;
@@ -18,34 +83,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres, anon,
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres, anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres, anon, authenticated, service_role;
 
--- 0. Make sure the 'uuid-ossp' extension is enabled
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
-
--- 1. Create ENUM types
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
-        CREATE TYPE public.user_role AS ENUM ('admin', 'moderator', 'controller', 'responder', 'user');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN
-        CREATE TYPE public.user_status AS ENUM ('active', 'pending', 'suspended');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN
-        CREATE TYPE public.report_status AS ENUM ('pending', 'active', 'assigned', 'in_progress', 'on_scene', 'resolved', 'rejected', 'recovered', 'closed');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN
-        CREATE TYPE public.severity AS ENUM ('critical', 'high', 'medium', 'low');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN
-        CREATE TYPE public.responder_status AS ENUM ('available', 'en_route', 'on_scene', 'off_duty');
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'request_status') THEN
-        CREATE TYPE public.request_status AS ENUM ('pending', 'approved', 'rejected');
-    END IF;
-END$$;
-
-
--- 2. Create Tables
+-- 3. Create Tables
 
 -- Companies Table
 CREATE TABLE IF NOT EXISTS public.companies (
@@ -172,7 +210,7 @@ CREATE TABLE IF NOT EXISTS public.registration_requests (
 );
 
 
--- 3. Create Helper Functions & Triggers
+-- 4. Create Helper Functions & Triggers
 
 -- Function to get a user's role, bypassing RLS. SECURITY DEFINER is crucial.
 DROP FUNCTION IF EXISTS public.get_user_role(uuid) CASCADE;
@@ -184,8 +222,6 @@ AS $$
 DECLARE
   user_role_text text;
 BEGIN
-  -- This function runs as the owner (postgres), which bypasses RLS.
-  -- The prohibited `SET LOCAL ROLE` statement has been removed.
   SELECT role::text INTO user_role_text FROM public.profiles WHERE id = p_user_id;
   RETURN user_role_text;
 END;
@@ -221,32 +257,20 @@ DECLARE
   user_full_name text;
   user_role_text text;
 BEGIN
-  -- FIX: Read from both user_metadata and app_metadata for robustness, preventing trigger failure.
   user_full_name := COALESCE(new.raw_user_meta_data->>'full_name', new.raw_app_meta_data->>'full_name', new.email);
   user_role_text := COALESCE(new.raw_user_meta_data->>'role', new.raw_app_meta_data->>'role');
+  IF user_full_name = '' OR user_full_name IS NULL THEN user_full_name := new.email; END IF;
 
-  -- Ensure full_name is not an empty string if metadata provides it as such
-  IF user_full_name = '' OR user_full_name IS NULL THEN
-    user_full_name := new.email;
-  END IF;
-
-  -- Insert into profiles table
   INSERT INTO public.profiles (id, full_name, email, role)
   VALUES (
     new.id,
     user_full_name,
     new.email,
-    -- Safely cast the role, defaulting to 'user' on any issue
     (SELECT CASE WHEN user_role_text IN ('admin', 'moderator', 'controller', 'responder', 'user') THEN user_role_text::public.user_role ELSE 'user'::public.user_role END)
   );
 
-  -- Create notification for admins
   PERFORM public.create_staff_notification(
-    'new_user',
-    'New User Registered',
-    'A new user (' || user_full_name || ') has signed up.',
-    new.id,
-    ARRAY['admin', 'moderator']
+    'new_user', 'New User Registered', 'A new user (' || user_full_name || ') has signed up.', new.id, ARRAY['admin', 'moderator']
   );
   
   RETURN new;
@@ -262,18 +286,12 @@ AS $$
 DECLARE
   report_title text;
 BEGIN
-  IF TG_TABLE_NAME = 'vehicle_reports' THEN
-    report_title := 'Stolen Vehicle: ' || new.license_plate;
-  ELSE
-    report_title := 'Crime Incident: ' || new.title;
+  IF TG_TABLE_NAME = 'vehicle_reports' THEN report_title := 'Stolen Vehicle: ' || new.license_plate;
+  ELSE report_title := 'Crime Incident: ' || new.title;
   END IF;
 
   PERFORM public.create_staff_notification(
-    'new_report',
-    report_title,
-    'A new incident has been filed and requires attention.',
-    new.id,
-    ARRAY['admin', 'moderator', 'controller']
+    'new_report', report_title, 'A new incident has been filed and requires attention.', new.id, ARRAY['admin', 'moderator', 'controller']
   );
   RETURN new;
 END;
@@ -289,17 +307,9 @@ DECLARE
   notification_msg text;
 BEGIN
   notification_msg := new.full_name || ' has requested an account.';
-  
-  IF new.company_name IS NOT NULL THEN
-    notification_msg := notification_msg || ' For company: ' || new.company_name;
-  END IF;
-
+  IF new.company_name IS NOT NULL THEN notification_msg := notification_msg || ' For company: ' || new.company_name; END IF;
   PERFORM public.create_staff_notification(
-    'new_registration_request',
-    'New Account Request',
-    notification_msg,
-    new.id,
-    ARRAY['admin', 'moderator']
+    'new_registration_request', 'New Account Request', notification_msg, new.id, ARRAY['admin', 'moderator']
   );
   RETURN new;
 END;
@@ -321,163 +331,95 @@ END;
 $$;
 
 
--- 4. Triggers
+-- 5. Triggers
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 DROP TRIGGER IF EXISTS on_new_vehicle_report_notify ON public.vehicle_reports;
-CREATE TRIGGER on_new_vehicle_report_notify
-  AFTER INSERT ON public.vehicle_reports
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_report_notification();
+CREATE TRIGGER on_new_vehicle_report_notify AFTER INSERT ON public.vehicle_reports FOR EACH ROW EXECUTE FUNCTION public.handle_new_report_notification();
 
 DROP TRIGGER IF EXISTS on_new_crime_report_notify ON public.crime_reports;
-CREATE TRIGGER on_new_crime_report_notify
-  AFTER INSERT ON public.crime_reports
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_report_notification();
+CREATE TRIGGER on_new_crime_report_notify AFTER INSERT ON public.crime_reports FOR EACH ROW EXECUTE FUNCTION public.handle_new_report_notification();
 
 DROP TRIGGER IF EXISTS on_new_registration_request_notify ON public.registration_requests;
-CREATE TRIGGER on_new_registration_request_notify
-  AFTER INSERT ON public.registration_requests
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_registration_request();
+CREATE TRIGGER on_new_registration_request_notify AFTER INSERT ON public.registration_requests FOR EACH ROW EXECUTE FUNCTION public.handle_new_registration_request();
 
 DROP TRIGGER IF EXISTS on_vehicle_report_assignment_change ON public.vehicle_reports;
-CREATE TRIGGER on_vehicle_report_assignment_change
-  AFTER UPDATE OF assigned_to ON public.vehicle_reports
-  FOR EACH ROW EXECUTE FUNCTION public.log_assignment_change();
+CREATE TRIGGER on_vehicle_report_assignment_change AFTER UPDATE OF assigned_to ON public.vehicle_reports FOR EACH ROW EXECUTE FUNCTION public.log_assignment_change();
 
 DROP TRIGGER IF EXISTS on_crime_report_assignment_change ON public.crime_reports;
-CREATE TRIGGER on_crime_report_assignment_change
-  AFTER UPDATE OF assigned_to ON public.crime_reports
-  FOR EACH ROW EXECUTE FUNCTION public.log_assignment_change();
+CREATE TRIGGER on_crime_report_assignment_change AFTER UPDATE OF assigned_to ON public.crime_reports FOR EACH ROW EXECUTE FUNCTION public.log_assignment_change();
 
 
--- 5. Row Level Security (RLS) Policies
+-- 6. Row Level Security (RLS) Policies
 
 -- PROFILES
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow authenticated users to view profiles" ON public.profiles;
 CREATE POLICY "Allow authenticated users to view profiles" ON public.profiles FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Allow users to insert their own profile" ON public.profiles;
-CREATE POLICY "Allow users to insert their own profile" ON public.profiles FOR INSERT
-  WITH CHECK ( (auth.uid() = id) OR (current_role = 'postgres') );
+CREATE POLICY "Allow users to insert their own profile" ON public.profiles FOR INSERT WITH CHECK ( (auth.uid() = id) OR (current_role = 'postgres') );
 DROP POLICY IF EXISTS "Allow users to update their own profile" ON public.profiles;
 CREATE POLICY "Allow users to update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 DROP POLICY IF EXISTS "Admins and moderators can manage all profiles" ON public.profiles;
-CREATE POLICY "Admins and moderators can manage all profiles" ON public.profiles FOR ALL
-  USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator')));
+CREATE POLICY "Admins and moderators can manage all profiles" ON public.profiles FOR ALL USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator')));
 DROP POLICY IF EXISTS "Controllers can update responder profiles" ON public.profiles;
-CREATE POLICY "Controllers can update responder profiles" ON public.profiles FOR UPDATE
-  USING ( (public.get_user_role(auth.uid()) = 'controller') AND (role = 'responder') )
-  WITH CHECK ( (public.get_user_role(auth.uid()) = 'controller') AND (role = 'responder') );
+CREATE POLICY "Controllers can update responder profiles" ON public.profiles FOR UPDATE USING ( (public.get_user_role(auth.uid()) = 'controller') AND (role = 'responder') ) WITH CHECK ( (public.get_user_role(auth.uid()) = 'controller') AND (role = 'responder') );
 
 -- COMPANIES
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow authenticated users to view companies" ON public.companies;
 CREATE POLICY "Allow authenticated users to view companies" ON public.companies FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admins and moderators can manage companies" ON public.companies;
-CREATE POLICY "Admins and moderators can manage companies" ON public.companies FOR ALL
-  USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator')));
+CREATE POLICY "Admins and moderators can manage companies" ON public.companies FOR ALL USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator')));
 
 -- VEHICLE REPORTS
 ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow view access to relevant users" ON public.vehicle_reports;
-CREATE POLICY "Allow view access to relevant users" ON public.vehicle_reports FOR SELECT
-  USING ( (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')) OR ((public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid())) OR (reported_by = auth.uid()) );
+CREATE POLICY "Allow view access to relevant users" ON public.vehicle_reports FOR SELECT USING ( (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')) OR ((public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid())) OR (reported_by = auth.uid()) );
 DROP POLICY IF EXISTS "Allow users to create reports" ON public.vehicle_reports;
-CREATE POLICY "Allow users to create reports" ON public.vehicle_reports FOR INSERT
-  WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow users to create reports" ON public.vehicle_reports FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 DROP POLICY IF EXISTS "Allow admins, moderators, controllers to manage reports" ON public.vehicle_reports;
-CREATE POLICY "Allow admins, moderators, controllers to manage reports" ON public.vehicle_reports FOR ALL
-  USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')));
-DROP POLICY IF EXISTS "Allow assigned responders to update status" ON public.vehicle_reports;
+CREATE POLICY "Allow admins, moderators, controllers to manage reports" ON public.vehicle_reports FOR ALL USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')));
 DROP POLICY IF EXISTS "Allow assigned responders to update their reports" ON public.vehicle_reports;
-CREATE POLICY "Allow assigned responders to update their reports" ON public.vehicle_reports FOR UPDATE
-  USING ( (public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid()) )
-  WITH CHECK ( (assigned_to = auth.uid()) );
+CREATE POLICY "Allow assigned responders to update their reports" ON public.vehicle_reports FOR UPDATE USING ( (public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid()) ) WITH CHECK ( (assigned_to = auth.uid()) OR (assigned_to IS NULL AND status IN ('resolved', 'recovered', 'closed')) );
 
 -- CRIME REPORTS
 ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow view access to relevant users" ON public.crime_reports;
-CREATE POLICY "Allow view access to relevant users" ON public.crime_reports FOR SELECT
-  USING ( (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')) OR ((public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid())) OR (reported_by = auth.uid()) );
+CREATE POLICY "Allow view access to relevant users" ON public.crime_reports FOR SELECT USING ( (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')) OR ((public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid())) OR (reported_by = auth.uid()) );
 DROP POLICY IF EXISTS "Allow users to create reports" ON public.crime_reports;
-CREATE POLICY "Allow users to create reports" ON public.crime_reports FOR INSERT
-  WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow users to create reports" ON public.crime_reports FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 DROP POLICY IF EXISTS "Allow admins, moderators, controllers to manage reports" ON public.crime_reports;
-CREATE POLICY "Allow admins, moderators, controllers to manage reports" ON public.crime_reports FOR ALL
-  USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')));
-DROP POLICY IF EXISTS "Allow assigned responders to update status" ON public.crime_reports;
+CREATE POLICY "Allow admins, moderators, controllers to manage reports" ON public.crime_reports FOR ALL USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'))) WITH CHECK ((public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')));
 DROP POLICY IF EXISTS "Allow assigned responders to update their reports" ON public.crime_reports;
-CREATE POLICY "Allow assigned responders to update their reports" ON public.crime_reports FOR UPDATE
-  USING ( (public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid()) )
-  WITH CHECK ( (assigned_to = auth.uid()) );
+CREATE POLICY "Allow assigned responders to update their reports" ON public.crime_reports FOR UPDATE USING ( (public.get_user_role(auth.uid()) = 'responder') AND (assigned_to = auth.uid()) ) WITH CHECK ( (assigned_to = auth.uid()) OR (assigned_to IS NULL AND status IN ('resolved', 'closed')) );
 
 -- REPORT UPDATES
 ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow relevant users to see updates" ON public.report_updates;
-CREATE POLICY "Allow relevant users to see updates" ON public.report_updates FOR SELECT
-USING (
-  (
-    EXISTS (
-      SELECT 1 FROM public.vehicle_reports vr
-      WHERE vr.id = report_updates.report_id
-    )
-  )
-  OR
-  (
-    EXISTS (
-      SELECT 1 FROM public.crime_reports cr
-      WHERE cr.id = report_updates.report_id
-    )
-  )
-);
+CREATE POLICY "Allow relevant users to see updates" ON public.report_updates FOR SELECT USING ( (EXISTS (SELECT 1 FROM public.vehicle_reports vr WHERE vr.id = report_updates.report_id)) OR (EXISTS (SELECT 1 FROM public.crime_reports cr WHERE cr.id = report_updates.report_id)) );
 DROP POLICY IF EXISTS "Allow relevant users to add updates" ON public.report_updates;
-CREATE POLICY "Allow relevant users to add updates" ON public.report_updates FOR INSERT
-  WITH CHECK (
-    (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')) OR
-    (
-      (public.get_user_role(auth.uid()) = 'responder') AND
-      (
-        (EXISTS (SELECT 1 FROM vehicle_reports vr WHERE vr.id = report_updates.report_id AND vr.assigned_to = auth.uid())) OR
-        (EXISTS (SELECT 1 FROM crime_reports cr WHERE cr.id = report_updates.report_id AND cr.assigned_to = auth.uid()))
-      )
-    )
-  );
+CREATE POLICY "Allow relevant users to add updates" ON public.report_updates FOR INSERT WITH CHECK ( (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')) OR ( (public.get_user_role(auth.uid()) = 'responder') AND ((EXISTS (SELECT 1 FROM vehicle_reports vr WHERE vr.id = report_updates.report_id AND vr.assigned_to = auth.uid())) OR (EXISTS (SELECT 1 FROM crime_reports cr WHERE cr.id = report_updates.report_id AND cr.assigned_to = auth.uid()))) ) );
   
 -- ASSIGNMENT LOGS
 ALTER TABLE public.assignment_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow relevant staff to view assignment logs" ON public.assignment_logs;
-CREATE POLICY "Allow relevant staff to view assignment logs" ON public.assignment_logs
-  FOR SELECT USING (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'));
+CREATE POLICY "Allow relevant staff to view assignment logs" ON public.assignment_logs FOR SELECT USING (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'));
 
 -- REGISTRATION REQUESTS
 ALTER TABLE public.registration_requests ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow users to submit registration requests" ON public.registration_requests;
-CREATE POLICY "Allow users to submit registration requests" ON public.registration_requests FOR INSERT
-  WITH CHECK (auth.role() = 'anon');
+CREATE POLICY "Allow users to submit registration requests" ON public.registration_requests FOR INSERT WITH CHECK (auth.role() = 'anon');
 DROP POLICY IF EXISTS "Admins and moderators can manage registration requests" ON public.registration_requests;
-CREATE POLICY "Admins and moderators can manage registration requests" ON public.registration_requests FOR ALL
-  USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator')));
+CREATE POLICY "Admins and moderators can manage registration requests" ON public.registration_requests FOR ALL USING ((public.get_user_role(auth.uid()) IN ('admin', 'moderator')));
 
 -- NOTIFICATIONS
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can see their own notifications" ON public.notifications;
-CREATE POLICY "Users can see their own notifications" ON public.notifications
-  FOR SELECT USING (auth.uid() = recipient_user_id);
+CREATE POLICY "Users can see their own notifications" ON public.notifications FOR SELECT USING (auth.uid() = recipient_user_id);
 DROP POLICY IF EXISTS "Users can update their own notifications" ON public.notifications;
-CREATE POLICY "Users can update their own notifications" ON public.notifications
-  FOR UPDATE USING (auth.uid() = recipient_user_id) WITH CHECK (auth.uid() = recipient_user_id);
-DROP POLICY IF EXISTS "Allow system to insert new user notifications" ON public.notifications;
-CREATE POLICY "Allow system to insert new user notifications" ON public.notifications
-  FOR INSERT WITH CHECK ( type = 'new_user' AND (SELECT role::text FROM public.profiles WHERE id = recipient_user_id) IN ('admin', 'moderator') );
-DROP POLICY IF EXISTS "Allow system to insert new report notifications" ON public.notifications;
-CREATE POLICY "Allow system to insert new report notifications" ON public.notifications
-  FOR INSERT WITH CHECK ( type = 'new_report' AND (SELECT role::text FROM public.profiles WHERE id = recipient_user_id) IN ('admin', 'moderator', 'controller') );
-DROP POLICY IF EXISTS "Allow system to insert new registration notifications" ON public.notifications;
-CREATE POLICY "Allow system to insert new registration notifications" ON public.notifications
-  FOR INSERT WITH CHECK ( type = 'new_registration_request' AND (SELECT role::text FROM public.profiles WHERE id = recipient_user_id) IN ('admin', 'moderator') );
+CREATE POLICY "Users can update their own notifications" ON public.notifications FOR UPDATE USING (auth.uid() = recipient_user_id) WITH CHECK (auth.uid() = recipient_user_id);
 
 COMMIT;
 ```
