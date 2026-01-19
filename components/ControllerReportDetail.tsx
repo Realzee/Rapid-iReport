@@ -119,8 +119,46 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
     const handleStatusUpdate = async (newStatus: ReportStatus) => {
         const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
-        const { error } = await supabase.from(tableName).update({ status: newStatus }).eq('id', report.id);
-        if (error) alert("Failed to update status: " + error.message);
+        const isTerminalStatus = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(newStatus);
+    
+        const updatePayload: { status: ReportStatus; assigned_to?: string | null } = { status: newStatus };
+    
+        if (isTerminalStatus && report.assigned_to) {
+            updatePayload.assigned_to = null;
+        }
+    
+        const { error: updateError } = await supabase.from(tableName).update(updatePayload).eq('id', report.id);
+        if (updateError) {
+            alert("Failed to update status: " + updateError.message);
+            return;
+        }
+    
+        await supabase.from('report_updates').insert({
+            report_id: report.id,
+            user_id: profile.id,
+            content: `Status changed to: ${newStatus.replace(/_/g, ' ')}`
+        });
+    
+        if (isTerminalStatus && report.assigned_to) {
+            const responderId = report.assigned_to;
+            
+            const { count: activeVehicleAssignments } = await supabase
+                .from('vehicle_reports')
+                .select('*', { count: 'exact', head: true })
+                .eq('assigned_to', responderId)
+                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+            
+            const { count: activeCrimeAssignments } = await supabase
+                .from('crime_reports')
+                .select('*', { count: 'exact', head: true })
+                .eq('assigned_to', responderId)
+                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+    
+            if ((activeVehicleAssignments === null || activeVehicleAssignments === 0) && (activeCrimeAssignments === null || activeCrimeAssignments === 0)) {
+                const { error: profileUpdateError } = await supabase.from('profiles').update({ responder_status: ResponderStatus.AVAILABLE }).eq('id', responderId);
+                if(profileUpdateError) console.warn("Report status updated, but failed to update responder status:", profileUpdateError.message);
+            }
+        }
     };
 
     const handleDispatchResponder = async (responderId: string) => {

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport } from '../types';
+import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport, ReportStatus } from '../types';
 import StatCard from './StatCard';
 import ReportList from './ReportList';
 import MapView from './MapView';
@@ -117,6 +117,55 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         await supabase.from(tableName).delete().eq('id', reportToDelete.id);
         setReportToDelete(null);
     };
+    
+    const handleStatusUpdate = async (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => {
+        const tableName = reportType === 'vehicle' ? 'vehicle_reports' : 'crime_reports';
+        const reportToUpdate = reports.find(r => r.id === reportId);
+        if (!reportToUpdate) return;
+    
+        const isTerminalStatus = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(newStatus);
+        
+        const updatePayload: { status: ReportStatus; assigned_to?: string | null } = { status: newStatus };
+    
+        if (isTerminalStatus && reportToUpdate.assigned_to) {
+            updatePayload.assigned_to = null;
+        }
+    
+        const { error: updateError } = await supabase.from(tableName).update(updatePayload).eq('id', reportId);
+    
+        if (updateError) {
+            alert("Failed to update status: " + updateError.message);
+            return;
+        }
+    
+        await supabase.from('report_updates').insert({
+            report_id: reportId,
+            user_id: profile.id,
+            content: `Status changed to: ${newStatus.replace(/_/g, ' ')}`
+        });
+    
+        if (isTerminalStatus && reportToUpdate.assigned_to) {
+            const responderId = reportToUpdate.assigned_to;
+            
+            const { count: activeVehicleAssignments } = await supabase
+                .from('vehicle_reports')
+                .select('*', { count: 'exact', head: true })
+                .eq('assigned_to', responderId)
+                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+            
+            const { count: activeCrimeAssignments } = await supabase
+                .from('crime_reports')
+                .select('*', { count: 'exact', head: true })
+                .eq('assigned_to', responderId)
+                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+    
+            if ((activeVehicleAssignments === null || activeVehicleAssignments === 0) && (activeCrimeAssignments === null || activeCrimeAssignments === 0)) {
+                const { error: profileUpdateError } = await supabase.from('profiles').update({ responder_status: ResponderStatus.AVAILABLE }).eq('id', responderId);
+                if(profileUpdateError) console.warn("Report status updated, but failed to update responder status:", profileUpdateError.message);
+            }
+        }
+    };
+
 
     if (loading) return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
@@ -142,7 +191,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                     {selectedReport ? (
                         <ReportDetailCard report={selectedReport} onClose={() => setSelectedReportId(null)} profile={profile} onEdit={handleOpenEditReportModal} onDelete={handleOpenDeleteReportModal} onViewOnMap={() => setIsMapModalOpen(true)} />
                     ) : (
-                        <ReportList reports={sortedReports} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} onStatusUpdate={() => Promise.resolve()} />
+                        <ReportList reports={sortedReports} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} onStatusUpdate={handleStatusUpdate} />
                     )}
                 </div>
                 <div className="flex-1 min-w-0">
