@@ -39,7 +39,17 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     const [lastSyncTimestamp, setLastSyncTimestamp] = useState<Date | null>(null);
 
     const isOnDuty = profile.responder_status !== ResponderStatus.OFF_DUTY;
-    const isEngaged = profile.responder_status === ResponderStatus.EN_ROUTE || profile.responder_status === ResponderStatus.ON_SCENE;
+
+    // A responder is "engaged" if they have any reports that are not in a terminal state.
+    // This is more reliable than just checking their personal status.
+    const isEngaged = useMemo(() => 
+        assignedReports.some(r => ![
+            ReportStatus.RESOLVED,
+            ReportStatus.RECOVERED,
+            ReportStatus.CLOSED,
+            ReportStatus.REJECTED,
+        ].includes(r.status)),
+    [assignedReports]);
 
 
     useEffect(() => {
