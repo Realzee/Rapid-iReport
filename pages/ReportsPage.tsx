@@ -6,7 +6,7 @@ import { Line, Doughnut } from 'react-chartjs-2';
 import { useTheme } from '../contexts/ThemeContext';
 // FIX: The module does not export 'subDays'. Using 'sub' instead.
 import { format, sub } from 'date-fns';
-import { BuildingIcon, ChartBarIcon, ChartPieIcon, MapIcon, ZapIcon, CheckCircleIcon, AlertTriangleIcon } from '../components/icons';
+import { CarIcon, CrimeIcon, ChartBarIcon, ChartPieIcon, MapIcon, ZapIcon, CheckCircleIcon, AlertTriangleIcon } from '../components/icons';
 import StatCard from '../components/StatCard';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement);
@@ -122,8 +122,8 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
             <h3 className="text-2xl font-bold mb-6">At a Glance</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <StatCard title="Total Reports" value={totalReports.toString()} icon={<ZapIcon />} color="blue" />
-                <StatCard title="Vehicle Incidents" value={vehicleReports.toString()} icon={<BuildingIcon />} color="yellow" />
-                <StatCard title="Crime Incidents" value={crimeReports.toString()} icon={<BuildingIcon />} color="red" />
+                <StatCard title="Vehicle Incidents" value={vehicleReports.toString()} icon={<CarIcon />} color="yellow" />
+                <StatCard title="Crime Incidents" value={crimeReports.toString()} icon={<CrimeIcon />} color="red" />
                 <StatCard title="Resolved Cases" value={resolved.toString()} icon={<CheckCircleIcon />} color="green" />
                 <StatCard title="Pending Review" value={pending.toString()} icon={<AlertTriangleIcon />} color="yellow" />
             </div>
