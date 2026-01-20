@@ -1,4 +1,3 @@
-
 /**
  * @file ReportModal.tsx
  * @description Modal for creating and editing vehicle or crime reports.
@@ -30,13 +29,19 @@ const geocodeLocation = async (location: string): Promise<{coords: LocationCoord
         const data = await response.json();
         if (data && data.length > 0) {
             const result = data[0];
-            const coords = { lat: parseFloat(result.lat), lng: parseFloat(result.lon) };
             
-            // Bounding box from Nominatim is [south, north, west, east]
-            const boundingbox: [number, number, number, number] | null = result.boundingbox ? 
-                [parseFloat(result.boundingbox[0]), parseFloat(result.boundingbox[1]), parseFloat(result.boundingbox[2]), parseFloat(result.boundingbox[3])] 
-                : null;
-            
+            const lat = parseFloat(result.lat);
+            const lon = parseFloat(result.lon);
+            const coords = !isNaN(lat) && !isNaN(lon) ? { lat, lng: lon } : null;
+
+            let boundingbox: [number, number, number, number] | null = null;
+            if (result.boundingbox && Array.isArray(result.boundingbox) && result.boundingbox.length === 4) {
+                const [s, n, w, e] = result.boundingbox.map(parseFloat);
+                if (![s, n, w, e].some(isNaN)) {
+                    boundingbox = [s, n, w, e];
+                }
+            }
+
             // Only store boundary for non-point results (e.g., cities, not specific addresses)
             const boundary = result.geojson && result.geojson.type !== 'Point' ? result.geojson : null;
             
@@ -44,10 +49,11 @@ const geocodeLocation = async (location: string): Promise<{coords: LocationCoord
             if (boundary && boundingbox) {
                 const centerLat = (boundingbox[0] + boundingbox[1]) / 2;
                 const centerLng = (boundingbox[2] + boundingbox[3]) / 2;
-                return { coords: { lat: centerLat, lng: centerLng }, boundary, boundingbox };
+                const finalCoords = !isNaN(centerLat) && !isNaN(centerLng) ? { lat: centerLat, lng: centerLng } : coords;
+                return { coords: finalCoords, boundary, boundingbox };
             }
 
-            return { coords, boundary: null, boundingbox: null };
+            return { coords, boundary: null, boundingbox };
         }
     } catch (error) {
         console.error("Geocoding failed:", error);
