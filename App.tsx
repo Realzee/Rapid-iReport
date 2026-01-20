@@ -78,7 +78,7 @@ const App: React.FC = () => {
             setSchemaState('checking'); // Set state for post-login loading period
 
             const [profileResult, schemaResult] = await Promise.all([
-                supabase.from('profiles').select('*').eq('id', session.user.id).single(),
+                supabase.from('profiles').select('*, company:companies(*)').eq('id', session.user.id).single(),
                 checkDatabaseSchema()
             ]);
 
@@ -201,12 +201,15 @@ const App: React.FC = () => {
             )}
             {schemaState === 'invalid' && <GlobalSchemaErrorModal checkError={schemaError} />}
             {schemaState === 'valid' && (
-              <>
+              <div className="flex flex-col min-h-screen">
                 <Header currentView={view} setView={setView} profile={profile} />
-                <main className={mainClasses}>
+                <main className={`${mainClasses} flex-grow`}>
                   {renderView()}
                 </main>
-              </>
+                <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden">
+                    Copyright &copy; {new Date().getFullYear()} Rapid911.co.za
+                </footer>
+              </div>
             )}
           </>
         ) : (

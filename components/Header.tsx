@@ -160,7 +160,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
       <div className={headerContainerClasses}>
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center space-x-2">
-            <img src={logoUrl} alt="RAPID REPORTING Logo" className="w-auto h-10" />
+            <img src={profile.company?.logo_url || logoUrl} alt="Company Logo" className="w-auto h-10 object-contain" />
           </div>
           <nav className="hidden md:flex items-center space-x-2">
             <NavLinks />

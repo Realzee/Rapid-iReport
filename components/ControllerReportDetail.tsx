@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog } from '../types';
+import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
 import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon } from './icons';
@@ -364,6 +364,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 report={report}
                 timelineEvents={timelineEvents}
                 reporterName={reporter?.full_name}
+                company={profile.company}
             />
         </>
     );

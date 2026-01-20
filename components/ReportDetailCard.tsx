@@ -92,6 +92,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
         const fetchImageAsDataURL = async (url: string) => {
             try {
+                // Use Supabase proxy to avoid CORS issues with external images
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
                 const blob = await response.blob();
@@ -109,6 +110,9 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
         const imageUrl = report.evidence_images && report.evidence_images.length > 0 ? report.evidence_images[0] : null;
         const imageAsDataUrl = imageUrl ? await fetchImageAsDataURL(imageUrl) : null;
+        
+        const companyLogoUrl = profile.company?.logo_url;
+        const companyLogoAsDataUrl = companyLogoUrl ? await fetchImageAsDataURL(companyLogoUrl) : logoUrl;
 
         const reportImageHtml = imageAsDataUrl
             ? `<img src="${imageAsDataUrl}" alt="Evidence" style="width: 100%; height: 100%; object-fit: cover;" />`
@@ -126,7 +130,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; flex-direction: column; width: 380px; height: 580px; background-color: #FFFFFF; color: #111827; border-radius: 12px; padding: 20px; border: 1px solid #E5E7EB; box-sizing: border-box; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #EF4444; padding-bottom: 12px; margin-bottom: 12px;">
                     <h1 style="font-size: 28px; font-weight: 700; color: #111827; margin: 0; text-transform: uppercase;">BOLO Alert</h1>
-                    <img src="${logoUrl}" alt="Logo" style="width: 50px; height: auto;" />
+                    <img src="${companyLogoAsDataUrl}" alt="Logo" style="width: 50px; height: auto; object-fit: contain;" />
                 </div>
                 <div style="width: 100%; height: 200px; background-color: #F3F4F6; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #E5E7EB;">
                     ${reportImageHtml}

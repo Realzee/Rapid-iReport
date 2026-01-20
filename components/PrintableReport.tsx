@@ -1,5 +1,5 @@
 import React from 'react';
-import { Report, VehicleReport } from '../types';
+import { Report, VehicleReport, Company } from '../types';
 import { logoUrl } from '../assets/logo';
 import { format } from 'date-fns';
 import { AssignResponderIcon, ZapIcon } from './icons';
@@ -11,11 +11,12 @@ interface PrintableReportProps {
     | { id: string; type: 'assignment'; content: string; author: string | null; created_at: string; }
   )[];
   reporterName?: string | null;
+  company?: Company | null;
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
-const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvents, reporterName }) => {
+const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvents, reporterName, company }) => {
   return (
     <div className="hidden print:block p-8 font-sans text-gray-800 bg-white">
       {/* Header */}
@@ -24,7 +25,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
           <h1 className="text-3xl font-bold text-gray-900">INCIDENT REPORT</h1>
           <p className="text-gray-600">Generated: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}</p>
         </div>
-        <img src={logoUrl} alt="Logo" className="w-20 h-auto" />
+        <img src={company?.logo_url || logoUrl} alt="Logo" className="w-20 h-auto object-contain" />
       </header>
 
       {/* Main Details */}
@@ -105,8 +106,9 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
       </section>
 
       {/* Footer */}
-      <footer className="mt-8 text-center text-xs text-gray-400 border-t pt-4">
+      <footer className="mt-8 text-center text-xs text-gray-400 border-t pt-4 space-y-1">
         <p>RAPID iREPORT - Confidential</p>
+        <p>Copyright &copy; {new Date().getFullYear()} Rapid911.co.za</p>
       </footer>
     </div>
   );

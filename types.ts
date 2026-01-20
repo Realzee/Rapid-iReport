@@ -53,6 +53,7 @@ export enum RequestStatus {
 export interface Company {
     id: string;
     name: string;
+    logo_url?: string;
 }
 
 export interface Profile {
@@ -62,6 +63,7 @@ export interface Profile {
   role: UserRole;
   status: UserStatus;
   company_id?: string;
+  company?: Company;
   avatar_url?: string;
   last_seen_at?: string;
   responder_status?: ResponderStatus;
