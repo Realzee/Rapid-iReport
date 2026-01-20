@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Report, Profile, Responder, ResponderStatus, UserRole } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
@@ -22,8 +21,8 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
     const [activeTab, setActiveTab] = useState<ControllerTab>('events');
 
     useEffect(() => {
-        const fetchData = async (isInitialLoad = false) => {
-            if (isInitialLoad) setLoading(true);
+        const fetchData = async () => {
+            setLoading(true);
 
             const [
                 { data: vehicleData, error: vError },
@@ -53,21 +52,71 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
 
             setReports(combinedReports);
             setResponders(mappedResponders);
-
-            if (isInitialLoad) setLoading(false);
+            setLoading(false);
         };
 
-        fetchData(true);
+        fetchData();
 
-        const channel = supabase
-            .channel('controller-page-realtime')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, () => fetchData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, () => fetchData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, () => fetchData())
+        const handleReportChange = (payload: any) => {
+            const reportType = payload.table === 'vehicle_reports' ? 'vehicle' : 'crime';
+            setReports(currentReports => {
+                if (payload.eventType === 'INSERT') {
+                    const newReport = { ...payload.new, type: reportType };
+                    if (currentReports.some(r => r.id === newReport.id)) return currentReports;
+                    return [newReport, ...currentReports];
+                }
+                if (payload.eventType === 'UPDATE') {
+                    const updatedReport = { ...payload.new, type: reportType };
+                    return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
+                }
+                if (payload.eventType === 'DELETE') {
+                    return currentReports.filter(r => r.id !== payload.old.id);
+                }
+                return currentReports;
+            });
+        };
+
+        const handleResponderChange = (payload: any) => {
+            setResponders(currentResponders => {
+                const newProfile = payload.new as Profile;
+                const newResponder: Responder = {
+                    id: newProfile.id,
+                    full_name: newProfile.full_name,
+                    status: newProfile.responder_status || ResponderStatus.OFF_DUTY,
+                    location_coords: newProfile.location_coords || undefined,
+                };
+
+                if (payload.eventType === 'INSERT') {
+                    if (currentResponders.some(r => r.id === newProfile.id)) return currentResponders;
+                    return [...currentResponders, newResponder];
+                }
+                if (payload.eventType === 'UPDATE') {
+                    const exists = currentResponders.some(r => r.id === newResponder.id);
+                    if (exists) {
+                        return currentResponders.map(r => r.id === newResponder.id ? newResponder : r);
+                    }
+                    // If a user is updated TO a responder, they might not be in the list yet
+                    return [...currentResponders, newResponder];
+                }
+                if (payload.eventType === 'DELETE') {
+                    return currentResponders.filter(r => r.id !== payload.old.id);
+                }
+                return currentResponders;
+            });
+        };
+
+        const reportsChannel = supabase.channel('controller-page-reports')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
+            .subscribe();
+            
+        const respondersChannel = supabase.channel('controller-page-responders')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderChange)
             .subscribe();
 
         return () => {
-            supabase.removeChannel(channel);
+            supabase.removeChannel(reportsChannel);
+            supabase.removeChannel(respondersChannel);
         };
     }, []);
 
