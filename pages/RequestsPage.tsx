@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { supabase, supabaseAnonKey } from '../utils/supabase';
+import { supabase } from '../utils/supabase';
 import { RegistrationRequest, RequestStatus } from '../types';
 import { ClipboardCheckIcon, UserIcon, MailIcon, PhoneIcon, BuildingIcon } from '../components/icons';
 import { format, formatDistanceToNow } from 'date-fns';

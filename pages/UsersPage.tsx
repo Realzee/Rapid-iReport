@@ -4,7 +4,7 @@ import { Profile, Company, UserRole } from '../types';
 import UserManagementTable from '../components/UserManagementTable';
 import AddEditUserModal from '../components/AddEditUserModal';
 import DeleteUserModal from '../components/DeleteUserModal';
-import { supabase, supabaseAnonKey } from '../utils/supabase';
+import { supabase } from '../utils/supabase';
 
 const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<Profile[]>([]);
