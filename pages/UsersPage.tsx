@@ -106,17 +106,25 @@ const UsersPage: React.FC = () => {
                 return;
             }
 
+            const user_metadata: { [key: string]: any } = {
+                full_name: userToSave.full_name,
+                role: userToSave.role,
+                status: userToSave.status,
+            };
+
+            if (userToSave.company_id) {
+                user_metadata.company_id = userToSave.company_id;
+            }
+
+            if (userToSave.role === UserRole.RESPONDER && userToSave.responder_status) {
+                user_metadata.responder_status = userToSave.responder_status;
+            }
+
             const { error } = await supabase.functions.invoke('create-user', {
                 body: {
                     email: userToSave.email,
                     password: password,
-                    user_metadata: {
-                        full_name: userToSave.full_name,
-                        role: userToSave.role,
-                        status: userToSave.status,
-                        company_id: userToSave.company_id ? userToSave.company_id : null,
-                        responder_status: userToSave.role === UserRole.RESPONDER ? userToSave.responder_status : null,
-                    }
+                    user_metadata: user_metadata
                 }
             });
             
