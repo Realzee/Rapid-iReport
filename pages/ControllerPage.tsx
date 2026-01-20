@@ -15,6 +15,7 @@ type ControllerTab = 'events' | 'responders';
 
 const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
     const [reports, setReports] = useState<Report[]>([]);
+    const [allUsers, setAllUsers] = useState<Profile[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
@@ -27,31 +28,24 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
-                { data: respondersData, error: rError }
+                { data: usersData, error: uError }
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(100),
                 supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(100),
-                supabase.from('profiles').select('*').eq('role', 'responder')
+                supabase.from('profiles').select('*')
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
             if (cError) console.error('Error fetching crime reports:', cError);
-            if (rError) console.error('Error fetching responders:', rError);
+            if (uError) console.error('Error fetching users:', uError);
 
             const combinedReports = [
                 ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
                 ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
             ];
 
-            const mappedResponders: Responder[] = (respondersData || []).map((profile: Profile) => ({
-                id: profile.id,
-                full_name: profile.full_name,
-                status: profile.responder_status || ResponderStatus.OFF_DUTY,
-                location_coords: profile.location_coords || undefined,
-            }));
-
             setReports(combinedReports);
-            setResponders(mappedResponders);
+            setAllUsers(usersData || []);
             setLoading(false);
         };
 
@@ -75,33 +69,20 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
                 return currentReports;
             });
         };
-
-        const handleResponderChange = (payload: any) => {
-            setResponders(currentResponders => {
-                const newProfile = payload.new as Profile;
-                const newResponder: Responder = {
-                    id: newProfile.id,
-                    full_name: newProfile.full_name,
-                    status: newProfile.responder_status || ResponderStatus.OFF_DUTY,
-                    location_coords: newProfile.location_coords || undefined,
-                };
-
-                if (payload.eventType === 'INSERT') {
-                    if (currentResponders.some(r => r.id === newProfile.id)) return currentResponders;
-                    return [...currentResponders, newResponder];
+        
+        const handleProfileChange = (payload: any) => {
+            setAllUsers(currentUsers => {
+                 if (payload.eventType === 'INSERT') {
+                    if (currentUsers.some(u => u.id === payload.new.id)) return currentUsers;
+                    return [...currentUsers, payload.new as Profile];
                 }
                 if (payload.eventType === 'UPDATE') {
-                    const exists = currentResponders.some(r => r.id === newResponder.id);
-                    if (exists) {
-                        return currentResponders.map(r => r.id === newResponder.id ? newResponder : r);
-                    }
-                    // If a user is updated TO a responder, they might not be in the list yet
-                    return [...currentResponders, newResponder];
+                    return currentUsers.map(u => u.id === payload.new.id ? payload.new as Profile : u);
                 }
                 if (payload.eventType === 'DELETE') {
-                    return currentResponders.filter(r => r.id !== payload.old.id);
+                    return currentUsers.filter(u => u.id !== payload.old.id);
                 }
-                return currentResponders;
+                return currentUsers;
             });
         };
 
@@ -110,15 +91,26 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
             .subscribe();
             
-        const respondersChannel = supabase.channel('controller-page-responders')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderChange)
+        const profilesChannel = supabase.channel('controller-page-profiles')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleProfileChange)
             .subscribe();
 
         return () => {
             supabase.removeChannel(reportsChannel);
-            supabase.removeChannel(respondersChannel);
+            supabase.removeChannel(profilesChannel);
         };
     }, []);
+
+    useEffect(() => {
+        const responderProfiles = allUsers.filter(p => p.role === UserRole.RESPONDER);
+        const mappedResponders: Responder[] = responderProfiles.map(p => ({
+            id: p.id,
+            full_name: p.full_name,
+            status: p.responder_status || ResponderStatus.OFF_DUTY,
+            location_coords: p.location_coords || undefined,
+        }));
+        setResponders(mappedResponders);
+    }, [allUsers]);
 
     useEffect(() => {
         const sortedReports = reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
