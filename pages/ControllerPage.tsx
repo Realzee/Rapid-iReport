@@ -147,7 +147,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-3 print:hidden">
                  <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex flex-col backdrop-blur-lg max-h-[calc(100vh-8rem)]">
                     <div className="flex-shrink-0 mb-4 p-1 bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg">
                         <div className="flex">
@@ -175,14 +175,14 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
             <div className="lg:col-span-9">
                  <div className="lg:sticky lg:top-24">
                      <div className="grid grid-cols-1 lg:grid-cols-9 gap-4">
-                        <div className="lg:col-span-6 min-h-[50vh] lg:h-[calc(100vh-8rem)]">
+                        <div className="lg:col-span-5 min-h-[50vh] lg:h-[calc(100vh-8rem)] print:hidden">
                             <MapView
                                 reports={reports}
                                 responders={responders}
                                 selectedReportId={selectedReportId}
                             />
                         </div>
-                        <div className="lg:col-span-3 min-h-[50vh] lg:h-[calc(100vh-8rem)]">
+                        <div className="lg:col-span-4 min-h-[50vh] lg:h-[calc(100vh-8rem)]">
                             {selectedReport ? (
                                 <ControllerReportDetail
                                     key={selectedReport.id}
@@ -191,7 +191,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
                                     profile={profile}
                                 />
                             ) : (
-                                <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center">
+                                <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden">
                                     <p className="text-gray-500 dark:text-gray-400">No reports available or selected.</p>
                                 </div>
                             )}

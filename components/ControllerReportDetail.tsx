@@ -1,31 +1,55 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
-import { CheckCircleIcon, AssignResponderIcon } from './icons';
+import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon } from './icons';
+import PrintableReport from './PrintableReport';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
-const DetailField = ({ label, children, className }: { label: string, children: React.ReactNode, className?: string }) => (
+const DetailField: React.FC<{ label: string, children: React.ReactNode, className?: string }> = ({ label, children, className }) => (
     <div className={className}>
         <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{label}</p>
         <div className="mt-1 text-sm">{children}</div>
     </div>
 );
 
+const TimelineItem: React.FC<{
+    icon: React.ReactNode;
+    children: React.ReactNode;
+    author?: string | null;
+    time: string;
+}> = ({ icon, children, author, time }) => (
+    <div className="flex gap-4 relative">
+        <div className="absolute left-4 top-10 -bottom-2 w-0.5 bg-gray-200 dark:bg-gray-700 last:hidden"></div>
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center ring-4 ring-white dark:ring-gray-900/80 z-10">
+            {icon}
+        </div>
+        <div className="flex-grow pb-2">
+            <div className="text-sm text-gray-800 dark:text-gray-200">{children}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {author && <span className="font-semibold">{author}</span>}
+                {author && ' · '}
+                <span>{time}</span>
+            </div>
+        </div>
+    </div>
+);
+
+
 const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]; profile: Profile }> = ({ report, responders, profile }) => {
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
     const [assignmentHistory, setAssignmentHistory] = useState<AssignmentLog[]>([]);
+    const [reporter, setReporter] = useState<Profile | null>(null);
     const [newUpdate, setNewUpdate] = useState('');
     const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState<ReportStatus>(report.status);
     const [selectedResponder, setSelectedResponder] = useState<string>(report.assigned_to || '');
 
-    const updatesEndRef = useRef<HTMLDivElement>(null);
+    const timelineEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
-        updatesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        timelineEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
     useEffect(() => {
@@ -33,26 +57,21 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         setSelectedResponder(report.assigned_to || '');
 
         const fetchDetails = async () => {
-            // Fetch Updates
-            const { data: updatesData, error: updatesError } = await supabase
-                .from('report_updates')
-                .select('*, profile:profiles(full_name)')
-                .eq('report_id', report.id)
-                .order('created_at', { ascending: true });
+            const [
+                { data: updatesData, error: updatesError },
+                { data: historyData, error: historyError },
+                { data: reporterData, error: reporterError }
+            ] = await Promise.all([
+                supabase.from('report_updates').select('*, profile:profiles(full_name)').eq('report_id', report.id).order('created_at', { ascending: true }),
+                supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(full_name), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(full_name), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(full_name)`).eq('report_id', report.id).order('created_at', { ascending: false }),
+                supabase.from('profiles').select('full_name').eq('id', report.reported_by).single()
+            ]);
 
             if (updatesError) console.error("Error fetching report updates:", updatesError);
             else setUpdates(updatesData?.map(u => ({...u, user_full_name: (u.profile as any)?.full_name || 'System'})) || []);
 
-            // Fetch Assignment History
-            const { data: historyData, error: historyError } = await supabase
-                .from('assignment_logs')
-                .select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(full_name), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(full_name), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(full_name)`)
-                .eq('report_id', report.id)
-                .order('created_at', { ascending: false });
-
-            if (historyError) {
-                 console.error("Error fetching assignment history:", historyError);
-            } else if (historyData) {
+            if (historyError) console.error("Error fetching assignment history:", historyError);
+            else if (historyData) {
                 const formattedHistory = historyData.map((log: any) => ({
                     ...log,
                     assigned_from_name: log.assigned_from_profile?.full_name || null,
@@ -61,6 +80,9 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 }));
                 setAssignmentHistory(formattedHistory);
             }
+            
+            if (reporterError) console.error("Error fetching reporter:", reporterError);
+            else setReporter(reporterData as any);
         };
         
         fetchDetails();
@@ -79,7 +101,6 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             .channel(`report-history-${report.id}`)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'assignment_logs', filter: `report_id=eq.${report.id}`}, 
             async () => {
-                // Refetch history on change
                 const { data: historyData, error: historyError } = await supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(full_name), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(full_name), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(full_name)`).eq('report_id', report.id).order('created_at', { ascending: false });
                 if (!historyError && historyData) {
                     const formattedHistory = historyData.map((log: any) => ({ ...log, assigned_from_name: log.assigned_from_profile?.full_name || null, assigned_to_name: log.assigned_to_profile?.full_name || null, assigned_by_name: log.assigned_by_profile?.full_name || 'System' }));
@@ -92,11 +113,34 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             supabase.removeChannel(updatesChannel); 
             supabase.removeChannel(historyChannel);
         };
-    }, [report.id, report.status, report.assigned_to]);
+    }, [report.id, report.status, report.assigned_to, report.reported_by]);
     
+    const timelineEvents = useMemo(() => {
+        const combined = [
+            ...updates.map(u => ({
+                id: u.id,
+                type: 'update' as const,
+                content: u.content,
+                author: u.user_full_name,
+                created_at: u.created_at,
+            })),
+            ...assignmentHistory.map(h => ({
+                id: h.id,
+                type: 'assignment' as const,
+                content: h.assigned_to_name
+                    ? `Assigned to ${h.assigned_to_name}`
+                    : `Unassigned from ${h.assigned_from_name}`,
+                author: h.assigned_by_name,
+                created_at: h.created_at,
+            }))
+        ];
+        const sorted = combined.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        return sorted;
+    }, [updates, assignmentHistory]);
+
     useEffect(() => {
         scrollToBottom();
-    }, [updates]);
+    }, [timelineEvents]);
 
     const handleUpdateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -165,7 +209,6 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
         const oldResponderId = report.assigned_to;
     
-        // 1. Update the report itself (the primary action)
         const { error: reportUpdateError } = await supabase.from(tableName).update({ 
             assigned_to: responderId || null,
             status: responderId ? ReportStatus.IN_PROGRESS : ReportStatus.ACTIVE 
@@ -173,28 +216,14 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     
         if (reportUpdateError) {
             alert("Failed to dispatch responder: " + reportUpdateError.message);
-            return; // Stop if the primary action fails
+            return;
         }
     
-        // 2. Update responder statuses in the background
         const responderStatusUpdates: PromiseLike<any>[] = [];
     
-        // If a responder was unassigned or reassigned...
         if (oldResponderId && oldResponderId !== responderId) {
-            // Check if they have other active assignments before setting them to AVAILABLE.
-            const { count: otherVehicleAssignments, error: vError } = await supabase
-                .from('vehicle_reports')
-                .select('*', { count: 'exact', head: true })
-                .eq('assigned_to', oldResponderId)
-                .neq('id', report.id) // Exclude the current report from the count
-                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
-    
-            const { count: otherCrimeAssignments, error: cError } = await supabase
-                .from('crime_reports')
-                .select('*', { count: 'exact', head: true })
-                .eq('assigned_to', oldResponderId)
-                .neq('id', report.id) // Exclude the current report from the count
-                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+            const { count: otherVehicleAssignments, error: vError } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', oldResponderId).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+            const { count: otherCrimeAssignments, error: cError } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', oldResponderId).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
     
             if (!vError && !cError) {
                 const hasOtherActiveAssignments = (otherVehicleAssignments !== null && otherVehicleAssignments > 0) || (otherCrimeAssignments !== null && otherCrimeAssignments > 0);
@@ -208,7 +237,6 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             }
         }
         
-        // If a new responder was assigned...
         if (responderId && oldResponderId !== responderId) {
             responderStatusUpdates.push(
                 supabase.from('profiles').update({ responder_status: ResponderStatus.EN_ROUTE }).eq('id', responderId)
@@ -216,7 +244,6 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         }
     
         if (responderStatusUpdates.length > 0) {
-            // We don't need to wait for these, but we should log if they fail.
             Promise.all(responderStatusUpdates).then(results => {
                 const updateError = results.find(res => res.error);
                 if (updateError) {
@@ -226,156 +253,119 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         }
     };
     
-    const availableResponders = responders.filter(
-        r => r.status === ResponderStatus.AVAILABLE
-    );
-
-    const currentlyAssignedResponder = report.assigned_to
-        ? responders.find(r => r.id === report.assigned_to)
-        : undefined;
-
-    // The list of options should include all available responders.
-    // If a responder is already assigned to this report, they must also be in the list
-    // so the controller can see who is assigned, even if they aren't 'available'.
+    const handlePrint = () => {
+        window.print();
+    };
+    
+    const availableResponders = responders.filter(r => r.status === ResponderStatus.AVAILABLE);
+    const currentlyAssignedResponder = report.assigned_to ? responders.find(r => r.id === report.assigned_to) : undefined;
     const responderOptions = [...availableResponders];
     if (currentlyAssignedResponder && !availableResponders.some(r => r.id === currentlyAssignedResponder.id)) {
         responderOptions.push(currentlyAssignedResponder);
     }
-
     const statusOptions = [ReportStatus.PENDING, ReportStatus.ASSIGNED, ReportStatus.ON_SCENE, ReportStatus.RESOLVED, ReportStatus.CLOSED];
 
     return (
-        <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl h-full flex flex-col text-gray-900 dark:text-white backdrop-blur-lg shadow-lg">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700/50 flex-shrink-0">
-                <h3 className="text-lg font-bold">Report Details: {report.ob_number}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {isVehicleReport(report) ? 'Stolen Vehicle' : report.title} - {format(new Date(report.reported_at), 'MM/dd/yyyy, hh:mm a')}
-                </p>
-            </div>
-
-            <div className="p-4 flex-grow overflow-y-auto space-y-4">
-                 <div className="grid grid-cols-2 gap-4">
-                    <DetailField label="Severity">
-                        <p className="font-semibold text-md capitalize">{report.severity}</p>
-                    </DetailField>
-                    <DetailField label="Status">
-                        <span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">
-                            {report.status.replace('_', ' ')}
-                        </span>
-                    </DetailField>
+        <>
+            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl h-full flex flex-col text-gray-900 dark:text-white backdrop-blur-lg shadow-lg print:hidden">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700/50 flex-shrink-0 flex justify-between items-center">
+                    <div>
+                        <h3 className="text-lg font-bold">Report Details: {report.ob_number}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {isVehicleReport(report) ? 'Stolen Vehicle' : report.title} - {format(new Date(report.reported_at), 'MM/dd/yyyy, hh:mm a')}
+                        </p>
+                    </div>
+                    <button onClick={handlePrint} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50 rounded-full transition-colors" title="Print Report">
+                        <PrintIcon className="w-5 h-5" />
+                    </button>
                 </div>
-                
-                <DetailField label="Description">
-                    <p>{report.description}</p>
-                </DetailField>
-                
-                {isVehicleReport(report) && (
-                    <DetailField label="Vehicle Details">
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-mono text-gray-800 dark:text-white bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-xs">{report.license_plate}</span>
-                            <span>{report.vehicle_color} {report.vehicle_make} {report.vehicle_model}</span>
+
+                <div className="p-4 flex-grow overflow-y-auto space-y-6 print:overflow-visible">
+                     <div className="grid grid-cols-2 gap-4">
+                        <DetailField label="Severity"><p className="font-semibold text-md capitalize">{report.severity}</p></DetailField>
+                        <DetailField label="Status"><span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">{report.status.replace(/_/g, ' ')}</span></DetailField>
+                    </div>
+                    
+                    <DetailField label="Description"><p className="whitespace-pre-wrap">{report.description}</p></DetailField>
+                    
+                    {isVehicleReport(report) && (
+                        <DetailField label="Vehicle Details">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono text-gray-800 dark:text-white bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-xs">{report.license_plate}</span>
+                                <span>{report.vehicle_color} {report.vehicle_make} {report.vehicle_model}</span>
+                            </div>
+                        </DetailField>
+                    )}
+
+                     <DetailField label="Incident Timeline">
+                        <div className="space-y-1">
+                            {timelineEvents.length === 0 ? (
+                                <div className="text-center py-8">
+                                   <p className="text-sm text-gray-500">No updates or assignments yet.</p>
+                                </div>
+                            ) : (
+                                timelineEvents.map(event => (
+                                    <TimelineItem
+                                        key={`${event.type}-${event.id}`}
+                                        time={formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+                                        author={event.author}
+                                        icon={event.type === 'assignment' ? <AssignResponderIcon className="w-4 h-4 text-gray-500" /> : <ZapIcon className="w-4 h-4 text-gray-500" />}
+                                    >
+                                        <p>{event.content}</p>
+                                    </TimelineItem>
+                                ))
+                            )}
+                            <div ref={timelineEndRef} />
                         </div>
                     </DetailField>
-                )}
-
-                 <DetailField label="Assignment History">
-                    <div className="space-y-3 h-24 overflow-y-auto bg-gray-50 dark:bg-black/30 rounded p-2 border border-gray-200 dark:border-gray-700/50">
-                        {assignmentHistory.length === 0 ? (
-                            <div className="flex items-center justify-center h-full">
-                               <p className="text-sm text-gray-500">No assignment history.</p>
-                            </div>
-                        ) : (
-                            assignmentHistory.map(log => (
-                                <div key={log.id} className="text-xs">
-                                    <p className="text-gray-700 dark:text-gray-300">
-                                        <strong>{log.assigned_by_name}</strong>
-                                        {log.assigned_to_name ? ` assigned ` : ` unassigned `}
-                                        <strong>{log.assigned_to_name || log.assigned_from_name}</strong>.
-                                    </p>
-                                    <p className="text-gray-500 text-right">
-                                        {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
-                                    </p>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </DetailField>
-                
-                <DetailField label="Live Feed">
-                    <div className="space-y-3 h-32 overflow-y-auto bg-gray-50 dark:bg-black/30 rounded p-2 border border-gray-200 dark:border-gray-700/50">
-                        {updates.length === 0 ? (
-                            <div className="flex items-center justify-center h-full">
-                               <p className="text-sm text-gray-500">No updates for this incident yet.</p>
-                            </div>
-                        ) : (
-                            updates.map(update => (
-                                <div key={update.id}>
-                                    <p className="text-sm text-gray-800 dark:text-gray-200">{update.content}</p>
-                                    <p className="text-xs text-gray-500 text-right">
-                                        - {update.user_full_name} ({formatDistanceToNow(new Date(update.created_at), { addSuffix: true })})
-                                    </p>
-                                </div>
-                            ))
-                        )}
-                        <div ref={updatesEndRef} />
-                    </div>
-                </DetailField>
-            </div>
-
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700/50 space-y-4 flex-shrink-0">
-                <form onSubmit={handleUpdateSubmit} className="flex-shrink-0">
-                     <div className="relative">
-                        <textarea
-                            value={newUpdate}
-                            onChange={(e) => setNewUpdate(e.target.value)}
-                            placeholder="Type an update..."
-                            rows={2}
-                            className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
-                        />
-                        <button type="submit" disabled={isSubmittingUpdate} className="absolute top-2 right-2 p-2 text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 disabled:opacity-50">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                        </button>
-                    </div>
-                </form>
-
-                <div>
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block">Update Status</label>
-                     <div className="flex items-center gap-2">
-                        <select
-                            value={selectedStatus}
-                            onChange={(e) => setSelectedStatus(e.target.value as ReportStatus)}
-                            className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 capitalize"
-                        >
-                            {statusOptions.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                        </select>
-                         <button onClick={() => handleStatusUpdate(selectedStatus)} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors">
-                            <CheckCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                        </button>
-                    </div>
                 </div>
-                 <div>
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block">Dispatch Responder</label>
-                    <div className="flex items-center gap-2">
-                        <select
-                            value={selectedResponder}
-                            onChange={(e) => setSelectedResponder(e.target.value)}
-                            className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        >
-                            <option value="">{report.assigned_to ? 'Unassign' : (availableResponders.length > 0 ? 'Select Responder...' : 'No responders available')}</option>
-                            {responderOptions.map(r => (
-                                <option key={r.id} value={r.id}>
-                                    {r.full_name}
-                                    {r.status !== ResponderStatus.AVAILABLE ? ` (${r.status.replace(/_/g, ' ')})` : ''}
-                                </option>
-                            ))}
-                        </select>
-                        <button onClick={() => handleDispatchResponder(selectedResponder)} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors">
-                            <AssignResponderIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                        </button>
+
+                <div className="p-4 border-t border-gray-200 dark:border-gray-700/50 space-y-4 flex-shrink-0 bg-white/50 dark:bg-gray-900/50">
+                    <form onSubmit={handleUpdateSubmit} className="flex-shrink-0">
+                         <div className="relative">
+                            <textarea value={newUpdate} onChange={(e) => setNewUpdate(e.target.value)} placeholder="Type an update..." rows={2} className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"/>
+                            <button type="submit" disabled={isSubmittingUpdate} className="absolute top-2 right-2 p-2 text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 disabled:opacity-50">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                            </button>
+                        </div>
+                    </form>
+
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block">Update Status</label>
+                         <div className="flex items-center gap-2">
+                            <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value as ReportStatus)} className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 capitalize">
+                                {statusOptions.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                            </select>
+                             <button onClick={() => handleStatusUpdate(selectedStatus)} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                                <CheckCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                            </button>
+                        </div>
+                    </div>
+                     <div>
+                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block">Dispatch Responder</label>
+                        <div className="flex items-center gap-2">
+                            <select value={selectedResponder} onChange={(e) => setSelectedResponder(e.target.value)} className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                <option value="">{report.assigned_to ? 'Unassign' : (availableResponders.length > 0 ? 'Select Responder...' : 'No responders available')}</option>
+                                {responderOptions.map(r => (
+                                    <option key={r.id} value={r.id}>
+                                        {r.full_name}
+                                        {r.status !== ResponderStatus.AVAILABLE ? ` (${r.status.replace(/_/g, ' ')})` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <button onClick={() => handleDispatchResponder(selectedResponder)} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                                <AssignResponderIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+            <PrintableReport
+                report={report}
+                timelineEvents={timelineEvents}
+                reporterName={reporter?.full_name}
+            />
+        </>
     );
 };
 

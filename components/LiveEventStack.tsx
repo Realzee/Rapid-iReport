@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Report, VehicleReport, Severity, Responder } from '../types';
 import { format } from 'date-fns';
@@ -56,8 +55,8 @@ const LiveEventItem: React.FC<{
                 </div>
             </div>
 
-            {/* Details Grid */}
-            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            {/* Details Flexbox */}
+            <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
                 <div>
                     <p className="text-xs font-bold text-gray-400 uppercase">Severity</p>
                     <span className={`px-2 py-0.5 text-xs rounded capitalize ${severityTagStyles[report.severity]}`}>
@@ -65,18 +64,18 @@ const LiveEventItem: React.FC<{
                     </span>
                 </div>
                  {hasImages && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
                         <CameraIcon className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-500 dark:text-gray-400">{report.evidence_images?.length} image(s)</span>
-                    </div>
-                )}
-                {assignedResponderName && (
-                     <div className="col-span-2 flex items-center gap-1.5">
-                        <UserIcon className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Assigned to: <span className="font-semibold text-gray-700 dark:text-gray-300">{assignedResponderName}</span></span>
+                        <span>{report.evidence_images?.length} image(s)</span>
                     </div>
                 )}
             </div>
+            {assignedResponderName && (
+                 <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                    <UserIcon className="w-4 h-4 text-gray-400" />
+                    <span>Assigned to: <span className="font-semibold text-gray-700 dark:text-gray-300">{assignedResponderName}</span></span>
+                </div>
+            )}
 
             {/* Vehicle / Crime Specifics */}
             {isVehicleReport(report) ? (

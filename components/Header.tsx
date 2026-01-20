@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, ClipboardCheckIcon } from './icons';
 import { Profile, UserRole, Notification } from '../types';
@@ -157,7 +156,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
     : "container mx-auto px-4 sm:px-6 lg:px-8"; // Centered for others
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700/50 transition-colors duration-300">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700/50 transition-colors duration-300 print:hidden">
       <div className={headerContainerClasses}>
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center space-x-2">
