@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport, ReportStatus } from '../types';
 import StatCard from './StatCard';
@@ -32,21 +31,19 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         const fetchData = async () => {
             setLoading(true);
             const [
-                { data: vehicleData, error: vError }, { data: crimeData, error: cError },
-                { data: respondersData, error: rError }, { data: usersData, error: uError }
+                { data: vehicleData, error: vError }, 
+                { data: crimeData, error: cError },
+                { data: usersData, error: uError }
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(100),
                 supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(100),
-                supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER),
                 supabase.from('profiles').select('*')
             ]);
-            if (vError || cError || rError || uError) console.error('Data fetch error');
+            if (vError || cError || uError) console.error('Data fetch error:', vError || cError || uError);
 
             const combinedReports = [...(vehicleData || []).map(r => ({...r, type: 'vehicle'})), ...(crimeData || []).map(r => ({...r, type: 'crime'}))];
-            const mappedResponders: Responder[] = (respondersData || []).map(p => ({ id: p.id, full_name: p.full_name, status: p.responder_status || ResponderStatus.OFF_DUTY, location_coords: p.location_coords || undefined }));
             
             setReports(combinedReports);
-            setResponders(mappedResponders);
             setAllUsers(usersData || []);
             setLoading(false);
         };
@@ -58,7 +55,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
             setReports(currentReports => {
                 if (payload.eventType === 'INSERT') {
                     const newReport = { ...payload.new, type: reportType };
-                    // Avoid duplicates in case of race condition
                     if (currentReports.some(r => r.id === newReport.id)) {
                         return currentReports;
                     }
@@ -78,48 +74,49 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
             });
         };
         
-        const handleResponderUpdate = (payload: any) => {
-            if (payload.eventType === 'DELETE') {
-                setResponders(prev => prev.filter(r => r.id !== payload.old.id));
-                setAllUsers(prev => prev.filter(u => u.id !== payload.old.id));
-                return;
-            }
-            
-            const updatedProfile = payload.new as Profile;
-            const newResponderData: Responder = {
-                id: updatedProfile.id,
-                full_name: updatedProfile.full_name,
-                status: updatedProfile.responder_status || ResponderStatus.OFF_DUTY,
-                location_coords: updatedProfile.location_coords || undefined,
-            };
-
-            setResponders(prev => {
-                const index = prev.findIndex(r => r.id === updatedProfile.id);
-                if (index > -1) {
-                    const newResponders = [...prev];
-                    newResponders[index] = newResponderData;
-                    return newResponders;
+        const handleProfileChange = (payload: any) => {
+            setAllUsers(currentUsers => {
+                 if (payload.eventType === 'INSERT') {
+                    // Avoid duplicates from race conditions
+                    if (currentUsers.some(u => u.id === payload.new.id)) return currentUsers;
+                    return [...currentUsers, payload.new as Profile];
                 }
-                return [...prev, newResponderData];
-            });
-            
-            setAllUsers(prev => {
-                const index = prev.findIndex(u => u.id === updatedProfile.id);
-                if (index > -1) {
-                    return prev.map(u => u.id === updatedProfile.id ? updatedProfile : u);
+                if (payload.eventType === 'UPDATE') {
+                    return currentUsers.map(u => u.id === payload.new.id ? payload.new as Profile : u);
                 }
-                return [...prev, updatedProfile];
+                if (payload.eventType === 'DELETE') {
+                    return currentUsers.filter(u => u.id !== payload.old.id);
+                }
+                return currentUsers;
             });
         };
 
-        const channel = supabase.channel('public:reports-and-responders')
+        const reportsChannel = supabase.channel('public:reports-dashboard')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderUpdate)
+            .subscribe();
+            
+        const profilesChannel = supabase.channel('public:profiles-dashboard')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleProfileChange)
             .subscribe();
 
-        return () => { supabase.removeChannel(channel); };
+        return () => { 
+            supabase.removeChannel(reportsChannel);
+            supabase.removeChannel(profilesChannel);
+        };
     }, []);
+    
+    // Effect to derive responders from allUsers, ensuring a single source of truth
+    useEffect(() => {
+        const responderProfiles = allUsers.filter(p => p.role === UserRole.RESPONDER);
+        const mappedResponders: Responder[] = responderProfiles.map(p => ({
+            id: p.id,
+            full_name: p.full_name,
+            status: p.responder_status || ResponderStatus.OFF_DUTY,
+            location_coords: p.location_coords || undefined,
+        }));
+        setResponders(mappedResponders);
+    }, [allUsers]);
 
     const sortedReports = useMemo(() => reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()), [reports]);
     const selectedReport = useMemo(() => reports.find(r => r.id === selectedReportId), [reports, selectedReportId]);
