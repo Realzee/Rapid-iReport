@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { supabase } from '../utils/supabase';
 
@@ -36,6 +37,130 @@ const GlobalSchemaErrorModal: React.FC<GlobalSchemaErrorModalProps> = ({ checkEr
     const [fixSuccess, setFixSuccess] = useState<string | null>(null);
     const [fixError, setFixError] = useState<string | null>(null);
     
+    const sqlPart1 = `-- RAPID iREPORT - Database Setup Script - PART 1
+-- Description: This script migrates old data types and ensures all ENUM types are correct.
+-- It MUST be run separately from Part 2.
+
+-- 0. Make sure the 'uuid-ossp' extension is enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
+
+-- 1. Robustly migrate ENUM types from old "_enum" suffix to new names.
+-- This block handles renaming if possible, or migrating columns and dropping the old type if a name conflict exists.
+
+-- Migrate user_role
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role_enum') THEN
+        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+            RAISE NOTICE 'Conflict found for user_role. Migrating column...';
+            ALTER TABLE public.profiles ALTER COLUMN role DROP DEFAULT;
+            ALTER TABLE public.profiles ALTER COLUMN role TYPE public.user_role USING role::text::public.user_role;
+            ALTER TABLE public.profiles ALTER COLUMN role SET DEFAULT 'user'::public.user_role;
+            DROP TYPE public.user_role_enum;
+        ELSE
+            ALTER TYPE public.user_role_enum RENAME TO user_role;
+        END IF;
+    END IF;
+END $$;
+
+-- Migrate user_status
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status_enum') THEN
+        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN
+            RAISE NOTICE 'Conflict found for user_status. Migrating column...';
+            ALTER TABLE public.profiles ALTER COLUMN status DROP DEFAULT;
+            ALTER TABLE public.profiles ALTER COLUMN status TYPE public.user_status USING status::text::public.user_status;
+            ALTER TABLE public.profiles ALTER COLUMN status SET DEFAULT 'pending'::public.user_status;
+            DROP TYPE public.user_status_enum;
+        ELSE
+            ALTER TYPE public.user_status_enum RENAME TO user_status;
+        END IF;
+    END IF;
+END $$;
+
+-- Migrate report_status
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status_enum') THEN
+        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN
+            RAISE NOTICE 'Conflict found for report_status. Migrating columns...';
+            ALTER TABLE public.vehicle_reports ALTER COLUMN status TYPE public.report_status USING status::text::public.report_status;
+            ALTER TABLE public.crime_reports ALTER COLUMN status TYPE public.report_status USING status::text::public.report_status;
+            DROP TYPE public.report_status_enum;
+        ELSE
+            ALTER TYPE public.report_status_enum RENAME TO report_status;
+        END IF;
+    END IF;
+END $$;
+
+-- Migrate severity
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity_enum') THEN
+        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN
+            RAISE NOTICE 'Conflict found for severity. Migrating columns...';
+            ALTER TABLE public.vehicle_reports ALTER COLUMN severity TYPE public.severity USING severity::text::public.severity;
+            ALTER TABLE public.crime_reports ALTER COLUMN severity TYPE public.severity USING severity::text::public.severity;
+            DROP TYPE public.severity_enum;
+        ELSE
+            ALTER TYPE public.severity_enum RENAME TO severity;
+        END IF;
+    END IF;
+END $$;
+
+-- Migrate responder_status
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status_enum') THEN
+        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN
+            RAISE NOTICE 'Conflict found for responder_status. Migrating column...';
+            ALTER TABLE public.profiles ALTER COLUMN responder_status TYPE public.responder_status USING responder_status::text::public.responder_status;
+            DROP TYPE public.responder_status_enum;
+        ELSE
+            ALTER TYPE public.responder_status_enum RENAME TO responder_status;
+        END IF;
+    END IF;
+END $$;
+
+-- Drop deprecated type if it exists
+DROP TYPE IF EXISTS public.request_status_enum;
+
+
+-- 2. Create ENUM types if they don't exist after the migration attempt.
+-- This ensures that for a new setup, the types are created correctly.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN CREATE TYPE public.user_role AS ENUM ('user'); END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN CREATE TYPE public.user_status AS ENUM ('pending'); END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN CREATE TYPE public.report_status AS ENUM ('pending'); END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN CREATE TYPE public.severity AS ENUM ('low'); END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN CREATE TYPE public.responder_status AS ENUM ('off_duty'); END IF;
+END$$;
+
+-- 3. Add all possible values to ENUM types to ensure they are fully up-to-date.
+-- This part is idempotent and safe to run multiple times. This will fix the "invalid input for enum" error.
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'admin';
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'moderator';
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'controller';
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'responder';
+
+ALTER TYPE public.user_status ADD VALUE IF NOT EXISTS 'active';
+ALTER TYPE public.user_status ADD VALUE IF NOT EXISTS 'suspended';
+
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'active';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'assigned';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'in_progress';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'on_scene';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'resolved';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'rejected';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'recovered';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'closed';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'deleted';
+
+ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'critical';
+ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'high';
+ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'medium';
+
+ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'available';
+ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'en_route';
+ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'on_scene';`;
+
     const handleAttemptFix = async () => {
         setIsFixing(true);
         setFixSuccess(null);
@@ -109,6 +234,12 @@ const GlobalSchemaErrorModal: React.FC<GlobalSchemaErrorModalProps> = ({ checkEr
                                 <li>Once the project has restarted, click the "Refresh Application" button below.</li>
                             </ol>
                         </div>
+                        
+                        <div className="mt-4">
+                            <h4 className="font-semibold text-lg text-gray-800 dark:text-gray-100 mb-2">Part 1: Migration Script (for manual copy)</h4>
+                            <CodeBlock code={sqlPart1} />
+                        </div>
+
 
                          <div className="mt-8">
                             <button

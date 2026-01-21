@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Report, VehicleReport, Severity, Responder } from '../types';
 import { format } from 'date-fns';
@@ -7,16 +6,6 @@ import { CameraIcon, UserIcon, ClockIcon } from './icons';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
-const getReportTitle = (report: Report): string => {
-    if (isVehicleReport(report)) {
-        if (report.description.toLowerCase().includes('accident') || report.description.toLowerCase().includes('rolled')) {
-            return 'Vehicle Accident';
-        }
-        return 'Stolen Vehicle';
-    }
-    return report.title || 'Crime Report';
-};
-
 const severityTagStyles: Record<Severity, string> = {
     [Severity.CRITICAL]: 'bg-red-500/10 text-red-600 dark:text-red-400',
     [Severity.HIGH]: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
@@ -24,14 +13,13 @@ const severityTagStyles: Record<Severity, string> = {
     [Severity.LOW]: 'bg-green-500/10 text-green-600 dark:text-green-400',
 };
 
-
 const LiveEventItem: React.FC<{
     report: Report;
     isSelected: boolean;
     onSelect: () => void;
     responderMap: Map<string, string>;
 }> = ({ report, isSelected, onSelect, responderMap }) => {
-    const title = getReportTitle(report);
+    const title = isVehicleReport(report) ? report.license_plate : report.title;
     
     const borderClass = isSelected ? 'border-blue-500 ring-2 ring-blue-500/50' : 'border-gray-200 dark:border-gray-700/50';
     const bgClass = isSelected ? 'bg-blue-500/10 dark:bg-gray-900/60' : 'bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60';
@@ -42,12 +30,11 @@ const LiveEventItem: React.FC<{
     return (
         <div
             onClick={onSelect}
-            className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm ${borderClass} ${bgClass}`}
+            className={`p-2.5 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm ${borderClass} ${bgClass}`}
         >
-            {/* Header */}
             <div className="flex justify-between items-start gap-2">
-                <div>
-                    <p className="font-bold text-gray-900 dark:text-white text-base leading-tight">{title}</p>
+                <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-900 dark:text-white text-base leading-tight truncate">{title}</p>
                     <p className="font-mono text-xs text-gray-500 dark:text-gray-400">{report.ob_number}</p>
                 </div>
                 <div className="flex-shrink-0">
@@ -55,50 +42,38 @@ const LiveEventItem: React.FC<{
                 </div>
             </div>
 
-            {/* Meta Row */}
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                <span className={`px-2 py-0.5 rounded capitalize font-semibold ${severityTagStyles[report.severity]}`}>
-                    {report.severity}
-                </span>
-                {hasImages && (
-                    <div className="flex items-center gap-1">
-                        <CameraIcon className="w-3.5 h-3.5" />
-                        <span>{report.evidence_images?.length}</span>
-                    </div>
-                )}
-                {assignedResponderName && (
-                    <div className="flex items-center gap-1">
-                       <UserIcon className="w-3.5 h-3.5" />
-                       <span className="font-semibold text-gray-600 dark:text-gray-300">{assignedResponderName}</span>
-                    </div>
-                )}
-                 <div className="flex items-center gap-1">
-                    <ClockIcon className="w-3.5 h-3.5" />
-                    <span>{format(new Date(report.reported_at), 'HH:mm:ss')}</span>
-                </div>
-            </div>
-            
-            {/* Main Content */}
-            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700/50 space-y-2 text-sm">
-              {isVehicleReport(report) ? (
-                <div>
-                    <p className="font-semibold text-gray-800 dark:text-white">
-                        <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs">{report.license_plate}</span>
-                        <span className="text-gray-600 dark:text-gray-300 font-normal text-xs"> - {report.vehicle_color} {report.vehicle_make} {report.vehicle_model}</span>
+            <div className="mt-2 space-y-1.5 text-xs">
+                {isVehicleReport(report) ? (
+                    <p className="text-gray-700 dark:text-gray-300 truncate">
+                        {report.vehicle_color} {report.vehicle_make} {report.vehicle_model}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Last Seen: {report.last_seen_location}
+                ) : (
+                    <p className="text-gray-700 dark:text-gray-300 truncate">
+                       <span className="font-semibold">{report.crime_type}</span> at <span className="text-gray-500 dark:text-gray-400">{report.location}</span>
                     </p>
+                )}
+                
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-gray-500 dark:text-gray-400">
+                    <span className={`px-2 py-0.5 rounded capitalize font-semibold text-xs ${severityTagStyles[report.severity]}`}>
+                        {report.severity}
+                    </span>
+                    {hasImages && (
+                        <div className="flex items-center gap-1">
+                            <CameraIcon className="w-3.5 h-3.5" />
+                            <span>{report.evidence_images?.length}</span>
+                        </div>
+                    )}
+                    {assignedResponderName && (
+                        <div className="flex items-center gap-1 truncate">
+                           <UserIcon className="w-3.5 h-3.5" />
+                           <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{assignedResponderName}</span>
+                        </div>
+                    )}
+                     <div className="flex items-center gap-1">
+                        <ClockIcon className="w-3.5 h-3.5" />
+                        <span>{format(new Date(report.reported_at), 'HH:mm')}</span>
+                    </div>
                 </div>
-              ) : (
-                <div className="text-xs">
-                    <p><strong>Type:</strong> {report.crime_type}</p>
-                    <p><strong>Location:</strong> {report.location}</p>
-                </div>
-              )}
-              <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
-                {report.description}
-              </p>
             </div>
         </div>
     );
@@ -128,7 +103,7 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, on
                 </div>
             </div>
 
-            <div className="space-y-3 overflow-y-auto pr-2 -mr-2">
+            <div className="space-y-2 overflow-y-auto pr-2 -mr-2">
                 {reports.map(report => (
                     <LiveEventItem
                         key={report.id}
