@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, Profile, VehicleReport, ReportUpdate, ReportStatus } from '../types';
+import { Report, Profile, VehicleReport, ReportUpdate, ReportStatus, AssignmentLog } from '../types';
 import StatusBadge from './StatusBadge';
-import { MapPinIcon, EditIcon } from './icons';
+import { MapPinIcon, EditIcon, AssignResponderIcon, ZapIcon } from './icons';
 import { format, formatDistanceToNow } from 'date-fns';
 import IncidentChat from './IncidentChat';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
@@ -20,8 +20,32 @@ const markerIcon = new L.Icon({
     shadowSize: [41, 41]
 });
 
+const TimelineItem: React.FC<{
+    icon: React.ReactNode;
+    children: React.ReactNode;
+    author?: string | null;
+    time: string;
+}> = ({ icon, children, author, time }) => (
+    <div className="flex gap-4 relative">
+        <div className="absolute left-4 top-10 -bottom-2 w-0.5 bg-gray-200 dark:bg-gray-700 last:hidden"></div>
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center ring-4 ring-white dark:ring-gray-900 z-10">
+            {icon}
+        </div>
+        <div className="flex-grow pb-2">
+            <div className="text-sm text-gray-800 dark:text-gray-200">{children}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {author && <span className="font-semibold">{author}</span>}
+                {author && ' · '}
+                <span>{time}</span>
+            </div>
+        </div>
+    </div>
+);
+
+
 const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (report: Report) => void }> = ({ report, profile, onEdit }) => {
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
+    const [assignmentHistory, setAssignmentHistory] = useState<AssignmentLog[]>([]);
     const { theme } = useTheme();
 
     const lightMapUrl = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
@@ -29,19 +53,30 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
     const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
 
     useEffect(() => {
-        const fetchUpdates = async () => { 
-            const { data, error } = await supabase
-                .from('report_updates')
-                .select('*, profile:profiles(full_name)')
-                .eq('report_id', report.id)
-                .order('created_at', { ascending: true });
+        const fetchDetails = async () => { 
+            const [
+                { data: updatesData, error: updatesError },
+                { data: historyData, error: historyError }
+            ] = await Promise.all([
+                supabase.from('report_updates').select('*, profile:profiles(full_name)').eq('report_id', report.id).order('created_at', { ascending: true }),
+                supabase.from('assignment_logs').select('*, assigned_by_profile:profiles(full_name)').eq('report_id', report.id).order('created_at', { ascending: true })
+            ]);
                 
-            if (error) console.error("Error fetching updates:", error);
-            else setUpdates(data?.map(u => ({...u, user_full_name: (u.profile as any)?.full_name || 'System'})) || []);
-        };
-        fetchUpdates();
+            if (updatesError) console.error("Error fetching updates:", updatesError);
+            else setUpdates(updatesData?.map(u => ({...u, user_full_name: (u.profile as any)?.full_name || 'System'})) || []);
 
-        const channel = supabase.channel(`user-updates-${report.id}`)
+            if (historyError) console.error("Error fetching assignment history:", historyError);
+            else {
+                const formattedHistory = historyData?.map((log: any) => ({
+                    ...log,
+                    assigned_by_name: log.assigned_by_profile?.full_name || 'System',
+                })) || [];
+                setAssignmentHistory(formattedHistory);
+            }
+        };
+        fetchDetails();
+
+        const updatesChannel = supabase.channel(`user-updates-${report.id}`)
             .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'report_updates', filter: `report_id=eq.${report.id}`}, 
             async (payload) => {
                 const { data: profileData } = await supabase.from('profiles').select('full_name').eq('id', payload.new.user_id).single();
@@ -49,9 +84,47 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                 setUpdates(prev => [...prev, newUpdateWithUser as ReportUpdate]);
             })
             .subscribe();
+            
+        const historyChannel = supabase.channel(`user-history-${report.id}`)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'assignment_logs', filter: `report_id=eq.${report.id}`},
+            async (payload) => {
+                const { data: byData } = await supabase.from('profiles').select('full_name').eq('id', payload.new.assigned_by).single();
+                const newLog = { 
+                    ...payload.new,
+                    assigned_by_name: byData?.full_name || 'System',
+                }
+                setAssignmentHistory(prev => [...prev, newLog as AssignmentLog]);
+            })
+            .subscribe();
 
-        return () => { supabase.removeChannel(channel); };
+        return () => { 
+            supabase.removeChannel(updatesChannel);
+            supabase.removeChannel(historyChannel);
+        };
     }, [report.id]);
+
+    const timelineEvents = useMemo(() => {
+        const combined = [
+            ...updates.map(u => ({
+                id: u.id,
+                type: 'update' as const,
+                content: u.content,
+                author: u.user_full_name,
+                created_at: u.created_at,
+            })),
+            ...assignmentHistory.map(h => ({
+                id: h.id,
+                type: 'assignment' as const,
+                content: h.assigned_to
+                    ? `A responder has been assigned to your case.`
+                    : `Case has been unassigned from a responder.`,
+                author: 'System', // Keep this generic for user view
+                created_at: h.created_at,
+            }))
+        ];
+        // Sort chronologically
+        return combined.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    }, [updates, assignmentHistory]);
 
     const canEdit = report.status === ReportStatus.PENDING;
 
@@ -130,13 +203,17 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                 </div>
                 
                 <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-2">Official Updates</p>
-                    <div className="space-y-2 max-h-40 overflow-y-auto bg-gray-100 dark:bg-gray-800/50 p-2 rounded-md">
-                        {updates.length > 0 ? updates.map(u => (
-                            <div key={u.id} className="text-sm border-b border-gray-200 dark:border-gray-700/50 pb-1 last:border-b-0">
-                                <p className="text-gray-800 dark:text-gray-200">{u.content}</p>
-                                <p className="text-xs text-gray-500 text-right">- {u.user_full_name} ({formatDistanceToNow(new Date(u.created_at), {addSuffix: true})})</p>
-                            </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-2">Incident Timeline</p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto bg-gray-100 dark:bg-gray-800/50 p-2 rounded-md">
+                        {timelineEvents.length > 0 ? timelineEvents.map(event => (
+                           <TimelineItem
+                                key={`${event.type}-${event.id}`}
+                                time={formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+                                author={event.author}
+                                icon={event.type === 'assignment' ? <AssignResponderIcon className="w-4 h-4 text-gray-500" /> : <ZapIcon className="w-4 h-4 text-gray-500" />}
+                            >
+                                <p>{event.content}</p>
+                            </TimelineItem>
                         )) : (
                             <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No official updates posted yet.</p>
                         )}
