@@ -27,7 +27,7 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             };
         }
 
-        // Check 2: Advanced Enum validation (catches the specific "invalid input for enum" error)
+        // Check 2: Advanced Enum validation
         const enumsToValidate = [
             { name: 'report_status', frontend: Object.values(ReportStatus) },
             { name: 'user_role', frontend: Object.values(UserRole) },
@@ -36,39 +36,51 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             { name: 'responder_status', frontend: Object.values(ResponderStatus) },
         ];
         
-        const enumChecks = enumsToValidate.map(enumInfo => 
-            supabase.rpc('get_enum_values', { enum_type_name: enumInfo.name })
-        );
-
-        const results = await Promise.all(enumChecks);
-
-        for (let i = 0; i < results.length; i++) {
-            const result = results[i];
-            const enumInfo = enumsToValidate[i];
+        for (const enumInfo of enumsToValidate) {
+            // Try the correct name first (e.g., 'report_status')
+            let { data: dbValues, error: rpcError } = await supabase.rpc('get_enum_values', { enum_type_name: enumInfo.name });
             
-            if (result.error) {
-                console.error(`Database schema check failed on 'get_enum_values' RPC for enum '${enumInfo.name}':`, result.error);
-                return {
-                    status: 'invalid',
-                    error: `The check for database type '${enumInfo.name}' failed. This usually means the 'get_enum_values' function is missing from your database. Please run the setup script from DATABASE_SETUP.md. Error: ${result.error.message}`
-                };
-            }
+            let checkedTypeName = enumInfo.name;
 
-            const dbValues = result.data;
+            // If not found, try the legacy name (e.g., 'report_status_enum')
             if (!dbValues || dbValues.length === 0) {
-                console.error(`Database enum '${enumInfo.name}' not found or is empty. This can happen if the enum has a different name (e.g., '${enumInfo.name}_enum') in your database.`);
-                return {
-                    status: 'invalid',
-                    error: `The database type (enum) '${enumInfo.name}' could not be found or is empty. This suggests an old or incomplete database schema. Please run the setup scripts, which include a migration step for older schemas.`
-                };
+                const legacyName = `${enumInfo.name}_enum`;
+                const { data: legacyDbValues } = await supabase.rpc('get_enum_values', { enum_type_name: legacyName });
+                
+                if (legacyDbValues && legacyDbValues.length > 0) {
+                    dbValues = legacyDbValues;
+                    checkedTypeName = legacyName;
+                    console.warn(`Legacy enum type '${legacyName}' detected. The database schema should be updated.`);
+                } else if (rpcError) {
+                    // If the first attempt had a network/RPC error and the legacy check also failed, report the original error.
+                    console.error(`Database schema check failed on 'get_enum_values' RPC for enum '${enumInfo.name}':`, rpcError);
+                    return {
+                        status: 'invalid',
+                        error: `The check for database type '${enumInfo.name}' failed. This usually means the 'get_enum_values' function is missing from your database. Please run the setup script from DATABASE_SCHEMA.md. Error: ${rpcError.message}`
+                    };
+                }
             }
 
+            // After trying both, if we still have no values, the enum type is missing.
+            if (!dbValues || dbValues.length === 0) {
+                 console.error(`Database enum '${enumInfo.name}' (or legacy '${enumInfo.name}_enum') not found or is empty.`);
+                 return {
+                    status: 'invalid',
+                    error: `The database type (enum) '${enumInfo.name}' could not be found. This indicates an incomplete database schema. Please run the setup scripts from DATABASE_SCHEMA.md.`
+                };
+            }
+            
+            // Now validate the values of the found enum type.
             const missingValues = enumInfo.frontend.filter(feValue => !dbValues.includes(feValue));
             if (missingValues.length > 0) {
-                console.error(`Database enum mismatch for '${enumInfo.name}'. Missing values:`, missingValues);
+                console.error(`Database enum mismatch for '${checkedTypeName}'. Missing values:`, missingValues);
+                const errorMessage = checkedTypeName.endsWith('_enum')
+                    ? `Your database is using a legacy type name ('${checkedTypeName}') and is missing the value(s): [${missingValues.join(', ')}]. Please run the latest setup script from DATABASE_SCHEMA.md to migrate and fix this.`
+                    : `The database type '${checkedTypeName}' is out of sync with the application code. It's missing the value(s): [${missingValues.join(', ')}]. Please run the setup script to fix this.`;
+                
                 return {
                     status: 'invalid',
-                    error: `The database type '${enumInfo.name}' is out of sync with the application code. It's missing the value(s): [${missingValues.join(', ')}]. Please run the setup script to fix this.`
+                    error: errorMessage
                 };
             }
         }
