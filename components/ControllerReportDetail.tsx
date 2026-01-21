@@ -301,7 +301,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     </div>
                     <div className="flex items-center gap-2">
                         {canManageReport && (
-                            <button onClick={() => setArchiveModalOpen(true)} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-red-500/10 dark:hover:bg-red-500/20 hover:text-red-500 dark:hover:text-red-400 rounded-full transition-colors" title="Archive Report">
+                            <button onClick={() => setArchiveModalOpen(true)} disabled={isTerminalStatus} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-red-500/10 dark:hover:bg-red-500/20 hover:text-red-500 dark:hover:text-red-400 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Archive Report">
                                 <TrashIcon className="w-5 h-5" />
                             </button>
                         )}
