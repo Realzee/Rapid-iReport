@@ -18,18 +18,29 @@ For detailed setup instructions, refer to `DATABASE_SETUP.md`.
 
 ---
 
-### **Part 1: Update Data Types**
-Copy and run the code block below first. This part is non-transactional.
+### **Part 1: Update Data Types & Migrate Old Schema**
+Copy and run the code block below first. This part is non-transactional and now includes a migration step to fix older database setups.
 
 ```sql
 -- RAPID iREPORT - Database Setup Script - PART 1
--- Description: This script creates and updates custom ENUM types.
+-- Description: This script migrates old data types and ensures all ENUM types are correct.
 -- It MUST be run separately from Part 2.
 
 -- 0. Make sure the 'uuid-ossp' extension is enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
--- 1. Create ENUM types if they don't exist (initial creation with a single placeholder value)
+-- 1. MIGRATION: Attempt to rename old '_enum' suffixed types to the correct names.
+-- This handles databases created with an older script. It will do nothing if the old types don't exist.
+DO $$ BEGIN ALTER TYPE public.user_role_enum RENAME TO user_role; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename user_role_enum (likely OK).'; END $$;
+DO $$ BEGIN ALTER TYPE public.user_status_enum RENAME TO user_status; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename user_status_enum (likely OK).'; END $$;
+DO $$ BEGIN ALTER TYPE public.report_status_enum RENAME TO report_status; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename report_status_enum (likely OK).'; END $$;
+DO $$ BEGIN ALTER TYPE public.severity_enum RENAME TO severity; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename severity_enum (likely OK).'; END $$;
+DO $$ BEGIN ALTER TYPE public.responder_status_enum RENAME TO responder_status; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename responder_status_enum (likely OK).'; END $$;
+DO $$ BEGIN DROP TYPE IF EXISTS public.request_status_enum; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not drop request_status_enum (likely OK).'; END $$;
+
+
+-- 2. Create ENUM types if they don't exist after the migration attempt.
+-- This ensures that for a new setup, the types are created correctly.
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN CREATE TYPE public.user_role AS ENUM ('user'); END IF;
@@ -39,8 +50,8 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN CREATE TYPE public.responder_status AS ENUM ('off_duty'); END IF;
 END$$;
 
--- 2. Add all possible values to ENUM types to ensure they are up-to-date.
--- This section MUST be run outside of a transaction block.
+-- 3. Add all possible values to ENUM types to ensure they are fully up-to-date.
+-- This part is idempotent and safe to run multiple times.
 ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'admin';
 ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'moderator';
 ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'controller';
@@ -389,11 +400,11 @@ CREATE POLICY "Allow authorized profile updates" ON public.profiles
   FOR UPDATE USING (
     (id = auth.uid()) OR 
     (public.get_user_role(auth.uid()) IN ('admin', 'moderator')) OR
-    (public.get_user_role(auth.uid()) = 'controller' AND role = 'responder')
+    (public.get_user_role(auth.uid()) = 'controller' AND role::text = 'responder')
   ) WITH CHECK (
     (id = auth.uid()) OR
     (public.get_user_role(auth.uid()) IN ('admin', 'moderator')) OR
-    (public.get_user_role(auth.uid()) = 'controller' AND role = 'responder')
+    (public.get_user_role(auth.uid()) = 'controller' AND role::text = 'responder')
   );
 
 CREATE POLICY "Admins and moderators can delete profiles" ON public.profiles
@@ -418,9 +429,9 @@ DROP POLICY IF EXISTS "Allow staff to delete reports" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.vehicle_reports;
 CREATE POLICY "Allow view access to relevant users" ON public.vehicle_reports FOR SELECT USING ( ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) OR ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid())) OR (reported_by = (select auth.uid())) );
 CREATE POLICY "Allow users to create reports" ON public.vehicle_reports FOR INSERT WITH CHECK ((select auth.role()) = 'authenticated');
-CREATE POLICY "Allow authorized users to update reports" ON public.vehicle_reports FOR UPDATE USING ( ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) OR ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid())) OR (reported_by = (select auth.uid()) AND status = 'pending'::public.report_status) );
+CREATE POLICY "Allow authorized users to update reports" ON public.vehicle_reports FOR UPDATE USING ( ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) OR ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid())) OR (reported_by = (select auth.uid()) AND status::text = 'pending') );
 CREATE POLICY "Allow staff to delete reports" ON public.vehicle_reports FOR DELETE USING (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')));
-CREATE POLICY "Allow public read access to recent, active reports" ON public.vehicle_reports FOR SELECT TO anon USING ( status IN ('active', 'resolved', 'recovered', 'on_scene') AND reported_at > (now() - interval '72 hours') );
+CREATE POLICY "Allow public read access to recent, active reports" ON public.vehicle_reports FOR SELECT TO anon USING ( status::text IN ('active', 'resolved', 'recovered', 'on_scene') AND reported_at > (now() - interval '72 hours') );
 
 
 -- CRIME REPORTS
@@ -432,9 +443,9 @@ DROP POLICY IF EXISTS "Allow staff to delete reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.crime_reports;
 CREATE POLICY "Allow view access to relevant users" ON public.crime_reports FOR SELECT USING ( ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) OR ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid())) OR (reported_by = (select auth.uid())) );
 CREATE POLICY "Allow users to create reports" ON public.crime_reports FOR INSERT WITH CHECK ((select auth.role()) = 'authenticated');
-CREATE POLICY "Allow authorized users to update reports" ON public.crime_reports FOR UPDATE USING ( ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) OR ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid())) OR (reported_by = (select auth.uid()) AND status = 'pending'::public.report_status) );
+CREATE POLICY "Allow authorized users to update reports" ON public.crime_reports FOR UPDATE USING ( ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) OR ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid())) OR (reported_by = (select auth.uid()) AND status::text = 'pending') );
 CREATE POLICY "Allow staff to delete reports" ON public.crime_reports FOR DELETE USING (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')));
-CREATE POLICY "Allow public read access to recent, active reports" ON public.crime_reports FOR SELECT TO anon USING ( status IN ('active', 'resolved', 'closed', 'on_scene') AND reported_at > (now() - interval '72 hours') );
+CREATE POLICY "Allow public read access to recent, active reports" ON public.crime_reports FOR SELECT TO anon USING ( status::text IN ('active', 'resolved', 'closed', 'on_scene') AND reported_at > (now() - interval '72 hours') );
 
 -- REPORT UPDATES
 ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;
