@@ -1,4 +1,3 @@
-
 import { supabase } from './supabase';
 import { ReportStatus, UserRole, UserStatus, Severity, ResponderStatus } from '../types';
 
@@ -56,15 +55,21 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             }
 
             const dbValues = result.data;
-            if (dbValues) {
-                const missingValues = enumInfo.frontend.filter(feValue => !dbValues.includes(feValue));
-                if (missingValues.length > 0) {
-                    console.error(`Database enum mismatch for '${enumInfo.name}'. Missing values:`, missingValues);
-                    return {
-                        status: 'invalid',
-                        error: `The database type '${enumInfo.name}' is out of sync with the application code. It's missing the value(s): [${missingValues.join(', ')}]. Please run the setup script to fix this.`
-                    };
-                }
+            if (!dbValues || dbValues.length === 0) {
+                console.error(`Database enum '${enumInfo.name}' not found or is empty. This can happen if the enum has a different name (e.g., '${enumInfo.name}_enum') in your database.`);
+                return {
+                    status: 'invalid',
+                    error: `The database type (enum) '${enumInfo.name}' could not be found or is empty. This suggests an old or incomplete database schema. Please run the setup scripts, which include a migration step for older schemas.`
+                };
+            }
+
+            const missingValues = enumInfo.frontend.filter(feValue => !dbValues.includes(feValue));
+            if (missingValues.length > 0) {
+                console.error(`Database enum mismatch for '${enumInfo.name}'. Missing values:`, missingValues);
+                return {
+                    status: 'invalid',
+                    error: `The database type '${enumInfo.name}' is out of sync with the application code. It's missing the value(s): [${missingValues.join(', ')}]. Please run the setup script to fix this.`
+                };
             }
         }
 
