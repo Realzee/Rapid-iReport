@@ -1,6 +1,6 @@
 
-
 import React, { useState } from 'react';
+import { supabase } from '../utils/supabase';
 
 const CodeBlock: React.FC<{ code: string }> = ({ code }) => {
     const [copied, setCopied] = useState(false);
@@ -32,61 +32,45 @@ interface GlobalSchemaErrorModalProps {
 }
 
 const GlobalSchemaErrorModal: React.FC<GlobalSchemaErrorModalProps> = ({ checkError }) => {
-    const sqlPart1 = `-- RAPID iREPORT - Database Setup Script - PART 1
--- Description: This script migrates old data types and ensures all ENUM types are correct.
--- It MUST be run separately from Part 2.
+    const [isFixing, setIsFixing] = useState(false);
+    const [fixSuccess, setFixSuccess] = useState<string | null>(null);
+    const [fixError, setFixError] = useState<string | null>(null);
+    
+    const handleAttemptFix = async () => {
+        setIsFixing(true);
+        setFixSuccess(null);
+        setFixError(null);
 
--- 0. Make sure the 'uuid-ossp' extension is enabled
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                throw new Error("Authentication failed. Please log in as an administrator first and then refresh this page to try again.");
+            }
 
--- 1. MIGRATION: Attempt to rename old '_enum' suffixed types to the correct names.
--- This handles databases created with an older script. It will do nothing if the old types don't exist.
-DO $$ BEGIN ALTER TYPE public.user_role_enum RENAME TO user_role; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename user_role_enum (likely OK).'; END $$;
-DO $$ BEGIN ALTER TYPE public.user_status_enum RENAME TO user_status; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename user_status_enum (likely OK).'; END $$;
-DO $$ BEGIN ALTER TYPE public.report_status_enum RENAME TO report_status; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename report_status_enum (likely OK).'; END $$;
-DO $$ BEGIN ALTER TYPE public.severity_enum RENAME TO severity; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename severity_enum (likely OK).'; END $$;
-DO $$ BEGIN ALTER TYPE public.responder_status_enum RENAME TO responder_status; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename responder_status_enum (likely OK).'; END $$;
-DO $$ BEGIN DROP TYPE IF EXISTS public.request_status_enum; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not drop request_status_enum (likely OK).'; END $$;
+            const { data, error } = await supabase.functions.invoke('migrate-schema');
 
+            if (error) {
+                // The edge function itself might throw a structured error
+                if (error.message.includes("Authorization failed")) {
+                    throw new Error("Authorization failed. You must be logged in as an administrator to use this feature.");
+                } else {
+                    throw new Error(error.message);
+                }
+            }
+            
+            // The function might return an error in its body if something went wrong internally
+            if (data?.error) {
+                throw new Error(data.error);
+            }
+            
+            setFixSuccess(data.message || "The database schema has been successfully updated. Please refresh the application.");
 
--- 2. Create ENUM types if they don't exist after the migration attempt.
--- This ensures that for a new setup, the types are created correctly.
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN CREATE TYPE public.user_role AS ENUM ('user'); END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN CREATE TYPE public.user_status AS ENUM ('pending'); END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN CREATE TYPE public.report_status AS ENUM ('pending'); END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN CREATE TYPE public.severity AS ENUM ('low'); END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN CREATE TYPE public.responder_status AS ENUM ('off_duty'); END IF;
-END$$;
-
--- 3. Add all possible values to ENUM types to ensure they are fully up-to-date.
--- This part is idempotent and safe to run multiple times.
-ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'admin';
-ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'moderator';
-ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'controller';
-ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'responder';
-
-ALTER TYPE public.user_status ADD VALUE IF NOT EXISTS 'active';
-ALTER TYPE public.user_status ADD VALUE IF NOT EXISTS 'suspended';
-
-ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'active';
-ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'assigned';
-ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'in_progress';
-ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'on_scene';
-ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'resolved';
-ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'rejected';
-ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'recovered';
-ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'closed';
-ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'deleted';
-
-ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'critical';
-ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'high';
-ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'medium';
-
-ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'available';
-ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'en_route';
-ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'on_scene';`;
+        } catch (e: any) {
+            setFixError(e.message || "An unknown error occurred during the automatic fix process.");
+        } finally {
+            setIsFixing(false);
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" role="alertdialog" aria-modal="true" aria-labelledby="error-modal-title">
@@ -101,36 +85,37 @@ ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'on_scene';`;
                             <p className="mb-4">The application has detected that your database schema is out of sync. This is causing errors and must be fixed by an administrator.</p>
                              {checkError && <p className="mb-4 text-red-600 dark:text-red-400 bg-red-500/10 p-2 rounded-md font-mono text-sm">{checkError}</p>}
                         </div>
-                        <div className="mt-4 space-y-6">
-                            <div>
-                                <h4 className="font-semibold text-lg text-gray-800 dark:text-gray-100 mb-2">Instructions</h4>
-                                <ol className="list-decimal list-inside space-y-2 text-sm">
-                                    <li>Go to your <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Supabase Project Dashboard</a> and open the <strong className="font-mono bg-gray-200 dark:bg-gray-900 px-1 py-0.5 rounded">SQL Editor</strong>.</li>
-                                    <li>Copy the script from <strong className="text-green-600 dark:text-green-400">Part 1</strong> below and run it in a new query window. This new version includes a migration step to fix old schemas.</li>
-                                    <li><strong className="text-red-500">IMPORTANT:</strong> After Part 1 succeeds, open a <strong className="underline">new, separate query window</strong>.</li>
-                                    <li>Copy the full script from the `DATABASE_SCHEMA.md` file's <strong className="text-blue-600 dark:text-blue-400">Part 2</strong> and run it in the new window.</li>
-                                    <li>Once both scripts have run successfully, click the "Refresh Application" button below.</li>
-                                </ol>
-                            </div>
 
-                            <div>
-                                <h4 className="font-semibold text-green-600 dark:text-green-400 mb-2">Part 1: Update & Migrate Data Types (Run this first)</h4>
-                                <CodeBlock code={sqlPart1} />
-                            </div>
+                        <div className="mt-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                            <h4 className="font-bold text-lg text-blue-800 dark:text-blue-200">Recommended: Automatic Fix</h4>
+                            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1 mb-4">If you are logged in as an administrator, click the button below to automatically update the database schema and clear the API cache.</p>
+                            <button
+                                onClick={handleAttemptFix}
+                                disabled={isFixing}
+                                className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-100 dark:focus:ring-offset-gray-900 focus:ring-blue-500 disabled:opacity-60"
+                            >
+                                {isFixing ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div> : null}
+                                {isFixing ? 'Applying Fix...' : 'Attempt Automatic Fix'}
+                            </button>
+                            {fixSuccess && <div className="mt-3 text-sm font-semibold text-green-700 dark:text-green-300 bg-green-500/10 p-3 rounded-md">{fixSuccess}</div>}
+                            {fixError && <div className="mt-3 text-sm font-semibold text-red-700 dark:text-red-300 bg-red-500/10 p-3 rounded-md">{fixError}</div>}
+                        </div>
 
-                            <div>
-                                <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-2">Part 2: Update Tables & Logic (Run this second from `DATABASE_SCHEMA.md`)</h4>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Please copy the full script from the `DATABASE_SCHEMA.md` file in the project. The code below is a summary for reference.</p>
-                                <CodeBlock code={"-- Copy the full Part 2 script from DATABASE_SCHEMA.md"} />
-                            </div>
+                        <div className="mt-8">
+                            <h4 className="font-semibold text-lg text-gray-800 dark:text-gray-100 mb-2">Manual Fallback</h4>
+                             <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                                <li>If the automatic fix fails, go to your <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Supabase Project Dashboard</a> and open the <strong className="font-mono bg-gray-200 dark:bg-gray-900 px-1 py-0.5 rounded">SQL Editor</strong>.</li>
+                                <li>Run the scripts from **Part 1** and **Part 2** found in the `DATABASE_SCHEMA.md` file.</li>
+                                <li>Once both scripts have run successfully, click the "Refresh Application" button below.</li>
+                            </ol>
                         </div>
 
                          <div className="mt-8">
                             <button
                                 onClick={() => window.location.reload()}
-                                className="w-full inline-flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900 focus:ring-blue-500"
+                                className="w-full inline-flex items-center justify-center px-4 py-3 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900 focus:ring-blue-500"
                             >
-                                I have run the scripts, Refresh Application
+                                Refresh Application
                             </button>
                         </div>
                     </div>

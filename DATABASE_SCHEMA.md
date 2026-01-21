@@ -748,6 +748,141 @@ These server-side functions are required for secure administrative actions. Foll
     ```
     *   Deploy it: `supabase functions deploy delete-user --no-verify-jwt`.
 
+## Step 5: (New) Deploy Schema Migration Function
+
+This function allows administrators to fix database schema issues directly from the application's error modal.
+
+1.  **Deploy `migrate-schema` Function:**
+    *   Create the function: `supabase functions new migrate-schema`.
+    *   Open `supabase/functions/migrate-schema/index.ts` and replace its content with this code:
+    ```typescript
+    import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+    import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4'
+
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    }
+    
+    // The idempotent SQL script from Part 1 of the schema setup.
+    const MIGRATION_SQL = `
+    -- 0. Make sure the 'uuid-ossp' extension is enabled
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
+
+    -- 1. MIGRATION: Attempt to rename old '_enum' suffixed types to the correct names.
+    DO $$ BEGIN ALTER TYPE public.user_role_enum RENAME TO user_role; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename user_role_enum (likely OK).'; END $$;
+    DO $$ BEGIN ALTER TYPE public.user_status_enum RENAME TO user_status; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename user_status_enum (likely OK).'; END $$;
+    DO $$ BEGIN ALTER TYPE public.report_status_enum RENAME TO report_status; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename report_status_enum (likely OK).'; END $$;
+    DO $$ BEGIN ALTER TYPE public.severity_enum RENAME TO severity; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename severity_enum (likely OK).'; END $$;
+    DO $$ BEGIN ALTER TYPE public.responder_status_enum RENAME TO responder_status; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not rename responder_status_enum (likely OK).'; END $$;
+    DO $$ BEGIN DROP TYPE IF EXISTS public.request_status_enum; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Did not drop request_status_enum (likely OK).'; END $$;
+
+
+    -- 2. Create ENUM types if they don't exist after the migration attempt.
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN CREATE TYPE public.user_role AS ENUM ('user'); END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN CREATE TYPE public.user_status AS ENUM ('pending'); END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN CREATE TYPE public.report_status AS ENUM ('pending'); END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN CREATE TYPE public.severity AS ENUM ('low'); END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN CREATE TYPE public.responder_status AS ENUM ('off_duty'); END IF;
+    END$$;
+
+    -- 3. Add all possible values to ENUM types to ensure they are fully up-to-date.
+    ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'admin';
+    ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'moderator';
+    ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'controller';
+    ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'responder';
+
+    ALTER TYPE public.user_status ADD VALUE IF NOT EXISTS 'active';
+    ALTER TYPE public.user_status ADD VALUE IF NOT EXISTS 'suspended';
+
+    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'active';
+    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'assigned';
+    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'in_progress';
+    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'on_scene';
+    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'resolved';
+    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'rejected';
+    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'recovered';
+    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'closed';
+    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'deleted';
+
+    ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'critical';
+    ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'high';
+    ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'medium';
+
+    ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'available';
+    ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'en_route';
+    ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'on_scene';
+    `;
+
+    async function checkAdminAuth(req: Request, supabaseClient: SupabaseClient): Promise<void> {
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error("Authentication failed: User not found.");
+      
+      const { data: profile, error: profileError } = await supabaseClient.from('profiles').select('role').eq('id', user.id).single();
+      if (profileError) throw profileError;
+      
+      if (profile.role !== 'admin') {
+        throw new Error("Authorization failed: You must be an administrator to perform this action.");
+      }
+    }
+
+    serve(async (req) => {
+      if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+      }
+
+      try {
+        // 1. Authorization: Only allow admins to run this function.
+        const userSupabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+          { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+        );
+        await checkAdminAuth(req, userSupabaseClient);
+
+        // 2. Main Logic: Run the migration script using the admin client.
+        const supabaseAdmin = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        );
+
+        const { error: rpcError } = await supabaseAdmin.rpc('eval', { 'query': MIGRATION_SQL });
+        if (rpcError) {
+          // Check if the error is a known "type already exists" which can be ignored
+          if (rpcError.message.includes('type "user_role" already exists')) {
+            console.warn("Migration SQL produced a 'type already exists' notice, which is safe to ignore.");
+          } else {
+            throw rpcError;
+          }
+        }
+        
+        // 3. API Schema Reload: After changing the schema, we must tell PostgREST to reload its cache.
+        // We do this by sending a NOTIFY signal. This is a critical step.
+        const { error: notifyError } = await supabaseAdmin.rpc('eval', { 'query': 'NOTIFY pgrst, "reload schema"' });
+        if (notifyError) {
+            throw new Error(`Migration successful, but failed to reload API schema cache: ${notifyError.message}. Please restart the project in the Supabase dashboard.`);
+        }
+
+        return new Response(JSON.stringify({ message: "Database schema migration successful. The API schema cache has been reloaded." }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+      } catch (error) {
+        console.error("MIGRATE-SCHEMA-FUNCTION-ERROR:", error.message);
+        const status = error.message.startsWith('Authorization') ? 401 : 500;
+        return new Response(JSON.stringify({ error: error.message }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status,
+        });
+      }
+    });
+    ```
+    *   Deploy it: `supabase functions deploy migrate-schema --no-verify-jwt`.
+
 ---
 
 This completes the setup for all application features. Your application should now function correctly.
