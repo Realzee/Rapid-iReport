@@ -1,3 +1,4 @@
+
 export enum UserRole {
   ADMIN = 'admin',
   MODERATOR = 'moderator',
@@ -22,6 +23,7 @@ export enum ReportStatus {
   REJECTED = 'rejected',
   RECOVERED = 'recovered', // specific to vehicle
   CLOSED = 'closed',
+  DELETED = 'deleted',
 }
 
 export enum Severity {

@@ -19,8 +19,8 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
     useEffect(() => {
         const fetchMyReports = async () => {
             setLoading(true);
-            const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').eq('reported_by', profile.id);
-            const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').eq('reported_by', profile.id);
+            const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').eq('reported_by', profile.id).neq('status', ReportStatus.DELETED);
+            const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').eq('reported_by', profile.id).neq('status', ReportStatus.DELETED);
             
             if (vError || cError) {
                 console.error("Error fetching user reports:", vError || cError);
@@ -43,6 +43,10 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
             if (newReport.reported_by !== profile.id) return;
 
             setMyReports(prev => {
+                if (newReport.status === ReportStatus.DELETED) {
+                    return prev.filter(r => r.id !== newReport.id);
+                }
+
                 const exists = prev.some(r => r.id === newReport.id);
                 const updatedReports = exists 
                     ? prev.map(r => r.id === newReport.id ? newReport : r) 

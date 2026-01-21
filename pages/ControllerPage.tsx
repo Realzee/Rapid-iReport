@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Report, Profile, Responder, ResponderStatus, UserRole, Severity } from '../types';
+import { Report, Profile, Responder, ResponderStatus, UserRole, Severity, ReportStatus } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
 import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
@@ -63,8 +63,8 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 { data: crimeData, error: cError },
                 { data: usersData, error: uError }
             ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(100),
-                supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(100),
+                supabase.from('vehicle_reports').select('*').neq('status', ReportStatus.DELETED).order('reported_at', { ascending: false }).limit(100),
+                supabase.from('crime_reports').select('*').neq('status', ReportStatus.DELETED).order('reported_at', { ascending: false }).limit(100),
                 supabase.from('profiles').select('*')
             ]);
 
@@ -103,6 +103,9 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 }
                 if (payload.eventType === 'UPDATE') {
                     const updatedReport = { ...newReport, type: reportType };
+                    if (updatedReport.status === ReportStatus.DELETED) {
+                        return currentReports.filter(r => r.id !== updatedReport.id);
+                    }
                     return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
                 }
                 if (payload.eventType === 'DELETE') {

@@ -106,8 +106,8 @@ const PublicDashboardPage: React.FC<PublicDashboardPageProps> = ({ onShowAuth })
             const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 
             const [ { data: vData, error: vError }, { data: cData, error: cError } ] = await Promise.all([
-                supabase.from('vehicle_reports').select('id, severity, status, reported_at, location_coords').gt('reported_at', seventyTwoHoursAgo),
-                supabase.from('crime_reports').select('id, severity, status, reported_at, location_coords').gt('reported_at', seventyTwoHoursAgo)
+                supabase.from('vehicle_reports').select('id, severity, status, reported_at, location_coords').gt('reported_at', seventyTwoHoursAgo).neq('status', ReportStatus.DELETED),
+                supabase.from('crime_reports').select('id, severity, status, reported_at, location_coords').gt('reported_at', seventyTwoHoursAgo).neq('status', ReportStatus.DELETED)
             ]);
 
             if (vError) console.error("Public vehicle data error:", vError.message);

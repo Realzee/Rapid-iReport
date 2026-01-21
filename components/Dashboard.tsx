@@ -4,7 +4,7 @@ import StatCard from './StatCard';
 import ReportList from './ReportList';
 import MapView from './MapView';
 import ReportModal from './ReportModal';
-import DeleteReportModal from './DeleteReportModal';
+import ArchiveReportModal from './ArchiveReportModal';
 import ReportDetailCard from './ReportDetailCard';
 import MapModal from './MapModal';
 import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon } from './icons';
@@ -28,7 +28,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
-    const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+    const [reportToArchive, setReportToArchive] = useState<Report | null>(null);
     const { addToast } = useToast();
 
     useEffect(() => {
@@ -39,8 +39,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 { data: crimeData, error: cError },
                 { data: usersData, error: uError }
             ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(100),
-                supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(100),
+                supabase.from('vehicle_reports').select('*').neq('status', ReportStatus.DELETED).order('reported_at', { ascending: false }).limit(100),
+                supabase.from('crime_reports').select('*').neq('status', ReportStatus.DELETED).order('reported_at', { ascending: false }).limit(100),
                 supabase.from('profiles').select('*')
             ]);
             if (vError || cError || uError) console.error('Data fetch error:', vError || cError || uError);
@@ -67,6 +67,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 
                 if (payload.eventType === 'UPDATE') {
                     const updatedReport = { ...payload.new, type: reportType };
+                    if (updatedReport.status === ReportStatus.DELETED) {
+                        return currentReports.filter(r => r.id !== updatedReport.id);
+                    }
                     return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
                 }
                 
@@ -136,12 +139,21 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     
     const handleOpenNewReportModal = () => { setReportToEdit(null); setIsReportModalOpen(true); };
     const handleOpenEditReportModal = (report: Report) => { setReportToEdit(report); setIsReportModalOpen(true); };
-    const handleOpenDeleteReportModal = (report: Report) => setReportToDelete(report);
-    const confirmDeleteReport = async () => {
-        if (!reportToDelete) return;
-        const tableName = isVehicleReport(reportToDelete) ? 'vehicle_reports' : 'crime_reports';
-        await supabase.from(tableName).delete().eq('id', reportToDelete.id);
-        setReportToDelete(null);
+    const handleOpenArchiveReportModal = (report: Report) => setReportToArchive(report);
+    const confirmArchiveReport = async () => {
+        if (!reportToArchive) return;
+        const tableName = isVehicleReport(reportToArchive) ? 'vehicle_reports' : 'crime_reports';
+        const { error } = await supabase.from(tableName).update({ status: ReportStatus.DELETED }).eq('id', reportToArchive.id);
+        
+        if (error) {
+            addToast(`Error archiving report: ${error.message}`, 'error');
+        } else {
+            addToast('Report successfully archived.', 'success');
+            if (selectedReportId === reportToArchive.id) {
+                setSelectedReportId(null);
+            }
+        }
+        setReportToArchive(null);
     };
     
     const handleStatusUpdate = async (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => {
@@ -215,7 +227,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             <div className="flex flex-col lg:flex-row gap-6">
                 <div className="lg:w-[400px] lg:flex-shrink-0">
                     {selectedReport ? (
-                        <ReportDetailCard report={selectedReport} onClose={() => setSelectedReportId(null)} profile={profile} onEdit={handleOpenEditReportModal} onDelete={handleOpenDeleteReportModal} onViewOnMap={() => setIsMapModalOpen(true)} />
+                        <ReportDetailCard report={selectedReport} onClose={() => setSelectedReportId(null)} profile={profile} onEdit={handleOpenEditReportModal} onArchive={handleOpenArchiveReportModal} onViewOnMap={() => setIsMapModalOpen(true)} />
                     ) : (
                         <ReportList reports={sortedReports} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} onStatusUpdate={handleStatusUpdate} />
                     )}
@@ -227,7 +239,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 </div>
             </div>
             <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} reportToEdit={reportToEdit} />
-            <DeleteReportModal isOpen={!!reportToDelete} onClose={() => setReportToDelete(null)} onConfirm={confirmDeleteReport} reportIdentifier={reportToDelete ? (isVehicleReport(reportToDelete) ? reportToDelete.license_plate : reportToDelete.title) : ''} />
+            <ArchiveReportModal isOpen={!!reportToArchive} onClose={() => setReportToArchive(null)} onConfirm={confirmArchiveReport} reportIdentifier={reportToArchive ? (isVehicleReport(reportToArchive) ? reportToArchive.license_plate : reportToArchive.title) : ''} />
             <MapModal isOpen={isMapModalOpen} onClose={() => setIsMapModalOpen(false)} report={selectedReport} />
         </div>
     );

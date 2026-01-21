@@ -15,6 +15,8 @@ const statusStyles: Record<ReportStatus, string> = {
   [ReportStatus.ASSIGNED]: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
   [ReportStatus.ON_SCENE]: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
   [ReportStatus.CLOSED]: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  // FIX: Added missing DELETED status to satisfy the Record type.
+  [ReportStatus.DELETED]: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
 
 const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {

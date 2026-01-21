@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company } from '../types';
+import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
-import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon } from './icons';
+import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon } from './icons';
 import PrintableReport from './PrintableReport';
 import { useToast } from '../contexts/ToastContext';
 import IncidentChat from './IncidentChat';
+import ConfirmModal from './ConfirmModal';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -47,6 +48,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState<ReportStatus>(report.status);
     const [selectedResponder, setSelectedResponder] = useState<string>(report.assigned_to || '');
+    const [archiveModalOpen, setArchiveModalOpen] = useState(false);
     const { addToast } = useToast();
 
     const timelineEndRef = useRef<HTMLDivElement>(null);
@@ -54,6 +56,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const isTerminalStatus = useMemo(() => {
         return [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(report.status);
     }, [report.status]);
+    
+    const canManageReport = useMemo(() => [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role), [profile.role]);
 
     const scrollToBottom = () => {
         timelineEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -265,6 +269,17 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const handlePrint = () => {
         window.print();
     };
+
+    const handleConfirmArchive = async () => {
+        const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
+        const { error } = await supabase.from(tableName).update({ status: ReportStatus.DELETED }).eq('id', report.id);
+        if (error) {
+            addToast(`Error archiving report: ${error.message}`, 'error');
+        } else {
+            addToast('Report archived successfully.', 'success');
+        }
+        setArchiveModalOpen(false);
+    };
     
     const availableResponders = responders.filter(r => r.status === ResponderStatus.AVAILABLE);
     const currentlyAssignedResponder = report.assigned_to ? responders.find(r => r.id === report.assigned_to) : undefined;
@@ -284,9 +299,16 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                             {isVehicleReport(report) ? 'Stolen Vehicle' : report.title} - {format(new Date(report.reported_at), 'MM/dd/yyyy, hh:mm a')}
                         </p>
                     </div>
-                    <button onClick={handlePrint} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50 rounded-full transition-colors" title="Print Report">
-                        <PrintIcon className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {canManageReport && (
+                            <button onClick={() => setArchiveModalOpen(true)} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-red-500/10 dark:hover:bg-red-500/20 hover:text-red-500 dark:hover:text-red-400 rounded-full transition-colors" title="Archive Report">
+                                <TrashIcon className="w-5 h-5" />
+                            </button>
+                        )}
+                        <button onClick={handlePrint} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50 rounded-full transition-colors" title="Print Report">
+                            <PrintIcon className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="p-4 flex-grow overflow-y-auto space-y-6 print:overflow-visible">
@@ -378,6 +400,17 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 reporterName={reporter?.full_name}
                 company={profile.company}
             />
+            {archiveModalOpen && (
+                <ConfirmModal
+                    isOpen={archiveModalOpen}
+                    onClose={() => setArchiveModalOpen(false)}
+                    onConfirm={handleConfirmArchive}
+                    title="Archive Incident Report"
+                    message={`Are you sure you want to archive this report? It will be removed from all active views but remain in the archives.`}
+                    confirmText="Confirm Archive"
+                    confirmVariant="danger"
+                />
+            )}
         </>
     );
 };
