@@ -15,7 +15,8 @@ const isVehicleReport = (report: PublicReport): boolean => report.type === 'vehi
 
 const PublicStatCard: React.FC<{ title: string; value: string; icon: React.ReactElement }> = ({ title, value, icon }) => (
     <div className="bg-white/50 dark:bg-gray-900/40 backdrop-blur-md p-4 rounded-xl border border-gray-200 dark:border-gray-800 flex items-center space-x-4 shadow-sm">
-        <div className="p-3 rounded-lg bg-blue-500/10">{React.cloneElement(icon, { className: 'w-6 h-6 text-blue-500 dark:text-blue-400' })}</div>
+        {/* FIX: Cast the icon to allow passing the className prop, similar to the StatCard component. */}
+        <div className="p-3 rounded-lg bg-blue-500/10">{React.cloneElement(icon as React.ReactElement<{ className: string }>, { className: 'w-6 h-6 text-blue-500 dark:text-blue-400' })}</div>
         <div>
             <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">{title}</p>
             <p className="text-3xl font-bold text-gray-900 dark:text-white">{value}</p>

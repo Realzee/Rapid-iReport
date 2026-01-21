@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, ReportStatus, Severity, VehicleReport, Profile, Responder, UserRole, ResponderStatus } from '../types';
+// FIX: Added CrimeReport to imports.
+import { Report, ReportStatus, Severity, VehicleReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus } from '../types';
 import { format } from 'date-fns';
 import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon } from '../components/icons';
 import StatusBadge from '../components/StatusBadge';
@@ -8,11 +9,17 @@ import ReportDetailModal from '../components/ReportDetailModal';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
+// FIX: Defined a new type for sort keys to include properties from both VehicleReport and CrimeReport.
+type SortKey = keyof VehicleReport | keyof CrimeReport | 'type' | 'reported_by_name';
+
 const SortableHeader: React.FC<{
     label: string;
-    sortKey: keyof Report | 'type' | 'reported_by_name';
-    sortConfig: { key: any; direction: string } | null;
-    onSort: (key: any) => void;
+    // FIX: Updated sortKey type to use the new SortKey type.
+    sortKey: SortKey;
+    // FIX: Updated sortConfig key type for consistency.
+    sortConfig: { key: SortKey; direction: string } | null;
+    // FIX: Updated onSort key type for consistency.
+    onSort: (key: SortKey) => void;
 }> = ({ label, sortKey, sortConfig, onSort }) => {
     const isSorting = sortConfig?.key === sortKey;
     const directionIcon = isSorting ? (sortConfig.direction === 'ascending' ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />) : null;
@@ -40,7 +47,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         status: 'all',
         severity: 'all'
     });
-    const [sortConfig, setSortConfig] = useState<{ key: keyof Report | 'type' | 'reported_by_name'; direction: 'ascending' | 'descending' } | null>({ key: 'reported_at', direction: 'descending' });
+    // FIX: Updated sortConfig state to use the new SortKey type.
+    const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' } | null>({ key: 'reported_at', direction: 'descending' });
 
     const [detailModalReport, setDetailModalReport] = useState<Report | null>(null);
 
@@ -123,7 +131,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
 
     const totalPages = Math.ceil(processedReports.length / itemsPerPage);
 
-    const handleSort = (key: keyof Report | 'type' | 'reported_by_name') => {
+    // FIX: Updated handleSort parameter to use the new SortKey type.
+    const handleSort = (key: SortKey) => {
         let direction: 'ascending' | 'descending' = 'ascending';
         if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
             direction = 'descending';

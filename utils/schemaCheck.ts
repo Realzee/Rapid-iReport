@@ -1,6 +1,6 @@
 
 import { supabase } from './supabase';
-import { ReportStatus, UserRole, UserStatus, Severity, ResponderStatus, RequestStatus } from '../types';
+import { ReportStatus, UserRole, UserStatus, Severity, ResponderStatus } from '../types';
 
 interface SchemaCheckResult {
     status: 'valid' | 'invalid';
@@ -35,7 +35,6 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             { name: 'user_status', frontend: Object.values(UserStatus) },
             { name: 'severity', frontend: Object.values(Severity) },
             { name: 'responder_status', frontend: Object.values(ResponderStatus) },
-            { name: 'request_status', frontend: Object.values(RequestStatus) },
         ];
         
         const enumChecks = enumsToValidate.map(enumInfo => 
