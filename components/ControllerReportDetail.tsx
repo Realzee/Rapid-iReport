@@ -48,7 +48,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState<ReportStatus>(report.status);
     const [selectedResponder, setSelectedResponder] = useState<string>(report.assigned_to || '');
-    const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const { addToast } = useToast();
 
     const timelineEndRef = useRef<HTMLDivElement>(null);
@@ -270,15 +270,15 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         window.print();
     };
 
-    const handleConfirmArchive = async () => {
+    const handleConfirmDelete = async () => {
         const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
         const { error } = await supabase.from(tableName).update({ status: ReportStatus.DELETED }).eq('id', report.id);
         if (error) {
-            addToast(`Error archiving report: ${error.message}`, 'error');
+            addToast(`Error deleting report: ${error.message}`, 'error');
         } else {
-            addToast('Report archived successfully.', 'success');
+            addToast('Report moved to archives successfully.', 'success');
         }
-        setArchiveModalOpen(false);
+        setDeleteModalOpen(false);
     };
     
     const availableResponders = responders.filter(r => r.status === ResponderStatus.AVAILABLE);
@@ -301,7 +301,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     </div>
                     <div className="flex items-center gap-2">
                         {canManageReport && (
-                            <button onClick={() => setArchiveModalOpen(true)} disabled={isTerminalStatus} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-red-500/10 dark:hover:bg-red-500/20 hover:text-red-500 dark:hover:text-red-400 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Archive Report">
+                            <button onClick={() => setDeleteModalOpen(true)} disabled={isTerminalStatus} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-red-500/10 dark:hover:bg-red-500/20 hover:text-red-500 dark:hover:text-red-400 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Delete Report">
                                 <TrashIcon className="w-5 h-5" />
                             </button>
                         )}
@@ -400,14 +400,14 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 reporterName={reporter?.full_name}
                 company={profile.company}
             />
-            {archiveModalOpen && (
+            {deleteModalOpen && (
                 <ConfirmModal
-                    isOpen={archiveModalOpen}
-                    onClose={() => setArchiveModalOpen(false)}
-                    onConfirm={handleConfirmArchive}
-                    title="Archive Incident Report"
-                    message={`Are you sure you want to archive this report? It will be removed from all active views but remain in the archives.`}
-                    confirmText="Confirm Archive"
+                    isOpen={deleteModalOpen}
+                    onClose={() => setDeleteModalOpen(false)}
+                    onConfirm={handleConfirmDelete}
+                    title="Delete Incident Report"
+                    message={`Are you sure you want to delete this report? It will be moved to the Incident Archives and removed from all active views.`}
+                    confirmText="Confirm Delete"
                     confirmVariant="danger"
                 />
             )}

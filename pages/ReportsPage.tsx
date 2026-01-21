@@ -37,9 +37,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const [loading, setLoading] = useState(true);
     
     const [searchTerm, setSearchTerm] = useState('');
-    const [filters, setFilters] = useState<{ type: 'all' | 'vehicle' | 'crime', status: ReportStatus | 'all', severity: Severity | 'all' }>({
+    const [filters, setFilters] = useState<{ type: 'all' | 'vehicle' | 'crime', severity: Severity | 'all' }>({
         type: 'all',
-        status: 'all',
         severity: 'all'
     });
     const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' } | null>({ key: 'reported_at', direction: 'descending' });
@@ -58,8 +57,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 { data: usersData, error: uError },
                 { data: respondersData, error: rError }
             ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*'),
-                supabase.from('crime_reports').select('*'),
+                supabase.from('vehicle_reports').select('*').eq('status', ReportStatus.DELETED),
+                supabase.from('crime_reports').select('*').eq('status', ReportStatus.DELETED),
                 supabase.from('profiles').select('id, full_name'),
                 supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER)
             ]);
@@ -97,10 +96,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                     report.description.toLowerCase().includes(searchTerm.toLowerCase());
                 
                 const typeMatch = filters.type === 'all' || report.type === filters.type;
-                const statusMatch = filters.status === 'all' || report.status === filters.status;
                 const severityMatch = filters.severity === 'all' || report.severity === filters.severity;
 
-                return searchMatch && typeMatch && statusMatch && severityMatch;
+                return searchMatch && typeMatch && severityMatch;
             });
         
         if (sortConfig !== null) {
@@ -133,8 +131,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         setSortConfig({ key, direction });
     };
 
-    const handleFilterChange = (filterType: 'type' | 'status' | 'severity', value: string) => {
-        setFilters(prev => ({ ...prev, [filterType]: value }));
+    const handleFilterChange = (filterType: 'type' | 'severity', value: string) => {
+        setFilters(prev => ({ ...prev, [filterType]: value as any }));
         setCurrentPage(1);
     };
 
@@ -152,13 +150,14 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
 
     return (
         <div className="container mx-auto">
-             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Incident Archives</h2>
+             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Incident Archives</h2>
+             <p className="text-gray-500 dark:text-gray-400 mb-6">This section contains all deleted and archived incident reports for historical record-keeping.</p>
              
              <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg mb-6">
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                     <div className="relative lg:col-span-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon className="w-5 h-5 text-gray-400" /></div>
-                        <input type="text" placeholder="Search by OB, Plate, Title..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className={`${filterInputClasses} w-full !pl-10`} />
+                        <input type="text" placeholder="Search archives..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className={`${filterInputClasses} w-full !pl-10`} />
                      </div>
                      <div>
                         <select value={filters.type} onChange={e => handleFilterChange('type', e.target.value)} className={`${filterInputClasses} w-full`}>
@@ -168,9 +167,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                         </select>
                      </div>
                       <div>
-                        <select value={filters.status} onChange={e => handleFilterChange('status', e.target.value)} className={`${filterInputClasses} w-full capitalize`}>
-                            <option value="all">All Statuses</option>
-                            {Object.values(ReportStatus).map(s => <option key={s} value={s} className="capitalize">{s.replace(/_/g, ' ')}</option>)}
+                        <select value={filters.severity} onChange={e => handleFilterChange('severity', e.target.value)} className={`${filterInputClasses} w-full capitalize`}>
+                            <option value="all">All Severities</option>
+                            {Object.values(Severity).map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
                         </select>
                      </div>
                  </div>

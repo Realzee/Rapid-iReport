@@ -28,7 +28,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
-    const [reportToArchive, setReportToArchive] = useState<Report | null>(null);
+    const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
     const { addToast } = useToast();
 
     useEffect(() => {
@@ -139,21 +139,21 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     
     const handleOpenNewReportModal = () => { setReportToEdit(null); setIsReportModalOpen(true); };
     const handleOpenEditReportModal = (report: Report) => { setReportToEdit(report); setIsReportModalOpen(true); };
-    const handleOpenArchiveReportModal = (report: Report) => setReportToArchive(report);
-    const confirmArchiveReport = async () => {
-        if (!reportToArchive) return;
-        const tableName = isVehicleReport(reportToArchive) ? 'vehicle_reports' : 'crime_reports';
-        const { error } = await supabase.from(tableName).update({ status: ReportStatus.DELETED }).eq('id', reportToArchive.id);
+    const handleOpenDeleteReportModal = (report: Report) => setReportToDelete(report);
+    const confirmDeleteReport = async () => {
+        if (!reportToDelete) return;
+        const tableName = isVehicleReport(reportToDelete) ? 'vehicle_reports' : 'crime_reports';
+        const { error } = await supabase.from(tableName).update({ status: ReportStatus.DELETED }).eq('id', reportToDelete.id);
         
         if (error) {
-            addToast(`Error archiving report: ${error.message}`, 'error');
+            addToast(`Error deleting report: ${error.message}`, 'error');
         } else {
-            addToast('Report successfully archived.', 'success');
-            if (selectedReportId === reportToArchive.id) {
+            addToast('Report successfully moved to archives.', 'success');
+            if (selectedReportId === reportToDelete.id) {
                 setSelectedReportId(null);
             }
         }
-        setReportToArchive(null);
+        setReportToDelete(null);
     };
     
     const handleStatusUpdate = async (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => {
@@ -227,7 +227,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             <div className="flex flex-col lg:flex-row gap-6">
                 <div className="lg:w-[400px] lg:flex-shrink-0">
                     {selectedReport ? (
-                        <ReportDetailCard report={selectedReport} onClose={() => setSelectedReportId(null)} profile={profile} onEdit={handleOpenEditReportModal} onArchive={handleOpenArchiveReportModal} onViewOnMap={() => setIsMapModalOpen(true)} />
+                        <ReportDetailCard report={selectedReport} onClose={() => setSelectedReportId(null)} profile={profile} onEdit={handleOpenEditReportModal} onDelete={handleOpenDeleteReportModal} onViewOnMap={() => setIsMapModalOpen(true)} />
                     ) : (
                         <ReportList reports={sortedReports} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} onStatusUpdate={handleStatusUpdate} />
                     )}
@@ -239,7 +239,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 </div>
             </div>
             <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} reportToEdit={reportToEdit} />
-            <ArchiveReportModal isOpen={!!reportToArchive} onClose={() => setReportToArchive(null)} onConfirm={confirmArchiveReport} reportIdentifier={reportToArchive ? (isVehicleReport(reportToArchive) ? reportToArchive.license_plate : reportToArchive.title) : ''} />
+            <ArchiveReportModal isOpen={!!reportToDelete} onClose={() => setReportToDelete(null)} onConfirm={confirmDeleteReport} reportIdentifier={reportToDelete ? (isVehicleReport(reportToDelete) ? reportToDelete.license_plate : reportToDelete.title) : ''} />
             <MapModal isOpen={isMapModalOpen} onClose={() => setIsMapModalOpen(false)} report={selectedReport} />
         </div>
     );
