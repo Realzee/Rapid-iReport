@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { ReportStatus } from '../types';
 
 interface SchemaCheckResult {
     status: 'valid' | 'invalid';
@@ -18,24 +17,41 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             };
         }
         
-        // Check 2: Advanced Enum validation via canary query.
-        // This is more reliable than RPC as it uses the same PostgREST layer as the main app,
-        // catching issues like stale schema caches.
-        const { error: canaryError } = await supabase
-            .from('vehicle_reports')
-            .select('id')
-            .eq('status', ReportStatus.DELETED) // This filter forces PostgREST to validate the 'deleted' enum value.
-            .limit(0); // We don't need any data, just the query validation.
+        // Check 2: Advanced Enum validation using RPC.
+        // This is more robust as it doesn't rely on table RLS policies.
+        const { data: enumValues, error: rpcError } = await supabase.rpc('get_enum_values', { enum_type_name: 'report_status' });
 
-        if (canaryError && canaryError.code === '22P02' && canaryError.message.includes('enum')) {
-            console.error("Database schema check failed on canary query:", canaryError);
-            return {
+        if (rpcError) {
+            // If the function doesn't exist, it's a schema issue.
+            if (rpcError.code === '42883') { // "function does not exist"
+                 console.error("Database schema check failed: 'get_enum_values' function missing.", rpcError);
+                 return {
+                    status: 'invalid',
+                    error: `Database Schema Outdated: The helper function 'get_enum_values' is missing. This indicates an old database schema. Please run the full setup script from DATABASE_SCHEMA.md.`
+                 };
+            }
+            // For other errors, we can be lenient or log them. For now, we will be strict.
+            console.error("Database schema check failed on RPC 'get_enum_values':", rpcError);
+             return {
                 status: 'invalid',
-                error: `Database Schema Mismatch: The application requires a database feature (enum value: 'deleted') that is missing. This usually means the database was set up with an older script. The specific error from the API is: "${canaryError.message}". Administrators can use the "Attempt Automatic Fix" button to resolve this. Other users should contact an administrator.`
+                error: `An error occurred while checking enum types: ${rpcError.message}`
             };
         }
-        // We deliberately ignore other errors (like RLS blocking access) because those aren't fatal schema validation failures.
-        // The goal here is to specifically catch the '22P02' enum error that breaks the app's data fetching.
+
+        if (!enumValues || !Array.isArray(enumValues)) {
+            return {
+                status: 'invalid',
+                error: `Database Schema Malformed: The function 'get_enum_values' returned an unexpected result.`
+            };
+        }
+
+        // Now check if 'deleted' is in the list of values.
+        if (!enumValues.includes('deleted')) {
+            return {
+                status: 'invalid',
+                error: `Database Schema Mismatch: The application requires a database feature (enum value: 'deleted' for 'report_status') that is missing. This usually means the database was set up with an older script. Administrators can use the "Attempt Automatic Fix" button to resolve this.`
+            };
+        }
 
         return { status: 'valid' };
 
