@@ -30,11 +30,11 @@ const LiveEventItem: React.FC<{
     return (
         <div
             onClick={onSelect}
-            className={`p-2.5 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm ${borderClass} ${bgClass}`}
+            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm ${borderClass} ${bgClass}`}
         >
-            <div className="flex justify-between items-start gap-2">
+            <div className="flex justify-between items-center gap-2">
                 <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-900 dark:text-white text-base leading-tight truncate">{title}</p>
+                    <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight truncate">{title}</p>
                     <p className="font-mono text-xs text-gray-500 dark:text-gray-400">{report.ob_number}</p>
                 </div>
                 <div className="flex-shrink-0">
@@ -42,37 +42,29 @@ const LiveEventItem: React.FC<{
                 </div>
             </div>
 
-            <div className="mt-2 space-y-1.5 text-xs">
-                {isVehicleReport(report) ? (
-                    <p className="text-gray-700 dark:text-gray-300 truncate">
-                        {report.vehicle_color} {report.vehicle_make} {report.vehicle_model}
-                    </p>
-                ) : (
-                    <p className="text-gray-700 dark:text-gray-300 truncate">
-                       <span className="font-semibold">{report.crime_type}</span> at <span className="text-gray-500 dark:text-gray-400">{report.location}</span>
-                    </p>
-                )}
-                
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-gray-500 dark:text-gray-400">
-                    <span className={`px-2 py-0.5 rounded capitalize font-semibold text-xs ${severityTagStyles[report.severity]}`}>
-                        {report.severity}
-                    </span>
-                    {hasImages && (
-                        <div className="flex items-center gap-1">
-                            <CameraIcon className="w-3.5 h-3.5" />
-                            <span>{report.evidence_images?.length}</span>
-                        </div>
-                    )}
-                    {assignedResponderName && (
-                        <div className="flex items-center gap-1 truncate">
-                           <UserIcon className="w-3.5 h-3.5" />
-                           <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{assignedResponderName}</span>
-                        </div>
-                    )}
-                     <div className="flex items-center gap-1">
-                        <ClockIcon className="w-3.5 h-3.5" />
-                        <span>{format(new Date(report.reported_at), 'HH:mm')}</span>
+            <div className="mt-1.5 text-xs text-gray-700 dark:text-gray-300">
+                 <p className="text-gray-500 dark:text-gray-400 line-clamp-2">{report.description}</p>
+            </div>
+
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                <span className={`px-1.5 py-0.5 rounded capitalize font-semibold text-xs ${severityTagStyles[report.severity]}`}>
+                    {report.severity}
+                </span>
+                {hasImages && (
+                    <div className="flex items-center gap-1">
+                        <CameraIcon className="w-3.5 h-3.5" />
+                        <span>{report.evidence_images?.length}</span>
                     </div>
+                )}
+                {assignedResponderName && (
+                    <div className="flex items-center gap-1 truncate">
+                        <UserIcon className="w-3.5 h-3.5" />
+                        <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{assignedResponderName}</span>
+                    </div>
+                )}
+                <div className="flex items-center gap-1 ml-auto">
+                    <ClockIcon className="w-3.5 h-3.5" />
+                    <span>{format(new Date(report.reported_at), 'HH:mm')}</span>
                 </div>
             </div>
         </div>

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, BuildingIcon } from '../components/icons';
 import { Company, Profile } from '../types';

@@ -44,7 +44,12 @@ const GlobalSchemaErrorModal: React.FC<GlobalSchemaErrorModalProps> = ({ checkEr
 -- 0. Make sure the 'uuid-ossp' extension is enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
--- 1. Robustly migrate ENUM types from old "_enum" suffix to new names.
+-- 1. Drop functions that lock the profiles.role column type due to dependencies.
+-- Using CASCADE will also drop dependent RLS policies and trigger functions. They will be recreated in Part 2.
+DROP FUNCTION IF EXISTS public.get_user_role(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.create_staff_notification(text, text, text, uuid, text[]) CASCADE;
+
+-- 2. Robustly migrate ENUM types from old "_enum" suffix to new names.
 -- This block handles renaming if possible, or migrating columns and dropping the old type if a name conflict exists.
 
 -- Migrate user_role
@@ -122,7 +127,7 @@ END $$;
 DROP TYPE IF EXISTS public.request_status_enum;
 
 
--- 2. Create ENUM types if they don't exist after the migration attempt.
+-- 3. Create ENUM types if they don't exist after the migration attempt.
 -- This ensures that for a new setup, the types are created correctly.
 DO $$
 BEGIN
@@ -133,7 +138,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN CREATE TYPE public.responder_status AS ENUM ('off_duty'); END IF;
 END$$;
 
--- 3. Add all possible values to ENUM types to ensure they are fully up-to-date.
+-- 4. Add all possible values to ENUM types to ensure they are fully up-to-date.
 -- This part is idempotent and safe to run multiple times. This will fix the "invalid input for enum" error.
 ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'admin';
 ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'moderator';
@@ -159,7 +164,22 @@ ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'medium';
 
 ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'available';
 ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'en_route';
-ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'on_scene';`;
+ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'on_scene';
+
+-- 5. Re-create the get_user_role function that was dropped.
+-- The other dropped items (policies, triggers, etc.) will be recreated in Part 2.
+CREATE OR REPLACE FUNCTION public.get_user_role(p_user_id uuid)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  user_role_text text;
+BEGIN
+  SELECT role::text INTO user_role_text FROM public.profiles WHERE id = p_user_id;
+  RETURN user_role_text;
+END;
+$$;`;
 
     const handleAttemptFix = async () => {
         setIsFixing(true);

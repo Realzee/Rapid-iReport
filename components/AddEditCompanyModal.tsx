@@ -78,27 +78,29 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Company Logo</label>
                         <div className="mt-2 flex items-center gap-4">
-                            <div className="flex-shrink-0 h-20 w-20 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-200 dark:border-gray-700">
+                            <div className="h-16 w-16 flex-shrink-0 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center border border-gray-300 dark:border-gray-700">
                                 {logoPreview ? (
                                     <img src={logoPreview} alt="Logo preview" className="h-full w-full object-contain rounded-md" />
                                 ) : (
-                                    <BuildingIcon className="w-10 h-10 text-gray-400" />
+                                    <BuildingIcon className="h-8 w-8 text-gray-400" />
                                 )}
                             </div>
                             <div className="flex-grow">
-                                <input type="file" id="logo-upload" className="sr-only" onChange={handleFileChange} accept="image/png, image/jpeg, image/svg+xml" />
-                                <label htmlFor="logo-upload" className="cursor-pointer px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700/50 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                    {logoPreview ? 'Change Logo' : 'Upload Logo'}
+                                <label htmlFor="logo-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                    <UploadCloudIcon className="w-5 h-5"/>
+                                    <span>{logoFile ? 'Change logo' : 'Upload logo'}</span>
                                 </label>
+                                <input id="logo-upload" name="logo-upload" type="file" className="sr-only" accept="image/png, image/jpeg, image/svg+xml" onChange={handleFileChange} />
                                 {logoPreview && (
-                                    <button type="button" onClick={handleRemoveLogo} className="ml-2 p-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition" title="Remove logo">
-                                        <TrashIcon className="w-5 h-5"/>
+                                    <button type="button" onClick={handleRemoveLogo} className="mt-2 flex items-center gap-2 text-xs text-red-600 dark:text-red-400 hover:underline">
+                                        <TrashIcon className="w-3.5 h-3.5" />
+                                        Remove logo
                                     </button>
                                 )}
                             </div>
                         </div>
                     </div>
-                    
+
                     <div className="pt-6 flex justify-end space-x-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
                         <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-md hover:scale-105 transition-transform duration-300">Save Company</button>

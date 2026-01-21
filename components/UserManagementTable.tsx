@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Profile, Company, UserRole, UserStatus } from '../types';
 import { EditIcon, TrashIcon } from './icons';
