@@ -80,15 +80,15 @@ const GlobalSchemaErrorModal: React.FC<GlobalSchemaErrorModalProps> = ({ checkEr
                         <svg className="h-10 w-10 text-yellow-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.03-1.742 3.03H4.42c-1.532 0-2.492-1.696-1.742-3.03l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
                     </div>
                     <div className="ml-4 flex-grow">
-                        <h3 id="error-modal-title" className="text-xl font-bold text-gray-900 dark:text-white">Database Update Required</h3>
+                        <h3 id="error-modal-title" className="text-xl font-bold text-gray-900 dark:text-white">Database API Out of Sync</h3>
                         <div className="mt-2 text-md text-gray-600 dark:text-gray-300">
-                            <p className="mb-4">The application has detected that your database schema is out of sync. This is causing errors and must be fixed by an administrator.</p>
+                            <p className="mb-4">The application has detected that its view of the database is out of sync. This is typically due to a stale API cache on the server after a database update and must be resolved by an administrator.</p>
                              {checkError && <p className="mb-4 text-red-600 dark:text-red-400 bg-red-500/10 p-2 rounded-md font-mono text-sm">{checkError}</p>}
                         </div>
 
                         <div className="mt-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
                             <h4 className="font-bold text-lg text-blue-800 dark:text-blue-200">Recommended: Automatic Fix</h4>
-                            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1 mb-4">If you are logged in as an administrator, click the button below to automatically update the database schema and clear the API cache.</p>
+                            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1 mb-4">This action will run the required database migration and, most importantly, force the server's API cache to clear. This is the recommended one-click solution.</p>
                             <button
                                 onClick={handleAttemptFix}
                                 disabled={isFixing}
@@ -105,8 +105,9 @@ const GlobalSchemaErrorModal: React.FC<GlobalSchemaErrorModalProps> = ({ checkEr
                             <h4 className="font-semibold text-lg text-gray-800 dark:text-gray-100 mb-2">Manual Fallback</h4>
                              <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600 dark:text-gray-400">
                                 <li>If the automatic fix fails, go to your <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Supabase Project Dashboard</a> and open the <strong className="font-mono bg-gray-200 dark:bg-gray-900 px-1 py-0.5 rounded">SQL Editor</strong>.</li>
-                                <li>Run the scripts from **Part 1** and **Part 2** found in the `DATABASE_SCHEMA.md` file.</li>
-                                <li>Once both scripts have run successfully, click the "Refresh Application" button below.</li>
+                                <li>Run the scripts from **Part 1** and **Part 2** found in the `DATABASE_SCHEMA.md` file to ensure the schema is correct.</li>
+                                <li><strong className="text-yellow-600 dark:text-yellow-300">Most importantly:</strong> If the error persists, you must restart your project to clear the API cache. Go to <strong className="font-mono bg-gray-200 dark:bg-gray-900 px-1 py-0.5 rounded">Project Settings &gt; General</strong> and click "Restart Project".</li>
+                                <li>Once the project has restarted, click the "Refresh Application" button below.</li>
                             </ol>
                         </div>
 

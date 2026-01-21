@@ -31,7 +31,7 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             console.error("Database schema check failed on canary query:", canaryError);
             return {
                 status: 'invalid',
-                error: `The database 'report_status' type is out of sync. This can be caused by an outdated schema or a stale API cache after an update. Please ask your administrator to run the scripts in DATABASE_SCHEMA.md and, if needed, restart the project in the Supabase dashboard to clear the cache. Error details: ${canaryError.message}`
+                error: `Your application is out of sync with the database API. This is a common issue caused by a stale API cache after a database update. The specific error is: "${canaryError.message}". Please use the "Attempt Automatic Fix" button on the error screen. This is the fastest way to resolve this.`
             };
         }
         // We deliberately ignore other errors (like RLS blocking access) because those aren't fatal schema validation failures.
