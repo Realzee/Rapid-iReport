@@ -825,8 +825,8 @@ This function allows administrators to fix database schema issues directly from 
       const { data: profile, error: profileError } = await supabaseClient.from('profiles').select('role').eq('id', user.id).single();
       if (profileError) throw profileError;
       
-      if (profile.role !== 'admin') {
-        throw new Error("Authorization failed: You must be an administrator to perform this action.");
+      if (!['admin', 'moderator'].includes(profile.role)) {
+        throw new Error("Authorization failed: You must be an administrator or moderator to perform this action.");
       }
     }
 

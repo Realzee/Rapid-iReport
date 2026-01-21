@@ -31,7 +31,7 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             console.error("Database schema check failed on canary query:", canaryError);
             return {
                 status: 'invalid',
-                error: `Your application is out of sync with the database API. This is a common issue caused by a stale API cache after a database update. The specific error is: "${canaryError.message}". Please use the "Attempt Automatic Fix" button on the error screen. This is the fastest way to resolve this.`
+                error: `Database Schema Mismatch: The application requires a database feature (enum value: 'deleted') that is missing. This usually means the database was set up with an older script. The specific error from the API is: "${canaryError.message}". Administrators can use the "Attempt Automatic Fix" button to resolve this. Other users should contact an administrator.`
             };
         }
         // We deliberately ignore other errors (like RLS blocking access) because those aren't fatal schema validation failures.

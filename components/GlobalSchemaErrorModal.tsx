@@ -50,12 +50,7 @@ const GlobalSchemaErrorModal: React.FC<GlobalSchemaErrorModalProps> = ({ checkEr
             const { data, error } = await supabase.functions.invoke('migrate-schema');
 
             if (error) {
-                // The edge function itself might throw a structured error
-                if (error.message.includes("Authorization failed")) {
-                    throw new Error("Authorization failed. You must be logged in as an administrator to use this feature.");
-                } else {
-                    throw new Error(error.message);
-                }
+                throw error;
             }
             
             // The function might return an error in its body if something went wrong internally
@@ -66,7 +61,11 @@ const GlobalSchemaErrorModal: React.FC<GlobalSchemaErrorModalProps> = ({ checkEr
             setFixSuccess(data.message || "The database schema has been successfully updated. Please refresh the application.");
 
         } catch (e: any) {
-            setFixError(e.message || "An unknown error occurred during the automatic fix process.");
+            if (e.message && (e.message.includes('401') || e.message.toLowerCase().includes('unauthorized'))) {
+                setFixError("Authorization Failed: This action requires Administrator or Moderator permissions. Please log in with an authorized account and try again.");
+            } else {
+                setFixError(e.message || "An unknown error occurred during the automatic fix process.");
+            }
         } finally {
             setIsFixing(false);
         }
@@ -88,7 +87,7 @@ const GlobalSchemaErrorModal: React.FC<GlobalSchemaErrorModalProps> = ({ checkEr
 
                         <div className="mt-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
                             <h4 className="font-bold text-lg text-blue-800 dark:text-blue-200">Recommended: Automatic Fix</h4>
-                            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1 mb-4">This action will run the required database migration and, most importantly, force the server's API cache to clear. This is the recommended one-click solution.</p>
+                            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1 mb-4">If you are logged in as an <strong className="font-semibold">Administrator</strong> or <strong className="font-semibold">Moderator</strong>, click the button below to automatically update the schema and clear the API cache.</p>
                             <button
                                 onClick={handleAttemptFix}
                                 disabled={isFixing}
