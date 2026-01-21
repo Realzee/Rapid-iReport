@@ -96,8 +96,11 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres, an
 CREATE TABLE IF NOT EXISTS public.companies (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
     name text NOT NULL,
+    logo_url text,
     CONSTRAINT companies_pkey PRIMARY KEY (id)
 );
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS logo_url text;
+
 
 -- Profiles Table (linked to auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (

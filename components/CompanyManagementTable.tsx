@@ -1,6 +1,6 @@
 import React from 'react';
 import { Company, Profile } from '../types';
-import { EditIcon, TrashIcon, UsersIcon } from './icons';
+import { EditIcon, TrashIcon, UsersIcon, BuildingIcon } from './icons';
 
 interface CompanyManagementTableProps {
     companies: Company[];
@@ -29,7 +29,20 @@ const CompanyManagementTable: React.FC<CompanyManagementTableProps> = ({ compani
                     {companies.map((company) => (
                         <tr key={company.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors duration-200">
                             <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900 dark:text-white">{company.name}</div>
+                                <div className="flex items-center">
+                                    <div className="flex-shrink-0 h-10 w-10">
+                                        {company.logo_url ? (
+                                            <img className="h-10 w-10 rounded-md object-contain" src={company.logo_url} alt={`${company.name} logo`} />
+                                        ) : (
+                                            <div className="h-10 w-10 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-md">
+                                                <BuildingIcon className="w-6 h-6 text-gray-400" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="ml-4">
+                                        <div className="text-sm font-medium text-gray-900 dark:text-white">{company.name}</div>
+                                    </div>
+                                </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                                 <div className="flex items-center">

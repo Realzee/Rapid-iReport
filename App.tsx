@@ -12,7 +12,8 @@ import ProfilePage from './pages/ProfilePage';
 import ControllerPage from './pages/ControllerPage';
 import ResponderPage from './pages/ResponderPage';
 import { supabase } from './utils/supabase';
-import { Session } from '@supabase/supabase-js';
+// FIX: Changed to `import type` for better compatibility with modern TypeScript module resolution for Supabase v2. This may resolve downstream type inference issues.
+import type { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from './types';
 import { checkDatabaseSchema } from './utils/schemaCheck';
 import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
@@ -207,7 +208,7 @@ const App: React.FC = () => {
                   {renderView()}
                 </main>
                 <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden">
-                    Copyright &copy; {new Date().getFullYear()} Rapid911.co.za
+                    Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)
                 </footer>
               </div>
             )}

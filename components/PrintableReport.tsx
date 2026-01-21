@@ -108,7 +108,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
       {/* Footer */}
       <footer className="mt-8 text-center text-xs text-gray-400 border-t pt-4 space-y-1">
         <p>RAPID iREPORT - Confidential</p>
-        <p>Copyright &copy; {new Date().getFullYear()} Rapid911.co.za</p>
+        <p>Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)</p>
       </footer>
     </div>
   );

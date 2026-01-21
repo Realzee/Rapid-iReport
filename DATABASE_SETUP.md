@@ -17,33 +17,22 @@
 
 ---
 
-## Step 1A: Create the 'evidence' Storage Bucket
+## Step 1: Create Storage Buckets
 
-This is for incident-related images. If you've already done this, you can skip to Step 1B.
+You need to create three public buckets for storing images.
 
-1.  Navigate to your Supabase Project dashboard.
-2.  In the left sidebar, go to **Storage**.
-3.  Click the **+ New Bucket** button.
-4.  Enter the bucket name exactly as `evidence`.
-5.  Toggle the **Public bucket** switch to ON.
-6.  Click **Create Bucket**.
-
-## Step 1B: Create the 'avatars' Storage Bucket
-
-This is for user profile pictures.
-
-1.  While in the **Storage** section, click **+ New Bucket** again.
-2.  Enter the bucket name exactly as `avatars`.
-3.  Toggle the **Public bucket** switch to ON.
-4.  Click **Create Bucket**.
-
+1.  Navigate to your Supabase Project dashboard and go to **Storage** in the left sidebar.
+2.  Create the following buckets, ensuring the **"Public bucket"** switch is toggled ON for each:
+    *   `evidence` (for incident-related images)
+    *   `avatars` (for user profile pictures)
+    *   `company-logos` (for company branding)
 
 ## Step 2: Run the Complete Database Setup Script
 
 This comprehensive script creates all necessary types, tables, functions, and security policies. It is designed to be **idempotent**, meaning you can run it on a new project or an existing one without causing errors. It will only add the pieces that are missing.
 
 > [!IMPORTANT]
-> This script is now in **two parts**. You must run each part in a **separate query window** in the Supabase SQL Editor. Running them together in the same window will cause an error.
+> This script is in **two parts**. You must run each part in a **separate query window** in the Supabase SQL Editor. Running them together in the same window will cause an error.
 
 1.  Open the `DATABASE_SCHEMA.md` file located in the root of this project.
 2.  Copy the entire SQL code block from **Part 1**.
@@ -53,7 +42,54 @@ This comprehensive script creates all necessary types, tables, functions, and se
 6.  Copy the entire SQL code block from **Part 2** from the `DATABASE_SCHEMA.md` file.
 7.  Paste it into the new window and click **RUN**.
 
-## Step 3: Deploy Supabase Edge Functions
+## Step 3: Add Storage Security Policies (RLS)
+
+After setting up the tables, you must secure your storage buckets with Row Level Security policies. This script is now idempotent, meaning you can run it multiple times without causing errors.
+
+1.  Return to the **SQL Editor** in your Supabase dashboard.
+2.  Run the following script to create the necessary policies for all three buckets. This allows public read access while restricting uploads and modifications to authorized users and giving full control to administrators.
+
+```sql
+-- Policies for 'avatars' bucket
+DROP POLICY IF EXISTS "Allow public read access to avatars" ON storage.objects;
+CREATE POLICY "Allow public read access to avatars" ON storage.objects FOR SELECT USING ( bucket_id = 'avatars' );
+
+DROP POLICY IF EXISTS "Allow authenticated users to upload their own avatar" ON storage.objects;
+CREATE POLICY "Allow authenticated users to upload their own avatar" ON storage.objects FOR INSERT TO authenticated WITH CHECK ( bucket_id = 'avatars' AND owner = auth.uid() );
+
+DROP POLICY IF EXISTS "Allow authenticated users to update their own avatar" ON storage.objects;
+CREATE POLICY "Allow authenticated users to update their own avatar" ON storage.objects FOR UPDATE TO authenticated USING ( bucket_id = 'avatars' AND owner = auth.uid() );
+
+DROP POLICY IF EXISTS "Allow admins/mods to manage all avatars" ON storage.objects;
+CREATE POLICY "Allow admins/mods to manage all avatars" ON storage.objects FOR ALL TO authenticated USING ( bucket_id = 'avatars' AND (SELECT public.get_user_role(auth.uid())) IN ('admin', 'moderator') ) WITH CHECK ( bucket_id = 'avatars' AND (SELECT public.get_user_role(auth.uid())) IN ('admin', 'moderator') );
+
+
+-- Policies for 'evidence' bucket
+DROP POLICY IF EXISTS "Allow public read access to evidence" ON storage.objects;
+CREATE POLICY "Allow public read access to evidence" ON storage.objects FOR SELECT USING ( bucket_id = 'evidence' );
+
+DROP POLICY IF EXISTS "Allow authenticated users to upload evidence" ON storage.objects;
+CREATE POLICY "Allow authenticated users to upload evidence" ON storage.objects FOR INSERT TO authenticated WITH CHECK ( bucket_id = 'evidence' );
+
+DROP POLICY IF EXISTS "Allow admins/mods to manage all evidence" ON storage.objects;
+CREATE POLICY "Allow admins/mods to manage all evidence" ON storage.objects FOR ALL TO authenticated USING ( bucket_id = 'evidence' AND (SELECT public.get_user_role(auth.uid())) IN ('admin', 'moderator') ) WITH CHECK ( bucket_id = 'evidence' AND (SELECT public.get_user_role(auth.uid())) IN ('admin', 'moderator') );
+
+
+-- Policies for 'company-logos' bucket
+DROP POLICY IF EXISTS "Allow public read access to company logos" ON storage.objects;
+CREATE POLICY "Allow public read access to company logos" ON storage.objects FOR SELECT USING ( bucket_id = 'company-logos' );
+
+DROP POLICY IF EXISTS "Allow admins/mods to manage company logos" ON storage.objects;
+CREATE POLICY "Allow admins/mods to manage company logos" ON storage.objects FOR ALL TO authenticated USING (
+    bucket_id = 'company-logos' AND
+    (SELECT public.get_user_role(auth.uid())) IN ('admin', 'moderator')
+) WITH CHECK (
+    bucket_id = 'company-logos' AND
+    (SELECT public.get_user_role(auth.uid())) IN ('admin', 'moderator')
+);
+```
+
+## Step 4: Deploy Supabase Edge Functions
 
 These server-side functions are required for secure administrative actions. Follow these steps to deploy all required functions.
 

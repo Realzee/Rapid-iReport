@@ -47,39 +47,77 @@ const CompaniesPage: React.FC = () => {
         setIsDeleteModalOpen(true);
     };
 
-    const handleSaveCompany = async (companyData: { id?: string, name: string }) => {
-        let savedCompany: Company | null = null;
-        let error;
+    const handleSaveCompany = async (companyData: { id?: string; name: string; logo_url?: string; }, logoFile: File | null) => {
+        let finalLogoUrl = companyData.logo_url;
 
-        if (companyData.id) { // Update
-            const { data, error: updateError } = await supabase.from('companies').update({ name: companyData.name }).eq('id', companyData.id).select().single();
-            savedCompany = data;
-            error = updateError;
-        } else { // Insert
-            const { data, error: insertError } = await supabase.from('companies').insert({ name: companyData.name }).select().single();
-            savedCompany = data;
-            error = insertError;
-        }
+        try {
+            // Handle file upload if a new file is provided
+            if (logoFile) {
+                const companyId = companyData.id || crypto.randomUUID();
+                const fileExt = logoFile.name.split('.').pop();
+                const filePath = `${companyId}/logo.${fileExt}`;
 
-        if (error) {
-            alert('Error saving company: ' + error.message);
-        } else if (savedCompany) {
-            if (companyData.id) {
-                 setCompanies(companies.map(c => c.id === savedCompany!.id ? savedCompany : c));
-            } else {
-                setCompanies([...companies, savedCompany]);
+                const { error: uploadError } = await supabase.storage
+                    .from('company-logos')
+                    .upload(filePath, logoFile, { upsert: true });
+
+                if (uploadError) throw uploadError;
+
+                const { data: urlData } = supabase.storage.from('company-logos').getPublicUrl(filePath);
+                finalLogoUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`; // Add timestamp to bust cache
             }
+
+            let savedCompany: Company | null = null;
+            let error;
+
+            const dbPayload = { name: companyData.name, logo_url: finalLogoUrl };
+
+            if (companyData.id) { // Update
+                const { data, error: updateError } = await supabase.from('companies').update(dbPayload).eq('id', companyData.id).select().single();
+                savedCompany = data;
+                error = updateError;
+            } else { // Insert
+                const { data, error: insertError } = await supabase.from('companies').insert(dbPayload).select().single();
+                savedCompany = data;
+                error = insertError;
+            }
+
+            if (error) throw error;
+            
+            if (savedCompany) {
+                if (companyData.id) {
+                    setCompanies(companies.map(c => c.id === savedCompany!.id ? savedCompany : c));
+                } else {
+                    setCompanies([...companies, savedCompany]);
+                }
+            }
+        } catch (error: any) {
+            alert('Error saving company: ' + error.message);
+        } finally {
+            setIsAddEditModalOpen(false);
         }
-        setIsAddEditModalOpen(false);
     };
 
     const confirmDeleteCompany = async () => {
         if (selectedCompany) {
-            const { error } = await supabase.from('companies').delete().eq('id', selectedCompany.id);
-            if (error) {
-                alert('Error deleting company: ' + error.message);
-            } else {
-                 setCompanies(companies.filter(c => c.id !== selectedCompany.id));
+            try {
+                // First, delete the logo from storage if it exists
+                if (selectedCompany.logo_url) {
+                    const urlParts = selectedCompany.logo_url.split('/');
+                    const filePath = urlParts.slice(urlParts.indexOf('company-logos') + 1).join('/');
+                    const [folder, file] = filePath.split('?')[0].split('/');
+                    if (folder && file) {
+                        await supabase.storage.from('company-logos').remove([`${folder}/${file}`]);
+                    }
+                }
+
+                // Then, delete the company record
+                const { error } = await supabase.from('companies').delete().eq('id', selectedCompany.id);
+                if (error) throw error;
+                
+                setCompanies(companies.filter(c => c.id !== selectedCompany.id));
+            } catch (error: any) {
+                 alert('Error deleting company: ' + error.message);
             }
         }
         setIsDeleteModalOpen(false);
