@@ -5,6 +5,10 @@ import { supabase } from '../utils/supabase';
 import { format, formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
 import { NavigationIcon, CameraIcon } from '../components/icons';
+import { useToast } from '../contexts/ToastContext';
+import ConfirmModal from '../components/ConfirmModal';
+import IncidentChat from '../components/IncidentChat';
+import ResponderMapView from '../components/ResponderMapView';
 
 interface ResponderPageProps {
     profile: Profile;
@@ -38,6 +42,9 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     const [isSyncing, setIsSyncing] = useState(false);
     const [lastSyncTimestamp, setLastSyncTimestamp] = useState<Date | null>(null);
 
+    const isInitialLoad = useRef(true);
+    const audioContextRef = useRef<AudioContext | null>(null);
+
     const isOnDuty = profile.responder_status !== ResponderStatus.OFF_DUTY;
 
     // A responder is "engaged" if they have any reports that are not in a terminal state.
@@ -50,6 +57,28 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             ReportStatus.REJECTED,
         ].includes(r.status)),
     [assignedReports]);
+
+    useEffect(() => {
+        // Initialize AudioContext on mount.
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }, []);
+
+    const playAssignmentSound = () => {
+        const context = audioContextRef.current;
+        if (!context) return;
+        if (context.state === 'suspended') {
+            context.resume();
+        }
+        const oscillator = context.createOscillator();
+        const gainNode = context.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+        oscillator.type = 'sawtooth'; // A more urgent sound
+        oscillator.frequency.setValueAtTime(660, context.currentTime); // E5 note
+        gainNode.gain.setValueAtTime(0.3, context.currentTime);
+        oscillator.start(context.currentTime);
+        oscillator.stop(context.currentTime + 0.15); // Short and sharp
+    };
 
 
     useEffect(() => {
@@ -64,6 +93,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                 if (combined.length > 0 && !selectedReportId) setSelectedReportId(combined[0].id);
             }
             setLoading(false);
+            isInitialLoad.current = false;
         };
         fetchAssignedReports();
     }, [profile.id]);
@@ -71,28 +101,51 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     useEffect(() => {
         const handleUpsert = (payload: any) => {
             const newReport = payload.new as Report;
-            if (newReport.assigned_to !== profile.id) {
-                setAssignedReports(prev => prev.filter(r => r.id !== newReport.id));
-                return;
-            };
+            if (newReport.assigned_to !== profile.id) return;
+
             setAssignedReports(prev => {
                 const exists = prev.some(r => r.id === newReport.id);
-                if (exists) return prev.map(r => r.id === newReport.id ? newReport : r);
+                if (exists) { // UPDATE of an already assigned report
+                    return prev.map(r => r.id === newReport.id ? newReport : r);
+                }
+                
+                // NEW assignment. Play sound if not initial data load.
+                if (!isInitialLoad.current) {
+                    playAssignmentSound();
+                }
+
                 const updatedReports = [newReport, ...prev];
-                if (!selectedReportId) setSelectedReportId(newReport.id);
+                // Use functional update to avoid dependency on selectedReportId
+                setSelectedReportId(currentId => currentId ? currentId : newReport.id);
                 return updatedReports;
             });
         };
-        const handleDelete = (payload: any) => setAssignedReports(prev => prev.filter(r => r.id !== payload.old.id));
+        
+        const handlePotentialUnassignmentOrDelete = (payload: any) => {
+            const oldReport = payload.old as Report;
+            if (oldReport?.assigned_to !== profile.id) return; // Not relevant to us
 
-        const channel = supabase.channel('responder-reports')
+            const newReport = payload.new as Report | undefined;
+            // Case 1: Unassigned (it's an UPDATE where new.assigned_to is not us)
+            // Case 2: Deleted (it's a DELETE event)
+            if ((payload.eventType === 'UPDATE' && newReport?.assigned_to !== profile.id) || payload.eventType === 'DELETE') {
+                 setAssignedReports(prev => prev.filter(r => r.id !== oldReport.id));
+                 // If the removed report was the selected one, deselect it.
+                 setSelectedReportId(currentId => currentId === oldReport.id ? null : currentId);
+            }
+        };
+
+        const channel = supabase.channel(`responder-reports-${profile.id}`)
+            // This catches INSERTs and UPDATEs that result in the report being assigned to us
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `assigned_to=eq.${profile.id}` }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `assigned_to=eq.${profile.id}` }, handleUpsert)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, (payload) => { if ((payload.old as Report)?.assigned_to === profile.id) handleDelete(payload)})
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, (payload) => { if ((payload.old as Report)?.assigned_to === profile.id) handleDelete(payload)})
+            // This catches UPDATEs (unassignment) and DELETEs for reports that were previously assigned to us
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handlePotentialUnassignmentOrDelete)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handlePotentialUnassignmentOrDelete)
             .subscribe();
+        
         return () => { supabase.removeChannel(channel); };
-    }, [profile.id, selectedReportId]);
+    }, [profile.id]);
 
      const stopLocationSharing = () => {
         if (locationWatchId.current !== null) {
@@ -192,96 +245,99 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     const selectedReport = useMemo(() => assignedReports.find(r => r.id === selectedReportId), [assignedReports, selectedReportId]);
 
     return (
-        <div className="space-y-6">
-            <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg sticky top-24 z-10">
-                <h3 className="text-lg font-bold mb-2">On-Duty Manager</h3>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <label className="relative inline-flex items-center cursor-pointer" title={isEngaged ? "You must resolve active incidents to go off-duty." : "Toggle duty status"}>
-                            <input type="checkbox" checked={isOnDuty} onChange={handleDutyToggle} className="sr-only peer" disabled={isEngaged} />
-                            <div className="w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"></div>
-                        </label>
-                        <span className="font-semibold text-lg">{isOnDuty ? 'On Duty' : 'Off Duty'}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <div className="lg:col-span-1 space-y-6">
+                 <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg sticky top-24 z-10">
+                    <h3 className="text-lg font-bold mb-2">On-Duty Manager</h3>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <label className="relative inline-flex items-center cursor-pointer" title={isEngaged ? "You must resolve active incidents to go off-duty." : "Toggle duty status"}>
+                                <input type="checkbox" checked={isOnDuty} onChange={handleDutyToggle} className="sr-only peer" disabled={isEngaged} />
+                                <div className="w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"></div>
+                            </label>
+                            <span className="font-semibold text-lg">{isOnDuty ? 'On Duty' : 'Off Duty'}</span>
+                        </div>
+                        {profile.responder_status && <ResponderStatusBadge status={profile.responder_status} />}
                     </div>
-                    {profile.responder_status && <ResponderStatusBadge status={profile.responder_status} />}
-                </div>
-                 {isEngaged && (
-                    <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
-                        You are on an active assignment. Resolve it before going off-duty.
-                    </p>
-                )}
-                 {isOnDuty && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
-                        <div className="flex items-center justify-between">
-                             <div className="flex items-center gap-3">
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" checked={isSharingLocation} onChange={handleLocationToggle} className="sr-only peer" />
-                                    <div className="w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                                </label>
-                                <span className="font-semibold text-lg">Share Location</span>
-                            </div>
-                            <div className="text-sm">
-                                {locationError ? (
-                                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                                        <span className="relative flex h-3 w-3"><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>
-                                        <span>Error</span>
-                                    </div>
-                                ) : isSharingLocation ? (
-                                    <div className="flex flex-col items-end">
-                                        <div className="flex items-center gap-2">
-                                            <span className="relative flex h-3 w-3">
-                                                {isSyncing && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>}
-                                                <span className={`relative inline-flex rounded-full h-3 w-3 ${isSyncing ? 'bg-blue-500' : 'bg-green-500'}`}></span>
-                                            </span>
-                                            <span className="text-green-600 dark:text-green-400">Active</span>
+                    {isEngaged && (
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
+                            You are on an active assignment. Resolve it before going off-duty.
+                        </p>
+                    )}
+                    {isOnDuty && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked={isSharingLocation} onChange={handleLocationToggle} className="sr-only peer" />
+                                        <div className="w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                    </label>
+                                    <span className="font-semibold text-lg">Share Location</span>
+                                </div>
+                                <div className="text-sm">
+                                    {locationError ? (
+                                        <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                                            <span className="relative flex h-3 w-3"><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>
+                                            <span>Error</span>
                                         </div>
-                                        {lastSyncTimestamp && (
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                Last sync: {formatDistanceToNow(lastSyncTimestamp, { addSuffix: true })}
-                                            </p>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                                        <span className="relative flex h-3 w-3"><span className="relative inline-flex rounded-full h-3 w-3 bg-gray-500"></span></span>
-                                        <span>Inactive</span>
-                                    </div>
-                                )}
+                                    ) : isSharingLocation ? (
+                                        <div className="flex flex-col items-end">
+                                            <div className="flex items-center gap-2">
+                                                <span className="relative flex h-3 w-3">
+                                                    {isSyncing && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>}
+                                                    <span className={`relative inline-flex rounded-full h-3 w-3 ${isSyncing ? 'bg-blue-500' : 'bg-green-500'}`}></span>
+                                                </span>
+                                                <span className="text-green-600 dark:text-green-400">Active</span>
+                                            </div>
+                                            {lastSyncTimestamp && (
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    Last sync: {formatDistanceToNow(lastSyncTimestamp, { addSuffix: true })}
+                                                </p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                                            <span className="relative flex h-3 w-3"><span className="relative inline-flex rounded-full h-3 w-3 bg-gray-500"></span></span>
+                                            <span>Inactive</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
-            </div>
-            
-            {locationError && <div className="bg-red-500/10 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-r-lg" role="alert"><p className="font-bold">System Error</p><p>{locationError}</p></div>}
-            
-            {loading ? <div className="flex justify-center items-center h-64"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
-            : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                    <div className="lg:col-span-1 space-y-3 lg:h-[calc(100vh-22rem)] lg:overflow-y-auto">
-                        <h2 className="text-xl font-bold px-1">Assigned Incidents ({assignedReports.length})</h2>
-                        {assignedReports.length === 0 ? <p className="text-center py-10 text-gray-500 dark:text-gray-400">Stand by for assignments.</p> 
-                        : assignedReports.map(report => (
-                            <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
-                                className={`p-3 cursor-pointer rounded-lg border-2 transition-all ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-white/70 dark:bg-gray-900/60 border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600'}`}>
-                                <div className="flex justify-between items-start">
-                                    <h3 className="font-bold text-md truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
-                                    <StatusBadge status={report.status} />
-                                </div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : report.crime_type}</p>
-                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="lg:col-span-2 lg:sticky lg:top-24">
-                        {selectedReport ? <ResponderReportDetail key={selectedReport.id} report={selectedReport} profile={profile} /> : 
-                        <div className="h-full bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center min-h-[50vh]">
-                            <p className="text-gray-500 dark:text-gray-400">Select an incident to view details.</p>
-                        </div>}
-                    </div>
+                    )}
                 </div>
-            )}
+
+                {locationError && <div className="bg-red-500/10 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-r-lg" role="alert"><p className="font-bold">System Error</p><p>{locationError}</p></div>}
+                
+                <div className="space-y-3 lg:h-[calc(100vh-22rem)] lg:overflow-y-auto">
+                    <h2 className="text-xl font-bold px-1">Assigned Incidents ({assignedReports.length})</h2>
+                     {loading ? <div className="flex justify-center items-center h-64"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
+                    : assignedReports.length === 0 ? <p className="text-center py-10 text-gray-500 dark:text-gray-400">Stand by for assignments.</p> 
+                    : assignedReports.map(report => (
+                        <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
+                            className={`p-3 cursor-pointer rounded-lg border-2 transition-all ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-white/70 dark:bg-gray-900/60 border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600'}`}>
+                            <div className="flex justify-between items-start">
+                                <h3 className="font-bold text-md truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                                <StatusBadge status={report.status} />
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : report.crime_type}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="lg:col-span-2 lg:sticky lg:top-24">
+                <div className="space-y-6">
+                    <div className="h-[40vh] rounded-2xl overflow-hidden">
+                       <ResponderMapView report={selectedReport} responderProfile={profile} />
+                    </div>
+                    {selectedReport ? <ResponderReportDetail key={selectedReport.id} report={selectedReport} profile={profile} /> : 
+                    <div className="h-full bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center min-h-[50vh]">
+                        <p className="text-gray-500 dark:text-gray-400">Select an incident to view details.</p>
+                    </div>}
+                </div>
+            </div>
         </div>
     );
 };
@@ -292,6 +348,8 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [isActionLoading, setIsActionLoading] = useState<ReportStatus | 'stand_down' | null>(null);
+    const { addToast } = useToast();
+    const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, confirmText: string, confirmVariant: 'danger' | 'primary' } | null>(null);
 
     useEffect(() => {
         const fetchUpdates = async () => { 
@@ -341,43 +399,49 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
         const results = await Promise.all(updatePromises);
         const errors = results.map((r: any) => r.error).filter(Boolean);
         if (errors.length > 0) {
-            alert('An error occurred while updating status. Please check the console.');
+            addToast('An error occurred while updating status. Please check the console.', 'error');
             console.error('Status update errors:', errors);
+        } else {
+            addToast(`Status updated to ${status.replace(/_/g, ' ')}.`, 'success');
         }
         setIsActionLoading(null);
     };
 
-    const handleStandDown = async () => {
-        if (!window.confirm("Are you sure you want to stand down from this incident? The report will be returned to the active queue.")) {
-            return;
-        }
-        setIsActionLoading('stand_down');
+    const handleStandDown = () => {
+        setConfirmModalState({
+            isOpen: true,
+            title: 'Stand Down from Incident',
+            message: 'Are you sure you want to stand down from this incident? The report will be returned to the active queue.',
+            onConfirm: async () => {
+                setConfirmModalState(null);
+                setIsActionLoading('stand_down');
+                try {
+                    const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
+                    const updatePromises: PromiseLike<any>[] = [];
+                    updatePromises.push(supabase.from(tableName).update({ assigned_to: null, status: ReportStatus.ACTIVE }).eq('id', report.id));
+                    updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Responder ${profile.full_name} has stood down.` }));
 
-        try {
-            const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
-            const updatePromises: PromiseLike<any>[] = [];
+                    const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+                    const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
 
-            updatePromises.push(supabase.from(tableName).update({ assigned_to: null, status: ReportStatus.ACTIVE }).eq('id', report.id));
-            updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Responder ${profile.full_name} has stood down.` }));
+                    const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0);
+                    if (!hasOtherActiveAssignments) {
+                        updatePromises.push(supabase.from('profiles').update({ responder_status: ResponderStatus.AVAILABLE }).eq('id', profile.id));
+                    }
+                    const results = await Promise.all(updatePromises);
+                    const errors = results.map((r: any) => r.error).filter(Boolean);
+                    if (errors.length > 0) throw new Error(errors.map(e => e.message).join('\n'));
 
-            const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
-            const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
-
-            const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0);
-            if (!hasOtherActiveAssignments) {
-                updatePromises.push(supabase.from('profiles').update({ responder_status: ResponderStatus.AVAILABLE }).eq('id', profile.id));
-            }
-
-            const results = await Promise.all(updatePromises);
-            const errors = results.map((r: any) => r.error).filter(Boolean);
-            if (errors.length > 0) {
-                throw new Error(errors.map(e => e.message).join('\n'));
-            }
-        } catch (e: any) {
-            alert('An error occurred while standing down: ' + e.message);
-        } finally {
-            setIsActionLoading(null);
-        }
+                    addToast('Successfully stood down from the incident.', 'info');
+                } catch (e: any) {
+                    addToast('An error occurred while standing down: ' + e.message, 'error');
+                } finally {
+                    setIsActionLoading(null);
+                }
+            },
+            confirmText: 'Confirm Stand Down',
+            confirmVariant: 'danger'
+        });
     };
     
 
@@ -396,12 +460,13 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
         const file = e.target.files[0];
         const filePath = `${report.id}/${file.name}-${Date.now()}`;
         const { error: uploadError } = await supabase.storage.from('evidence').upload(filePath, file);
-        if (uploadError) { alert("Upload failed: " + uploadError.message); setIsUploading(false); return; }
+        if (uploadError) { addToast("Upload failed: " + uploadError.message, 'error'); setIsUploading(false); return; }
 
         const { data: { publicUrl } } = supabase.storage.from('evidence').getPublicUrl(filePath);
         const updatedImages = [...(report.evidence_images || []), publicUrl];
         const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
         await supabase.from(tableName).update({ evidence_images: updatedImages }).eq('id', report.id);
+        addToast("Evidence uploaded successfully.", 'success');
         setIsUploading(false);
     };
 
@@ -410,6 +475,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
     const Spinner = () => <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>;
     
     return (
+        <>
         <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg">
             <h2 className="text-2xl font-bold">{isVehicleReport(report) ? report.license_plate : report.title}</h2>
             <p className="font-mono text-sm text-gray-500 dark:text-gray-400 mb-4">{report.ob_number}</p>
@@ -455,8 +521,23 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
                         <button type="submit" disabled={isSubmitting} className="px-4 bg-blue-600 text-white rounded-md font-semibold disabled:opacity-50">Post</button>
                     </form>
                 </div>
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700/50">
+                    <IncidentChat reportId={report.id} currentUserProfile={profile} />
+                </div>
             </div>
         </div>
+        {confirmModalState && (
+                <ConfirmModal 
+                    isOpen={confirmModalState.isOpen}
+                    onClose={() => setConfirmModalState(null)}
+                    onConfirm={confirmModalState.onConfirm}
+                    title={confirmModalState.title}
+                    message={confirmModalState.message}
+                    confirmText={confirmModalState.confirmText}
+                    confirmVariant={confirmModalState.confirmVariant}
+                />
+            )}
+        </>
     );
 };
 

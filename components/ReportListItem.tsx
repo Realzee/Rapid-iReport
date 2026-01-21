@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { Report, VehicleReport, Severity, Profile, UserRole, ReportStatus } from '../types';
 import StatusBadge from './StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
@@ -34,6 +35,10 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
 
   const canUpdateStatus = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role) || 
                           (profile.role === UserRole.RESPONDER && report.assigned_to === profile.id);
+
+  const isTerminalStatus = useMemo(() => {
+    return [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(report.status);
+  }, [report.status]);
   
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value as ReportStatus;
@@ -79,7 +84,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                             <select
                                 value={report.status}
                                 onChange={handleStatusChange}
-                                disabled={isUpdating}
+                                disabled={isUpdating || isTerminalStatus}
                                 onClick={(e) => e.stopPropagation()}
                                 className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full py-1 pl-3 pr-8 text-xs font-bold text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70 appearance-none"
                             >

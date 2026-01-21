@@ -18,6 +18,15 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
                 error: `The database check failed, indicating a missing table or incorrect Row Level Security (RLS) policies. Please run the full setup script. Error: ${profileError.message}`
             };
         }
+        
+        const { error: chatMessagesError } = await supabase.from('chat_messages').select('id').limit(1);
+        if (chatMessagesError) {
+            console.error("Database schema check failed on 'chat_messages' table:", chatMessagesError);
+            return {
+                status: 'invalid',
+                error: `The database check failed on the 'chat_messages' table, indicating a missing table or incorrect Row Level Security (RLS) policies. Please run the full setup script. Error: ${chatMessagesError.message}`
+            };
+        }
 
         // Check 2: Advanced Enum validation (catches the specific "invalid input for enum" error)
         const enumsToValidate = [

@@ -5,6 +5,7 @@ import UserManagementTable from '../components/UserManagementTable';
 import AddEditUserModal from '../components/AddEditUserModal';
 import DeleteUserModal from '../components/DeleteUserModal';
 import { supabase } from '../utils/supabase';
+import { useToast } from '../contexts/ToastContext';
 
 const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<Profile[]>([]);
@@ -14,6 +15,7 @@ const UsersPage: React.FC = () => {
     const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+    const { addToast } = useToast();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -83,10 +85,9 @@ const UsersPage: React.FC = () => {
                 .single();
 
             if (profileError) {
-                alert('Error updating user profile: ' + profileError.message);
+                addToast('Error updating user profile: ' + profileError.message, 'error');
             } else {
-                // UI will update automatically via the real-time subscription
-                alert('User profile updated successfully.');
+                addToast('User profile updated successfully.', 'success');
             }
 
             if (password) {
@@ -95,14 +96,14 @@ const UsersPage: React.FC = () => {
                 });
 
                 if (functionError) {
-                    alert(`Profile saved, but failed to update password: ${functionError.message}. Ensure the 'reset-password' Edge Function is deployed correctly.`);
+                    addToast(`Profile saved, but failed to update password: ${functionError.message}. Ensure the 'reset-password' Edge Function is deployed correctly.`, 'warning');
                 } else {
-                    alert('User password was also updated successfully.');
+                    addToast('User password was also updated successfully.', 'success');
                 }
             }
         } else { // CREATE
             if (!password) {
-                alert("Password is required to create a new user.");
+                addToast("Password is required to create a new user.", 'error');
                 return;
             }
 
@@ -129,11 +130,10 @@ const UsersPage: React.FC = () => {
             });
             
             if (error) {
-                alert(`Error creating user: ${error.message}`);
+                addToast(`Error creating user: ${error.message}`, 'error');
                 return;
             }
-            // UI will update automatically via real-time subscription
-            alert('User created successfully!');
+            addToast('User created successfully!', 'success');
         }
         setIsAddEditModalOpen(false);
         setSelectedUser(null);
@@ -146,10 +146,9 @@ const UsersPage: React.FC = () => {
             });
 
             if (error) {
-                 alert('Error deleting user: ' + error.message);
+                 addToast('Error deleting user: ' + error.message, 'error');
             } else {
-                // UI will update automatically via real-time subscription
-                alert('User deleted successfully.');
+                addToast('User deleted successfully.', 'success');
             }
         }
         setIsDeleteModalOpen(false);

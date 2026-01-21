@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { MailIcon, LockIcon } from './icons';
 import { supabase } from '../utils/supabase';
+import { useToast } from '../contexts/ToastContext';
 
 interface LoginFormProps {
   onSwitchToRegister: () => void;
@@ -11,15 +12,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { addToast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setError(error.message);
+      addToast(error.message, 'error');
     }
     setLoading(false);
   };
@@ -29,8 +29,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
       <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-2">Welcome Back</h2>
       <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Sign in to access the Control Center.</p>
       
-      {error && <p className="mb-4 text-center text-red-500 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 p-3 rounded-md">{error}</p>}
-
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>

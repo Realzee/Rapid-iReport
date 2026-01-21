@@ -10,6 +10,7 @@ import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicl
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { useTheme } from '../contexts/ThemeContext';
+import { useToast } from '../contexts/ToastContext';
 
 interface ReportModalProps {
     isOpen: boolean;
@@ -111,6 +112,7 @@ const LocationPicker: React.FC<{
     onLocationChange: (coords: LocationCoords, address: string) => void;
 }> = ({ initialCoords, onLocationChange }) => {
     const { theme } = useTheme();
+    const { addToast } = useToast();
     const [isLocating, setIsLocating] = useState(false);
     const lightMapUrl = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
     const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
@@ -139,7 +141,7 @@ const LocationPicker: React.FC<{
                         errorMessage = "The request to get user location timed out.";
                         break;
                 }
-                alert(errorMessage);
+                addToast(errorMessage, 'error');
                 setIsLocating(false);
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -180,6 +182,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [isMapVisible, setMapVisible] = useState(false);
+    const { addToast } = useToast();
     
     useEffect(() => {
         if (isOpen) {
@@ -327,6 +330,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 if (error) throw error;
             }
             
+            addToast(`Report ${reportToEdit ? 'updated' : 'submitted'} successfully!`, 'success');
             onClose();
 
         } catch (error: any) {
@@ -334,7 +338,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             if (detailedMessage && ((detailedMessage.includes("column") && detailedMessage.includes("does not exist")) || detailedMessage.includes("schema cache"))) {
                 detailedMessage += "\n\n[DEVELOPER HINT] This error indicates a database schema mismatch. Please go to your Supabase dashboard, open the SQL Editor, and run the complete script from the DATABASE_SETUP.md file to update your database tables.";
             }
-            alert(`Error saving report: ${detailedMessage}`);
+            addToast(`Error saving report: ${detailedMessage}`, 'error');
         } finally {
             setLoading(false);
         }

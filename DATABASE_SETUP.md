@@ -147,93 +147,7 @@ These server-side functions are required for secure administrative actions. Foll
     ```
     *   Deploy it: `supabase functions deploy reset-password --no-verify-jwt`.
 
-4.  **Deploy `approve-registration` Function:**
-    *   Create the function: `supabase functions new approve-registration`.
-    *   Open `supabase/functions/approve-registration/index.ts` and replace its content with this code:
-    ```typescript
-    import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4'
-
-    const corsHeaders = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    }
-
-    serve(async (req) => {
-        if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-        try {
-            // 1. Authorization check
-            const userSupabaseClient = createClient(
-                Deno.env.get('SUPABASE_URL') ?? '',
-                Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-                { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-            );
-            const { data: { user }, error: userError } = await userSupabaseClient.auth.getUser();
-            if (userError) throw userError;
-            if (!user) throw new Error("User not found.");
-            const { data: profile, error: profileError } = await userSupabaseClient.from('profiles').select('role').eq('id', user.id).single();
-            if (profileError) throw profileError;
-            if (!['admin', 'moderator'].includes(profile.role)) {
-                throw new Error("Unauthorized: You do not have permission to approve registrations.");
-            }
-
-            // 2. Main logic
-            const { requestId } = await req.json()
-            if (!requestId) throw new Error("Request ID is required.");
-
-            const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
-
-            const { data: request, error: requestError } = await supabaseAdmin.from('registration_requests').select('*').eq('id', requestId).single();
-            if (requestError || !request) throw new Error("Registration request not found or failed to fetch.");
-            if (request.status !== 'pending') throw new Error("This request has already been processed.");
-
-            let companyId = null;
-            if (request.company_name) {
-                const { data: existingCompany } = await supabaseAdmin.from('companies').select('id').eq('name', request.company_name).single();
-                if (existingCompany) {
-                    companyId = existingCompany.id;
-                } else {
-                    const { data: newCompany, error: companyError } = await supabaseAdmin.from('companies').insert({ name: request.company_name }).select('id').single();
-                    if (companyError) throw new Error(`Failed to create company: ${companyError.message}`);
-                    companyId = newCompany.id;
-                }
-            }
-
-            const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-                request.email, 
-                {
-                    data: {
-                        full_name: request.full_name,
-                        role: 'user',
-                        status: 'active',
-                        company_id: companyId
-                    }
-                }
-            );
-            if (inviteError) throw new Error(`Failed to invite user: ${inviteError.message}`);
-            
-            const { error: updateRequestError } = await supabaseAdmin.from('registration_requests').update({ status: 'approved' }).eq('id', requestId);
-            if (updateRequestError) throw new Error(`User invited, but failed to update request status: ${updateRequestError.message}`);
-
-            return new Response(JSON.stringify({ message: "User approved and invited successfully." }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 200,
-            });
-
-        } catch (error) {
-            console.error("APPROVE-REGISTRATION-FUNCTION-ERROR:", error.message);
-            const status = error.message.startsWith('Unauthorized') ? 401 : 400;
-            return new Response(JSON.stringify({ error: error.message }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status,
-            });
-        }
-    })
-    ```
-    *   Deploy it: `supabase functions deploy approve-registration --no-verify-jwt`.
-
-5.  **Deploy `create-user` Function:**
+4.  **Deploy `create-user` Function:**
     *   Create the function: `supabase functions new create-user`.
     *   Open `supabase/functions/create-user/index.ts` and replace its content with this code:
     ```typescript
@@ -307,7 +221,7 @@ These server-side functions are required for secure administrative actions. Foll
     ```
     *   Deploy it: `supabase functions deploy create-user --no-verify-jwt`.
     
-6.  **Deploy `delete-user` Function:**
+5.  **Deploy `delete-user` Function:**
     *   Create the function: `supabase functions new delete-user`.
     *   Open `supabase/functions/delete-user/index.ts` and replace its content with this code:
     ```typescript

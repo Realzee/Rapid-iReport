@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Report, Profile, Responder, ResponderStatus, UserRole } from '../types';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Report, Profile, Responder, ResponderStatus, UserRole, Severity } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
 import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
@@ -9,17 +9,50 @@ import { ZapIcon, UsersIcon } from '../components/icons';
 
 interface ControllerPageProps {
     profile: Profile;
+    initialReportId?: string | null;
+    onInitialReportHandled?: () => void;
 }
 
 type ControllerTab = 'events' | 'responders';
 
-const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
+const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportId, onInitialReportHandled }) => {
     const [reports, setReports] = useState<Report[]>([]);
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<ControllerTab>('events');
+
+    const isInitialLoad = useRef(true);
+    const audioContextRef = useRef<AudioContext | null>(null);
+
+    useEffect(() => {
+        // Initialize AudioContext on mount. Browsers may require a user gesture to start it.
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }, []);
+
+    const playAlertSound = () => {
+        const context = audioContextRef.current;
+        if (!context) return;
+        
+        // Resume context if it was suspended by browser policy
+        if (context.state === 'suspended') {
+            context.resume();
+        }
+
+        const oscillator = context.createOscillator();
+        const gainNode = context.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, context.currentTime); // A sharp A5 note
+        gainNode.gain.setValueAtTime(0.5, context.currentTime);
+
+        oscillator.start(context.currentTime);
+        oscillator.stop(context.currentTime + 0.2); // Play for 200ms
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -47,20 +80,29 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
             setReports(combinedReports);
             setAllUsers(usersData || []);
             setLoading(false);
+            isInitialLoad.current = false;
         };
 
         fetchData();
 
         const handleReportChange = (payload: any) => {
             const reportType = payload.table === 'vehicle_reports' ? 'vehicle' : 'crime';
+            const newReport = payload.new as Report;
+
+            if (payload.eventType === 'INSERT' && !isInitialLoad.current) {
+                if (newReport.severity === Severity.CRITICAL || newReport.severity === Severity.HIGH) {
+                    playAlertSound();
+                }
+            }
+
             setReports(currentReports => {
                 if (payload.eventType === 'INSERT') {
-                    const newReport = { ...payload.new, type: reportType };
-                    if (currentReports.some(r => r.id === newReport.id)) return currentReports;
-                    return [newReport, ...currentReports];
+                    const newReportWithMeta = { ...newReport, type: reportType };
+                    if (currentReports.some(r => r.id === newReportWithMeta.id)) return currentReports;
+                    return [newReportWithMeta, ...currentReports];
                 }
                 if (payload.eventType === 'UPDATE') {
-                    const updatedReport = { ...payload.new, type: reportType };
+                    const updatedReport = { ...newReport, type: reportType };
                     return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
                 }
                 if (payload.eventType === 'DELETE') {
@@ -113,6 +155,14 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
     }, [allUsers]);
 
     useEffect(() => {
+        if (initialReportId && onInitialReportHandled && reports.some(r => r.id === initialReportId)) {
+            setSelectedReportId(initialReportId);
+            onInitialReportHandled();
+        }
+    }, [initialReportId, onInitialReportHandled, reports]);
+
+    useEffect(() => {
+        if (loading) return;
         const sortedReports = reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
         if (!selectedReportId && sortedReports.length > 0) {
             setSelectedReportId(sortedReports[0].id);
@@ -120,7 +170,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
         if (selectedReportId && !reports.some(r => r.id === selectedReportId)) {
             setSelectedReportId(sortedReports.length > 0 ? sortedReports[0].id : null);
         }
-    }, [reports, selectedReportId]);
+    }, [reports, selectedReportId, loading]);
 
     const sortedReports = useMemo(() => {
         return reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
@@ -180,6 +230,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile }) => {
                                 reports={reports}
                                 responders={responders}
                                 selectedReportId={selectedReportId}
+                                profile={profile}
                             />
                         </div>
                         <div className="lg:col-span-4 min-h-[50vh] lg:h-[calc(100vh-8rem)]">

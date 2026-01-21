@@ -1,12 +1,14 @@
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Report, Profile, VehicleReport, UserRole, ReportStatus } from '../types';
 import StatusBadge from './StatusBadge';
 import { MapPinIcon, WhatsappIcon, DownloadIcon, XIcon, EditIcon, TrashIcon } from './icons';
 import { format } from 'date-fns';
 import { supabase } from '../utils/supabase';
 import { logoUrl } from '../assets/logo';
+import { useToast } from '../contexts/ToastContext';
+import IncidentChat from './IncidentChat';
 
 interface ReportDetailCardProps {
     report: Report;
@@ -23,10 +25,15 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     const [reporter, setReporter] = useState<Profile | null>(null);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
+    const { addToast } = useToast();
 
     const canManageReport = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role);
     const isAssignedResponder = profile.role === UserRole.RESPONDER && report.assigned_to === profile.id;
     const canUpdateStatus = canManageReport || isAssignedResponder;
+
+    const isTerminalStatus = useMemo(() => {
+        return [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(report.status);
+    }, [report.status]);
 
     const responderStatusOptions = [
         ReportStatus.IN_PROGRESS,
@@ -61,7 +68,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             .eq('id', report.id);
 
         if (error) {
-            alert('Failed to update status: ' + error.message);
+            addToast('Failed to update status: ' + error.message, 'error');
         }
         setStatusUpdateLoading(false);
     };
@@ -174,7 +181,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             setIsGeneratingBolo(false);
         };
         image.onerror = (e) => {
-            alert("Failed to generate BOLO card image. Check console for errors.");
+            addToast("Failed to generate BOLO card image. Check console for errors.", 'error');
             console.error("Image loading error for BOLO card. This could be due to a malformed data URL or browser security policies.", e)
             setIsGeneratingBolo(false);
         }
@@ -182,7 +189,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     };
 
     return (
-        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300">
+        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-full">
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
                 <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
@@ -190,7 +197,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-y-auto flex-grow">
                 {report.evidence_images && report.evidence_images.length > 0 && (
                      <div className="grid grid-cols-2 gap-2">
                         {report.evidence_images.map((img, index) => (
@@ -206,7 +213,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                              <select
                                 value={report.status}
                                 onChange={handleStatusChange}
-                                disabled={statusUpdateLoading}
+                                disabled={statusUpdateLoading || isTerminalStatus}
                                 className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-1 px-2 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70"
                             >
                                 <option value={ReportStatus.PENDING}>Pending</option>
@@ -259,6 +266,12 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                  )}
             </div>
 
+            {[ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(report.status) && (
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
+                    <IncidentChat reportId={report.id} currentUserProfile={profile} />
+                </div>
+            )}
+
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 grid grid-cols-2 gap-3">
                 <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold">
                     <WhatsappIcon className="w-5 h-5"/> Share
@@ -274,10 +287,10 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             </div>
             {canManageReport && (
                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 grid grid-cols-2 gap-3">
-                    <button onClick={() => onEdit(report)} className="flex items-center justify-center gap-2 py-2 px-3 bg-gray-600/90 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-semibold">
+                    <button onClick={() => onEdit(report)} disabled={isTerminalStatus} className="flex items-center justify-center gap-2 py-2 px-3 bg-gray-600/90 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
                         <EditIcon className="w-5 h-5"/> Edit
                     </button>
-                    <button onClick={() => onDelete(report)} className="flex items-center justify-center gap-2 py-2 px-3 bg-red-600/90 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-semibold">
+                    <button onClick={() => onDelete(report)} disabled={isTerminalStatus} className="flex items-center justify-center gap-2 py-2 px-3 bg-red-600/90 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
                         <TrashIcon className="w-5 h-5"/> Delete
                     </button>
                 </div>

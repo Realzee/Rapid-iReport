@@ -41,13 +41,6 @@ export enum ResponderStatus {
 export enum NotificationType {
   NEW_REPORT = 'new_report',
   NEW_USER = 'new_user',
-  NEW_REGISTRATION_REQUEST = 'new_registration_request',
-}
-
-export enum RequestStatus {
-  PENDING = 'pending',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
 }
 
 export interface Company {
@@ -123,11 +116,15 @@ export interface Responder {
 }
 
 export interface ChatMessage {
-    id: string;
-    reportId: string;
-    sender: 'Controller' | 'Responder';
-    text: string;
-    timestamp: string;
+  id: string;
+  report_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  profile?: { // Joined from profiles table
+    full_name: string;
+    avatar_url?: string;
+  };
 }
 
 export interface ReportUpdate {
@@ -150,17 +147,6 @@ export interface Notification {
   reference_id?: string;
 }
 
-export interface RegistrationRequest {
-    id: string;
-    created_at: string;
-    full_name: string;
-    email: string;
-    phone_number?: string;
-    company_name?: string;
-    message?: string;
-    status: RequestStatus;
-}
-
 export interface AssignmentLog {
     id: string;
     report_id: string;
@@ -171,4 +157,12 @@ export interface AssignmentLog {
     assigned_from_name?: string | null;
     assigned_to_name?: string | null;
     assigned_by_name?: string | null;
+}
+
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
+
+export interface Toast {
+  id: string;
+  message: string;
+  type: ToastType;
 }

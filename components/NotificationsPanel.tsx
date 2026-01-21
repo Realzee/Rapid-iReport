@@ -5,7 +5,7 @@ import { UserIcon, ZapIcon, CheckCircleIcon } from './icons';
 
 interface NotificationsPanelProps {
   notifications: Notification[];
-  onMarkAsRead: (id: string) => void;
+  onNotificationClick: (notification: Notification) => void;
   onMarkAllAsRead: () => void;
   onClose: () => void;
 }
@@ -23,7 +23,7 @@ const NotificationIcon: React.FC<{ type: string }> = ({ type }) => {
     }
 };
 
-const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ notifications, onMarkAsRead, onMarkAllAsRead, onClose }) => {
+const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ notifications, onNotificationClick, onMarkAllAsRead, onClose }) => {
   return (
     <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white/90 dark:bg-gray-800/80 backdrop-blur-lg rounded-xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 py-2 flex flex-col max-h-[70vh]">
       <div className="px-4 py-2 flex justify-between items-center border-b border-gray-200 dark:border-gray-700/50">
@@ -44,7 +44,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ notifications, 
               <li 
                 key={notification.id} 
                 className={`flex items-start gap-4 p-4 transition-colors cursor-pointer ${notification.is_read ? '' : 'bg-blue-500/5 dark:bg-blue-500/10'} hover:bg-gray-100 dark:hover:bg-gray-700/50`}
-                onClick={() => !notification.is_read && onMarkAsRead(notification.id)}
+                onClick={() => onNotificationClick(notification)}
               >
                 {!notification.is_read && <div className="w-2.5 h-2.5 rounded-full bg-blue-500 mt-2.5 flex-shrink-0"></div>}
                 <div className={`flex-shrink-0 ${notification.is_read ? 'ml-[26px]' : ''}`}>

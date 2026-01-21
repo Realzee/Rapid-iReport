@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Profile } from '../types';
 import { supabase } from '../utils/supabase';
 import { UserIcon, LockIcon, MailIcon, UploadCloudIcon } from '../components/icons';
+import { useToast } from '../contexts/ToastContext';
 
 interface ProfilePageProps {
   profile: Profile;
@@ -19,6 +20,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
     const [loadingProfile, setLoadingProfile] = useState(false);
     const [loadingPassword, setLoadingPassword] = useState(false);
     const [loadingAvatar, setLoadingAvatar] = useState(false);
+    const { addToast } = useToast();
 
     const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -40,7 +42,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
             .upload(filePath, avatarFile, { upsert: true });
 
         if (uploadError) {
-            alert('Error uploading avatar: ' + uploadError.message);
+            addToast('Error uploading avatar: ' + uploadError.message, 'error');
             setLoadingAvatar(false);
             return;
         }
@@ -55,11 +57,11 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
             .single();
 
         if (updateError) {
-            alert('Error updating profile avatar URL: ' + updateError.message);
+            addToast('Error updating profile avatar URL: ' + updateError.message, 'error');
         } else if (updatedProfile) {
             setProfile(updatedProfile);
             setAvatarPreview(updatedProfile.avatar_url);
-            alert('Avatar updated successfully!');
+            addToast('Avatar updated successfully!', 'success');
         }
         setLoadingAvatar(false);
         setAvatarFile(null);
@@ -74,7 +76,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         });
         
         if (userError) {
-             alert('Error updating authentication profile: ' + userError.message);
+             addToast('Error updating authentication profile: ' + userError.message, 'error');
              setLoadingProfile(false);
              return;
         }
@@ -87,10 +89,10 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
             .single();
 
         if (profileError) {
-            alert('Error updating profile details: ' + profileError.message);
+            addToast('Error updating profile details: ' + profileError.message, 'error');
         } else if (updatedProfile) {
             setProfile(updatedProfile);
-            alert('Profile updated successfully!');
+            addToast('Profile updated successfully!', 'success');
         }
         setLoadingProfile(false);
     };
@@ -98,20 +100,20 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
     const handlePasswordUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         if (password !== confirmPassword) {
-            alert('Passwords do not match.');
+            addToast('Passwords do not match.', 'error');
             return;
         }
         if (password.length < 6) {
-            alert('Password must be at least 6 characters long.');
+            addToast('Password must be at least 6 characters long.', 'error');
             return;
         }
 
         setLoadingPassword(true);
         const { error } = await supabase.auth.updateUser({ password });
         if (error) {
-            alert('Error updating password: ' + error.message);
+            addToast('Error updating password: ' + error.message, 'error');
         } else {
-            alert('Password updated successfully!');
+            addToast('Password updated successfully!', 'success');
             setPassword('');
             setConfirmPassword('');
         }

@@ -1,10 +1,15 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Responder, ResponderStatus, Profile, UserRole } from '../types';
 import MapView from '../components/MapView';
 
-const MapPage: React.FC = () => {
+interface MapPageProps {
+    profile: Profile | null;
+}
+
+const MapPage: React.FC<MapPageProps> = ({ profile }) => {
     const [reports, setReports] = useState<Report[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [loading, setLoading] = useState(true);
@@ -115,7 +120,7 @@ const MapPage: React.FC = () => {
     
     return (
         <div className="h-[calc(100vh-8.5rem)] w-full -my-8">
-            <MapView reports={reports} responders={responders} selectedReportId={null} />
+            <MapView reports={reports} responders={responders} selectedReportId={null} profile={profile ?? undefined} />
         </div>
     );
 };

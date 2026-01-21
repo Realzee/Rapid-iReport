@@ -6,6 +6,7 @@ import CompanyManagementTable from '../components/CompanyManagementTable';
 import AddEditCompanyModal from '../components/AddEditCompanyModal';
 import DeleteCompanyModal from '../components/DeleteCompanyModal';
 import { supabase } from '../utils/supabase';
+import { useToast } from '../contexts/ToastContext';
 
 const CompaniesPage: React.FC = () => {
     const [companies, setCompanies] = useState<Company[]>([]);
@@ -14,6 +15,7 @@ const CompaniesPage: React.FC = () => {
     const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+    const { addToast } = useToast();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -90,9 +92,10 @@ const CompaniesPage: React.FC = () => {
                 } else {
                     setCompanies([...companies, savedCompany]);
                 }
+                addToast(`Company '${savedCompany.name}' saved successfully.`, 'success');
             }
         } catch (error: any) {
-            alert('Error saving company: ' + error.message);
+            addToast('Error saving company: ' + error.message, 'error');
         } finally {
             setIsAddEditModalOpen(false);
         }
@@ -115,9 +118,10 @@ const CompaniesPage: React.FC = () => {
                 const { error } = await supabase.from('companies').delete().eq('id', selectedCompany.id);
                 if (error) throw error;
                 
+                addToast(`Company '${selectedCompany.name}' deleted successfully.`, 'success');
                 setCompanies(companies.filter(c => c.id !== selectedCompany.id));
             } catch (error: any) {
-                 alert('Error deleting company: ' + error.message);
+                 addToast('Error deleting company: ' + error.message, 'error');
             }
         }
         setIsDeleteModalOpen(false);

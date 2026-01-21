@@ -4,6 +4,8 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
 import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon } from './icons';
 import PrintableReport from './PrintableReport';
+import { useToast } from '../contexts/ToastContext';
+import IncidentChat from './IncidentChat';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -45,8 +47,13 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState<ReportStatus>(report.status);
     const [selectedResponder, setSelectedResponder] = useState<string>(report.assigned_to || '');
+    const { addToast } = useToast();
 
     const timelineEndRef = useRef<HTMLDivElement>(null);
+
+    const isTerminalStatus = useMemo(() => {
+        return [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(report.status);
+    }, [report.status]);
 
     const scrollToBottom = () => {
         timelineEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -144,7 +151,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
     const handleUpdateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newUpdate.trim()) return;
+        if (!newUpdate.trim() || isTerminalStatus) return;
 
         setIsSubmittingUpdate(true);
         const { error } = await supabase.from('report_updates').insert({
@@ -154,7 +161,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         });
 
         if (error) {
-            alert('Failed to post update: ' + error.message);
+            addToast('Failed to post update: ' + error.message, 'error');
         } else {
             setNewUpdate('');
         }
@@ -162,18 +169,19 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     };
 
     const handleStatusUpdate = async (newStatus: ReportStatus) => {
+        if (isTerminalStatus) return;
         const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
-        const isTerminalStatus = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(newStatus);
+        const isNowTerminal = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(newStatus);
     
         const updatePayload: { status: ReportStatus; assigned_to?: string | null } = { status: newStatus };
     
-        if (isTerminalStatus && report.assigned_to) {
+        if (isNowTerminal && report.assigned_to) {
             updatePayload.assigned_to = null;
         }
     
         const { error: updateError } = await supabase.from(tableName).update(updatePayload).eq('id', report.id);
         if (updateError) {
-            alert("Failed to update status: " + updateError.message);
+            addToast("Failed to update status: " + updateError.message, 'error');
             return;
         }
     
@@ -183,7 +191,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             content: `Status changed to: ${newStatus.replace(/_/g, ' ')}`
         });
     
-        if (isTerminalStatus && report.assigned_to) {
+        if (isNowTerminal && report.assigned_to) {
             const responderId = report.assigned_to;
             
             const { count: activeVehicleAssignments } = await supabase
@@ -206,6 +214,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     };
 
     const handleDispatchResponder = async (responderId: string) => {
+        if (isTerminalStatus) return;
         const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
         const oldResponderId = report.assigned_to;
     
@@ -215,7 +224,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         }).eq('id', report.id);
     
         if (reportUpdateError) {
-            alert("Failed to dispatch responder: " + reportUpdateError.message);
+            addToast("Failed to dispatch responder: " + reportUpdateError.message, 'error');
             return;
         }
     
@@ -318,13 +327,16 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                             <div ref={timelineEndRef} />
                         </div>
                     </DetailField>
+                    <DetailField label="Live Communication">
+                        <IncidentChat reportId={report.id} currentUserProfile={profile} disabled={isTerminalStatus} />
+                    </DetailField>
                 </div>
 
-                <div className="p-4 border-t border-gray-200 dark:border-gray-700/50 space-y-4 flex-shrink-0 bg-white/50 dark:bg-gray-900/50">
+                <div className={`p-4 border-t border-gray-200 dark:border-gray-700/50 space-y-4 flex-shrink-0 bg-white/50 dark:bg-gray-900/50 ${isTerminalStatus ? 'opacity-50 cursor-not-allowed' : ''}`}>
                     <form onSubmit={handleUpdateSubmit} className="flex-shrink-0">
                          <div className="relative">
-                            <textarea value={newUpdate} onChange={(e) => setNewUpdate(e.target.value)} placeholder="Type an update..." rows={2} className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"/>
-                            <button type="submit" disabled={isSubmittingUpdate} className="absolute top-2 right-2 p-2 text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 disabled:opacity-50">
+                            <textarea value={newUpdate} onChange={(e) => setNewUpdate(e.target.value)} placeholder={isTerminalStatus ? "This incident is closed. No new updates can be added." : "Type an update..."} rows={2} disabled={isTerminalStatus} className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none disabled:cursor-not-allowed"/>
+                            <button type="submit" disabled={isSubmittingUpdate || isTerminalStatus} className="absolute top-2 right-2 p-2 text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                             </button>
                         </div>
@@ -333,10 +345,10 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     <div>
                         <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block">Update Status</label>
                          <div className="flex items-center gap-2">
-                            <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value as ReportStatus)} className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 capitalize">
+                            <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value as ReportStatus)} disabled={isTerminalStatus} className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 capitalize disabled:cursor-not-allowed">
                                 {statusOptions.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                             </select>
-                             <button onClick={() => handleStatusUpdate(selectedStatus)} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                             <button onClick={() => handleStatusUpdate(selectedStatus)} disabled={isTerminalStatus} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:cursor-not-allowed">
                                 <CheckCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                             </button>
                         </div>
@@ -344,7 +356,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                      <div>
                         <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block">Dispatch Responder</label>
                         <div className="flex items-center gap-2">
-                            <select value={selectedResponder} onChange={(e) => setSelectedResponder(e.target.value)} className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <select value={selectedResponder} onChange={(e) => setSelectedResponder(e.target.value)} disabled={isTerminalStatus} className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed">
                                 <option value="">{report.assigned_to ? 'Unassign' : (availableResponders.length > 0 ? 'Select Responder...' : 'No responders available')}</option>
                                 {responderOptions.map(r => (
                                     <option key={r.id} value={r.id}>
@@ -353,7 +365,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                                     </option>
                                 ))}
                             </select>
-                            <button onClick={() => handleDispatchResponder(selectedResponder)} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                            <button onClick={() => handleDispatchResponder(selectedResponder)} disabled={isTerminalStatus} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:cursor-not-allowed">
                                 <AssignResponderIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                             </button>
                         </div>

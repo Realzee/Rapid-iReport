@@ -1,16 +1,19 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip, GeoJSON } from 'react-leaflet';
 import L, { LatLngBoundsExpression } from 'leaflet';
-import { Report, Responder, VehicleReport, ReportStatus, Severity, ResponderStatus, ChatMessage } from '../types';
+import { Report, Responder, VehicleReport, ReportStatus, Severity, ResponderStatus, Profile } from '../types';
 import StatusBadge from './StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon, ShareIcon } from './icons';
+import IncidentChat from './IncidentChat';
 
 interface MapViewProps {
   reports: Report[];
   responders: Responder[];
   selectedReportId: string | null;
+  profile?: Profile;
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
@@ -81,25 +84,7 @@ const MapFocusController: React.FC<{ selectedReport: Report | undefined }> = ({ 
     return null;
 };
 
-const ChatBox: React.FC<{ messages: ChatMessage[] }> = ({ messages }) => {
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-
-    return (
-        <div className="h-28 overflow-y-auto p-2 space-y-2 bg-gray-100 dark:bg-gray-900/50 rounded-md border border-gray-200 dark:border-gray-700/50">
-            {messages.map((msg) => (
-                <div key={msg.id} className={`flex text-white ${msg.sender === 'Controller' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`px-3 py-1 rounded-lg max-w-[80%] text-sm shadow-md ${msg.sender === 'Controller' ? 'bg-blue-600' : 'bg-gray-500 dark:bg-gray-700'}`}>{msg.text}</div>
-                </div>
-            ))}
-            <div ref={messagesEndRef} />
-        </div>
-    );
-};
-
-const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId }) => {
-    const [chatMessages, setChatMessages] = useState<Record<string, ChatMessage[]>>({});
-    const [currentChatInput, setCurrentChatInput] = useState<Record<string, string>>({});
+const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, profile }) => {
     const [copiedReportId, setCopiedReportId] = useState<string | null>(null);
 
     const handleShareReport = (reportId: string) => {
@@ -107,15 +92,6 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
             setCopiedReportId(reportId);
             setTimeout(() => setCopiedReportId(null), 2000);
         });
-    };
-
-    const handleSendMessage = (reportId: string) => {
-        const text = currentChatInput[reportId];
-        if (!text || text.trim() === '') return;
-
-        const newMessage: ChatMessage = { id: crypto.randomUUID(), reportId, sender: 'Controller', text: text.trim(), timestamp: new Date().toISOString() };
-        setChatMessages(prev => ({ ...prev, [reportId]: [...(prev[reportId] || []), newMessage] }));
-        setCurrentChatInput(prev => ({ ...prev, [reportId]: '' }));
     };
 
     const selectedReport = reports.find(r => r.id === selectedReportId);
@@ -161,7 +137,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                         {selectedReport.location_coords && (
                              <Marker position={[selectedReport.location_coords.lat, selectedReport.location_coords.lng]} icon={createRedPinIcon()}>
                                 <Popup>
-                                    <div className="w-64">
+                                    <div className="w-72">
                                         <h3 className="font-bold text-lg mb-1">{isVehicleReport(selectedReport) ? selectedReport.license_plate : selectedReport.title}</h3>
                                         <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mb-2">{selectedReport.ob_number}</p>
                                         <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{selectedReport.description}</p>
@@ -171,15 +147,10 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                                             <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Severity</span><span className={`capitalize px-2 py-1 text-xs font-semibold rounded-full ${selectedReport.severity === 'critical' ? 'bg-red-500/20 text-red-400' : selectedReport.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : selectedReport.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}`}>{selectedReport.severity}</span></div>
                                         </div>
                                         
-                                        {[ReportStatus.ACTIVE, ReportStatus.IN_PROGRESS].includes(selectedReport.status) && (
+                                        {profile && [ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(selectedReport.status) && (
                                             <>
                                                 <hr className="border-gray-200 dark:border-gray-600 my-2" />
-                                                <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase mb-2">Live Chat</h4>
-                                                <ChatBox messages={chatMessages[selectedReport.id] || []} />
-                                                <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(selectedReport.id); }} className="mt-2 flex space-x-2">
-                                                    <input type="text" placeholder="Send a message..." value={currentChatInput[selectedReport.id] || ''} onChange={(e) => setCurrentChatInput(prev => ({ ...prev, [selectedReport.id]: e.target.value }))} className="flex-grow bg-gray-100 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 rounded-md py-1 px-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all" />
-                                                    <button type="submit" className="px-3 bg-blue-600 text-white font-semibold rounded-md text-sm hover:bg-blue-500 transition-colors">Send</button>
-                                                </form>
+                                                <IncidentChat reportId={selectedReport.id} currentUserProfile={profile} />
                                             </>
                                         )}
 

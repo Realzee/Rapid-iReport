@@ -24,6 +24,20 @@
   <script>
     tailwind.config = {
       darkMode: 'class',
+      theme: {
+        extend: {
+          keyframes: {
+            'toast-enter': {
+              'from': { opacity: '0', transform: 'translateX(100%)' },
+              'to': { opacity: '1', transform: 'translateX(0)' },
+            },
+            'toast-exit': {
+              'from': { opacity: '1', transform: 'translateX(0)' },
+              'to': { opacity: '0', transform: 'translateX(100%)' },
+            }
+          }
+        }
+      }
     }
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">

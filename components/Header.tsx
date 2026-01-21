@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, ClipboardCheckIcon } from './icons';
+import { BellIcon, ChevronDownIcon, MenuIcon, XIcon } from './icons';
 import { Profile, UserRole, Notification } from '../types';
 import { supabase } from '../utils/supabase';
 import { logoUrl } from '../assets/logo';
@@ -8,16 +8,16 @@ import NotificationsPanel from './NotificationsPanel';
 
 interface HeaderProps {
     currentView: string;
-    setView: (view: 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'requests') => void;
+    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller') => void;
     profile: Profile;
+    onNotificationClick: (notification: Notification) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotificationClick }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -38,16 +38,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
             .order('created_at', { ascending: false });
         if (notificationsError) console.error("Error fetching notifications:", notificationsError);
         else setNotifications(notificationsData || []);
-
-        // Fetch pending requests count for admins
-        if (canAccessAdminPages) {
-            const { count, error: countError } = await supabase
-                .from('registration_requests')
-                .select('*', { count: 'exact', head: true })
-                .eq('status', 'pending');
-            if (countError) console.error("Error fetching requests count:", countError);
-            else setPendingRequestsCount(count || 0);
-        }
     };
     
     fetchInitialData();
@@ -61,21 +51,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
         })
         .subscribe();
         
-    // Subscribe to Registration Requests for count update
-    let requestsChannel: ReturnType<typeof supabase.channel> | null = null;
-    if (canAccessAdminPages) {
-        requestsChannel = supabase
-            .channel('public:registration_requests')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'registration_requests' }, async () => {
-                const { count, error } = await supabase.from('registration_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
-                if (!error) setPendingRequestsCount(count || 0);
-            })
-            .subscribe();
-    }
-
     return () => {
         supabase.removeChannel(notificationsChannel);
-        if (requestsChannel) supabase.removeChannel(requestsChannel);
     };
   }, [profile, canAccessAdminPages]);
 
@@ -103,7 +80,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
     setMobileMenuOpen(false);
   };
 
-  const handleMobileLinkClick = (view: 'dashboard' | 'reports' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'requests') => {
+  const handleMobileLinkClick = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller') => {
       setView(view);
       setMobileMenuOpen(false);
   }
@@ -117,10 +94,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
   const toggleNotifications = () => { setIsNotificationsOpen(prev => !prev); setDropdownOpen(false); };
   const toggleUserDropdown = () => { setDropdownOpen(prev => !prev); setIsNotificationsOpen(false); };
 
-  const handleMarkAsRead = async (id: string) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
-  };
-
   const handleMarkAllAsRead = async () => {
     const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
     if (unreadIds.length > 0) {
@@ -128,31 +101,36 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
     }
   };
 
-  const NavLinks: React.FC<{mobile?: boolean}> = ({ mobile = false}) => (
-    <>
-      <button onClick={() => mobile ? handleMobileLinkClick('dashboard') : setView('dashboard')} className={mobile ? mobileNavLinkClasses('dashboard') : navLinkClasses('dashboard')}>Dashboard</button>
-      {canAccessController && (
-        <button onClick={() => mobile ? handleMobileLinkClick('controller') : setView('controller')} className={mobile ? mobileNavLinkClasses('controller') : navLinkClasses('controller')}>Controller</button>
-      )}
-      <button onClick={() => mobile ? handleMobileLinkClick('reports') : setView('reports')} className={mobile ? mobileNavLinkClasses('reports') : navLinkClasses('reports')}>Reports</button>
-      <button onClick={() => mobile ? handleMobileLinkClick('map') : setView('map')} className={mobile ? mobileNavLinkClasses('map') : navLinkClasses('map')}>Map</button>
-      {canAccessAdminPages && (
-        <>
-          <button onClick={() => mobile ? handleMobileLinkClick('users') : setView('users')} className={mobile ? mobileNavLinkClasses('users') : navLinkClasses('users')}>Users</button>
-          <button onClick={() => mobile ? handleMobileLinkClick('companies') : setView('companies')} className={mobile ? mobileNavLinkClasses('companies') : navLinkClasses('companies')}>Companies</button>
-          <button onClick={() => mobile ? handleMobileLinkClick('requests') : setView('requests')} className={mobile ? mobileNavLinkClasses('requests') : navLinkClasses('requests')}>
-            Access Requests
-            {pendingRequestsCount > 0 && !mobile && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full text-xs flex items-center justify-center text-white">{pendingRequestsCount}</span>
-            )}
-          </button>
-        </>
-      )}
-    </>
-  );
+  const NavLinks: React.FC<{mobile?: boolean}> = ({ mobile = false}) => {
+    if (profile.role === UserRole.USER) {
+      return (
+        <button onClick={() => mobile ? handleMobileLinkClick('dashboard') : setView('dashboard')} className={mobile ? mobileNavLinkClasses('dashboard') : navLinkClasses('dashboard')}>
+          My Reports
+        </button>
+      );
+    }
+  
+    return (
+      <>
+        <button onClick={() => mobile ? handleMobileLinkClick('dashboard') : setView('dashboard')} className={mobile ? mobileNavLinkClasses('dashboard') : navLinkClasses('dashboard')}>Dashboard</button>
+        {canAccessController && (
+          <button onClick={() => mobile ? handleMobileLinkClick('controller') : setView('controller')} className={mobile ? mobileNavLinkClasses('controller') : navLinkClasses('controller')}>Controller</button>
+        )}
+        <button onClick={() => mobile ? handleMobileLinkClick('archives') : setView('archives')} className={mobile ? mobileNavLinkClasses('archives') : navLinkClasses('archives')}>Archives</button>
+        <button onClick={() => mobile ? handleMobileLinkClick('analytics') : setView('analytics')} className={mobile ? mobileNavLinkClasses('analytics') : navLinkClasses('analytics')}>Analytics</button>
+        <button onClick={() => mobile ? handleMobileLinkClick('map') : setView('map')} className={mobile ? mobileNavLinkClasses('map') : navLinkClasses('map')}>Map</button>
+        {canAccessAdminPages && (
+          <>
+            <button onClick={() => mobile ? handleMobileLinkClick('users') : setView('users')} className={mobile ? mobileNavLinkClasses('users') : navLinkClasses('users')}>Users</button>
+            <button onClick={() => mobile ? handleMobileLinkClick('companies') : setView('companies')} className={mobile ? mobileNavLinkClasses('companies') : navLinkClasses('companies')}>Companies</button>
+          </>
+        )}
+      </>
+    );
+  }
 
-  const headerContainerClasses = currentView === 'controller'
-    ? "px-4 sm:px-6 lg:px-8" // Full-width for controller
+  const headerContainerClasses = currentView === 'controller' || profile.role === UserRole.RESPONDER || profile.role === UserRole.USER
+    ? "px-4 sm:px-6 lg:px-8" // Full-width views
     : "container mx-auto px-4 sm:px-6 lg:px-8"; // Centered for others
 
   return (
@@ -177,7 +155,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile }) => {
                  {isNotificationsOpen && (
                     <NotificationsPanel 
                         notifications={notifications}
-                        onMarkAsRead={handleMarkAsRead}
+                        onNotificationClick={(notification) => {
+                          onNotificationClick(notification);
+                          setIsNotificationsOpen(false);
+                        }}
                         onMarkAllAsRead={handleMarkAllAsRead}
                         onClose={() => setIsNotificationsOpen(false)}
                     />

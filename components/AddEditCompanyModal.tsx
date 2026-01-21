@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Company } from '../types';
 import { XIcon, UploadCloudIcon, TrashIcon, BuildingIcon } from './icons';
 
@@ -14,18 +14,32 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
+    // This ref helps us detect when the modal is opening for the first time
+    // versus just re-rendering while already open, preventing state loss.
+    const openedWithCompanyRef = useRef<Company | null | undefined>(undefined);
+
     useEffect(() => {
-        if (isOpen) {
+        // We only want to reset the form's state under two conditions:
+        // 1. The modal is opening (`isOpen` is true).
+        // 2. The company being edited has changed since it was last opened.
+        if (isOpen && openedWithCompanyRef.current !== company) {
             if (company) {
                 setName(company.name);
                 setLogoPreview(company.logo_url || null);
             } else {
+                // Reset for 'Add New' mode.
                 setName('');
                 setLogoPreview(null);
             }
+            // Always reset the selected file when initializing.
             setLogoFile(null);
+            // Record which company we opened the modal with.
+            openedWithCompanyRef.current = company;
+        } else if (!isOpen) {
+            // When the modal closes, reset the ref so it can be re-initialized next time.
+            openedWithCompanyRef.current = undefined;
         }
-    }, [company, isOpen]);
+    }, [isOpen, company]);
     
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {

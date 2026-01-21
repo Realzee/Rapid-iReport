@@ -9,14 +9,17 @@ import ReportDetailCard from './ReportDetailCard';
 import MapModal from './MapModal';
 import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon } from './icons';
 import { supabase } from '../utils/supabase';
+import { useToast } from '../contexts/ToastContext';
 
 interface DashboardProps {
     profile: Profile;
+    initialReportId?: string | null;
+    onInitialReportHandled?: () => void;
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
-const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
+const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onInitialReportHandled }) => {
     const [reports, setReports] = useState<Report[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
@@ -26,6 +29,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+    const { addToast } = useToast();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -105,6 +109,15 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
             supabase.removeChannel(profilesChannel);
         };
     }, []);
+
+    const handleReportSelect = (reportId: string) => setSelectedReportId(prevId => prevId === reportId ? null : reportId);
+
+    useEffect(() => {
+        if (initialReportId && onInitialReportHandled && reports.some(r => r.id === initialReportId)) {
+            setSelectedReportId(initialReportId);
+            onInitialReportHandled();
+        }
+    }, [initialReportId, onInitialReportHandled, reports]);
     
     // Effect to derive responders from allUsers, ensuring a single source of truth
     useEffect(() => {
@@ -120,8 +133,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
 
     const sortedReports = useMemo(() => reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()), [reports]);
     const selectedReport = useMemo(() => reports.find(r => r.id === selectedReportId), [reports, selectedReportId]);
-
-    const handleReportSelect = (reportId: string) => setSelectedReportId(prevId => prevId === reportId ? null : reportId);
+    
     const handleOpenNewReportModal = () => { setReportToEdit(null); setIsReportModalOpen(true); };
     const handleOpenEditReportModal = (report: Report) => { setReportToEdit(report); setIsReportModalOpen(true); };
     const handleOpenDeleteReportModal = (report: Report) => setReportToDelete(report);
@@ -148,7 +160,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
         const { error: updateError } = await supabase.from(tableName).update(updatePayload).eq('id', reportId);
     
         if (updateError) {
-            alert("Failed to update status: " + updateError.message);
+            addToast("Failed to update status: " + updateError.message, 'error');
             return;
         }
     
@@ -210,7 +222,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile }) => {
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="h-[60vh] lg:h-[calc(100vh-8.5rem)] lg:sticky lg:top-20">
-                        <MapView reports={reports} responders={responders} selectedReportId={selectedReportId} />
+                        <MapView reports={reports} responders={responders} selectedReportId={selectedReportId} profile={profile} />
                     </div>
                 </div>
             </div>
