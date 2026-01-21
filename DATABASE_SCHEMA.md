@@ -1,25 +1,43 @@
-# RAPID iREPORT - Database Schema
+# RAPID iREPORT - Complete Supabase Backend Setup
 
-This file contains the complete, idempotent SQL script for setting up the Supabase database for the RAPID iREPORT application. This script can be run safely in the Supabase SQL Editor to create all necessary types, tables, functions, and Row Level Security policies.
+This document provides all the necessary steps and SQL scripts to fully set up the Supabase backend for the RAPID iREPORT application. Follow these instructions carefully.
 
-For detailed setup instructions, refer to `DATABASE_SETUP.md`.
+> [!IMPORTANT]
+> **Common Error: "invalid input value for enum" or "schema cache"**
+> If you are seeing errors like `invalid input value for enum report_status_enum: "deleted"` or `Could not find the column... in the schema cache`, it means your database is out of sync. Following the steps below, especially **Step 2**, will fix this. The scripts are idempotent and safe to run on an existing project.
+
+---
+
+## Step 1: Create Storage Buckets
+
+You need to create three public buckets for storing images.
+
+1.  Navigate to your Supabase Project dashboard and go to **Storage** in the left sidebar.
+2.  Create the following buckets, ensuring the **"Public bucket"** switch is toggled ON for each:
+    *   `evidence` (for incident-related images)
+    *   `avatars` (for user profile pictures)
+    *   `company-logos` (for company branding)
+
+---
+
+## Step 2: Run the Database Schema Script (Two Parts)
+
+This script creates and updates all necessary types, tables, functions, and triggers.
 
 > [!DANGER]
-> **CRITICAL SETUP INSTRUCTION: DO NOT RUN SCRIPTS TOGETHER**
+> **CRITICAL SETUP INSTRUCTION: RUN IN TWO SEPARATE STEPS**
 >
-> The setup script is divided into **Part 1** and **Part 2**. You **MUST** run these in two separate steps:
+> The SQL script is divided into **Part 1** and **Part 2**. You **MUST** run these in two separate steps:
 >
 > 1.  Copy and run **Part 1** in the Supabase SQL Editor.
 > 2.  Wait for it to complete successfully.
 > 3.  Open a **NEW, SEPARATE** query window.
 > 4.  Copy and run **Part 2** in the new window.
 >
-> Failing to do this will result in an `invalid input value for enum` error, because Part 1 (which updates the data types) must be completed *before* Part 2 (which uses those data types) is started.
-
----
+> Failing to do this will cause an error, because Part 1 (which updates the data types) must be completed *before* Part 2 (which uses those data types) is started.
 
 ### **Part 1: Update Data Types & Migrate Old Schema**
-Copy and run the code block below first. This part is non-transactional and now includes a migration step to fix older database setups.
+*(Copy and run this entire code block first)*
 
 ```sql
 -- RAPID iREPORT - Database Setup Script - PART 1
@@ -51,7 +69,7 @@ BEGIN
 END$$;
 
 -- 3. Add all possible values to ENUM types to ensure they are fully up-to-date.
--- This part is idempotent and safe to run multiple times.
+-- This part is idempotent and safe to run multiple times. This will fix the "invalid input for enum" error.
 ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'admin';
 ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'moderator';
 ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'controller';
@@ -78,10 +96,9 @@ ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'available';
 ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'en_route';
 ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'on_scene';
 ```
----
 
 ### **Part 2: Setup Tables, Functions, and Policies**
-After Part 1 completes successfully, open a **new query** in the SQL Editor and run this second code block. This part is transactional.
+*(After Part 1 completes, copy and run this entire code block in a NEW query window)*
 
 ```sql
 -- RAPID iREPORT - Database Setup Script - PART 2
@@ -490,3 +507,247 @@ CREATE POLICY "Users can see and update their own notifications" ON public.notif
 
 COMMIT;
 ```
+
+---
+
+## Step 3: Add Storage Security Policies (RLS)
+
+After setting up the tables, you must secure your storage buckets with Row Level Security policies. This script is now idempotent, meaning you can run it multiple times without causing errors.
+
+1.  Return to the **SQL Editor** in your Supabase dashboard.
+2.  Run the following script to create the necessary policies for all three buckets.
+
+```sql
+-- Policies for 'avatars' bucket
+DROP POLICY IF EXISTS "Allow public read access to avatars" ON storage.objects;
+CREATE POLICY "Allow public read access to avatars" ON storage.objects FOR SELECT USING ( bucket_id = 'avatars' );
+
+DROP POLICY IF EXISTS "Allow authenticated users to upload their own avatar" ON storage.objects;
+CREATE POLICY "Allow authenticated users to upload their own avatar" ON storage.objects FOR INSERT TO authenticated WITH CHECK ( bucket_id = 'avatars' AND owner = auth.uid() );
+
+DROP POLICY IF EXISTS "Allow authenticated users to update their own avatar" ON storage.objects;
+CREATE POLICY "Allow authenticated users to update their own avatar" ON storage.objects FOR UPDATE TO authenticated USING ( bucket_id = 'avatars' AND owner = auth.uid() );
+
+DROP POLICY IF EXISTS "Allow admins/mods to manage all avatars" ON storage.objects;
+CREATE POLICY "Allow admins/mods to manage all avatars" ON storage.objects FOR ALL TO authenticated USING ( bucket_id = 'avatars' AND (SELECT public.get_user_role(auth.uid())) IN ('admin', 'moderator') ) WITH CHECK ( bucket_id = 'avatars' AND (SELECT public.get_user_role(auth.uid())) IN ('admin', 'moderator') );
+
+
+-- Policies for 'evidence' bucket
+DROP POLICY IF EXISTS "Allow public read access to evidence" ON storage.objects;
+CREATE POLICY "Allow public read access to evidence" ON storage.objects FOR SELECT USING ( bucket_id = 'evidence' );
+
+DROP POLICY IF EXISTS "Allow authenticated users to upload evidence" ON storage.objects;
+CREATE POLICY "Allow authenticated users to upload evidence" ON storage.objects FOR INSERT TO authenticated WITH CHECK ( bucket_id = 'evidence' );
+
+DROP POLICY IF EXISTS "Allow admins/mods to manage all evidence" ON storage.objects;
+CREATE POLICY "Allow admins/mods to manage all evidence" ON storage.objects FOR ALL TO authenticated USING ( bucket_id = 'evidence' AND (SELECT public.get_user_role(auth.uid())) IN ('admin', 'moderator') ) WITH CHECK ( bucket_id = 'evidence' AND (SELECT public.get_user_role(auth.uid())) IN ('admin', 'moderator') );
+
+
+-- Policies for 'company-logos' bucket
+DROP POLICY IF EXISTS "Allow public read access to company logos" ON storage.objects;
+CREATE POLICY "Allow public read access to company logos" ON storage.objects FOR SELECT USING ( bucket_id = 'company-logos' );
+
+DROP POLICY IF EXISTS "Allow admins/mods to manage company logos" ON storage.objects;
+CREATE POLICY "Allow admins/mods to manage company logos" ON storage.objects FOR ALL TO authenticated USING (
+    bucket_id = 'company-logos' AND
+    (SELECT public.get_user_role(auth.uid())) IN ('admin', 'moderator')
+) WITH CHECK (
+    bucket_id = 'company-logos' AND
+    (SELECT public.get_user_role(auth.uid())) IN ('admin', 'moderator')
+);
+```
+---
+
+## Step 4: Deploy Supabase Edge Functions
+
+These server-side functions are required for secure administrative actions. Follow these steps to deploy all required functions.
+
+1.  **Install Supabase CLI:** If you haven't already, [install the Supabase CLI](https://supabase.com/docs/guides/cli/getting-started).
+
+2.  **Link your project:** In your computer's terminal, navigate to your project folder and run `supabase login`, then `supabase link --project-ref <your-project-ref>`. Your `<project-ref>` is in your Supabase project's URL (`<project-ref>.supabase.co`).
+
+3.  **Deploy `reset-password` Function:**
+    *   Create the function: `supabase functions new reset-password`.
+    *   Open the new file `supabase/functions/reset-password/index.ts` and replace its content with the code below.
+    ```typescript
+    import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4'
+
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    }
+
+    serve(async (req) => {
+      if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+      try {
+        // 1. Create a Supabase client with the user's auth token to check their role
+        const userSupabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+          { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+        )
+        const { data: { user }, error: userError } = await userSupabaseClient.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("User not found.");
+
+        const { data: profile, error: profileError } = await userSupabaseClient.from('profiles').select('role').eq('id', user.id).single();
+        if (profileError) throw profileError;
+        if (!['admin', 'moderator'].includes(profile.role)) {
+          throw new Error("Unauthorized: You do not have permission to reset passwords.");
+        }
+
+        // 2. If authorized, proceed with the main logic using the admin client
+        const { userId, password } = await req.json()
+        if (!userId || !password) throw new Error("A userId and new password must be provided.");
+        if (password.length < 6) throw new Error("Password must be at least 6 characters long.");
+        
+        const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
+        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password: password })
+        if (error) throw error
+        
+        return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 })
+      } catch (error) {
+        const status = error.message.startsWith('Unauthorized') ? 401 : 400;
+        return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status })
+      }
+    })
+    ```
+    *   Deploy it: `supabase functions deploy reset-password --no-verify-jwt`.
+
+4.  **Deploy `create-user` Function:**
+    *   Create the function: `supabase functions new create-user`.
+    *   Open `supabase/functions/create-user/index.ts` and replace its content with this code:
+    ```typescript
+    import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4'
+
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    }
+
+    serve(async (req) => {
+      if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+      try {
+        // 1. Authorization check: Ensure the caller is an admin or moderator.
+        const userSupabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+        );
+        const { data: { user }, error: userError } = await userSupabaseClient.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("User not found.");
+        const { data: profile, error: profileError } = await userSupabaseClient.from('profiles').select('role').eq('id', user.id).single();
+        if (profileError) throw profileError;
+        if (!['admin', 'moderator'].includes(profile.role)) {
+            throw new Error("Unauthorized: You do not have permission to create users.");
+        }
+        
+        // 2. Main logic: Create the user using the admin client.
+        const { email, password, user_metadata } = await req.json()
+        if (!email || !password || !user_metadata?.full_name) {
+          throw new Error('Email, password, and full_name are required.')
+        }
+        if (password.length < 6) {
+            throw new Error("Password must be at least 6 characters long.");
+        }
+
+        const supabaseAdmin = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+        
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: email,
+          password: password,
+          email_confirm: true,
+          user_metadata: user_metadata // This metadata will be read by the `handle_new_user` trigger
+        });
+
+        if (authError) {
+            throw new Error(`Auth user creation failed: ${authError.message}`);
+        }
+        
+        // The `handle_new_user` trigger will automatically create the profile.
+        // We just return the auth user data.
+        return new Response(JSON.stringify(authData), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        })
+      } catch (error) {
+        console.error("CREATE-USER-FUNCTION-ERROR:", error.message);
+        const status = error.message.startsWith('Unauthorized') ? 401 : 400;
+        return new Response(JSON.stringify({ error: error.message }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status,
+        })
+      }
+    })
+    ```
+    *   Deploy it: `supabase functions deploy create-user --no-verify-jwt`.
+    
+5.  **Deploy `delete-user` Function:**
+    *   Create the function: `supabase functions new delete-user`.
+    *   Open `supabase/functions/delete-user/index.ts` and replace its content with this code:
+    ```typescript
+    import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4'
+
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    }
+
+    serve(async (req) => {
+      if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+      try {
+        // 1. Authorization check
+        const userSupabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+        );
+        const { data: { user }, error: userError } = await userSupabaseClient.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("User not found.");
+        const { data: profile, error: profileError } = await userSupabaseClient.from('profiles').select('role').eq('id', user.id).single();
+        if (profileError) throw profileError;
+        if (!['admin', 'moderator'].includes(profile.role)) {
+            throw new Error("Unauthorized: You do not have permission to delete users.");
+        }
+
+        // 2. Main logic
+        const { userId } = await req.json()
+        if (!userId) throw new Error('A userId must be provided.')
+
+        const supabaseAdmin = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+
+        const { data, error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+        if (error) throw error
+
+        return new Response(JSON.stringify(data), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        })
+      } catch (error) {
+        const status = error.message.startsWith('Unauthorized') ? 401 : 400;
+        return new Response(JSON.stringify({ error: error.message }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status,
+        })
+      }
+    })
+    ```
+    *   Deploy it: `supabase functions deploy delete-user --no-verify-jwt`.
+
+---
+
+This completes the setup for all application features. Your application should now function correctly.
