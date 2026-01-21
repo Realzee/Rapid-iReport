@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 
 const CodeBlock: React.FC<{ code: string }> = ({ code }) => {
@@ -77,6 +78,7 @@ ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'resolved';
 ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'rejected';
 ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'recovered';
 ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'closed';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'deleted';
 
 ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'critical';
 ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'high';

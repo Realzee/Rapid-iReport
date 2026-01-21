@@ -3,6 +3,8 @@
 
 
 
+
+
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -40,18 +42,30 @@ const App: React.FC = () => {
   const [showAuthPage, setShowAuthPage] = useState(false);
 
   useEffect(() => {
-    const fetchSession = async () => {
+    const initializeApp = async () => {
+      // 1. Check schema first. This is critical and runs for all users.
+      const schemaResult = await checkDatabaseSchema();
+      if (schemaResult.status === 'invalid') {
+        setSchemaError(schemaResult.error || 'An unknown schema error occurred.');
+        setSchemaState('invalid');
+        setLoading(false); // Stop loading to show the error modal.
+        return;
+      }
+      setSchemaState('valid');
+  
+      // 2. If schema is valid, fetch the initial session.
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
         setError(`Cannot reach authentication server: ${sessionError.message}`);
       } else {
         setSession(session);
       }
-      setLoading(false);
+      setLoading(false); // Initial load (schema + session) is complete.
     };
-
-    fetchSession();
-
+  
+    initializeApp();
+  
+    // 3. Set up a listener for subsequent auth state changes.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setError(null); // Clear errors on auth state change
@@ -60,7 +74,7 @@ const App: React.FC = () => {
         setShowAuthPage(false); // On logout, return to public dashboard
       }
     });
-
+  
     return () => subscription.unsubscribe();
   }, []);
   
@@ -85,35 +99,20 @@ const App: React.FC = () => {
     };
 
     if (session?.user) {
-        const loadAppData = async () => {
-            setSchemaState('checking'); // Set state for post-login loading period
+        const loadProfile = async () => {
+            const { data, error } = await supabase.from('profiles').select('*, company:companies(*)').eq('id', session.user.id).single();
 
-            const [profileResult, schemaResult] = await Promise.all([
-                supabase.from('profiles').select('*, company:companies(*)').eq('id', session.user.id).single(),
-                checkDatabaseSchema()
-            ]);
-
-            // First, process the profile. We need it for the UI regardless of schema state.
-            if (profileResult.error) {
-                setError(`Failed to load your profile. Please check your connection and Row Level Security policies. Error: ${profileResult.error.message}`);
+            if (error) {
+                setError(`Failed to load your profile. Please check your connection and Row Level Security policies. Error: ${error.message}`);
                 setProfile(null);
             } else {
-                setProfile(profileResult.data);
+                setProfile(data);
                 setError(null);
                 setupPresence(session.user.id);
             }
-
-            // Second, process the schema check. This determines if we show the app or an error modal.
-            if (schemaResult.status === 'invalid') {
-                setSchemaError(schemaResult.error || 'An unknown schema error occurred.');
-                setSchemaState('invalid');
-            } else {
-                setSchemaError(null);
-                setSchemaState('valid');
-            }
         };
 
-        loadAppData();
+        loadProfile();
     } else {
         setProfile(null);
     }
@@ -193,28 +192,17 @@ const App: React.FC = () => {
 
   if (loading) {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black">
              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+             <p className="mt-4 text-gray-500 dark:text-gray-400">Initializing Application...</p>
         </div>
     )
   }
   
-  if (session && !profile && !error) {
-    return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black">
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="mt-4 text-gray-500 dark:text-gray-400">Loading your workspace...</p>
-        </div>
-    );
+  if (schemaState === 'invalid') {
+    return <GlobalSchemaErrorModal checkError={schemaError} />;
   }
 
-  const isFullWidthView = view === 'controller' || view === 'map' || profile?.role === UserRole.RESPONDER;
-  const isUserView = profile?.role === UserRole.USER;
-  
-  const mainClasses = isFullWidthView
-    ? 'pt-20 pb-8 px-4 sm:px-6 lg:px-8'
-    : `container mx-auto pt-20 px-4 sm:px-6 lg:px-8 pb-8 ${isUserView ? 'max-w-7xl' : ''}`;
-    
   if (session && error) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-4">
@@ -233,6 +221,22 @@ const App: React.FC = () => {
   if (!session) {
       return showAuthPage ? <AuthPage /> : <PublicDashboardPage onShowAuth={() => setShowAuthPage(true)} />;
   }
+  
+  if (session && !profile) {
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black">
+            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="mt-4 text-gray-500 dark:text-gray-400">Loading your workspace...</p>
+        </div>
+    );
+  }
+
+  const isFullWidthView = view === 'controller' || view === 'map' || profile?.role === UserRole.RESPONDER;
+  const isUserView = profile?.role === UserRole.USER;
+  
+  const mainClasses = isFullWidthView
+    ? 'pt-20 pb-8 px-4 sm:px-6 lg:px-8'
+    : `container mx-auto pt-20 px-4 sm:px-6 lg:px-8 pb-8 ${isUserView ? 'max-w-7xl' : ''}`;
 
   return (
     <div className="min-h-screen relative overflow-x-hidden">
@@ -244,31 +248,20 @@ const App: React.FC = () => {
 
       <div className="relative z-10">
         {profile ? (
-          <>
-            {schemaState === 'checking' && (
-                <div className="min-h-screen flex flex-col items-center justify-center">
-                    <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="mt-4 text-gray-500 dark:text-gray-400">Verifying database schema...</p>
-                </div>
-            )}
-            {schemaState === 'invalid' && <GlobalSchemaErrorModal checkError={schemaError} />}
-            {schemaState === 'valid' && (
-              <div className="flex flex-col min-h-screen">
-                <Header 
-                  currentView={view} 
-                  setView={setView} 
-                  profile={profile}
-                  onNotificationClick={handleNotificationClick}
-                />
-                <main className={`${mainClasses} flex-grow`}>
-                  {renderView()}
-                </main>
-                <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden">
-                    Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)
-                </footer>
-              </div>
-            )}
-          </>
+          <div className="flex flex-col min-h-screen">
+            <Header 
+              currentView={view} 
+              setView={setView} 
+              profile={profile}
+              onNotificationClick={handleNotificationClick}
+            />
+            <main className={`${mainClasses} flex-grow`}>
+              {renderView()}
+            </main>
+            <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden">
+                Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)
+            </footer>
+          </div>
         ) : null}
       </div>
     </div>
