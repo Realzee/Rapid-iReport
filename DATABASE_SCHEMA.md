@@ -52,6 +52,11 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 DROP FUNCTION IF EXISTS public.get_user_role(uuid) CASCADE;
 DROP FUNCTION IF EXISTS public.create_staff_notification(text, text, text, uuid, text[]) CASCADE;
 
+-- Temporarily disable RLS on the notifications table. This releases dependency locks
+-- from any old policies on that table that might prevent changing the type of 'profiles.role'.
+-- RLS will be re-enabled correctly in Part 2.
+ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
+
 -- 2. Robustly migrate ENUM types from old "_enum" suffix to new names.
 -- This block handles renaming if possible, or migrating columns and dropping the old type if a name conflict exists.
 
@@ -160,6 +165,22 @@ ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'rejected';
 ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'recovered';
 ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'closed';
 ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'deleted';
+
+-- For backward compatibility, also ensure all values exist on the legacy enum type if it hasn't been migrated yet.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status_enum') THEN
+        ALTER TYPE public.report_status_enum ADD VALUE IF NOT EXISTS 'active';
+        ALTER TYPE public.report_status_enum ADD VALUE IF NOT EXISTS 'assigned';
+        ALTER TYPE public.report_status_enum ADD VALUE IF NOT EXISTS 'in_progress';
+        ALTER TYPE public.report_status_enum ADD VALUE IF NOT EXISTS 'on_scene';
+        ALTER TYPE public.report_status_enum ADD VALUE IF NOT EXISTS 'resolved';
+        ALTER TYPE public.report_status_enum ADD VALUE IF NOT EXISTS 'rejected';
+        ALTER TYPE public.report_status_enum ADD VALUE IF NOT EXISTS 'recovered';
+        ALTER TYPE public.report_status_enum ADD VALUE IF NOT EXISTS 'closed';
+        ALTER TYPE public.report_status_enum ADD VALUE IF NOT EXISTS 'deleted';
+    END IF;
+END$$;
 
 ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'critical';
 ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'high';

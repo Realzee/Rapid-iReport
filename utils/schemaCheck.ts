@@ -19,8 +19,20 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
         
         // Check 2: Advanced Enum validation using RPC.
         // This is more robust as it doesn't rely on table RLS policies.
-        const { data: enumValues, error: rpcError } = await supabase.rpc('get_enum_values', { enum_type_name: 'report_status' });
+        // It also checks for legacy enum names to provide a more accurate error.
+        let { data: enumValues, error: rpcError } = await supabase.rpc('get_enum_values', { enum_type_name: 'report_status' });
 
+        let enumTypeName = 'report_status';
+
+        // If the modern enum name doesn't exist or is empty, try the legacy one.
+        if (!rpcError && (!enumValues || enumValues.length === 0)) {
+            const { data: legacyEnumValues, error: legacyRpcError } = await supabase.rpc('get_enum_values', { enum_type_name: 'report_status_enum' });
+            if (!legacyRpcError && legacyEnumValues && legacyEnumValues.length > 0) {
+                enumValues = legacyEnumValues;
+                enumTypeName = 'report_status_enum';
+            }
+        }
+        
         if (rpcError) {
             // If the function doesn't exist, it's a schema issue.
             if (rpcError.code === '42883') { // "function does not exist"
@@ -30,7 +42,7 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
                     error: `Database Schema Outdated: The helper function 'get_enum_values' is missing. This indicates an old database schema. Please run the full setup script from DATABASE_SCHEMA.md.`
                  };
             }
-            // For other errors, we can be lenient or log them. For now, we will be strict.
+            // For other errors, we can be strict.
             console.error("Database schema check failed on RPC 'get_enum_values':", rpcError);
              return {
                 status: 'invalid',
@@ -38,18 +50,19 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             };
         }
 
-        if (!enumValues || !Array.isArray(enumValues)) {
+        if (!enumValues || !Array.isArray(enumValues) || enumValues.length === 0) {
             return {
                 status: 'invalid',
-                error: `Database Schema Malformed: The function 'get_enum_values' returned an unexpected result.`
+                error: `Database Schema Malformed: Could not find the 'report_status' or 'report_status_enum' type. Please ensure your database is set up correctly.`
             };
         }
 
         // Now check if 'deleted' is in the list of values.
         if (!enumValues.includes('deleted')) {
+            const errorMsg = `Database Schema Mismatch: The application requires the 'deleted' value in the '${enumTypeName}' enum, but it is missing. This usually means the database was set up with an older script. Administrators should use the "Attempt Automatic Fix" button or run the scripts in DATABASE_SCHEMA.md to resolve this.`;
             return {
                 status: 'invalid',
-                error: `Database Schema Mismatch: The application requires a database feature (enum value: 'deleted' for 'report_status') that is missing. This usually means the database was set up with an older script. Administrators can use the "Attempt Automatic Fix" button to resolve this.`
+                error: errorMsg,
             };
         }
 

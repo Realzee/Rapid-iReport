@@ -11,7 +11,6 @@ import ProfilePage from './pages/ProfilePage';
 import ControllerPage from './pages/ControllerPage';
 import ResponderPage from './pages/ResponderPage';
 import UserDashboardPage from './pages/UserDashboardPage';
-import PublicDashboardPage from './pages/PublicDashboardPage';
 import { supabase } from './utils/supabase';
 // FIX: Changed to `import type` for better compatibility with modern TypeScript module resolution for Supabase v2. This may resolve downstream type inference issues.
 import type { Session } from '@supabase/supabase-js';
@@ -32,7 +31,6 @@ const App: React.FC = () => {
   const [schemaState, setSchemaState] = useState<'checking' | 'valid' | 'invalid'>('checking');
   const [schemaError, setSchemaError] = useState<string | null>(null);
   const [initialReportId, setInitialReportId] = useState<string | null>(null);
-  const [showAuthPage, setShowAuthPage] = useState(false);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -64,7 +62,6 @@ const App: React.FC = () => {
       setError(null); // Clear errors on auth state change
       if (!session) {
         setProfile(null);
-        setShowAuthPage(false); // On logout, return to public dashboard
       }
     });
   
@@ -212,7 +209,7 @@ const App: React.FC = () => {
   }
 
   if (!session) {
-      return showAuthPage ? <AuthPage /> : <PublicDashboardPage onShowAuth={() => setShowAuthPage(true)} />;
+      return <AuthPage />;
   }
   
   if (session && !profile) {
