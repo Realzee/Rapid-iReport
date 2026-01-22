@@ -55,6 +55,14 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     };
 
     useEffect(() => {
+        const activeStatuses = [
+            ReportStatus.PENDING,
+            ReportStatus.ACTIVE,
+            ReportStatus.ASSIGNED,
+            ReportStatus.IN_PROGRESS,
+            ReportStatus.ON_SCENE,
+        ];
+
         const fetchData = async () => {
             setLoading(true);
 
@@ -63,8 +71,8 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 { data: crimeData, error: cError },
                 { data: usersData, error: uError }
             ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*').neq('status', ReportStatus.DELETED).order('reported_at', { ascending: false }).limit(100),
-                supabase.from('crime_reports').select('*').neq('status', ReportStatus.DELETED).order('reported_at', { ascending: false }).limit(100),
+                supabase.from('vehicle_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
+                supabase.from('crime_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 supabase.from('profiles').select('*')
             ]);
 
@@ -98,15 +106,29 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             setReports(currentReports => {
                 if (payload.eventType === 'INSERT') {
                     const newReportWithMeta = { ...newReport, type: reportType };
-                    if (currentReports.some(r => r.id === newReportWithMeta.id)) return currentReports;
-                    return [newReportWithMeta, ...currentReports];
+                    if (activeStatuses.includes(newReportWithMeta.status)) {
+                        if (currentReports.some(r => r.id === newReportWithMeta.id)) return currentReports;
+                        return [newReportWithMeta, ...currentReports];
+                    }
+                    return currentReports;
                 }
                 if (payload.eventType === 'UPDATE') {
                     const updatedReport = { ...newReport, type: reportType };
-                    if (updatedReport.status === ReportStatus.DELETED) {
-                        return currentReports.filter(r => r.id !== updatedReport.id);
+                    const wasInList = currentReports.some(r => r.id === updatedReport.id);
+                    const isNowActive = activeStatuses.includes(updatedReport.status);
+
+                    if (isNowActive) {
+                        if (wasInList) {
+                            return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
+                        } else {
+                            return [updatedReport, ...currentReports];
+                        }
+                    } else {
+                        if (wasInList) {
+                            return currentReports.filter(r => r.id !== updatedReport.id);
+                        }
+                        return currentReports;
                     }
-                    return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
                 }
                 if (payload.eventType === 'DELETE') {
                     return currentReports.filter(r => r.id !== payload.old.id);

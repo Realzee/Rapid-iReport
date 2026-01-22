@@ -32,6 +32,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const { addToast } = useToast();
 
     useEffect(() => {
+        const activeStatuses = [
+            ReportStatus.PENDING,
+            ReportStatus.ACTIVE,
+            ReportStatus.ASSIGNED,
+            ReportStatus.IN_PROGRESS,
+            ReportStatus.ON_SCENE,
+        ];
+
         const fetchData = async () => {
             setLoading(true);
             const [
@@ -39,8 +47,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 { data: crimeData, error: cError },
                 { data: usersData, error: uError }
             ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*').neq('status', ReportStatus.DELETED).order('reported_at', { ascending: false }).limit(100),
-                supabase.from('crime_reports').select('*').neq('status', ReportStatus.DELETED).order('reported_at', { ascending: false }).limit(100),
+                supabase.from('vehicle_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
+                supabase.from('crime_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 supabase.from('profiles').select('*')
             ]);
             if (vError || cError || uError) console.error('Data fetch error:', vError || cError || uError);
@@ -59,18 +67,32 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             setReports(currentReports => {
                 if (payload.eventType === 'INSERT') {
                     const newReport = { ...payload.new, type: reportType };
-                    if (currentReports.some(r => r.id === newReport.id)) {
-                        return currentReports;
+                    if (activeStatuses.includes(newReport.status)) {
+                        if (currentReports.some(r => r.id === newReport.id)) {
+                            return currentReports;
+                        }
+                        return [newReport, ...currentReports];
                     }
-                    return [newReport, ...currentReports];
+                    return currentReports;
                 }
                 
                 if (payload.eventType === 'UPDATE') {
                     const updatedReport = { ...payload.new, type: reportType };
-                    if (updatedReport.status === ReportStatus.DELETED) {
-                        return currentReports.filter(r => r.id !== updatedReport.id);
+                    const wasInList = currentReports.some(r => r.id === updatedReport.id);
+                    const isNowActive = activeStatuses.includes(updatedReport.status);
+
+                    if (isNowActive) {
+                        if (wasInList) {
+                            return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
+                        } else {
+                            return [updatedReport, ...currentReports];
+                        }
+                    } else {
+                        if (wasInList) {
+                            return currentReports.filter(r => r.id !== updatedReport.id);
+                        }
+                        return currentReports;
                     }
-                    return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
                 }
                 
                 if (payload.eventType === 'DELETE') {
