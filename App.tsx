@@ -15,8 +15,6 @@ import { supabase } from './utils/supabase';
 // FIX: Changed to `import type` for better compatibility with modern TypeScript module resolution for Supabase v2. This may resolve downstream type inference issues.
 import type { Session } from '@supabase/supabase-js';
 import { Profile, UserRole, Notification } from './types';
-import { checkDatabaseSchema } from './utils/schemaCheck';
-import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
 import { ToastContainer } from './components/ToastContainer';
 
 type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller';
@@ -28,35 +26,23 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>('dashboard');
   
-  const [schemaState, setSchemaState] = useState<'checking' | 'valid' | 'invalid'>('checking');
-  const [schemaError, setSchemaError] = useState<string | null>(null);
   const [initialReportId, setInitialReportId] = useState<string | null>(null);
 
   useEffect(() => {
     const initializeApp = async () => {
-      // 1. Check schema first. This is critical and runs for all users.
-      const schemaResult = await checkDatabaseSchema();
-      if (schemaResult.status === 'invalid') {
-        setSchemaError(schemaResult.error || 'An unknown schema error occurred.');
-        setSchemaState('invalid');
-        setLoading(false); // Stop loading to show the error modal.
-        return;
-      }
-      setSchemaState('valid');
-  
-      // 2. If schema is valid, fetch the initial session.
+      // Fetch the initial session.
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
         setError(`Cannot reach authentication server: ${sessionError.message}`);
       } else {
         setSession(session);
       }
-      setLoading(false); // Initial load (schema + session) is complete.
+      setLoading(false);
     };
   
     initializeApp();
   
-    // 3. Set up a listener for subsequent auth state changes.
+    // Set up a listener for subsequent auth state changes.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setError(null); // Clear errors on auth state change
@@ -189,10 +175,6 @@ const App: React.FC = () => {
     )
   }
   
-  if (schemaState === 'invalid') {
-    return <GlobalSchemaErrorModal checkError={schemaError} />;
-  }
-
   if (session && error) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-4">
