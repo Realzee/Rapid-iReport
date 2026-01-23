@@ -76,7 +76,9 @@ const App: React.FC = () => {
 
     if (session?.user) {
         const loadProfile = async () => {
-            const { data, error } = await supabase.from('profiles').select('*, company:companies(*)').eq('id', session.user.id).single();
+            // FIX: Explicitly specify the foreign key column (`company_id`) to prevent a 500 error from PostgREST.
+            // This makes the query more robust by removing ambiguity in relationship detection.
+            const { data, error } = await supabase.from('profiles').select('*, company:companies!company_id(*)').eq('id', session.user.id).single();
 
             if (error) {
                 setError(`Failed to load your profile. Please check your connection and Row Level Security policies. Error: ${error.message}`);
