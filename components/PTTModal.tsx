@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Profile } from '../types';
 import { XIcon, RadioTowerIcon } from './icons';
 import { supabase } from '../utils/supabase';
@@ -55,6 +55,7 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isTransmitting, setIsTransmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [target, setTarget] = useState<'all' | string>('all');
     const { addToast } = useToast();
 
     const channelRef = useRef<RealtimeChannel | null>(null);
@@ -92,24 +93,29 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
 
         pttChannel.on('broadcast', { event: 'audio-chunk' }, async ({ payload }) => {
             if (payload.audio && payload.from !== profile.id) {
-                if (!outputAudioContextRef.current) {
-                    outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-                }
-                const audioContext = outputAudioContextRef.current;
+                const isForAll = payload.target === 'all';
+                const isForMe = payload.target === profile.id;
                 
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
+                if (isForAll || isForMe) {
+                    if (!outputAudioContextRef.current) {
+                        outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+                    }
+                    const audioContext = outputAudioContextRef.current;
+                    
+                    if (audioContext.state === 'suspended') {
+                        await audioContext.resume();
+                    }
+
+                    const buffer = await base64ToAudioBuffer(payload.audio, audioContext);
+                    const source = audioContext.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(audioContext.destination);
+
+                    const now = audioContext.currentTime;
+                    const startTime = nextPlayTimeRef.current > now ? nextPlayTimeRef.current : now;
+                    source.start(startTime);
+                    nextPlayTimeRef.current = startTime + buffer.duration;
                 }
-
-                const buffer = await base64ToAudioBuffer(payload.audio, audioContext);
-                const source = audioContext.createBufferSource();
-                source.buffer = buffer;
-                source.connect(audioContext.destination);
-
-                const now = audioContext.currentTime;
-                const startTime = nextPlayTimeRef.current > now ? nextPlayTimeRef.current : now;
-                source.start(startTime);
-                nextPlayTimeRef.current = startTime + buffer.duration;
             }
         });
         
@@ -164,7 +170,7 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
                     channelRef.current.send({
                         type: 'broadcast',
                         event: 'audio-chunk',
-                        payload: { audio: base64Audio, from: profile.id },
+                        payload: { audio: base64Audio, from: profile.id, target },
                     });
                 }
             };
@@ -205,7 +211,7 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
                 <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
                     <XIcon className="w-6 h-6" />
                 </button>
-                <div className="flex items-center gap-4 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-4 mb-2 pb-4 border-b border-gray-200 dark:border-gray-700">
                     <img src={profile.company?.logo_url || undefined} alt={`${profile.company?.name} Logo`} className="w-12 h-12 object-contain bg-gray-100 dark:bg-gray-800 rounded-md p-1" />
                     <div>
                         <h3 className="text-xl font-bold text-gray-900 dark:text-white">PTT Channel</h3>
@@ -213,19 +219,41 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
                     </div>
                 </div>
 
-                <div className="flex-grow space-y-2 h-64 overflow-y-auto pr-2">
-                    {isLoading ? <p>Loading users...</p> : companyUsers.map(user => (
-                        <div key={user.id} className="flex items-center justify-between p-2 rounded-md bg-gray-50 dark:bg-gray-800/50">
-                            <div className="flex items-center gap-3">
-                                <img src={user.avatar_url || `https://i.pravatar.cc/40?u=${user.id}`} alt={user.full_name} className="w-8 h-8 rounded-full" />
-                                <span className="font-medium text-sm">{user.full_name}</span>
+                <div className="mb-4">
+                    <label htmlFor="ptt-target" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Transmit To</label>
+                    <select
+                        id="ptt-target"
+                        value={target}
+                        onChange={(e) => setTarget(e.target.value)}
+                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                        <option value="all">All Users</option>
+                        {companyUsers
+                            .filter(user => user.id !== profile.id)
+                            .map(user => (
+                                <option key={user.id} value={user.id}>{user.full_name}</option>
+                            ))
+                        }
+                    </select>
+                </div>
+
+
+                <div className="flex-grow space-y-2 h-56 overflow-y-auto pr-2">
+                    {isLoading ? <p>Loading users...</p> : companyUsers.map(user => {
+                        const isSelected = target === user.id;
+                        return (
+                            <div key={user.id} className={`flex items-center justify-between p-2 rounded-md transition-colors ${isSelected ? 'bg-blue-500/20' : 'bg-gray-50 dark:bg-gray-800/50'}`}>
+                                <div className="flex items-center gap-3">
+                                    <img src={user.avatar_url || `https://i.pravatar.cc/40?u=${user.id}`} alt={user.full_name} className="w-8 h-8 rounded-full" />
+                                    <span className="font-medium text-sm">{user.full_name}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-2.5 h-2.5 rounded-full ${isOnline(user.last_seen_at) ? 'bg-green-500' : 'bg-gray-500'}`}></div>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">{isOnline(user.last_seen_at) ? 'Online' : 'Offline'}</span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2.5 h-2.5 rounded-full ${isOnline(user.last_seen_at) ? 'bg-green-500' : 'bg-gray-500'}`}></div>
-                                <span className="text-xs text-gray-500 dark:text-gray-400">{isOnline(user.last_seen_at) ? 'Online' : 'Offline'}</span>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
