@@ -148,8 +148,14 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
             inputAudioContextRef.current = audioContext;
 
             const source = audioContext.createMediaStreamSource(stream);
-            const scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+            // Using a smaller buffer size reduces latency
+            const scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
             scriptProcessorRef.current = scriptProcessor;
+            
+            // A muted GainNode is necessary to keep the script processor running
+            // without playing the microphone input back to the user's speakers, which causes an echo.
+            const gainNode = audioContext.createGain();
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
 
             scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
                 const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
@@ -164,7 +170,9 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
             };
 
             source.connect(scriptProcessor);
-            scriptProcessor.connect(audioContext.destination);
+            scriptProcessor.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
             setIsTransmitting(true);
         } catch (err: any) {
             addToast(`Microphone error: ${err.message}`, 'error');
