@@ -47,15 +47,47 @@ This script creates and updates all necessary types, tables, functions, and trig
 -- 0. Make sure the 'uuid-ossp' extension is enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
--- 1. Drop functions that lock the profiles.role column type due to dependencies.
+-- 1. Drop dependencies, policies, and disable RLS to allow type alterations.
 -- Using CASCADE will also drop dependent RLS policies and trigger functions. They will be recreated in Part 2.
 DROP FUNCTION IF EXISTS public.get_user_role(uuid) CASCADE;
 DROP FUNCTION IF EXISTS public.create_staff_notification(text, text, text, uuid, text[]) CASCADE;
 
--- Temporarily disable RLS on the notifications table. This releases dependency locks
--- from any old policies on that table that might prevent changing the type of 'profiles.role'.
--- RLS will be re-enabled correctly in Part 2.
+-- Defensively drop legacy 'responders' view/table which creates a dependency lock on responder_status_enum.
+DO $$
+BEGIN
+   IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'responders' AND n.nspname = 'public' AND c.relkind = 'v') THEN
+      DROP VIEW public.responders CASCADE;
+   END IF;
+END $$;
+DO $$
+BEGIN
+   IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'responders' AND n.nspname = 'public' AND c.relkind = 'r') THEN
+      DROP TABLE public.responders CASCADE;
+   END IF;
+END $$;
+
+-- Drop specific problematic policies from older schema versions that can cause a dependency lock.
+DROP POLICY IF EXISTS "Allow system to insert new user notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Allow system to insert new report notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Allow system to insert new registration notifications" ON public.notifications;
+
+-- Explicitly drop policies that depend on columns whose types are being altered.
+-- These will be recreated correctly in Part 2.
+DROP POLICY IF EXISTS "Allow authorized profile updates" ON public.profiles;
+DROP POLICY IF EXISTS "Admins and moderators can delete profiles" ON public.profiles;
+
+DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow authorized users to update reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Allow authorized users to update reports" ON public.vehicle_reports;
+
+
+-- Temporarily disable RLS on tables that will be altered or have dependencies.
+-- This releases any remaining dependency locks. RLS will be re-enabled in Part 2.
 ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vehicle_reports DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.crime_reports DISABLE ROW LEVEL SECURITY;
 
 -- 2. Robustly migrate ENUM types from old "_enum" suffix to new names.
 -- This block handles renaming if possible, or migrating columns and dropping the old type if a name conflict exists.
@@ -95,6 +127,8 @@ DO $$ BEGIN
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status_enum') THEN
         IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN
             RAISE NOTICE 'Conflict found for report_status. Migrating columns...';
+            ALTER TABLE public.vehicle_reports ALTER COLUMN status DROP DEFAULT;
+            ALTER TABLE public.crime_reports ALTER COLUMN status DROP DEFAULT;
             ALTER TABLE public.vehicle_reports ALTER COLUMN status TYPE public.report_status USING status::text::public.report_status;
             ALTER TABLE public.crime_reports ALTER COLUMN status TYPE public.report_status USING status::text::public.report_status;
             DROP TYPE public.report_status_enum;
@@ -109,6 +143,8 @@ DO $$ BEGIN
     IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity_enum') THEN
         IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN
             RAISE NOTICE 'Conflict found for severity. Migrating columns...';
+            ALTER TABLE public.vehicle_reports ALTER COLUMN severity DROP DEFAULT;
+            ALTER TABLE public.crime_reports ALTER COLUMN severity DROP DEFAULT;
             ALTER TABLE public.vehicle_reports ALTER COLUMN severity TYPE public.severity USING severity::text::public.severity;
             ALTER TABLE public.crime_reports ALTER COLUMN severity TYPE public.severity USING severity::text::public.severity;
             DROP TYPE public.severity_enum;
@@ -865,10 +901,41 @@ This function allows administrators to fix database schema issues directly from 
     -- 0. Make sure the 'uuid-ossp' extension is enabled
     CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
-    -- 1. Drop functions that lock the profiles.role column type due to dependencies.
-    -- Using CASCADE will also drop dependent RLS policies and trigger functions. They will be recreated in Part 2.
+    -- 1. Drop dependencies, policies, and disable RLS to allow type alterations.
     DROP FUNCTION IF EXISTS public.get_user_role(uuid) CASCADE;
     DROP FUNCTION IF EXISTS public.create_staff_notification(text, text, text, uuid, text[]) CASCADE;
+    
+    -- Defensively drop legacy 'responders' view/table which creates a dependency lock on responder_status_enum.
+    DO $$
+    BEGIN
+       IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'responders' AND n.nspname = 'public' AND c.relkind = 'v') THEN
+          DROP VIEW public.responders CASCADE;
+       END IF;
+    END $$;
+    DO $$
+    BEGIN
+       IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'responders' AND n.nspname = 'public' AND c.relkind = 'r') THEN
+          DROP TABLE public.responders CASCADE;
+       END IF;
+    END $$;
+
+    DROP POLICY IF EXISTS "Allow system to insert new user notifications" ON public.notifications;
+    DROP POLICY IF EXISTS "Allow system to insert new report notifications" ON public.notifications;
+    DROP POLICY IF EXISTS "Allow system to insert new registration notifications" ON public.notifications;
+    
+    -- Explicitly drop policies that depend on columns whose types are being altered.
+    DROP POLICY IF EXISTS "Allow authorized profile updates" ON public.profiles;
+    DROP POLICY IF EXISTS "Admins and moderators can delete profiles" ON public.profiles;
+    DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.crime_reports;
+    DROP POLICY IF EXISTS "Allow authorized users to update reports" ON public.crime_reports;
+    DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.vehicle_reports;
+    DROP POLICY IF EXISTS "Allow authorized users to update reports" ON public.vehicle_reports;
+
+    -- Temporarily disable RLS on tables that will be altered or have dependencies.
+    ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
+    ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
+    ALTER TABLE public.vehicle_reports DISABLE ROW LEVEL SECURITY;
+    ALTER TABLE public.crime_reports DISABLE ROW LEVEL SECURITY;
 
     -- 2. Robustly migrate ENUM types from old "_enum" suffix to new names.
     DO $$ BEGIN
@@ -898,6 +965,8 @@ This function allows administrators to fix database schema issues directly from 
     DO $$ BEGIN
         IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status_enum') THEN
             IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN
+                ALTER TABLE public.vehicle_reports ALTER COLUMN status DROP DEFAULT;
+                ALTER TABLE public.crime_reports ALTER COLUMN status DROP DEFAULT;
                 ALTER TABLE public.vehicle_reports ALTER COLUMN status TYPE public.report_status USING status::text::public.report_status;
                 ALTER TABLE public.crime_reports ALTER COLUMN status TYPE public.report_status USING status::text::public.report_status;
                 DROP TYPE public.report_status_enum;
@@ -909,6 +978,8 @@ This function allows administrators to fix database schema issues directly from 
     DO $$ BEGIN
         IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity_enum') THEN
             IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN
+                ALTER TABLE public.vehicle_reports ALTER COLUMN severity DROP DEFAULT;
+                ALTER TABLE public.crime_reports ALTER COLUMN severity DROP DEFAULT;
                 ALTER TABLE public.vehicle_reports ALTER COLUMN severity TYPE public.severity USING severity::text::public.severity;
                 ALTER TABLE public.crime_reports ALTER COLUMN severity TYPE public.severity USING severity::text::public.severity;
                 DROP TYPE public.severity_enum;
