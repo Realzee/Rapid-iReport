@@ -5,7 +5,8 @@ import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
 import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
-import { ZapIcon, UsersIcon } from '../components/icons';
+import { ZapIcon, UsersIcon, PlusIcon } from '../components/icons';
+import ReportModal from '../components/ReportModal';
 
 interface ControllerPageProps {
     profile: Profile;
@@ -22,6 +23,8 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<ControllerTab>('events');
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
 
     const isInitialLoad = useRef(true);
     const audioContextRef = useRef<AudioContext | null>(null);
@@ -197,6 +200,11 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         }
     }, [reports, selectedReportId, loading]);
 
+    const handleOpenNewReportModal = () => {
+        setReportToEdit(null);
+        setIsReportModalOpen(true);
+    };
+
     const sortedReports = useMemo(() => {
         return reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
     }, [reports]);
@@ -221,61 +229,81 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         }`;
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-            <div className="lg:col-span-3 print:hidden">
-                 <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex flex-col backdrop-blur-lg max-h-[calc(100vh-8rem)]">
-                    <div className="flex-shrink-0 mb-4 p-1 bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg">
-                        <div className="flex">
-                            <button onClick={() => setActiveTab('events')} className={tabButtonClasses('events')}><ZapIcon className="w-5 h-5" /> Live Events</button>
-                            <button onClick={() => setActiveTab('responders')} className={tabButtonClasses('responders')}><UsersIcon className="w-5 h-5" /> Responders</button>
-                        </div>
-                    </div>
-                    
-                    {activeTab === 'events' ? (
-                        <LiveEventStack
-                            reports={sortedReports}
-                            responders={responders}
-                            onReportSelect={(id) => setSelectedReportId(id)}
-                            selectedReportId={selectedReportId}
-                        />
-                    ) : (
-                        <ResponderStack
-                            responders={responders}
-                            reports={reports}
-                        />
-                    )}
-                 </div>
+        <>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                <div>
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Live Controller</h2>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Real-time incident management and dispatch.</p>
+                </div>
+                <button
+                    onClick={handleOpenNewReportModal}
+                    className="mt-4 md:mt-0 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
+                >
+                    <PlusIcon className="w-5 h-5" />
+                    <span>New Report</span>
+                </button>
             </div>
-
-            <div className="lg:col-span-9">
-                 <div className="lg:sticky lg:top-24">
-                     <div className="grid grid-cols-1 lg:grid-cols-9 gap-4">
-                        <div className="lg:col-span-5 min-h-[50vh] lg:h-[calc(100vh-8rem)] print:hidden">
-                            <MapView
-                                reports={reports}
-                                responders={responders}
-                                selectedReportId={selectedReportId}
-                                profile={profile}
-                            />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                <div className="lg:col-span-3 print:hidden">
+                    <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex flex-col backdrop-blur-lg max-h-[calc(100vh-12rem)]">
+                        <div className="flex-shrink-0 mb-4 p-1 bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg">
+                            <div className="flex">
+                                <button onClick={() => setActiveTab('events')} className={tabButtonClasses('events')}><ZapIcon className="w-5 h-5" /> Live Events</button>
+                                <button onClick={() => setActiveTab('responders')} className={tabButtonClasses('responders')}><UsersIcon className="w-5 h-5" /> Responders</button>
+                            </div>
                         </div>
-                        <div className="lg:col-span-4 min-h-[50vh] lg:h-[calc(100vh-8rem)]">
-                            {selectedReport ? (
-                                <ControllerReportDetail
-                                    key={selectedReport.id}
-                                    report={selectedReport}
+                        
+                        {activeTab === 'events' ? (
+                            <LiveEventStack
+                                reports={sortedReports}
+                                responders={responders}
+                                onReportSelect={(id) => setSelectedReportId(id)}
+                                selectedReportId={selectedReportId}
+                            />
+                        ) : (
+                            <ResponderStack
+                                responders={responders}
+                                reports={reports}
+                            />
+                        )}
+                    </div>
+                </div>
+
+                <div className="lg:col-span-9">
+                    <div className="lg:sticky lg:top-24">
+                        <div className="grid grid-cols-1 lg:grid-cols-9 gap-4">
+                            <div className="lg:col-span-5 min-h-[50vh] lg:h-[calc(100vh-12rem)] print:hidden">
+                                <MapView
+                                    reports={reports}
                                     responders={responders}
+                                    selectedReportId={selectedReportId}
                                     profile={profile}
                                 />
-                            ) : (
-                                <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden">
-                                    <p className="text-gray-500 dark:text-gray-400">No reports available or selected.</p>
-                                </div>
-                            )}
+                            </div>
+                            <div className="lg:col-span-4 min-h-[50vh] lg:h-[calc(100vh-12rem)]">
+                                {selectedReport ? (
+                                    <ControllerReportDetail
+                                        key={selectedReport.id}
+                                        report={selectedReport}
+                                        responders={responders}
+                                        profile={profile}
+                                    />
+                                ) : (
+                                    <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden">
+                                        <p className="text-gray-500 dark:text-gray-400">No reports available or selected.</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                 </div>
+                </div>
             </div>
-        </div>
+            <ReportModal
+                isOpen={isReportModalOpen}
+                onClose={() => setIsReportModalOpen(false)}
+                reportToEdit={reportToEdit}
+            />
+        </>
     );
 };
 

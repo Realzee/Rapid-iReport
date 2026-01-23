@@ -9,6 +9,7 @@ import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon }
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import { format } from 'date-fns';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 
@@ -317,14 +318,17 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                  const { error } = await supabase.from(tableName).update(reportData).eq('id', reportToEdit.id);
                  if (error) throw error;
             } else {
-                const timestampSuffix = Date.now().toString().slice(-8);
+                const now = new Date();
+                const ob_timestamp = format(now, 'yyMMddHHmm');
+                // Add a random character to reduce collision chance within the same minute.
+                const randomChar = Math.random().toString(36).substring(2, 3).toUpperCase();
                 const insertData = {
                     ...reportData,
                     id: reportId,
-                    ob_number: `OB${reportType === 'vehicle' ? 'V' : 'C'}-${timestampSuffix}`,
+                    ob_number: `${reportType === 'vehicle' ? 'V' : 'C'}${ob_timestamp}${randomChar}`,
                     status: ReportStatus.PENDING,
                     reported_by: user.id,
-                    reported_at: new Date().toISOString(),
+                    reported_at: now.toISOString(),
                 };
                 const { error } = await supabase.from(tableName).insert(insertData);
                 if (error) throw error;

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import LoginForm from '../components/LoginForm';
 import RegisterForm from '../components/RegisterForm';
@@ -30,6 +29,7 @@ const AuthPage: React.FC = () => {
                         />
                     )}
                 </div>
+
             </main>
             <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400">
                 Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)
