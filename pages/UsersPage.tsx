@@ -16,12 +16,39 @@ const UsersPage: React.FC = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
     const { addToast } = useToast();
+    const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
 
     useEffect(() => {
+        const fetchCurrentUserProfile = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                const { data: profileData } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+                setCurrentUserProfile(profileData);
+            } else {
+                setLoading(false);
+            }
+        };
+        fetchCurrentUserProfile();
+    }, []);
+
+    useEffect(() => {
+        if (!currentUserProfile) return;
+
         const fetchData = async () => {
             setLoading(true);
-            const { data: usersData, error: usersError } = await supabase.from('profiles').select('*');
-            const { data: companiesData, error: companiesError } = await supabase.from('companies').select('*');
+
+            const usersQuery = supabase.from('profiles').select('*');
+            if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
+                usersQuery.eq('company_id', currentUserProfile.company_id);
+            }
+
+            const companiesQuery = supabase.from('companies').select('*');
+            if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
+                companiesQuery.eq('id', currentUserProfile.company_id);
+            }
+
+            const { data: usersData, error: usersError } = await usersQuery;
+            const { data: companiesData, error: companiesError } = await companiesQuery;
 
             if (usersError) console.error('Error fetching users:', usersError);
             else setUsers(usersData || []);
@@ -37,12 +64,25 @@ const UsersPage: React.FC = () => {
         const profilesChannel = supabase
             .channel('public:profiles')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+                const newRecord = payload.new as Profile;
+                const oldRecord = payload.old as Profile;
+                
+                // If not an admin, only process changes relevant to the current company
+                if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
+                    const newCompanyMatch = newRecord?.company_id === currentUserProfile.company_id;
+                    const oldCompanyMatch = oldRecord?.company_id === currentUserProfile.company_id;
+                    
+                    if (!newCompanyMatch && !oldCompanyMatch) {
+                        return; // Ignore changes from other companies entirely
+                    }
+                }
+
                 if (payload.eventType === 'INSERT') {
-                    setUsers(currentUsers => [...currentUsers, payload.new as Profile]);
+                    setUsers(currentUsers => [...currentUsers, newRecord]);
                 } else if (payload.eventType === 'UPDATE') {
-                    setUsers(currentUsers => currentUsers.map(u => u.id === payload.new.id ? payload.new as Profile : u));
+                    setUsers(currentUsers => currentUsers.map(u => u.id === newRecord.id ? newRecord : u));
                 } else if (payload.eventType === 'DELETE') {
-                    setUsers(currentUsers => currentUsers.filter(u => u.id !== payload.old.id));
+                    setUsers(currentUsers => currentUsers.filter(u => u.id !== oldRecord.id));
                 }
             })
             .subscribe();
@@ -50,7 +90,7 @@ const UsersPage: React.FC = () => {
         return () => {
             supabase.removeChannel(profilesChannel);
         };
-    }, []);
+    }, [currentUserProfile]);
 
     const filteredUsers = useMemo(() => {
         return users.filter(user =>

@@ -1,8 +1,6 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, BuildingIcon } from '../components/icons';
-import { Company, Profile } from '../types';
+import { Company, Profile, UserRole } from '../types';
 import CompanyManagementTable from '../components/CompanyManagementTable';
 import AddEditCompanyModal from '../components/AddEditCompanyModal';
 import DeleteCompanyModal from '../components/DeleteCompanyModal';
@@ -17,12 +15,39 @@ const CompaniesPage: React.FC = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
     const { addToast } = useToast();
+    const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
 
     useEffect(() => {
+        const fetchCurrentUserProfile = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                const { data: profileData } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+                setCurrentUserProfile(profileData);
+            } else {
+                setLoading(false);
+            }
+        };
+        fetchCurrentUserProfile();
+    }, []);
+
+    useEffect(() => {
+        if (!currentUserProfile) return;
+
         const fetchData = async () => {
             setLoading(true);
-            const { data: companiesData, error: cError } = await supabase.from('companies').select('*');
-            const { data: usersData, error: uError } = await supabase.from('profiles').select('id, company_id');
+
+            const companiesQuery = supabase.from('companies').select('*');
+            if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
+                companiesQuery.eq('id', currentUserProfile.company_id);
+            }
+
+            const usersQuery = supabase.from('profiles').select('id, company_id');
+            if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
+                usersQuery.eq('company_id', currentUserProfile.company_id);
+            }
+
+            const { data: companiesData, error: cError } = await companiesQuery;
+            const { data: usersData, error: uError } = await usersQuery;
             
             if (cError) console.error('Error fetching companies:', cError);
             else setCompanies(companiesData || []);
@@ -33,7 +58,7 @@ const CompaniesPage: React.FC = () => {
             setLoading(false);
         };
         fetchData();
-    }, []);
+    }, [currentUserProfile]);
 
     const handleAddCompany = () => {
         setSelectedCompany(null);

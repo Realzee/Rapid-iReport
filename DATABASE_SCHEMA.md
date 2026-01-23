@@ -404,6 +404,30 @@ AS $$
   WHERE t.typname = enum_type_name;
 $$;
 
+-- FIX: Added a SECURITY DEFINER function to get the current user's company ID.
+-- This breaks the infinite recursion loop in RLS policies.
+CREATE OR REPLACE FUNCTION public.get_my_company_id()
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  RETURN (SELECT company_id FROM public.profiles WHERE id = auth.uid());
+END;
+$$;
+
+-- FIX: Added a SECURITY DEFINER function to get any user's company ID.
+-- This allows checking other users' companies in RLS policies without recursion.
+CREATE OR REPLACE FUNCTION public.get_user_company_id(p_user_id uuid)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  RETURN (SELECT company_id FROM public.profiles WHERE id = p_user_id);
+END;
+$$;
+
 -- Function to create notifications for relevant staff
 CREATE OR REPLACE FUNCTION public.create_staff_notification(
     notification_type text,
@@ -546,24 +570,27 @@ CREATE POLICY "Allow authenticated users to view profiles" ON public.profiles
   FOR SELECT USING (
     (public.get_user_role(auth.uid()) = 'admin') OR
     (id = auth.uid()) OR
-    (company_id IS NOT NULL AND company_id = (SELECT p.company_id FROM public.profiles p WHERE p.id = auth.uid()))
+    (company_id IS NOT NULL AND company_id = public.get_my_company_id())
   );
   
 CREATE POLICY "Allow authorized profile updates" ON public.profiles
   FOR UPDATE USING (
     (id = auth.uid()) OR
     (public.get_user_role(auth.uid()) = 'admin') OR
-    (public.get_user_role(auth.uid()) = 'moderator' AND company_id = (SELECT p.company_id FROM public.profiles p WHERE p.id = auth.uid())) OR
-    (public.get_user_role(auth.uid()) = 'controller' AND role::text = 'responder' AND company_id = (SELECT p.company_id FROM public.profiles p WHERE p.id = auth.uid()))
+    (public.get_user_role(auth.uid()) = 'moderator' AND company_id = public.get_my_company_id()) OR
+    (public.get_user_role(auth.uid()) = 'controller' AND role::text = 'responder' AND company_id = public.get_my_company_id())
   ) WITH CHECK (
     (id = auth.uid()) OR
     (public.get_user_role(auth.uid()) = 'admin') OR
-    (public.get_user_role(auth.uid()) = 'moderator' AND company_id = (SELECT p.company_id FROM public.profiles p WHERE p.id = auth.uid())) OR
-    (public.get_user_role(auth.uid()) = 'controller' AND role::text = 'responder' AND company_id = (SELECT p.company_id FROM public.profiles p WHERE p.id = auth.uid()))
+    (public.get_user_role(auth.uid()) = 'moderator' AND company_id = public.get_my_company_id()) OR
+    (public.get_user_role(auth.uid()) = 'controller' AND role::text = 'responder' AND company_id = public.get_my_company_id())
   );
 
 CREATE POLICY "Admins and moderators can delete profiles" ON public.profiles
-  FOR DELETE USING (public.get_user_role(auth.uid()) IN ('admin', 'moderator'));
+  FOR DELETE USING (
+      (public.get_user_role(auth.uid()) = 'admin') OR
+      (public.get_user_role(auth.uid()) = 'moderator' AND public.get_user_company_id(id) = public.get_my_company_id())
+  );
 
 -- COMPANIES
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
@@ -572,11 +599,16 @@ DROP POLICY IF EXISTS "Admins and moderators can manage companies" ON public.com
 CREATE POLICY "Allow authenticated users to view companies" ON public.companies
   FOR SELECT USING (
     (public.get_user_role(auth.uid()) = 'admin') OR
-    (id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()))
+    (id = public.get_my_company_id())
   );
 CREATE POLICY "Admins and moderators can manage companies" ON public.companies
-  FOR ALL USING ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator')) 
-  WITH CHECK ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator'));
+  FOR ALL USING (
+    (public.get_user_role(auth.uid()) = 'admin') OR
+    (public.get_user_role(auth.uid()) = 'moderator' AND id = public.get_my_company_id())
+  ) WITH CHECK (
+    (public.get_user_role(auth.uid()) = 'admin') OR
+    (public.get_user_role(auth.uid()) = 'moderator' AND id = public.get_my_company_id())
+  );
 
 -- VEHICLE REPORTS
 ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY;
@@ -585,12 +617,34 @@ DROP POLICY IF EXISTS "Allow users to create reports" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Allow authorized users to update reports" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Allow staff to delete reports" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.vehicle_reports;
-CREATE POLICY "Allow view access to relevant users" ON public.vehicle_reports FOR SELECT USING ( (public.get_user_role(auth.uid()) = 'admin') OR ((public.get_user_role(auth.uid()) IN ('moderator', 'controller')) AND EXISTS ( SELECT 1 FROM public.profiles p WHERE p.id = vehicle_reports.reported_by AND p.company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()) )) OR (public.get_user_role(auth.uid()) = 'responder' AND assigned_to = auth.uid()) OR (reported_by = auth.uid()) );
-CREATE POLICY "Allow users to create reports" ON public.vehicle_reports FOR INSERT WITH CHECK ((select auth.role()) = 'authenticated');
-CREATE POLICY "Allow authorized users to update reports" ON public.vehicle_reports FOR UPDATE USING ( (public.get_user_role(auth.uid()) = 'admin') OR ((public.get_user_role(auth.uid()) IN ('moderator', 'controller')) AND EXISTS ( SELECT 1 FROM public.profiles p WHERE p.id = vehicle_reports.reported_by AND p.company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()) )) OR (public.get_user_role(auth.uid()) = 'responder' AND assigned_to = auth.uid()) OR (reported_by = auth.uid() AND status::text = 'pending') );
-CREATE POLICY "Allow staff to delete reports" ON public.vehicle_reports FOR DELETE USING (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')));
-CREATE POLICY "Allow public read access to recent, active reports" ON public.vehicle_reports FOR SELECT TO anon USING ( status::text IN ('active', 'resolved', 'recovered', 'on_scene') AND reported_at > (now() - interval '72 hours') );
 
+CREATE POLICY "Allow view access to relevant users" ON public.vehicle_reports FOR SELECT USING (
+  (public.get_user_role(auth.uid()) = 'admin') OR
+  (reported_by = auth.uid()) OR
+  (
+    (public.get_my_company_id() IS NOT NULL) AND
+    (
+      public.get_user_company_id(reported_by) = public.get_my_company_id() OR
+      public.get_user_company_id(assigned_to) = public.get_my_company_id()
+    )
+  )
+);
+CREATE POLICY "Allow users to create reports" ON public.vehicle_reports FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow authorized users to update reports" ON public.vehicle_reports FOR UPDATE USING (
+  (public.get_user_role(auth.uid()) = 'admin') OR
+  (reported_by = auth.uid() AND status::text = 'pending') OR
+  (public.get_user_role(auth.uid()) = 'responder' AND assigned_to = auth.uid()) OR
+  (
+    (public.get_user_role(auth.uid()) IN ('moderator', 'controller')) AND
+    (public.get_my_company_id() IS NOT NULL) AND
+    (
+      public.get_user_company_id(reported_by) = public.get_my_company_id() OR
+      public.get_user_company_id(assigned_to) = public.get_my_company_id()
+    )
+  )
+);
+CREATE POLICY "Allow staff to delete reports" ON public.vehicle_reports FOR DELETE USING (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'));
+CREATE POLICY "Allow public read access to recent, active reports" ON public.vehicle_reports FOR SELECT TO anon USING ( status::text IN ('active', 'resolved', 'recovered', 'on_scene') AND reported_at > (now() - interval '72 hours') );
 
 -- CRIME REPORTS
 ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
@@ -599,34 +653,62 @@ DROP POLICY IF EXISTS "Allow users to create reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow authorized users to update reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow staff to delete reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.crime_reports;
-CREATE POLICY "Allow view access to relevant users" ON public.crime_reports FOR SELECT USING ( (public.get_user_role(auth.uid()) = 'admin') OR ((public.get_user_role(auth.uid()) IN ('moderator', 'controller')) AND EXISTS ( SELECT 1 FROM public.profiles p WHERE p.id = crime_reports.reported_by AND p.company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()) )) OR (public.get_user_role(auth.uid()) = 'responder' AND assigned_to = auth.uid()) OR (reported_by = auth.uid()) );
-CREATE POLICY "Allow users to create reports" ON public.crime_reports FOR INSERT WITH CHECK ((select auth.role()) = 'authenticated');
-CREATE POLICY "Allow authorized users to update reports" ON public.crime_reports FOR UPDATE USING ( (public.get_user_role(auth.uid()) = 'admin') OR ((public.get_user_role(auth.uid()) IN ('moderator', 'controller')) AND EXISTS ( SELECT 1 FROM public.profiles p WHERE p.id = crime_reports.reported_by AND p.company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()) )) OR (public.get_user_role(auth.uid()) = 'responder' AND assigned_to = auth.uid()) OR (reported_by = auth.uid() AND status::text = 'pending') );
-CREATE POLICY "Allow staff to delete reports" ON public.crime_reports FOR DELETE USING (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')));
+
+CREATE POLICY "Allow view access to relevant users" ON public.crime_reports FOR SELECT USING (
+  (public.get_user_role(auth.uid()) = 'admin') OR
+  (reported_by = auth.uid()) OR
+  (
+    (public.get_my_company_id() IS NOT NULL) AND
+    (
+      public.get_user_company_id(reported_by) = public.get_my_company_id() OR
+      public.get_user_company_id(assigned_to) = public.get_my_company_id()
+    )
+  )
+);
+CREATE POLICY "Allow users to create reports" ON public.crime_reports FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow authorized users to update reports" ON public.crime_reports FOR UPDATE USING (
+  (public.get_user_role(auth.uid()) = 'admin') OR
+  (reported_by = auth.uid() AND status::text = 'pending') OR
+  (public.get_user_role(auth.uid()) = 'responder' AND assigned_to = auth.uid()) OR
+  (
+    (public.get_user_role(auth.uid()) IN ('moderator', 'controller')) AND
+    (public.get_my_company_id() IS NOT NULL) AND
+    (
+      public.get_user_company_id(reported_by) = public.get_my_company_id() OR
+      public.get_user_company_id(assigned_to) = public.get_my_company_id()
+    )
+  )
+);
+CREATE POLICY "Allow staff to delete reports" ON public.crime_reports FOR DELETE USING (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'));
 CREATE POLICY "Allow public read access to recent, active reports" ON public.crime_reports FOR SELECT TO anon USING ( status::text IN ('active', 'resolved', 'closed', 'on_scene') AND reported_at > (now() - interval '72 hours') );
 
--- REPORT UPDATES
+-- REPORT UPDATES, ASSIGNMENT LOGS, CHAT MESSAGES
+-- These policies defer to the parent report's RLS policies.
 ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow relevant users to see updates" ON public.report_updates;
-DROP POLICY IF EXISTS "Allow relevant users to add updates" ON public.report_updates;
-CREATE POLICY "Allow relevant users to see updates" ON public.report_updates FOR SELECT USING ( (public.get_user_role(auth.uid()) = 'admin') OR ((public.get_user_role(auth.uid()) IN ('moderator', 'controller')) AND ( EXISTS ( SELECT 1 FROM public.vehicle_reports vr JOIN public.profiles p ON vr.reported_by = p.id WHERE vr.id = report_updates.report_id AND p.company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()) ) OR EXISTS ( SELECT 1 FROM public.crime_reports cr JOIN public.profiles p ON cr.reported_by = p.id WHERE cr.id = report_updates.report_id AND p.company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()) ) )) OR (EXISTS (SELECT 1 FROM public.vehicle_reports vr WHERE vr.id = report_updates.report_id AND (vr.assigned_to = auth.uid() OR vr.reported_by = auth.uid()))) OR (EXISTS (SELECT 1 FROM public.crime_reports cr WHERE cr.id = report_updates.report_id AND (cr.assigned_to = auth.uid() OR cr.reported_by = auth.uid()))) );
-CREATE POLICY "Allow relevant users to add updates" ON public.report_updates FOR INSERT WITH CHECK ( (public.get_user_role(auth.uid()) = 'admin') OR ((public.get_user_role(auth.uid()) IN ('moderator', 'controller')) AND ( EXISTS ( SELECT 1 FROM public.vehicle_reports vr JOIN public.profiles p ON vr.reported_by = p.id WHERE vr.id = report_updates.report_id AND p.company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()) ) OR EXISTS ( SELECT 1 FROM public.crime_reports cr JOIN public.profiles p ON cr.reported_by = p.id WHERE cr.id = report_updates.report_id AND p.company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()) ) )) OR (EXISTS (SELECT 1 FROM public.vehicle_reports vr WHERE vr.id = report_updates.report_id AND vr.assigned_to = auth.uid())) OR (EXISTS (SELECT 1 FROM public.crime_reports cr WHERE cr.id = report_updates.report_id AND cr.assigned_to = auth.uid())) );
-  
--- ASSIGNMENT LOGS
-ALTER TABLE public.assignment_logs ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow relevant staff to view assignment logs" ON public.assignment_logs;
-CREATE POLICY "Allow relevant staff to view assignment logs" ON public.assignment_logs FOR SELECT USING ( (public.get_user_role(auth.uid()) = 'admin') OR ((public.get_user_role(auth.uid()) IN ('moderator', 'controller')) AND ( EXISTS ( SELECT 1 FROM public.vehicle_reports vr JOIN public.profiles p ON vr.reported_by = p.id WHERE vr.id = assignment_logs.report_id AND p.company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()) ) OR EXISTS ( SELECT 1 FROM public.crime_reports cr JOIN public.profiles p ON cr.reported_by = p.id WHERE cr.id = assignment_logs.report_id AND p.company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()) ) )) );
+DROP POLICY IF EXISTS "Allow access based on parent report" ON public.report_updates;
+CREATE POLICY "Allow access based on parent report" ON public.report_updates FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.vehicle_reports vr WHERE vr.id = report_updates.report_id) OR
+    EXISTS (SELECT 1 FROM public.crime_reports cr WHERE cr.id = report_updates.report_id)
+);
 
--- CHAT MESSAGES
+ALTER TABLE public.assignment_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow access based on parent report" ON public.assignment_logs;
+CREATE POLICY "Allow access based on parent report" ON public.assignment_logs FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.vehicle_reports vr WHERE vr.id = assignment_logs.report_id) OR
+    EXISTS (SELECT 1 FROM public.crime_reports cr WHERE cr.id = assignment_logs.report_id)
+);
+  
 ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow relevant users to view and send chat messages" ON public.chat_messages;
-CREATE POLICY "Allow relevant users to view and send chat messages" ON public.chat_messages
-FOR ALL USING ( (select auth.role()) = 'authenticated' AND ( (get_user_role(auth.uid()) = 'admin') OR ((get_user_role(auth.uid()) IN ('moderator', 'controller')) AND ( EXISTS ( SELECT 1 FROM public.vehicle_reports vr JOIN public.profiles p ON vr.reported_by = p.id WHERE vr.id = chat_messages.report_id AND p.company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()) ) OR EXISTS ( SELECT 1 FROM public.crime_reports cr JOIN public.profiles p ON cr.reported_by = p.id WHERE cr.id = chat_messages.report_id AND p.company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()) ) )) OR EXISTS ( SELECT 1 FROM public.vehicle_reports vr WHERE vr.id = chat_messages.report_id AND (vr.reported_by = auth.uid() OR vr.assigned_to = auth.uid()) ) OR EXISTS ( SELECT 1 FROM public.crime_reports cr WHERE cr.id = chat_messages.report_id AND (cr.reported_by = auth.uid() OR cr.assigned_to = auth.uid()) ) ) );
+DROP POLICY IF EXISTS "Allow access based on parent report" ON public.chat_messages;
+CREATE POLICY "Allow access based on parent report" ON public.chat_messages FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.vehicle_reports vr WHERE vr.id = chat_messages.report_id) OR
+    EXISTS (SELECT 1 FROM public.crime_reports cr WHERE cr.id = chat_messages.report_id)
+);
 
 -- NOTIFICATIONS
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can see and update their own notifications" ON public.notifications;
-CREATE POLICY "Users can see and update their own notifications" ON public.notifications FOR ALL USING ((recipient_user_id = (select auth.uid())));
+CREATE POLICY "Users can see and update their own notifications" ON public.notifications FOR ALL USING ((recipient_user_id = auth.uid()));
 
 COMMIT;
 ```
@@ -764,7 +846,7 @@ These server-side functions are required for secure administrative actions. Foll
         const { data: { user }, error: userError } = await userSupabaseClient.auth.getUser();
         if (userError) throw userError;
         if (!user) throw new Error("User not found.");
-        const { data: profile, error: profileError } = await userSupabaseClient.from('profiles').select('role').eq('id', user.id).single();
+        const { data: profile, error: profileError } = await userSupabaseClient.from('profiles').select('role, company_id').eq('id', user.id).single();
         if (profileError) throw profileError;
         if (!['admin', 'moderator'].includes(profile.role)) {
             throw new Error("Unauthorized: You do not have permission to create users.");
@@ -777,6 +859,16 @@ These server-side functions are required for secure administrative actions. Foll
         }
         if (password.length < 6) {
             throw new Error("Password must be at least 6 characters long.");
+        }
+
+        // 3. Moderator scope check
+        if (profile.role === 'moderator') {
+            if (!profile.company_id) {
+                throw new Error("Unauthorized: Moderators must belong to a company to create users.");
+            }
+            if (user_metadata?.company_id !== profile.company_id) {
+                throw new Error("Unauthorized: Moderators can only create users for their own company.");
+            }
         }
 
         const supabaseAdmin = createClient(
@@ -838,7 +930,7 @@ These server-side functions are required for secure administrative actions. Foll
         const { data: { user }, error: userError } = await userSupabaseClient.auth.getUser();
         if (userError) throw userError;
         if (!user) throw new Error("User not found.");
-        const { data: profile, error: profileError } = await userSupabaseClient.from('profiles').select('role').eq('id', user.id).single();
+        const { data: profile, error: profileError } = await userSupabaseClient.from('profiles').select('role, company_id').eq('id', user.id).single();
         if (profileError) throw profileError;
         if (!['admin', 'moderator'].includes(profile.role)) {
             throw new Error("Unauthorized: You do not have permission to delete users.");
@@ -847,6 +939,16 @@ These server-side functions are required for secure administrative actions. Foll
         // 2. Main logic
         const { userId } = await req.json()
         if (!userId) throw new Error('A userId must be provided.')
+        
+        // 3. Moderator scope check
+        if (profile.role === 'moderator') {
+            const { data: targetUserProfile, error: targetUserError } = await userSupabaseClient.from('profiles').select('company_id').eq('id', userId).single();
+            if (targetUserError) throw new Error(`Could not verify target user's company: ${targetUserError.message}`);
+            
+            if (!profile.company_id || profile.company_id !== targetUserProfile?.company_id) {
+                throw new Error("Unauthorized: Moderators can only delete users from their own company.");
+            }
+        }
 
         const supabaseAdmin = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',

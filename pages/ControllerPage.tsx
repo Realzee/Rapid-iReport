@@ -69,6 +69,11 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         const fetchData = async () => {
             setLoading(true);
 
+            const usersQuery = supabase.from('profiles').select('*');
+            if (profile.role !== UserRole.ADMIN && profile.company_id) {
+                usersQuery.eq('company_id', profile.company_id);
+            }
+
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
@@ -76,7 +81,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 supabase.from('crime_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                supabase.from('profiles').select('*')
+                usersQuery
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
@@ -169,7 +174,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             supabase.removeChannel(reportsChannel);
             supabase.removeChannel(profilesChannel);
         };
-    }, []);
+    }, [profile]);
 
     useEffect(() => {
         const responderProfiles = allUsers.filter(p => p.role === UserRole.RESPONDER);

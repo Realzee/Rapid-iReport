@@ -42,6 +42,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
 
         const fetchData = async () => {
             setLoading(true);
+
+            const profilesQuery = supabase.from('profiles').select('*');
+            if (profile.role !== UserRole.ADMIN && profile.company_id) {
+                profilesQuery.eq('company_id', profile.company_id);
+            }
+
             const [
                 { data: vehicleData, error: vError }, 
                 { data: crimeData, error: cError },
@@ -49,7 +55,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 supabase.from('crime_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                supabase.from('profiles').select('*')
+                profilesQuery
             ]);
             if (vError || cError || uError) console.error('Data fetch error:', vError || cError || uError);
 
@@ -133,7 +139,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             supabase.removeChannel(reportsChannel);
             supabase.removeChannel(profilesChannel);
         };
-    }, []);
+    }, [profile]);
 
     const handleReportSelect = (reportId: string) => setSelectedReportId(prevId => prevId === reportId ? null : reportId);
 

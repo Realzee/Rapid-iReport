@@ -51,6 +51,15 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
+
+            const usersQuery = supabase.from('profiles').select('id, full_name');
+            const respondersQuery = supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER);
+
+            if (profile.role !== UserRole.ADMIN && profile.company_id) {
+                usersQuery.eq('company_id', profile.company_id);
+                respondersQuery.eq('company_id', profile.company_id);
+            }
+
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
@@ -59,8 +68,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*').eq('status', ReportStatus.DELETED),
                 supabase.from('crime_reports').select('*').eq('status', ReportStatus.DELETED),
-                supabase.from('profiles').select('id, full_name'),
-                supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER)
+                usersQuery,
+                respondersQuery
             ]);
 
             if (vError || cError || uError || rError) console.error("Error fetching data:", vError || cError || uError || rError);
@@ -81,7 +90,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
             setLoading(false);
         };
         fetchData();
-    }, []);
+    }, [profile]);
 
     const userMap = useMemo(() => new Map(users.map(u => [u.id, u.full_name])), [users]);
 

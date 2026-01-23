@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Responder, ResponderStatus, Profile, UserRole } from '../types';
@@ -15,8 +13,18 @@ const MapPage: React.FC<MapPageProps> = ({ profile }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (!profile) {
+            return;
+        }
+
         const fetchData = async () => {
             setLoading(true);
+
+            const respondersQuery = supabase.from('profiles').select('*').eq('role', 'responder');
+            if (profile.role !== UserRole.ADMIN && profile.company_id) {
+                respondersQuery.eq('company_id', profile.company_id);
+            }
+
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
@@ -24,7 +32,7 @@ const MapPage: React.FC<MapPageProps> = ({ profile }) => {
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*'),
                 supabase.from('crime_reports').select('*'),
-                supabase.from('profiles').select('*').eq('role', 'responder')
+                respondersQuery
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
@@ -108,7 +116,7 @@ const MapPage: React.FC<MapPageProps> = ({ profile }) => {
           supabase.removeChannel(reportsChannels);
           supabase.removeChannel(respondersChannel);
         };
-    }, []);
+    }, [profile]);
 
     if (loading) {
         return (
