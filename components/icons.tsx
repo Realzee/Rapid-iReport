@@ -306,3 +306,16 @@ export const InfoIcon: React.FC<IconProps> = (props) => (
     <line x1="12" y1="8" x2="12.01" y2="8" />
   </svg>
 );
+
+export const RadioTowerIcon: React.FC<IconProps> = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9"/>
+    <path d="M7.8 13.2C4.9 10.3 4.9 5.7 7.8 2.8"/>
+    <path d="M10.6 10.6C8.7 8.7 8.7 5.3 10.6 3.4"/>
+    <path d="M19.1 1.9C23 5.8 23 12.2 19.1 16.1"/>
+    <path d="M16.2 2.8C19.1 5.7 19.1 10.3 16.2 13.2"/>
+    <path d="M13.4 3.4C15.3 5.3 15.3 8.7 13.4 10.6"/>
+    <path d="M12 12v9"/>
+    <path d="M9 21h6"/>
+  </svg>
+);

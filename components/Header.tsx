@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BellIcon, ChevronDownIcon, MenuIcon, XIcon } from './icons';
+import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, RadioTowerIcon } from './icons';
 import { Profile, UserRole, Notification } from '../types';
 import { supabase } from '../utils/supabase';
 import { logoUrl } from '../assets/logo';
 import ThemeToggle from './ThemeToggle';
 import NotificationsPanel from './NotificationsPanel';
+import PTTModal from './PTTModal';
 
 interface HeaderProps {
     currentView: string;
@@ -18,6 +19,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isPTTModalOpen, setIsPTTModalOpen] = useState(false);
 
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -134,6 +136,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     : "container mx-auto px-4 sm:px-6 lg:px-8"; // Centered for others
 
   return (
+    <>
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700/50 transition-colors duration-300 print:hidden">
       <div className={headerContainerClasses}>
         <div className="flex items-center justify-between h-20">
@@ -145,6 +148,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
           </nav>
           <div className="flex items-center space-x-4">
             <ThemeToggle />
+            {profile.company_id && (
+                <button onClick={() => setIsPTTModalOpen(true)} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300" title="Push-to-Talk">
+                  <RadioTowerIcon className="w-6 h-6" />
+                </button>
+            )}
             <div ref={notificationsRef} className="relative">
                 <button onClick={toggleNotifications} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300">
                   <BellIcon className="w-6 h-6" />
@@ -203,6 +211,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
           </nav>
       </div>
     </header>
+    <PTTModal isOpen={isPTTModalOpen} onClose={() => setIsPTTModalOpen(false)} profile={profile} />
+    </>
   );
 };
 
