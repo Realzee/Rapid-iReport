@@ -76,9 +76,9 @@ const App: React.FC = () => {
 
     if (session?.user) {
         const loadProfile = async () => {
-            // FIX: Explicitly specify the foreign key column (`company_id`) to prevent a 500 error from PostgREST.
-            // This makes the query more robust by removing ambiguity in relationship detection.
-            const { data, error } = await supabase.from('profiles').select('*, company:companies!company_id(*)').eq('id', session.user.id).single();
+            // FIX: Explicitly specify the foreign key constraint name (`profiles_company_id_fkey`) to prevent a 500 error.
+            // This is the most robust method for resolving join ambiguity in PostgREST and matches patterns used elsewhere in the app.
+            const { data, error } = await supabase.from('profiles').select('*, company:companies!profiles_company_id_fkey(*)').eq('id', session.user.id).single();
 
             if (error) {
                 setError(`Failed to load your profile. Please check your connection and Row Level Security policies. Error: ${error.message}`);
