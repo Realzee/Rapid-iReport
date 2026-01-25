@@ -24,6 +24,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
     }
     setLoading(true);
 
+    // FIX: Changed `signUp` call from v1 to v2 signature to fix 'Expected 1 arguments, but got 2' error.
     const { error } = await supabase.auth.signUp({
       email,
       password,

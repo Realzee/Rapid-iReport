@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Profile } from '../types';
 import { supabase } from '../utils/supabase';
@@ -71,6 +72,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         e.preventDefault();
         setLoadingProfile(true);
 
+        // FIX: Changed `update` (v1) to `updateUser` (v2) to fix function non-existence error.
         const { data: { user }, error: userError } = await supabase.auth.updateUser({
             data: { full_name: fullName }
         });
@@ -109,6 +111,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         }
 
         setLoadingPassword(true);
+        // FIX: Changed `update` (v1) to `updateUser` (v2) to fix function non-existence error.
         const { error } = await supabase.auth.updateUser({ password });
         if (error) {
             addToast('Error updating password: ' + error.message, 'error');

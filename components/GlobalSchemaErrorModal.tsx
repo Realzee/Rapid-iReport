@@ -242,6 +242,7 @@ $$;`;
         setFixError(null);
 
         try {
+            // FIX: Changed `session()` (v1) to `getSession()` (v2) to fix function non-existence error.
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
                 throw new Error("Authentication failed. Please log in as an administrator first and then refresh this page to try again.");

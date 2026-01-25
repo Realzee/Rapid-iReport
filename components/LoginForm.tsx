@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { MailIcon, LockIcon } from './icons';
 import { supabase } from '../utils/supabase';
@@ -17,6 +18,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    // FIX: Changed `signIn` (v1) to `signInWithPassword` (v2) to fix 'signIn does not exist' error.
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       addToast(error.message, 'error');

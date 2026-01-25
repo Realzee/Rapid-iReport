@@ -1,10 +1,15 @@
+
 import React, { useState } from 'react';
 import LoginForm from '../components/LoginForm';
 import RegisterForm from '../components/RegisterForm';
 import { logoUrl } from '../assets/logo';
 import ThemeToggle from '../components/ThemeToggle';
 
-const AuthPage: React.FC = () => {
+interface AuthPageProps {
+    onViewPublicDashboard: () => void;
+}
+
+const AuthPage: React.FC<AuthPageProps> = ({ onViewPublicDashboard }) => {
     const [isLoginView, setIsLoginView] = useState(true);
 
     return (
@@ -30,6 +35,12 @@ const AuthPage: React.FC = () => {
                     )}
                 </div>
 
+                <p className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                    Or,{' '}
+                    <button onClick={onViewPublicDashboard} className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 focus:outline-none">
+                        view the public community map
+                    </button>
+                </p>
             </main>
             <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400">
                 Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)

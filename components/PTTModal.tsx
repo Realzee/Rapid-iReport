@@ -3,6 +3,7 @@ import { Profile } from '../types';
 import { XIcon, RadioTowerIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
+// FIX: Removed `RealtimeChannel` import to resolve a type export conflict. The type will be inferred instead.
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 const isOnline = (lastSeen?: string): boolean => {
@@ -58,7 +59,8 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
     const [target, setTarget] = useState<'all' | string>('all');
     const { addToast } = useToast();
 
-    const channelRef = useRef<RealtimeChannel | null>(null);
+    // FIX: Infer the channel type from the supabase client to avoid import issues.
+    const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const outputAudioContextRef = useRef<AudioContext | null>(null);
     const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);

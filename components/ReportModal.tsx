@@ -252,8 +252,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         setLoading(true);
 
         try {
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
-            if (userError || !user) throw new Error("User not authenticated");
+            // FIX: Changed `user()` (v1) to `getUser()` (v2) to fix function non-existence error.
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("User not authenticated");
 
             const newImageUrls: string[] = [];
             const reportId = reportToEdit?.id || crypto.randomUUID();

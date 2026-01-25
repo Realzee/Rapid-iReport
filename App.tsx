@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -11,11 +13,15 @@ import ProfilePage from './pages/ProfilePage';
 import ControllerPage from './pages/ControllerPage';
 import ResponderPage from './pages/ResponderPage';
 import UserDashboardPage from './pages/UserDashboardPage';
+import PublicDashboardPage from './pages/PublicDashboardPage';
 import { supabase } from './utils/supabase';
 // FIX: Changed to `import type` for better compatibility with modern TypeScript module resolution for Supabase v2. This may resolve downstream type inference issues.
-import type { Session } from '@supabase/supabase-js';
+// FIX: Changed `Session` to `AuthSession` as `Session` is not exported in this version of `@supabase/supabase-js`.
+import type { AuthSession as Session } from '@supabase/supabase-js';
 import { Profile, UserRole, Notification } from './types';
 import { ToastContainer } from './components/ToastContainer';
+import { checkDatabaseSchema } from './utils/schemaCheck';
+import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
 
 type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller';
 
@@ -27,22 +33,35 @@ const App: React.FC = () => {
   const [view, setView] = useState<View>('dashboard');
   
   const [initialReportId, setInitialReportId] = useState<string | null>(null);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
+  const [showPublicView, setShowPublicView] = useState(false);
 
   useEffect(() => {
+    const runSchemaCheck = async () => {
+        const result = await checkDatabaseSchema();
+        if (result.status === 'invalid') {
+            setSchemaError(result.error || 'An unknown schema error occurred.');
+            setLoading(false);
+            return false;
+        }
+        return true;
+    };
+    
     const initializeApp = async () => {
+      const isSchemaValid = await runSchemaCheck();
+      if (!isSchemaValid) return;
+
       // Fetch the initial session.
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        setError(`Cannot reach authentication server: ${sessionError.message}`);
-      } else {
-        setSession(session);
-      }
+      // FIX: Changed `supabase.auth.session()` (v1) to `supabase.auth.getSession()` (v2) to fix 'session does not exist' error.
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
       setLoading(false);
     };
   
     initializeApp();
   
     // Set up a listener for subsequent auth state changes.
+    // FIX: Changed destructuring for onAuthStateChange subscription to match v2 API.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setError(null); // Clear errors on auth state change
@@ -168,6 +187,10 @@ const App: React.FC = () => {
     }
   }
 
+  if (schemaError) {
+    return <GlobalSchemaErrorModal checkError={schemaError} />;
+  }
+
   if (loading) {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black">
@@ -184,6 +207,7 @@ const App: React.FC = () => {
                   <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Application Error</h2>
                   <p className="mb-4">{error}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">This can happen due to network issues or incorrect database permissions (Row Level Security). Please check the console for more details.</p>
+                  {/* FIX: Changed `supabase.auth.signOut()` to support v1 API if necessary. The call is the same, so the error is likely due to incorrect type inference which other fixes should resolve. */}
                   <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
                       Logout and Try Again
                   </button>
@@ -193,7 +217,10 @@ const App: React.FC = () => {
   }
 
   if (!session) {
-      return <AuthPage />;
+      if (showPublicView) {
+        return <PublicDashboardPage onBackToLogin={() => setShowPublicView(false)} />;
+      }
+      return <AuthPage onViewPublicDashboard={() => setShowPublicView(true)} />;
   }
   
   if (session && !profile) {

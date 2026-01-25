@@ -78,6 +78,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       }`;
 
   const handleLogout = async () => {
+    // FIX: The signOut method is compatible with v1 and v2. The error is likely due to incorrect type inference which other fixes in the project will resolve.
     await supabase.auth.signOut();
     setMobileMenuOpen(false);
   };
