@@ -387,6 +387,18 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     CONSTRAINT notifications_recipient_user_id_fkey FOREIGN KEY (recipient_user_id) REFERENCES public.profiles(id) ON DELETE CASCADE
 );
 
+-- App Settings Table
+CREATE TABLE IF NOT EXISTS public.app_settings (
+    key text NOT NULL,
+    value text,
+    CONSTRAINT app_settings_pkey PRIMARY KEY (key)
+);
+
+-- Insert default settings if they don't exist
+INSERT INTO public.app_settings (key, value)
+VALUES ('main_logo_url', NULL)
+ON CONFLICT (key) DO NOTHING;
+
 -- Drop deprecated registration requests table
 DROP TABLE IF EXISTS public.registration_requests;
 DROP TYPE IF EXISTS public.request_status;
@@ -730,6 +742,13 @@ CREATE POLICY "Allow access based on parent report" ON public.chat_messages FOR 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can see and update their own notifications" ON public.notifications;
 CREATE POLICY "Users can see and update their own notifications" ON public.notifications FOR ALL USING ((recipient_user_id = (select auth.uid())));
+
+-- APP SETTINGS
+ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read access to settings" ON public.app_settings;
+DROP POLICY IF EXISTS "Allow admins to update settings" ON public.app_settings;
+CREATE POLICY "Allow public read access to settings" ON public.app_settings FOR SELECT USING (true);
+CREATE POLICY "Allow admins to update settings" ON public.app_settings FOR ALL USING (((select public.get_user_role((select auth.uid()))) = 'admin')) WITH CHECK (((select public.get_user_role((select auth.uid()))) = 'admin'));
 
 COMMIT;
 ```
