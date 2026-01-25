@@ -62,7 +62,7 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages, noInternalScroll]);
+    }, [messages.length, noInternalScroll]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();

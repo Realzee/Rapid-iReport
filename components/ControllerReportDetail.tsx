@@ -151,7 +151,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
     useEffect(() => {
         scrollToBottom();
-    }, [timelineEvents]);
+    }, [timelineEvents.length]);
 
     const handleUpdateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

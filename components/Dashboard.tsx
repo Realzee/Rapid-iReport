@@ -162,7 +162,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         setResponders(mappedResponders);
     }, [allUsers]);
 
-    const sortedReports = useMemo(() => reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()), [reports]);
+    const sortedReports = useMemo(() => [...reports].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()), [reports]);
     const selectedReport = useMemo(() => reports.find(r => r.id === selectedReportId), [reports, selectedReportId]);
     
     const handleOpenNewReportModal = useCallback(() => { setReportToEdit(null); setIsReportModalOpen(true); }, []);
