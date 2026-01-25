@@ -120,14 +120,14 @@ const MapPage: React.FC<MapPageProps> = ({ profile }) => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-[calc(100vh-8.5rem)]">
+            <div className="flex justify-center items-center h-full">
                 <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
     
     return (
-        <div className="h-[calc(100vh-8.5rem)] w-full -my-8">
+        <div className="h-full w-full">
             <MapView reports={reports} responders={responders} selectedReportId={null} profile={profile ?? undefined} />
         </div>
     );
