@@ -7,16 +7,19 @@ interface IncidentChatProps {
     reportId: string;
     currentUserProfile: Profile;
     disabled?: boolean;
+    noInternalScroll?: boolean;
 }
 
-const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfile, disabled = false }) => {
+const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfile, disabled = false, noInternalScroll = false }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (!noInternalScroll) {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
     };
 
     useEffect(() => {
@@ -59,7 +62,7 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages]);
+    }, [messages, noInternalScroll]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -81,9 +84,12 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
     };
 
     return (
-        <div className="flex flex-col h-full">
+        <div className={`flex flex-col ${!noInternalScroll ? 'h-full' : ''}`}>
             <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Live Chat</h4>
-            <div className="flex-grow bg-gray-100 dark:bg-gray-800/50 rounded-lg p-3 space-y-3 overflow-y-auto border border-gray-200 dark:border-gray-700/50" style={{ minHeight: '150px' }}>
+            <div 
+                className={`bg-gray-100 dark:bg-gray-800/50 rounded-lg p-3 space-y-3 border border-gray-200 dark:border-gray-700/50 ${!noInternalScroll ? 'flex-grow overflow-y-auto' : ''}`}
+                style={!noInternalScroll ? { minHeight: '150px' } : {}}
+            >
                 {messages.length === 0 && <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-4">No messages yet.</p>}
                 {messages.map(msg => (
                     <div key={msg.id} className={`flex items-start gap-2.5 ${msg.user_id === currentUserProfile.id ? 'justify-end' : ''}`}>

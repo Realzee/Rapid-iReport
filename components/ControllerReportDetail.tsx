@@ -350,7 +350,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         </div>
                     </DetailField>
                     <DetailField label="Live Communication">
-                        <IncidentChat reportId={report.id} currentUserProfile={profile} disabled={isTerminalStatus} />
+                        <IncidentChat reportId={report.id} currentUserProfile={profile} disabled={isTerminalStatus} noInternalScroll={true} />
                     </DetailField>
                 </div>
 
