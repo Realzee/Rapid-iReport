@@ -125,7 +125,7 @@ const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profil
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" aria-labelledby="map-modal-title" role="dialog" aria-modal="true">
-            <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl w-full h-full sm:rounded-2xl sm:w-11/12 sm:max-w-6xl sm:h-auto sm:max-h-[90vh] flex flex-col">
+            <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl w-full h-full sm:rounded-2xl sm:w-11/12 sm:max-w-6xl sm:h-[90vh] flex flex-col">
                 <header className="flex-shrink-0 p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
                     <h3 id="map-modal-title" className="text-lg font-bold text-gray-900 dark:text-white truncate">
                         Global Incident Map
@@ -134,13 +134,15 @@ const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profil
                         <XIcon className="w-6 h-6" />
                     </button>
                 </header>
-                <div className="flex-grow h-full w-full min-h-[70vh]">
+                <div className="flex-grow relative min-h-0">
                     {loading ? (
-                         <div className="flex justify-center items-center h-full">
+                         <div className="absolute inset-0 flex justify-center items-center">
                             <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                         </div>
                     ) : (
-                         <MapView reports={reports} responders={responders} selectedReportId={null} profile={profile ?? undefined} />
+                        <div className="absolute inset-0">
+                             <MapView reports={reports} responders={responders} selectedReportId={null} profile={profile ?? undefined} />
+                        </div>
                     )}
                 </div>
             </div>
