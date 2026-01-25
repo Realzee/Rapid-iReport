@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Report, Profile, ResponderStatus } from '../types';
-import { useTheme } from '../contexts/ThemeContext';
+import MapStyleToggle, { MapStyle } from './MapStyleToggle';
 
 interface ResponderMapViewProps {
     report: Report | null;
@@ -77,18 +77,25 @@ const MapFocusController: React.FC<{ report: Report | null, responderProfile: Pr
 
 
 const ResponderMapView: React.FC<ResponderMapViewProps> = ({ report, responderProfile }) => {
-    const { theme } = useTheme();
-    const lightMapUrl = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
-    const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-    const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
+    const [mapStyle, setMapStyle] = useState<MapStyle>('street');
+
+    const streetTile = {
+        url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    };
+    const satelliteTile = {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    };
+    const currentTile = mapStyle === 'street' ? streetTile : satelliteTile;
 
     const responderIcon = createResponderIcon(responderProfile.responder_status || ResponderStatus.OFF_DUTY);
     const incidentIcon = createIncidentIcon();
     
     return (
-        <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none">
+        <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none relative">
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
-                <TileLayer key={theme} url={tileUrl} attribution='&copy; CARTO' />
+                <TileLayer key={mapStyle} url={currentTile.url} attribution={currentTile.attribution} />
                 <MapFocusController report={report} responderProfile={responderProfile} />
                 
                 {responderProfile.location_coords && (
@@ -103,6 +110,7 @@ const ResponderMapView: React.FC<ResponderMapViewProps> = ({ report, responderPr
                     </Marker>
                 )}
             </MapContainer>
+            <MapStyleToggle currentStyle={mapStyle} onStyleChange={setMapStyle} />
         </div>
     );
 };

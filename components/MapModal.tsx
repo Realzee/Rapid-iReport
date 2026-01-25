@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } from 'react-leaflet';
 import L, { LatLngBoundsExpression } from 'leaflet';
 import { Report, VehicleReport, Severity, ReportStatus } from '../types';
-import { useTheme } from '../contexts/ThemeContext';
 import { XIcon } from './icons';
 import StatusBadge from './StatusBadge';
+import MapStyleToggle, { MapStyle } from './MapStyleToggle';
 
 interface MapModalProps {
     isOpen: boolean;
@@ -56,20 +56,26 @@ const MapFocusController: React.FC<{ report: Report }> = ({ report }) => {
 }
 
 const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
-    const { theme } = useTheme();
+    const [mapStyle, setMapStyle] = useState<MapStyle>('street');
 
     if (!isOpen || !report || (!report.location_coords && !report.location_boundary)) {
         return null;
     }
 
-    const lightMapUrl = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
-    const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-    const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
+    const streetTile = {
+        url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    };
+    const satelliteTile = {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    };
+    const currentTile = mapStyle === 'street' ? streetTile : satelliteTile;
     
     const areaStyle = {
-        fillColor: theme === 'dark' ? '#3B82F6' : '#60A5FA',
+        fillColor: '#60A5FA',
         fillOpacity: 0.2,
-        color: theme === 'dark' ? '#60A5FA' : '#3B82F6',
+        color: '#3B82F6',
         weight: 2,
     };
 
@@ -90,12 +96,12 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
                         <XIcon className="w-6 h-6" />
                     </button>
                 </header>
-                <div className="flex-grow h-full w-full">
+                <div className="flex-grow h-full w-full relative">
                     <MapContainer center={position || [0,0]} zoom={position ? 16 : 10} scrollWheelZoom={true} style={{ height: '100%', width: '100%', borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
                          <TileLayer 
-                            key={theme}
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' 
-                            url={tileUrl} />
+                            key={mapStyle}
+                            attribution={currentTile.attribution} 
+                            url={currentTile.url} />
                         
                         <MapFocusController report={report} />
                         
@@ -115,6 +121,7 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
                             </Marker>
                         )}
                     </MapContainer>
+                    <MapStyleToggle currentStyle={mapStyle} onStyleChange={setMapStyle} />
                 </div>
             </div>
         </div>

@@ -6,6 +6,7 @@ import StatusBadge from './StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon, ShareIcon } from './icons';
 import IncidentChat from './IncidentChat';
+import MapStyleToggle, { MapStyle } from './MapStyleToggle';
 
 interface MapViewProps {
   reports: Report[];
@@ -97,26 +98,41 @@ const createResponderIcon = (status: ResponderStatus) => {
 };
 
 
-const MapFocusController: React.FC<{ selectedReport: Report | undefined }> = ({ selectedReport }) => {
+const MapFocusController: React.FC<{ selectedReport: Report | undefined, responders: Responder[] }> = ({ selectedReport, responders }) => {
     const map = useMap();
     useEffect(() => {
-        if (selectedReport) {
-            if (selectedReport.location_boundingbox) {
+        if (selectedReport?.location_coords) {
+            const reportLocation: L.LatLngExpression = [selectedReport.location_coords.lat, selectedReport.location_coords.lng];
+
+            const availableResponders = responders.filter(
+                r => r.status === ResponderStatus.AVAILABLE && r.location_coords
+            );
+
+            if (availableResponders.length > 0) {
+                const responderLocations: L.LatLngExpression[] = availableResponders.map(
+                    r => [r.location_coords!.lat, r.location_coords!.lng]
+                );
+                
+                const bounds = L.latLngBounds([reportLocation, ...responderLocations]);
+                map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0 });
+
+            } else if (selectedReport.location_boundingbox) {
                 const bounds: LatLngBoundsExpression = [
                     [selectedReport.location_boundingbox[0], selectedReport.location_boundingbox[2]],
                     [selectedReport.location_boundingbox[1], selectedReport.location_boundingbox[3]]
                 ];
                 map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0 });
-            } else if (selectedReport.location_coords) {
-                map.flyTo([selectedReport.location_coords.lat, selectedReport.location_coords.lng], 15, { animate: true, duration: 1.0 });
+            } else {
+                map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
             }
         }
-    }, [selectedReport, map]);
+    }, [selectedReport, responders, map]);
     return null;
 };
 
 const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, profile, onReportSelect }) => {
     const [copiedReportId, setCopiedReportId] = useState<string | null>(null);
+    const [mapStyle, setMapStyle] = useState<MapStyle>('street');
 
     const handleShareReport = (reportId: string) => {
         navigator.clipboard.writeText(`https://rapid-ireport.app/report/${reportId}`).then(() => {
@@ -127,7 +143,16 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
 
     const selectedReport = reports.find(r => r.id === selectedReportId);
 
-    const tileUrl = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+    const streetTile = {
+        url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    };
+    const satelliteTile = {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    };
+    const currentTile = mapStyle === 'street' ? streetTile : satelliteTile;
+
 
     const areaStyle = {
         fillColor: '#60A5FA',
@@ -137,12 +162,12 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
     };
 
     return (
-        <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none">
+        <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none relative">
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
                 <TileLayer 
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' 
-                    url={tileUrl} />
-                <MapFocusController selectedReport={selectedReport} />
+                    attribution={currentTile.attribution} 
+                    url={currentTile.url} />
+                <MapFocusController selectedReport={selectedReport} responders={responders} />
 
                 {responders.map(responder => (
                     responder.location_coords && (
@@ -212,6 +237,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                     <GeoJSON data={selectedReport.location_boundary} style={areaStyle} />
                 )}
             </MapContainer>
+            <MapStyleToggle currentStyle={mapStyle} onStyleChange={setMapStyle} />
         </div>
     );
 };
