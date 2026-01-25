@@ -291,7 +291,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
     return (
         <>
-            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl h-full flex flex-col text-gray-900 dark:text-white backdrop-blur-lg shadow-lg print:hidden">
+            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl flex flex-col text-gray-900 dark:text-white backdrop-blur-lg shadow-lg print:hidden">
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700/50 flex-shrink-0 flex justify-between items-center">
                     <div>
                         <h3 className="text-lg font-bold">Report Details: {report.ob_number}</h3>
@@ -311,7 +311,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     </div>
                 </div>
 
-                <div className="p-4 flex-grow overflow-y-auto min-h-0 space-y-6 print:overflow-visible">
+                <div className="p-4 space-y-6 print:overflow-visible">
                      <div className="grid grid-cols-2 gap-4">
                         <DetailField label="Severity"><p className="font-semibold text-md capitalize">{report.severity}</p></DetailField>
                         <DetailField label="Status"><span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">{report.status.replace(/_/g, ' ')}</span></DetailField>
@@ -324,6 +324,27 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-mono text-gray-800 dark:text-white bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-xs">{report.license_plate}</span>
                                 <span>{report.vehicle_color} {report.vehicle_make} {report.vehicle_model}</span>
+                            </div>
+                        </DetailField>
+                    )}
+
+                    {report.evidence_images && report.evidence_images.length > 0 && (
+                        <DetailField label="Evidence">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {report.evidence_images.map((img, index) => (
+                                    <a href={img} target="_blank" rel="noopener noreferrer" key={index} className="relative group block w-full h-24 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+                                        <img 
+                                            src={img} 
+                                            alt={`Evidence ${index + 1}`} 
+                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                        />
+                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-300 flex items-center justify-center">
+                                            <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V8m0 0h-4m4 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" />
+                                            </svg>
+                                        </div>
+                                    </a>
+                                ))}
                             </div>
                         </DetailField>
                     )}

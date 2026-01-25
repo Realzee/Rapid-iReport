@@ -291,7 +291,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                     profile={profile}
                                 />
                             </div>
-                            <div className="lg:col-span-4 min-h-[50vh] lg:h-[calc(100vh-12rem)]">
+                            <div className="lg:col-span-4 min-h-[50vh]">
                                 {selectedReport ? (
                                     <ControllerReportDetail
                                         key={selectedReport.id}
