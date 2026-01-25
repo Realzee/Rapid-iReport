@@ -51,17 +51,11 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const { addToast } = useToast();
 
-    const timelineEndRef = useRef<HTMLDivElement>(null);
-
     const isTerminalStatus = useMemo(() => {
         return [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(report.status);
     }, [report.status]);
     
     const canManageReport = useMemo(() => [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role), [profile.role]);
-
-    const scrollToBottom = () => {
-        timelineEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
 
     useEffect(() => {
         setSelectedStatus(report.status);
@@ -148,10 +142,6 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         const sorted = combined.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         return sorted;
     }, [updates, assignmentHistory]);
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [timelineEvents.length]);
 
     const handleUpdateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -367,7 +357,6 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                                     </TimelineItem>
                                 ))
                             )}
-                            <div ref={timelineEndRef} />
                         </div>
                     </DetailField>
                     <DetailField label="Live Communication">
