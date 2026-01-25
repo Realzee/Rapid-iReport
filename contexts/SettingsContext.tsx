@@ -2,55 +2,56 @@ import React, { createContext, useState, useEffect, useContext, ReactNode, useMe
 import { supabase } from '../utils/supabase';
 import { logoUrl as defaultLogoUrl } from '../assets/logo';
 
+export const defaultFaviconUrl = `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>`;
+
 interface SettingsContextType {
   mainLogoUrl: string;
   setMainLogoUrl: (url: string) => void;
   defaultLogoUrl: string;
+  faviconUrl: string;
+  setFaviconUrl: (url: string) => void;
+  defaultFaviconUrl: string;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [mainLogoUrl, setMainLogoUrl] = useState<string>(defaultLogoUrl);
+  const [faviconUrl, setFaviconUrl] = useState<string>(defaultFaviconUrl);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchLogoSetting = async () => {
-      // The `app_settings` table might not exist or might be restricted by RLS for anon users.
-      // We try to fetch it, but fall back gracefully.
+    const fetchSettings = async () => {
       try {
         const { data, error } = await supabase
           .from('app_settings')
-          .select('value')
-          .eq('key', 'main_logo_url')
-          .single();
+          .select('key, value');
 
         if (error) {
-            // This is not a critical error, as we have a default.
-            // It could be due to RLS or the table not existing.
-            console.warn('Could not fetch main_logo_url setting, using default. Error:', error.message);
-            setMainLogoUrl(defaultLogoUrl);
-        } else if (data && data.value) {
-            setMainLogoUrl(data.value);
-        } else {
-            setMainLogoUrl(defaultLogoUrl);
+            console.warn('Could not fetch app settings, using defaults. Error:', error.message);
+        } else if (data) {
+          const settingsMap = new Map(data.map(s => [s.key, s.value]));
+          setMainLogoUrl(settingsMap.get('main_logo_url') || defaultLogoUrl);
+          setFaviconUrl(settingsMap.get('favicon_url') || defaultFaviconUrl);
         }
       } catch(e) {
-          console.error("Error in fetchLogoSetting:", e);
-          setMainLogoUrl(defaultLogoUrl);
+          console.error("Error in fetchSettings:", e);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchLogoSetting();
+    fetchSettings();
   }, []);
 
   const value = useMemo(() => ({
-    mainLogoUrl: loading ? defaultLogoUrl : mainLogoUrl, // Prevent flash of wrong logo
+    mainLogoUrl: loading ? defaultLogoUrl : mainLogoUrl,
     setMainLogoUrl,
     defaultLogoUrl,
-  }), [mainLogoUrl, loading]);
+    faviconUrl: loading ? defaultFaviconUrl : faviconUrl,
+    setFaviconUrl,
+    defaultFaviconUrl,
+  }), [mainLogoUrl, faviconUrl, loading]);
 
   return (
     <SettingsContext.Provider value={value}>

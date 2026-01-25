@@ -19,10 +19,14 @@ const CompaniesPage: React.FC = () => {
     const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
 
     // Global Branding states
-    const { mainLogoUrl, setMainLogoUrl, defaultLogoUrl } = useSettings();
+    const { mainLogoUrl, setMainLogoUrl, defaultLogoUrl, faviconUrl, setFaviconUrl, defaultFaviconUrl } = useSettings();
     const [newLogoFile, setNewLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string>(mainLogoUrl);
     const [isUploadingGlobalLogo, setIsUploadingGlobalLogo] = useState(false);
+    
+    const [newFaviconFile, setNewFaviconFile] = useState<File | null>(null);
+    const [faviconPreview, setFaviconPreview] = useState<string>(faviconUrl);
+    const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
 
 
     useEffect(() => {
@@ -41,6 +45,11 @@ const CompaniesPage: React.FC = () => {
     useEffect(() => {
         setLogoPreview(mainLogoUrl);
     }, [mainLogoUrl]);
+    
+    useEffect(() => {
+        setFaviconPreview(faviconUrl);
+    }, [faviconUrl]);
+
 
     useEffect(() => {
         if (!currentUserProfile) return;
@@ -226,45 +235,140 @@ const CompaniesPage: React.FC = () => {
             setIsUploadingGlobalLogo(false);
         }
     };
+    
+    const handleFaviconFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            if (!['image/png', 'image/svg+xml', 'image/x-icon', 'image/jpeg'].includes(file.type)) {
+                addToast('Invalid file type. Please upload a PNG, SVG, ICO, or JPG.', 'error');
+                return;
+            }
+            setNewFaviconFile(file);
+            setFaviconPreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleSaveFavicon = async () => {
+        if (!newFaviconFile) return;
+        setIsUploadingFavicon(true);
+        try {
+            const fileExt = newFaviconFile.name.split('.').pop();
+            const filePath = `favicon.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('app-assets')
+                .upload(filePath, newFaviconFile, { upsert: true, cacheControl: '0' });
+            
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = supabase.storage.from('app-assets').getPublicUrl(filePath);
+            const newUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+
+            const { error: dbError } = await supabase
+                .from('app_settings')
+                .upsert({ key: 'favicon_url', value: newUrl });
+            
+            if (dbError) throw dbError;
+
+            setFaviconUrl(newUrl);
+            setNewFaviconFile(null);
+            addToast('App icon updated successfully.', 'success');
+        } catch (error: any) {
+            addToast('Error updating app icon: ' + error.message, 'error');
+        } finally {
+            setIsUploadingFavicon(false);
+        }
+    };
+
+    const handleResetFavicon = async () => {
+        setIsUploadingFavicon(true);
+        try {
+            const { error } = await supabase
+                .from('app_settings')
+                .update({ value: null })
+                .eq('key', 'favicon_url');
+            
+            if (error) throw error;
+
+            setFaviconUrl(defaultFaviconUrl);
+            setFaviconPreview(defaultFaviconUrl);
+            setNewFaviconFile(null);
+            addToast('App icon reset to default.', 'info');
+        } catch (error: any) {
+             addToast('Error resetting app icon: ' + error.message, 'error');
+        } finally {
+            setIsUploadingFavicon(false);
+        }
+    };
 
     return (
         <div className="container mx-auto space-y-8">
             {currentUserProfile?.role === UserRole.ADMIN && (
                 <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 backdrop-blur-lg shadow-lg">
                     <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Global Branding</h3>
-                    <div className="flex items-start gap-6">
-                        <div className="flex-shrink-0">
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Main App Logo Preview</p>
-                            <div className="w-48 h-24 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center border border-gray-300 dark:border-gray-700">
-                                <img src={logoPreview} alt="Main Logo Preview" className="max-w-full max-h-full object-contain p-2" />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-12">
+                        {/* Logo Section */}
+                        <div>
+                             <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Main Application Logo</h4>
+                            <div className="flex items-start gap-6">
+                                <div className="flex-shrink-0">
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Logo Preview</p>
+                                    <div className="w-48 h-24 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center border border-gray-300 dark:border-gray-700">
+                                        <img src={logoPreview} alt="Main Logo Preview" className="max-w-full max-h-full object-contain p-2" />
+                                    </div>
+                                </div>
+                                <div className="flex-grow">
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upload New Logo</p>
+                                    <div className="flex items-center gap-4">
+                                        <label htmlFor="global-logo-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                            <UploadCloudIcon className="w-5 h-5"/>
+                                            <span>Choose File</span>
+                                        </label>
+                                        <input id="global-logo-upload" type="file" className="sr-only" accept="image/png, image/jpeg, image/svg+xml" onChange={handleGlobalLogoFileChange} />
+                                        {newLogoFile && <span className="text-sm text-gray-500 dark:text-gray-400">{newLogoFile.name}</span>}
+                                    </div>
+                                    <div className="mt-4 flex items-center gap-3">
+                                        <button onClick={handleSaveGlobalLogo} disabled={!newLogoFile || isUploadingGlobalLogo} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                                            {isUploadingGlobalLogo ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : null}
+                                            Save Logo
+                                        </button>
+                                        <button onClick={handleResetGlobalLogo} disabled={isUploadingGlobalLogo} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50">
+                                            Reset
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex-grow">
-                             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upload New Logo</p>
-                            <div className="flex items-center gap-4">
-                                <label htmlFor="global-logo-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                    <UploadCloudIcon className="w-5 h-5"/>
-                                    <span>Choose File</span>
-                                </label>
-                                <input id="global-logo-upload" type="file" className="sr-only" accept="image/png, image/jpeg, image/svg+xml" onChange={handleGlobalLogoFileChange} />
-                                {newLogoFile && <span className="text-sm text-gray-500 dark:text-gray-400">{newLogoFile.name}</span>}
-                            </div>
-                             <div className="mt-4 flex items-center gap-3">
-                                <button
-                                    onClick={handleSaveGlobalLogo}
-                                    disabled={!newLogoFile || isUploadingGlobalLogo}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-                                >
-                                    {isUploadingGlobalLogo ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : null}
-                                    Save
-                                </button>
-                                <button
-                                    onClick={handleResetGlobalLogo}
-                                    disabled={isUploadingGlobalLogo}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"
-                                >
-                                    Reset to Default
-                                </button>
+                        {/* Favicon Section */}
+                        <div>
+                             <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Application Icon (Favicon)</h4>
+                             <div className="flex items-start gap-6">
+                                <div className="flex-shrink-0">
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Icon Preview</p>
+                                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center border border-gray-300 dark:border-gray-700">
+                                        <img src={faviconPreview} alt="Favicon Preview" className="w-12 h-12 object-contain" />
+                                    </div>
+                                </div>
+                                <div className="flex-grow">
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upload New Icon</p>
+                                    <div className="flex items-center gap-4">
+                                        <label htmlFor="favicon-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                            <UploadCloudIcon className="w-5 h-5"/>
+                                            <span>Choose File</span>
+                                        </label>
+                                        <input id="favicon-upload" type="file" className="sr-only" accept="image/png, image/jpeg, image/svg+xml, image/x-icon" onChange={handleFaviconFileChange} />
+                                        {newFaviconFile && <span className="text-sm text-gray-500 dark:text-gray-400">{newFaviconFile.name}</span>}
+                                    </div>
+                                    <div className="mt-4 flex items-center gap-3">
+                                        <button onClick={handleSaveFavicon} disabled={!newFaviconFile || isUploadingFavicon} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                                            {isUploadingFavicon ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : null}
+                                            Save Icon
+                                        </button>
+                                        <button onClick={handleResetFavicon} disabled={isUploadingFavicon} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50">
+                                            Reset
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

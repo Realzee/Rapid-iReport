@@ -34,7 +34,7 @@ const App: React.FC = () => {
   const [initialReportId, setInitialReportId] = useState<string | null>(null);
   const [schemaError, setSchemaError] = useState<string | null>(null);
   const [showPublicView, setShowPublicView] = useState(false);
-  const { mainLogoUrl } = useSettings();
+  const { mainLogoUrl, faviconUrl } = useSettings();
 
   useEffect(() => {
     const runSchemaCheck = async () => {
@@ -141,6 +141,19 @@ const App: React.FC = () => {
       }
     }
   }, [view, profile]);
+
+  // Effect to update the favicon dynamically
+  useEffect(() => {
+    const link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (link) {
+      link.href = faviconUrl;
+    } else {
+      const newLink = document.createElement('link');
+      newLink.rel = 'icon';
+      newLink.href = faviconUrl;
+      document.head.appendChild(newLink);
+    }
+  }, [faviconUrl]);
 
   const handleNotificationClick = useCallback(async (notification: Notification) => {
     if (!notification.is_read) {
@@ -272,7 +285,7 @@ const App: React.FC = () => {
               profile={profile}
               onNotificationClick={handleNotificationClick}
             />
-            <main className={`${mainClasses} flex-grow`}>
+            <main className={`${mainClasses} flex-grow flex flex-col`}>
               {renderView()}
             </main>
             <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">
