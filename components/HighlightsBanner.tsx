@@ -18,18 +18,18 @@ const HighlightCard: React.FC<{ report: Report, onSelect: (id: string) => void }
     return (
         <div 
             onClick={() => onSelect(report.id)}
-            className="flex items-center gap-2 bg-white/10 dark:bg-black/20 hover:bg-white/20 dark:hover:bg-black/30 backdrop-blur-sm rounded-lg px-3 py-1.5 cursor-pointer border border-white/10 dark:border-black/20 transition-colors duration-300 flex-shrink-0 w-72"
+            className="flex items-center gap-1.5 bg-white/10 dark:bg-black/20 hover:bg-white/20 dark:hover:bg-black/30 backdrop-blur-sm rounded-md px-2 py-1 cursor-pointer border border-white/10 dark:border-black/20 transition-colors duration-300 flex-shrink-0 w-64"
         >
-            <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${report.severity === Severity.CRITICAL ? 'bg-red-500/20' : 'bg-orange-500/20'}`}>
-                {isVehicle ? <CarIcon className="w-4 h-4 text-yellow-400" /> : <CrimeIcon className="w-4 h-4 text-red-400" />}
+            <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${report.severity === Severity.CRITICAL ? 'bg-red-500/20' : 'bg-orange-500/20'}`}>
+                {isVehicle ? <CarIcon className="w-3.5 h-3.5 text-yellow-400" /> : <CrimeIcon className="w-3.5 h-3.5 text-red-400" />}
             </div>
             <div className="flex-1 min-w-0">
                 <p className="font-bold text-xs truncate">{title}</p>
-                <div className="flex items-center gap-2 text-xs opacity-80">
-                    <AlertTriangleIcon className={`w-3.5 h-3.5 ${report.severity === Severity.CRITICAL ? 'text-red-400' : 'text-orange-400'}`} />
+                <div className="flex items-center gap-1.5 text-xs opacity-80">
+                    <AlertTriangleIcon className={`w-3 h-3 ${report.severity === Severity.CRITICAL ? 'text-red-400' : 'text-orange-400'}`} />
                     <span className="capitalize">{report.severity}</span>
                     <span>&middot;</span>
-                    <span>{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</span>
+                    <span className="whitespace-nowrap">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</span>
                 </div>
             </div>
         </div>
@@ -88,8 +88,8 @@ const HighlightsBanner: React.FC<HighlightsBannerProps> = ({ onSelectReport }) =
     const animationStyle = { animation: `marquee ${animationDuration}s linear infinite` };
 
     return (
-        <div className="fixed top-20 left-0 right-0 z-40 bg-gray-100/50 dark:bg-gray-900/50 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800/50 text-gray-800 dark:text-gray-200 overflow-hidden group py-1 print:hidden">
-            <div className={`flex w-max group-hover:[animation-play-state:paused]`} style={animationStyle}>
+        <div className="fixed top-20 left-0 right-0 z-40 bg-gray-100/50 dark:bg-gray-900/50 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800/50 text-gray-800 dark:text-gray-200 overflow-hidden py-1 print:hidden">
+            <div className={`flex w-max`} style={animationStyle}>
                 {duplicatedReports.map((report, index) => (
                     <div key={`${report.id}-${index}`} className="mx-2">
                         <HighlightCard report={report} onSelect={onSelectReport} />

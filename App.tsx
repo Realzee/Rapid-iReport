@@ -290,8 +290,8 @@ const App: React.FC = () => {
   const isUserView = profile?.role === UserRole.USER;
   
   const mainClasses = isFullWidthView
-    ? 'pt-40 pb-8 px-4 sm:px-6 lg:px-8'
-    : `container mx-auto pt-40 px-4 sm:px-6 lg:px-8 pb-8 ${isUserView ? 'max-w-7xl' : ''}`;
+    ? 'pt-32 pb-8 px-4 sm:px-6 lg:px-8'
+    : `container mx-auto pt-32 px-4 sm:px-6 lg:px-8 pb-8 ${isUserView ? 'max-w-7xl' : ''}`;
 
   return (
     <div className="min-h-screen relative overflow-x-hidden">
