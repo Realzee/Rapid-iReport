@@ -84,7 +84,7 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
     };
 
     return (
-        <div className={`flex flex-col ${!noInternalScroll ? 'h-full' : ''}`}>
+        <div className={!noInternalScroll ? 'flex flex-col h-full' : ''}>
             <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Live Chat</h4>
             <div 
                 className={`bg-gray-100 dark:bg-gray-800/50 rounded-lg p-3 space-y-3 border border-gray-200 dark:border-gray-700/50 ${!noInternalScroll ? 'flex-grow overflow-y-auto' : ''}`}
