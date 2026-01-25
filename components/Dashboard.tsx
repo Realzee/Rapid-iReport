@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport, ReportStatus } from '../types';
 import StatCard from './StatCard';
 import ReportList from './ReportList';
@@ -141,7 +141,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         };
     }, [profile]);
 
-    const handleReportSelect = (reportId: string) => setSelectedReportId(prevId => prevId === reportId ? null : reportId);
+    const handleReportSelect = useCallback((reportId: string) => setSelectedReportId(prevId => prevId === reportId ? null : reportId), []);
 
     useEffect(() => {
         if (initialReportId && onInitialReportHandled && reports.some(r => r.id === initialReportId)) {
@@ -165,10 +165,11 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const sortedReports = useMemo(() => reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()), [reports]);
     const selectedReport = useMemo(() => reports.find(r => r.id === selectedReportId), [reports, selectedReportId]);
     
-    const handleOpenNewReportModal = () => { setReportToEdit(null); setIsReportModalOpen(true); };
-    const handleOpenEditReportModal = (report: Report) => { setReportToEdit(report); setIsReportModalOpen(true); };
-    const handleOpenDeleteReportModal = (report: Report) => setReportToDelete(report);
-    const confirmDeleteReport = async () => {
+    const handleOpenNewReportModal = useCallback(() => { setReportToEdit(null); setIsReportModalOpen(true); }, []);
+    const handleOpenEditReportModal = useCallback((report: Report) => { setReportToEdit(report); setIsReportModalOpen(true); }, []);
+    const handleOpenDeleteReportModal = useCallback((report: Report) => setReportToDelete(report), []);
+    
+    const confirmDeleteReport = useCallback(async () => {
         if (!reportToDelete) return;
         const tableName = isVehicleReport(reportToDelete) ? 'vehicle_reports' : 'crime_reports';
         const { error } = await supabase.from(tableName).update({ status: ReportStatus.DELETED }).eq('id', reportToDelete.id);
@@ -182,9 +183,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             }
         }
         setReportToDelete(null);
-    };
+    }, [reportToDelete, addToast, selectedReportId]);
     
-    const handleStatusUpdate = async (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => {
+    const handleStatusUpdate = useCallback(async (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => {
         const tableName = reportType === 'vehicle' ? 'vehicle_reports' : 'crime_reports';
         const reportToUpdate = reports.find(r => r.id === reportId);
         if (!reportToUpdate) return;
@@ -230,7 +231,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 if(profileUpdateError) console.warn("Report status updated, but failed to update responder status:", profileUpdateError.message);
             }
         }
-    };
+    }, [reports, profile.id, addToast]);
 
 
     if (loading) return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;

@@ -1,6 +1,8 @@
 
 
-import React, { useState, useMemo } from 'react';
+
+
+import React, { useState, useMemo, memo } from 'react';
 import { Report, VehicleReport, Severity, Profile, UserRole, ReportStatus } from '../types';
 import StatusBadge from './StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
@@ -134,4 +136,4 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
   );
 };
 
-export default ReportListItem;
+export default memo(ReportListItem);

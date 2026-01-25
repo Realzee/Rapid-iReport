@@ -1,12 +1,14 @@
 
 
-import React from 'react';
+
+
+import React, { memo } from 'react';
 import { Profile, Company, UserRole, UserStatus } from '../types';
 import { EditIcon, TrashIcon } from './icons';
 import { formatDistanceToNow } from 'date-fns';
 
 interface RoleBadgeProps { role: UserRole; }
-const RoleBadge: React.FC<RoleBadgeProps> = ({ role }) => {
+const RoleBadge: React.FC<RoleBadgeProps> = memo(({ role }) => {
     const styles: Record<UserRole, string> = {
         [UserRole.ADMIN]: 'bg-red-500/20 text-red-500 dark:text-red-400 border-red-500/30',
         [UserRole.MODERATOR]: 'bg-purple-500/20 text-purple-500 dark:text-purple-400 border-purple-500/30',
@@ -15,17 +17,17 @@ const RoleBadge: React.FC<RoleBadgeProps> = ({ role }) => {
         [UserRole.USER]: 'bg-gray-500/20 text-gray-500 dark:text-gray-400 border-gray-500/30',
     };
     return <span className={`px-3 py-1 text-xs font-bold rounded-full capitalize border ${styles[role]}`}>{role}</span>;
-};
+});
 
 interface UserStatusBadgeProps { status: UserStatus; }
-const UserStatusBadge: React.FC<UserStatusBadgeProps> = ({ status }) => {
+const UserStatusBadge: React.FC<UserStatusBadgeProps> = memo(({ status }) => {
     const styles: Record<UserStatus, string> = {
         [UserStatus.ACTIVE]: 'bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30',
         [UserStatus.PENDING]: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30',
         [UserStatus.SUSPENDED]: 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30',
     };
     return <span className={`px-3 py-1 text-xs font-bold rounded-full capitalize border ${styles[status]}`}>{status}</span>;
-};
+});
 
 interface UserManagementTableProps {
   users: Profile[];
@@ -196,4 +198,4 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
     );
 };
 
-export default UserManagementTable;
+export default memo(UserManagementTable);

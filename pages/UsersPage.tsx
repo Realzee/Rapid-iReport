@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { PlusIcon, UsersIcon } from '../components/icons';
 import { Profile, Company, UserRole } from '../types';
 import UserManagementTable from '../components/UserManagementTable';
@@ -12,6 +12,7 @@ const UsersPage: React.FC = () => {
     const [companies, setCompanies] = useState<Company[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
@@ -94,29 +95,41 @@ const UsersPage: React.FC = () => {
         };
     }, [currentUserProfile]);
 
-    const filteredUsers = useMemo(() => {
-        return users.filter(user =>
-            user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [users, searchTerm]);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 300);
 
-    const handleAddUser = () => {
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [searchTerm]);
+
+    const filteredUsers = useMemo(() => {
+        const lowercasedTerm = debouncedSearchTerm.toLowerCase();
+        if (!lowercasedTerm) return users;
+        return users.filter(user =>
+            user.full_name.toLowerCase().includes(lowercasedTerm) ||
+            user.email.toLowerCase().includes(lowercasedTerm)
+        );
+    }, [users, debouncedSearchTerm]);
+
+    const handleAddUser = useCallback(() => {
         setSelectedUser(null);
         setIsAddEditModalOpen(true);
-    };
+    }, []);
 
-    const handleEditUser = (user: Profile) => {
+    const handleEditUser = useCallback((user: Profile) => {
         setSelectedUser(user);
         setIsAddEditModalOpen(true);
-    };
+    }, []);
 
-    const handleDeleteUser = (user: Profile) => {
+    const handleDeleteUser = useCallback((user: Profile) => {
         setSelectedUser(user);
         setIsDeleteModalOpen(true);
-    };
+    }, []);
     
-    const handleRoleChange = async (userId: string, newRole: UserRole) => {
+    const handleRoleChange = useCallback(async (userId: string, newRole: UserRole) => {
         setUpdatingRoleId(userId);
         const { error } = await supabase
             .from('profiles')
@@ -129,12 +142,12 @@ const UsersPage: React.FC = () => {
             addToast(`User role updated successfully.`, 'success');
         }
         setUpdatingRoleId(null);
-    };
+    }, [addToast]);
 
-    const handleSaveUser = async (userToSave: Profile, password?: string) => {
+    const handleSaveUser = useCallback(async (userToSave: Profile, password?: string) => {
         if (userToSave.id) { // UPDATE
             const { id, email, ...updateData } = userToSave;
-            const { data: profileData, error: profileError } = await supabase
+            const { error: profileError } = await supabase
                 .from('profiles')
                 .update(updateData)
                 .eq('id', id)
@@ -194,9 +207,9 @@ const UsersPage: React.FC = () => {
         }
         setIsAddEditModalOpen(false);
         setSelectedUser(null);
-    };
+    }, [addToast]);
 
-    const confirmDeleteUser = async () => {
+    const confirmDeleteUser = useCallback(async () => {
         if (selectedUser) {
             const { error } = await supabase.functions.invoke('delete-user', {
                 body: { userId: selectedUser.id }
@@ -210,7 +223,7 @@ const UsersPage: React.FC = () => {
         }
         setIsDeleteModalOpen(false);
         setSelectedUser(null);
-    };
+    }, [selectedUser, addToast]);
 
     return (
         <div className="container mx-auto">
@@ -228,6 +241,15 @@ const UsersPage: React.FC = () => {
                     <PlusIcon className="w-5 h-5" />
                     <span>Add New User</span>
                 </button>
+            </div>
+            <div className="mb-4">
+                <input
+                    type="text"
+                    placeholder="Search by name or email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full max-w-sm bg-white dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg py-2 px-4"
+                />
             </div>
 
             <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300">

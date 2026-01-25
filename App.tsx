@@ -1,7 +1,7 @@
 
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import AuthPage from './pages/AuthPage';
@@ -136,7 +136,7 @@ const App: React.FC = () => {
     }
   }, [view, profile]);
 
-  const handleNotificationClick = async (notification: Notification) => {
+  const handleNotificationClick = useCallback(async (notification: Notification) => {
     if (!notification.is_read) {
         await supabase.from('notifications').update({ is_read: true }).eq('id', notification.id);
     }
@@ -158,7 +158,7 @@ const App: React.FC = () => {
         default:
             break;
     }
-  };
+  }, [profile]);
 
   const renderView = () => {
     if (!profile) return null;

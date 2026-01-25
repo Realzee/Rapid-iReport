@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, memo } from 'react';
 import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, RadioTowerIcon } from './icons';
 import { Profile, UserRole, Notification } from '../types';
 import { supabase } from '../utils/supabase';
@@ -33,7 +33,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     if (!profile) return;
     
     const fetchInitialData = async () => {
-        // Fetch Notifications
         const { data: notificationsData, error: notificationsError } = await supabase
             .from('notifications')
             .select('*')
@@ -45,19 +44,35 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     
     fetchInitialData();
 
-    // Subscribe to Notifications
+    const handleNotificationChange = (payload: any) => {
+        setNotifications(currentNotifications => {
+            if (payload.eventType === 'INSERT') {
+                const newNotification = payload.new as Notification;
+                // Avoid duplicates from race conditions
+                if (currentNotifications.some(n => n.id === newNotification.id)) return currentNotifications;
+                return [newNotification, ...currentNotifications];
+            }
+            if (payload.eventType === 'UPDATE') {
+                return currentNotifications.map(n => n.id === payload.new.id ? payload.new as Notification : n);
+            }
+            if (payload.eventType === 'DELETE') {
+                return currentNotifications.filter(n => n.id !== payload.old.id);
+            }
+            return currentNotifications;
+        });
+    };
+
     const notificationsChannel = supabase
         .channel(`notifications-${profile.id}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `recipient_user_id=eq.${profile.id}`}, 
-        () => {
-            fetchInitialData(); // Refetch all notifications on change
-        })
+            handleNotificationChange
+        )
         .subscribe();
         
     return () => {
         supabase.removeChannel(notificationsChannel);
     };
-  }, [profile, canAccessAdminPages]);
+  }, [profile]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -218,4 +233,4 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   );
 };
 
-export default Header;
+export default memo(Header);
