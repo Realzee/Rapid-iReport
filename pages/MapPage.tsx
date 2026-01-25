@@ -127,7 +127,7 @@ const MapPage: React.FC<MapPageProps> = ({ profile }) => {
     }
     
     return (
-        <div className="flex-grow w-full">
+        <div className="h-full w-full">
             <MapView reports={reports} responders={responders} selectedReportId={null} profile={profile ?? undefined} />
         </div>
     );
