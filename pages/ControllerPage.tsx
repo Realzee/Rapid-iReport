@@ -186,6 +186,11 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         }));
         setResponders(mappedResponders);
     }, [allUsers]);
+    
+    const sortedReports = useMemo(() => {
+        // FIX: Use spread operator `[...]` to create a new array for sorting, preventing state mutation.
+        return [...reports].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+    }, [reports]);
 
     useEffect(() => {
         if (initialReportId && onInitialReportHandled && reports.some(r => r.id === initialReportId)) {
@@ -193,26 +198,27 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             onInitialReportHandled();
         }
     }, [initialReportId, onInitialReportHandled, reports]);
-
+    
+    // FIX: This effect now safely manages the selected report without mutating state, preventing an infinite loop.
     useEffect(() => {
-        if (loading) return;
-        const sortedReports = reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+        if (loading) return; // Don't run on initial load
+
+        // If no report is selected, but there are reports available, select the latest one.
         if (!selectedReportId && sortedReports.length > 0) {
             setSelectedReportId(sortedReports[0].id);
         }
-        if (selectedReportId && !reports.some(r => r.id === selectedReportId)) {
+        
+        // If a report is currently selected, but it has been removed from the list (e.g., resolved/deleted),
+        // then select the new latest report, or null if the list is empty.
+        if (selectedReportId && !sortedReports.some(r => r.id === selectedReportId)) {
             setSelectedReportId(sortedReports.length > 0 ? sortedReports[0].id : null);
         }
-    }, [reports, selectedReportId, loading]);
+    }, [sortedReports, selectedReportId, loading]);
 
     const handleOpenNewReportModal = () => {
         setReportToEdit(null);
         setIsReportModalOpen(true);
     };
-
-    const sortedReports = useMemo(() => {
-        return reports.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
-    }, [reports]);
 
     const selectedReport = useMemo(() => {
         return reports.find(r => r.id === selectedReportId);
