@@ -4,7 +4,7 @@ import Dashboard from './components/Dashboard';
 import AuthPage from './pages/AuthPage';
 import UsersPage from './pages/UsersPage';
 import CompaniesPage from './pages/CompaniesPage';
-import MapPage from './pages/MapPage';
+import GlobalMapModal from './components/GlobalMapModal';
 import ReportsPage from './pages/ReportsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import ProfilePage from './pages/ProfilePage';
@@ -35,6 +35,7 @@ const App: React.FC = () => {
   const [schemaError, setSchemaError] = useState<string | null>(null);
   const [showPublicView, setShowPublicView] = useState(false);
   const { mainLogoUrl, faviconUrl } = useSettings();
+  const [isGlobalMapModalOpen, setIsGlobalMapModalOpen] = useState(false);
 
   useEffect(() => {
     const runSchemaCheck = async () => {
@@ -179,6 +180,15 @@ const App: React.FC = () => {
     }
   }, [profile]);
 
+  const handleSetView = (newView: View) => {
+    if (newView === 'map') {
+        setIsGlobalMapModalOpen(true);
+    } else {
+        if (isGlobalMapModalOpen) setIsGlobalMapModalOpen(false);
+        setView(newView);
+    }
+  };
+
   const renderView = () => {
     if (!profile) return null;
 
@@ -208,10 +218,10 @@ const App: React.FC = () => {
       case 'controller': return <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
       case 'archives': return <ReportsPage profile={profile} />;
       case 'analytics': return <AnalyticsPage />;
-      case 'map': return <MapPage profile={profile} />;
       case 'users': return <UsersPage />;
       case 'companies': return <CompaniesPage />;
       case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} />;
+      case 'map': // fallthrough in case view is 'map'
       default: return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
     }
   }
@@ -261,7 +271,7 @@ const App: React.FC = () => {
     );
   }
 
-  const isFullWidthView = view === 'controller' || view === 'map' || profile?.role === UserRole.RESPONDER;
+  const isFullWidthView = view === 'controller' || profile?.role === UserRole.RESPONDER;
   const isUserView = profile?.role === UserRole.USER;
   
   const mainClasses = isFullWidthView
@@ -280,8 +290,8 @@ const App: React.FC = () => {
         {profile ? (
           <div className="flex flex-col min-h-screen">
             <Header 
-              currentView={view} 
-              setView={setView} 
+              currentView={isGlobalMapModalOpen ? 'map' : view}
+              setView={handleSetView} 
               profile={profile}
               onNotificationClick={handleNotificationClick}
             />
@@ -295,6 +305,7 @@ const App: React.FC = () => {
           </div>
         ) : null}
       </div>
+      {isGlobalMapModalOpen && <GlobalMapModal isOpen={isGlobalMapModalOpen} onClose={() => setIsGlobalMapModalOpen(false)} profile={profile} />}
     </div>
   );
 };
