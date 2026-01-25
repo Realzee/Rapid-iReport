@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, RadioTowerIcon } from './icons';
 import { Profile, UserRole, Notification } from '../types';
 import { supabase } from '../utils/supabase';
-import { logoUrl } from '../assets/logo';
+import { useSettings } from '../contexts/SettingsContext';
 import ThemeToggle from './ThemeToggle';
 import NotificationsPanel from './NotificationsPanel';
 import PTTModal from './PTTModal';
@@ -20,6 +20,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isPTTModalOpen, setIsPTTModalOpen] = useState(false);
+  const { mainLogoUrl } = useSettings();
 
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -142,7 +143,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       <div className={headerContainerClasses}>
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center space-x-2">
-            <img src={profile.company?.logo_url || logoUrl} alt="Company Logo" className="w-auto h-10 object-contain" />
+            <img src={profile.company?.logo_url || mainLogoUrl} alt="Company Logo" className="w-auto h-10 object-contain" />
           </div>
           <nav className="hidden md:flex items-center space-x-2">
             <NavLinks />

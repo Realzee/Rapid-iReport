@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -22,6 +23,7 @@ import { Profile, UserRole, Notification } from './types';
 import { ToastContainer } from './components/ToastContainer';
 import { checkDatabaseSchema } from './utils/schemaCheck';
 import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
+import { useSettings } from './contexts/SettingsContext';
 
 type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller';
 
@@ -35,6 +37,7 @@ const App: React.FC = () => {
   const [initialReportId, setInitialReportId] = useState<string | null>(null);
   const [schemaError, setSchemaError] = useState<string | null>(null);
   const [showPublicView, setShowPublicView] = useState(false);
+  const { mainLogoUrl } = useSettings();
 
   useEffect(() => {
     const runSchemaCheck = async () => {
@@ -259,8 +262,9 @@ const App: React.FC = () => {
             <main className={`${mainClasses} flex-grow`}>
               {renderView()}
             </main>
-            <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden">
-                Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)
+            <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">
+                <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto h-4" />
+                <span>Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)</span>
             </footer>
           </div>
         ) : null}

@@ -4,7 +4,7 @@ import L from 'leaflet';
 import { supabase } from '../utils/supabase';
 import { Report, VehicleReport } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
-import { logoUrl } from '../assets/logo';
+import { rapid911LogoUrl } from '../assets/rapid911logo';
 import ThemeToggle from '../components/ThemeToggle';
 import { CarIcon, CrimeIcon, XIcon, MenuIcon } from '../components/icons';
 import { formatDistanceToNow } from 'date-fns';
@@ -89,7 +89,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                          <button onClick={() => setSidePanelOpen(!isSidePanelOpen)} className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors md:hidden">
                             {isSidePanelOpen ? <XIcon className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
                         </button>
-                        <img src={logoUrl} alt="Logo" className="w-auto h-10 object-contain" />
+                        <img src={rapid911LogoUrl} alt="Logo" className="w-auto h-10 object-contain" />
                         <h1 className="text-xl font-bold hidden sm:block">Community Safety Map</h1>
                     </div>
                     <div className="flex items-center gap-4">
