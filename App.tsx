@@ -12,6 +12,7 @@ import ControllerPage from './pages/ControllerPage';
 import ResponderPage from './pages/ResponderPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import PublicDashboardPage from './pages/PublicDashboardPage';
+import HighlightsBanner from './components/HighlightsBanner';
 import { supabase } from './utils/supabase';
 // FIX: Changed to `import type` for better compatibility with modern TypeScript module resolution for Supabase v2. This may resolve downstream type inference issues.
 // FIX: Changed `Session` to `AuthSession` as `Session` is not exported in this version of `@supabase/supabase-js`.
@@ -189,6 +190,20 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSelectReportFromBanner = useCallback((reportId: string) => {
+    if (profile && [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role)) {
+        setView('controller');
+    } else {
+        setView('dashboard');
+    }
+    setInitialReportId(reportId);
+
+    if (isGlobalMapModalOpen) {
+        setIsGlobalMapModalOpen(false);
+    }
+  }, [profile, isGlobalMapModalOpen]);
+
+
   const renderView = () => {
     if (!profile) return null;
 
@@ -275,8 +290,8 @@ const App: React.FC = () => {
   const isUserView = profile?.role === UserRole.USER;
   
   const mainClasses = isFullWidthView
-    ? 'pt-20 pb-8 px-4 sm:px-6 lg:px-8'
-    : `container mx-auto pt-20 px-4 sm:px-6 lg:px-8 pb-8 ${isUserView ? 'max-w-7xl' : ''}`;
+    ? 'pt-36 pb-8 px-4 sm:px-6 lg:px-8'
+    : `container mx-auto pt-36 px-4 sm:px-6 lg:px-8 pb-8 ${isUserView ? 'max-w-7xl' : ''}`;
 
   return (
     <div className="min-h-screen relative overflow-x-hidden">
@@ -295,6 +310,7 @@ const App: React.FC = () => {
               profile={profile}
               onNotificationClick={handleNotificationClick}
             />
+            <HighlightsBanner onSelectReport={handleSelectReportFromBanner} />
             <main className={`${mainClasses} flex-grow flex flex-col`}>
               {renderView()}
             </main>
