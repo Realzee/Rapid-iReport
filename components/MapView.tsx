@@ -37,12 +37,13 @@ const createIncidentIcon = (report: Report, isSelected: boolean) => {
     const iconSvgPath = isVehicleReport(report) ? carSvgPath : crimeSvgPath;
 
     const size = isSelected ? 48 : 36;
-    const animationClass = isSelected ? 'pulse-ring-animation' : '';
+    const scale = isSelected ? 1.1 : 1;
     const shadowFilter = `drop-shadow(0 4px 6px rgba(0,0,0,0.4))`;
+    const glowFilter = isSelected ? `drop-shadow(0 0 8px ${color})` : '';
     
     const iconHtml = `
-        <div class="${animationClass}" style="width: ${size}px; height: ${size}px; display: flex; justify-content: center; align-items: center;">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 100%; height: 100%; filter: ${shadowFilter};">
+        <div style="width: ${size}px; height: ${size}px; display: flex; justify-content: center; align-items: center; transform: scale(${scale}); transition: transform 0.2s ease-out;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 100%; height: 100%; filter: ${shadowFilter} ${glowFilter}; transition: filter 0.2s ease-out;">
                 <path fill="${color}" stroke="#ffffff" stroke-width="1" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path>
                 <g transform="translate(4, 3) scale(0.7)" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     ${iconSvgPath}

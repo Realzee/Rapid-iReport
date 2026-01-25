@@ -27,7 +27,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   
   const unreadCount = useMemo(() => notifications.filter(n => !n.is_read).length, [notifications]);
   const canAccessAdminPages = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
-  const canAccessController = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role);
 
   useEffect(() => {
     if (!profile) return;
@@ -121,27 +120,37 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   };
 
   const NavLinks: React.FC<{mobile?: boolean}> = ({ mobile = false}) => {
+    const clickHandler = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller') => mobile ? handleMobileLinkClick(view) : setView(view);
+    const classGetter = mobile ? mobileNavLinkClasses : navLinkClasses;
+
     if (profile.role === UserRole.USER) {
       return (
-        <button onClick={() => mobile ? handleMobileLinkClick('dashboard') : setView('dashboard')} className={mobile ? mobileNavLinkClasses('dashboard') : navLinkClasses('dashboard')}>
+        <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>
           My Reports
         </button>
       );
     }
+
+    if (profile.role === UserRole.CONTROLLER) {
+      return (
+        <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>
+            Controller
+        </button>
+      );
+    }
   
+    // For Admin/Moderator
     return (
       <>
-        <button onClick={() => mobile ? handleMobileLinkClick('dashboard') : setView('dashboard')} className={mobile ? mobileNavLinkClasses('dashboard') : navLinkClasses('dashboard')}>Dashboard</button>
-        {canAccessController && (
-          <button onClick={() => mobile ? handleMobileLinkClick('controller') : setView('controller')} className={mobile ? mobileNavLinkClasses('controller') : navLinkClasses('controller')}>Controller</button>
-        )}
-        <button onClick={() => mobile ? handleMobileLinkClick('archives') : setView('archives')} className={mobile ? mobileNavLinkClasses('archives') : navLinkClasses('archives')}>Archives</button>
-        <button onClick={() => mobile ? handleMobileLinkClick('analytics') : setView('analytics')} className={mobile ? mobileNavLinkClasses('analytics') : navLinkClasses('analytics')}>Analytics</button>
-        <button onClick={() => mobile ? handleMobileLinkClick('map') : setView('map')} className={mobile ? mobileNavLinkClasses('map') : navLinkClasses('map')}>Map</button>
+        <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>Dashboard</button>
+        <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>Controller</button>
+        <button onClick={() => clickHandler('archives')} className={classGetter('archives')}>Archives</button>
+        <button onClick={() => clickHandler('analytics')} className={classGetter('analytics')}>Analytics</button>
+        <button onClick={() => clickHandler('map')} className={classGetter('map')}>Map</button>
         {canAccessAdminPages && (
           <>
-            <button onClick={() => mobile ? handleMobileLinkClick('users') : setView('users')} className={mobile ? mobileNavLinkClasses('users') : navLinkClasses('users')}>Users</button>
-            <button onClick={() => mobile ? handleMobileLinkClick('companies') : setView('companies')} className={mobile ? mobileNavLinkClasses('companies') : navLinkClasses('companies')}>Companies</button>
+            <button onClick={() => clickHandler('users')} className={classGetter('users')}>Users</button>
+            <button onClick={() => clickHandler('companies')} className={classGetter('companies')}>Companies</button>
           </>
         )}
       </>

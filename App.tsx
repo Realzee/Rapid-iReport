@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -107,6 +104,9 @@ const App: React.FC = () => {
                 setProfile(null);
             } else {
                 setProfile(data);
+                if (data.role === UserRole.CONTROLLER) {
+                    setView('controller');
+                }
                 setError(null);
                 setupPresence(session.user.id);
             }
@@ -126,6 +126,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (profile) {
+      // For Controllers, force them to the controller view, unless they are viewing their profile.
+      if (profile.role === UserRole.CONTROLLER && view !== 'controller' && view !== 'profile') {
+        setView('controller');
+        return; // Early return to avoid other checks
+      }
+      
       const adminPages: View[] = ['users', 'companies'];
       if (adminPages.includes(view) && ![UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role)) {
         setView('dashboard');
@@ -163,6 +169,8 @@ const App: React.FC = () => {
   const renderView = () => {
     if (!profile) return null;
 
+    const onInitialReportHandled = () => setInitialReportId(null);
+
     if (profile.role === UserRole.RESPONDER) {
         return view === 'profile' 
             ? <ProfilePage profile={profile} setProfile={setProfile} />
@@ -175,8 +183,13 @@ const App: React.FC = () => {
             : <UserDashboardPage profile={profile} />;
     }
     
-    const onInitialReportHandled = () => setInitialReportId(null);
-
+    if (profile.role === UserRole.CONTROLLER) {
+      return view === 'profile'
+          ? <ProfilePage profile={profile} setProfile={setProfile} />
+          : <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
+    }
+    
+    // Admin & Moderator views
     switch(view) {
       case 'dashboard': return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
       case 'controller': return <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
