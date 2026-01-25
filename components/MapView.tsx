@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip, GeoJSON } from 'react-leaflet';
 import L, { LatLngBoundsExpression } from 'leaflet';
@@ -18,19 +16,50 @@ interface MapViewProps {
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
-const createRedPinIcon = () => {
-    const iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 40px; height: 40px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));">
-        <path fill="#dc2626" stroke="#ffffff" stroke-width="1.5" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path>
-        <circle cx="12" cy="9.5" r="2.5" fill="#ffffff"></circle>
-    </svg>`;
+const createIncidentIcon = (report: Report, isSelected: boolean) => {
+    const severityColors: Record<Severity, string> = {
+        [Severity.CRITICAL]: '#ef4444', // red-500
+        [Severity.HIGH]: '#f97316',      // orange-500
+        [Severity.MEDIUM]: '#eab308',   // yellow-500
+        [Severity.LOW]: '#3b82f6',      // blue-500
+    };
+
+    const color = severityColors[report.severity] || '#6b7280'; // gray-500 fallback
+
+    const carSvgPath = `
+        <path d="M14 16.5V14a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2.5"></path>
+        <path d="M20 10h-2.5a2 2 0 0 0-2-2H8.5a2 2 0 0 0-2 2H4"></path>
+        <path d="M19 17h.01"></path>
+        <path d="M5 17h.01"></path>
+        <path d="M2 10l3.5-3.5A2 2 0 0 1 7 6h10a2 2 0 0 1 1.5.5L22 10"></path>`;
+    const crimeSvgPath = `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>`;
+    
+    const iconSvgPath = isVehicleReport(report) ? carSvgPath : crimeSvgPath;
+
+    const size = isSelected ? 48 : 36;
+    const animationClass = isSelected ? 'pulse-ring-animation' : '';
+    const shadowFilter = `drop-shadow(0 4px 6px rgba(0,0,0,0.4))`;
+    
+    const iconHtml = `
+        <div class="${animationClass}" style="width: ${size}px; height: ${size}px; display: flex; justify-content: center; align-items: center;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 100%; height: 100%; filter: ${shadowFilter};">
+                <path fill="${color}" stroke="#ffffff" stroke-width="1" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path>
+                <g transform="translate(4, 3) scale(0.7)" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    ${iconSvgPath}
+                </g>
+            </svg>
+        </div>
+    `;
+
     return new L.DivIcon({
         html: iconHtml,
         className: '',
-        iconSize: [40, 40],
-        iconAnchor: [20, 40],
-        popupAnchor: [0, -40],
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size],
+        popupAnchor: [0, -size],
     });
 };
+
 
 const createResponderIcon = (status: ResponderStatus) => {
     let colorClass = 'text-gray-500'; // Off-duty (fallback)
@@ -129,43 +158,49 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                     )
                 ))}
 
-                {selectedReport && (
-                    <React.Fragment>
-                        {selectedReport.location_boundary && (
-                            <GeoJSON data={selectedReport.location_boundary} style={areaStyle} />
-                        )}
-                        {selectedReport.location_coords && (
-                             <Marker position={[selectedReport.location_coords.lat, selectedReport.location_coords.lng]} icon={createRedPinIcon()}>
-                                <Popup>
-                                    <div className="w-72">
-                                        <h3 className="font-bold text-lg mb-1">{isVehicleReport(selectedReport) ? selectedReport.license_plate : selectedReport.title}</h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mb-2">{selectedReport.ob_number}</p>
-                                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{selectedReport.description}</p>
-                                        <hr className="border-gray-200 dark:border-gray-600 my-2" />
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Status</span><StatusBadge status={selectedReport.status} /></div>
-                                            <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Severity</span><span className={`capitalize px-2 py-1 text-xs font-semibold rounded-full ${selectedReport.severity === 'critical' ? 'bg-red-500/20 text-red-400' : selectedReport.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : selectedReport.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}`}>{selectedReport.severity}</span></div>
-                                        </div>
-                                        
-                                        {profile && [ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(selectedReport.status) && (
-                                            <>
-                                                <hr className="border-gray-200 dark:border-gray-600 my-2" />
-                                                <IncidentChat reportId={selectedReport.id} currentUserProfile={profile} />
-                                            </>
-                                        )}
-
-                                        <hr className="border-gray-200 dark:border-gray-600 my-2" />
-                                        <div className="flex justify-between items-center">
-                                            <p className="text-xs text-gray-400 dark:text-gray-500">{formatDistanceToNow(new Date(selectedReport.reported_at), { addSuffix: true })}</p>
-                                            <button onClick={() => handleShareReport(selectedReport.id)} className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors disabled:opacity-50" disabled={copiedReportId === selectedReport.id}>
-                                                {copiedReportId === selectedReport.id ? <><CheckCircleIcon className="w-4 h-4 text-green-400" /><span className="text-green-400">Copied!</span></> : <><ShareIcon className="w-4 h-4" /><span>Share</span></>}
-                                            </button>
-                                        </div>
+                {reports.map(report => {
+                    if (!report.location_coords) return null;
+                    const isSelected = report.id === selectedReportId;
+                    return (
+                         <Marker
+                            key={report.id}
+                            position={[report.location_coords.lat, report.location_coords.lng]}
+                            icon={createIncidentIcon(report, isSelected)}
+                            zIndexOffset={isSelected ? 1000 : 0}
+                        >
+                            <Popup>
+                                <div className="w-72">
+                                    <h3 className="font-bold text-lg mb-1">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mb-2">{report.ob_number}</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{report.description}</p>
+                                    <hr className="border-gray-200 dark:border-gray-600 my-2" />
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Status</span><StatusBadge status={report.status} /></div>
+                                        <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Severity</span><span className={`capitalize px-2 py-1 text-xs font-semibold rounded-full ${report.severity === 'critical' ? 'bg-red-500/20 text-red-400' : report.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : report.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}`}>{report.severity}</span></div>
                                     </div>
-                                </Popup>
-                            </Marker>
-                        )}
-                    </React.Fragment>
+                                    
+                                    {profile && [ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(report.status) && (
+                                        <>
+                                            <hr className="border-gray-200 dark:border-gray-600 my-2" />
+                                            <IncidentChat reportId={report.id} currentUserProfile={profile} />
+                                        </>
+                                    )}
+
+                                    <hr className="border-gray-200 dark:border-gray-600 my-2" />
+                                    <div className="flex justify-between items-center">
+                                        <p className="text-xs text-gray-400 dark:text-gray-500">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
+                                        <button onClick={() => handleShareReport(report.id)} className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors disabled:opacity-50" disabled={copiedReportId === report.id}>
+                                            {copiedReportId === report.id ? <><CheckCircleIcon className="w-4 h-4 text-green-400" /><span className="text-green-400">Copied!</span></> : <><ShareIcon className="w-4 h-4" /><span>Share</span></>}
+                                        </button>
+                                    </div>
+                                </div>
+                            </Popup>
+                        </Marker>
+                    )
+                })}
+
+                {selectedReport && selectedReport.location_boundary && (
+                    <GeoJSON data={selectedReport.location_boundary} style={areaStyle} />
                 )}
             </MapContainer>
         </div>
