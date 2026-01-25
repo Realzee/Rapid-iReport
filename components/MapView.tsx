@@ -12,6 +12,7 @@ interface MapViewProps {
   responders: Responder[];
   selectedReportId: string | null;
   profile?: Profile;
+  onReportSelect?: (reportId: string) => void;
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
@@ -114,7 +115,7 @@ const MapFocusController: React.FC<{ selectedReport: Report | undefined }> = ({ 
     return null;
 };
 
-const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, profile }) => {
+const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, profile, onReportSelect }) => {
     const [copiedReportId, setCopiedReportId] = useState<string | null>(null);
 
     const handleShareReport = (reportId: string) => {
@@ -168,6 +169,13 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                             position={[report.location_coords.lat, report.location_coords.lng]}
                             icon={createIncidentIcon(report, isSelected)}
                             zIndexOffset={isSelected ? 1000 : 0}
+                            eventHandlers={{
+                                click: () => {
+                                    if (onReportSelect) {
+                                        onReportSelect(report.id);
+                                    }
+                                },
+                            }}
                         >
                             <Popup>
                                 <div className="w-72">

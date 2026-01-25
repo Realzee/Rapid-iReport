@@ -263,7 +263,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="h-[60vh] lg:h-[calc(100vh-8.5rem)] lg:sticky lg:top-20">
-                        <MapView reports={reports} responders={responders} selectedReportId={selectedReportId} profile={profile} />
+                        <MapView 
+                            reports={reports} 
+                            responders={responders} 
+                            selectedReportId={selectedReportId} 
+                            profile={profile} 
+                            onReportSelect={handleReportSelect}
+                        />
                     </div>
                 </div>
             </div>

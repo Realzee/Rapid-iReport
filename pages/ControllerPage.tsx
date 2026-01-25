@@ -289,6 +289,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                     responders={responders}
                                     selectedReportId={selectedReportId}
                                     profile={profile}
+                                    onReportSelect={(id) => setSelectedReportId(id)}
                                 />
                             </div>
                             <div className="lg:col-span-4 min-h-[50vh]">
