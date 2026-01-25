@@ -18,13 +18,13 @@ const HighlightCard: React.FC<{ report: Report, onSelect: (id: string) => void }
     return (
         <div 
             onClick={() => onSelect(report.id)}
-            className="flex items-center gap-3 bg-white/10 dark:bg-black/20 hover:bg-white/20 dark:hover:bg-black/30 backdrop-blur-sm rounded-lg px-4 py-2 cursor-pointer border border-white/10 dark:border-black/20 transition-colors duration-300 flex-shrink-0 w-80"
+            className="flex items-center gap-2 bg-white/10 dark:bg-black/20 hover:bg-white/20 dark:hover:bg-black/30 backdrop-blur-sm rounded-lg px-3 py-1.5 cursor-pointer border border-white/10 dark:border-black/20 transition-colors duration-300 flex-shrink-0 w-72"
         >
-            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${report.severity === Severity.CRITICAL ? 'bg-red-500/20' : 'bg-orange-500/20'}`}>
-                {isVehicle ? <CarIcon className="w-5 h-5 text-yellow-400" /> : <CrimeIcon className="w-5 h-5 text-red-400" />}
+            <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${report.severity === Severity.CRITICAL ? 'bg-red-500/20' : 'bg-orange-500/20'}`}>
+                {isVehicle ? <CarIcon className="w-4 h-4 text-yellow-400" /> : <CrimeIcon className="w-4 h-4 text-red-400" />}
             </div>
             <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm truncate">{title}</p>
+                <p className="font-bold text-xs truncate">{title}</p>
                 <div className="flex items-center gap-2 text-xs opacity-80">
                     <AlertTriangleIcon className={`w-3.5 h-3.5 ${report.severity === Severity.CRITICAL ? 'text-red-400' : 'text-orange-400'}`} />
                     <span className="capitalize">{report.severity}</span>
@@ -81,12 +81,15 @@ const HighlightsBanner: React.FC<HighlightsBannerProps> = ({ onSelectReport }) =
         return null;
     }
 
-    const duplicatedReports = reports.length > 4 ? [...reports, ...reports] : reports;
-    const animationClass = reports.length > 4 ? 'animate-[marquee_60s_linear_infinite]' : '';
+    // Always duplicate reports to ensure a seamless marquee effect.
+    const duplicatedReports = [...reports, ...reports];
+    // Adjust duration based on number of reports to keep scroll speed consistent
+    const animationDuration = Math.max(20, reports.length * 10);
+    const animationStyle = { animation: `marquee ${animationDuration}s linear infinite` };
 
     return (
-        <div className="fixed top-20 left-0 right-0 z-40 bg-gray-100/50 dark:bg-gray-900/50 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800/50 text-gray-800 dark:text-gray-200 overflow-hidden group py-2 print:hidden">
-            <div className={`flex w-max ${animationClass} group-hover:[animation-play-state:paused]`}>
+        <div className="fixed top-20 left-0 right-0 z-40 bg-gray-100/50 dark:bg-gray-900/50 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800/50 text-gray-800 dark:text-gray-200 overflow-hidden group py-1 print:hidden">
+            <div className={`flex w-max group-hover:[animation-play-state:paused]`} style={animationStyle}>
                 {duplicatedReports.map((report, index) => (
                     <div key={`${report.id}-${index}`} className="mx-2">
                         <HighlightCard report={report} onSelect={onSelectReport} />
