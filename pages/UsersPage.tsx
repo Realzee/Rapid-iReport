@@ -17,6 +17,7 @@ const UsersPage: React.FC = () => {
     const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
     const { addToast } = useToast();
     const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
+    const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchCurrentUserProfile = async () => {
@@ -113,6 +114,21 @@ const UsersPage: React.FC = () => {
     const handleDeleteUser = (user: Profile) => {
         setSelectedUser(user);
         setIsDeleteModalOpen(true);
+    };
+    
+    const handleRoleChange = async (userId: string, newRole: UserRole) => {
+        setUpdatingRoleId(userId);
+        const { error } = await supabase
+            .from('profiles')
+            .update({ role: newRole })
+            .eq('id', userId);
+
+        if (error) {
+            addToast(`Error updating role: ${error.message}`, 'error');
+        } else {
+            addToast(`User role updated successfully.`, 'success');
+        }
+        setUpdatingRoleId(null);
     };
 
     const handleSaveUser = async (userToSave: Profile, password?: string) => {
@@ -225,6 +241,9 @@ const UsersPage: React.FC = () => {
                         companies={companies}
                         onEdit={handleEditUser}
                         onDelete={handleDeleteUser}
+                        currentUserProfile={currentUserProfile}
+                        onRoleChange={handleRoleChange}
+                        updatingRoleId={updatingRoleId}
                     />
                  )}
             </div>
