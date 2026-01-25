@@ -44,6 +44,12 @@ export enum NotificationType {
   NEW_USER = 'new_user',
 }
 
+export enum AnnouncementType {
+  ALERT = 'alert',
+  NOTICE = 'notice',
+  SAFETY_TIP = 'safety_tip',
+}
+
 export interface Company {
     id: string;
     name: string;
@@ -158,6 +164,15 @@ export interface AssignmentLog {
     assigned_from_name?: string | null;
     assigned_to_name?: string | null;
     assigned_by_name?: string | null;
+}
+
+export interface Announcement {
+  id: string;
+  created_at: string;
+  title: string;
+  content: string;
+  type: AnnouncementType;
+  expires_at?: string;
 }
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';

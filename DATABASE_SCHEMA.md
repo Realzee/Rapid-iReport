@@ -10,13 +10,14 @@ This document provides all the necessary steps and SQL scripts to fully set up t
 
 ## Step 1: Create Storage Buckets
 
-You need to create three public buckets for storing images.
+You need to create four public buckets for storing images and assets.
 
 1.  Navigate to your Supabase Project dashboard and go to **Storage** in the left sidebar.
 2.  Create the following buckets, ensuring the **"Public bucket"** switch is toggled ON for each:
     *   `evidence` (for incident-related images)
     *   `avatars` (for user profile pictures)
     *   `company-logos` (for company branding)
+    *   `app-assets` (for global application assets like the main logo)
 
 ---
 
@@ -180,6 +181,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN CREATE TYPE public.report_status AS ENUM ('pending'); END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN CREATE TYPE public.severity AS ENUM ('low'); END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN CREATE TYPE public.responder_status AS ENUM ('off_duty'); END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'announcement_type') THEN CREATE TYPE public.announcement_type AS ENUM ('notice'); END IF;
 END$$;
 
 -- 4. Add all possible values to ENUM types to ensure they are fully up-to-date.
@@ -225,6 +227,9 @@ ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'medium';
 ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'available';
 ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'en_route';
 ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'on_scene';
+
+ALTER TYPE public.announcement_type ADD VALUE IF NOT EXISTS 'alert';
+ALTER TYPE public.announcement_type ADD VALUE IF NOT EXISTS 'safety_tip';
 
 -- 5. Re-create the get_user_role function that was dropped.
 -- The other dropped items (policies, triggers, etc.) will be recreated in Part 2.
@@ -392,6 +397,17 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
     key text NOT NULL,
     value text,
     CONSTRAINT app_settings_pkey PRIMARY KEY (key)
+);
+
+-- Announcements Table
+CREATE TABLE IF NOT EXISTS public.announcements (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    title text NOT NULL,
+    content text NOT NULL,
+    type public.announcement_type NOT NULL DEFAULT 'notice'::public.announcement_type,
+    expires_at timestamp with time zone,
+    CONSTRAINT announcements_pkey PRIMARY KEY (id)
 );
 
 -- Insert default settings if they don't exist
@@ -750,6 +766,18 @@ DROP POLICY IF EXISTS "Allow admins to update settings" ON public.app_settings;
 CREATE POLICY "Allow public read access to settings" ON public.app_settings FOR SELECT USING (true);
 CREATE POLICY "Allow admins to update settings" ON public.app_settings FOR ALL USING (((select public.get_user_role((select auth.uid()))) = 'admin')) WITH CHECK (((select public.get_user_role((select auth.uid()))) = 'admin'));
 
+-- ANNOUNCEMENTS
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read access to announcements" ON public.announcements;
+DROP POLICY IF EXISTS "Allow admins to manage announcements" ON public.announcements;
+
+CREATE POLICY "Allow public read access to announcements" ON public.announcements
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow admins to manage announcements" ON public.announcements
+  FOR ALL USING (((select public.get_user_role((select auth.uid()))) = 'admin'))
+  WITH CHECK (((select public.get_user_role((select auth.uid()))) = 'admin'));
+
 COMMIT;
 ```
 
@@ -823,6 +851,17 @@ CREATE POLICY "Allow moderators to manage their company logo" ON storage.objects
     bucket_id = 'company-logos' AND
     (SELECT public.get_user_role((select auth.uid()))) = 'moderator' AND
     (storage.foldername(name))[1] = (SELECT public.get_my_company_id())::text
+);
+
+-- Policies for 'app-assets' bucket (NEW)
+DROP POLICY IF EXISTS "Allow public read access to app assets" ON storage.objects;
+CREATE POLICY "Allow public read access to app assets" ON storage.objects FOR SELECT USING ( bucket_id = 'app-assets' );
+
+DROP POLICY IF EXISTS "Allow admins to manage app assets" ON storage.objects;
+CREATE POLICY "Allow admins to manage app assets" ON storage.objects FOR ALL TO authenticated USING (
+    bucket_id = 'app-assets' AND (SELECT public.get_user_role((select auth.uid()))) = 'admin'
+) WITH CHECK (
+    bucket_id = 'app-assets' AND (SELECT public.get_user_role((select auth.uid()))) = 'admin'
 );
 ```
 ---

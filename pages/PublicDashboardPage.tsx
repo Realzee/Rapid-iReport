@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { supabase } from '../utils/supabase';
-import { Report, VehicleReport } from '../types';
+import { Report, VehicleReport, Announcement } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { rapid911LogoUrl } from '../assets/rapid911logo';
 import ThemeToggle from '../components/ThemeToggle';
 import { CarIcon, CrimeIcon, XIcon, MenuIcon } from '../components/icons';
 import { formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
+import AnnouncementsPanel from '../components/AnnouncementsPanel';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -39,37 +40,42 @@ const MapFocusController: React.FC<{ selectedReport: Report | undefined }> = ({ 
 
 const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackToLogin }) => {
     const [reports, setReports] = useState<Report[]>([]);
+    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [isSidePanelOpen, setSidePanelOpen] = useState(true);
     const { theme } = useTheme();
 
-    const fetchPublicReports = async () => {
-        // No setLoading(true) here to avoid flicker on real-time updates
+    const fetchData = async () => {
         const [
             { data: vehicleData, error: vError },
-            { data: crimeData, error: cError }
+            { data: crimeData, error: cError },
+            { data: announcementsData, error: aError }
         ] = await Promise.all([
             supabase.from('vehicle_reports').select('*'),
-            supabase.from('crime_reports').select('*')
+            supabase.from('crime_reports').select('*'),
+            supabase.from('announcements').select('*').or('expires_at.is.null,expires_at.gt.now()').order('created_at', { ascending: false }).limit(5)
         ]);
         
         if (vError) console.error("Public fetch error (vehicles):", vError.message);
         if (cError) console.error("Public fetch error (crime):", cError.message);
+        if (aError) console.error("Public fetch error (announcements):", aError.message);
 
         const combined = [...(vehicleData || []), ...(crimeData || [])]
             .sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
         
         setReports(combined);
+        setAnnouncements(announcementsData || []);
         setLoading(false);
     };
 
     useEffect(() => {
-        fetchPublicReports();
+        fetchData();
         
-        const channel = supabase.channel('public-reports')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, () => fetchPublicReports())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, () => fetchPublicReports())
+        const channel = supabase.channel('public-data')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, () => fetchData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, () => fetchData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => fetchData())
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
@@ -102,32 +108,35 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
             </header>
             <main className="flex-grow flex relative overflow-hidden">
                 <aside className={`absolute md:relative top-0 bottom-0 left-0 z-10 w-full max-w-sm md:w-96 flex-shrink-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-r border-gray-200 dark:border-gray-700/50 flex flex-col transition-transform duration-300 ease-in-out ${isSidePanelOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700/50">
-                        <h2 className="font-bold text-lg">Live Incidents ({reports.length})</h2>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Showing reports from the last 72 hours.</p>
-                    </div>
-                    <div className="flex-grow overflow-y-auto p-2">
-                        {loading ? (
-                            <div className="flex justify-center items-center h-full"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
-                        ) : reports.length === 0 ? (
-                            <p className="text-center p-8 text-gray-500 dark:text-gray-400">No active public incidents at this time.</p>
-                        ) : (
-                            <div className="space-y-2">
-                            {reports.map(report => (
-                                <div key={report.id} onClick={() => { setSelectedReportId(report.id); if (window.innerWidth < 768) setSidePanelOpen(false); }} className={`p-3 cursor-pointer rounded-lg border-2 transition-all ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-gray-100/50 dark:bg-gray-800/50 border-transparent hover:border-gray-300 dark:hover:border-gray-600'}`}>
-                                    <div className="flex justify-between items-start gap-2">
-                                        <h3 className="font-semibold text-md truncate">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
-                                        <StatusBadge status={report.status} />
+                    <div className="flex-grow overflow-y-auto">
+                        <div className="p-4 border-b border-gray-200 dark:border-gray-700/50">
+                            <h2 className="font-bold text-lg">Live Incidents ({reports.length})</h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Showing reports from the last 72 hours.</p>
+                        </div>
+                        <div className="p-2">
+                            {loading ? (
+                                <div className="flex justify-center items-center h-full"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
+                            ) : reports.length === 0 ? (
+                                <p className="text-center p-8 text-gray-500 dark:text-gray-400">No active public incidents at this time.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                {reports.map(report => (
+                                    <div key={report.id} onClick={() => { setSelectedReportId(report.id); if (window.innerWidth < 768) setSidePanelOpen(false); }} className={`p-3 cursor-pointer rounded-lg border-2 transition-all ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-gray-100/50 dark:bg-gray-800/50 border-transparent hover:border-gray-300 dark:hover:border-gray-600'}`}>
+                                        <div className="flex justify-between items-start gap-2">
+                                            <h3 className="font-semibold text-md truncate">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                                            <StatusBadge status={report.status} />
+                                        </div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1">
+                                            {isVehicleReport(report) ? <CarIcon className="w-4 h-4 text-yellow-500" /> : <CrimeIcon className="w-4 h-4 text-red-500" />}
+                                            <span>{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : report.crime_type}</span>
+                                        </p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
                                     </div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1">
-                                        {isVehicleReport(report) ? <CarIcon className="w-4 h-4 text-yellow-500" /> : <CrimeIcon className="w-4 h-4 text-red-500" />}
-                                        <span>{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : report.crime_type}</span>
-                                    </p>
-                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
+                                ))}
                                 </div>
-                            ))}
-                            </div>
-                        )}
+                            )}
+                        </div>
+                        <AnnouncementsPanel announcements={announcements} />
                     </div>
                 </aside>
                 <div className="flex-grow h-full">
