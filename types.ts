@@ -173,6 +173,7 @@ export interface Announcement {
   content: string;
   type: AnnouncementType;
   expires_at?: string;
+  image_url?: string;
 }
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';

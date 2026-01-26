@@ -407,8 +407,10 @@ CREATE TABLE IF NOT EXISTS public.announcements (
     content text NOT NULL,
     type public.announcement_type NOT NULL DEFAULT 'notice'::public.announcement_type,
     expires_at timestamp with time zone,
+    image_url text,
     CONSTRAINT announcements_pkey PRIMARY KEY (id)
 );
+ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS image_url text;
 
 -- Insert default settings if they don't exist
 INSERT INTO public.app_settings (key, value)
@@ -770,13 +772,14 @@ CREATE POLICY "Allow admins to update settings" ON public.app_settings FOR ALL U
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow public read access to announcements" ON public.announcements;
 DROP POLICY IF EXISTS "Allow admins to manage announcements" ON public.announcements;
+DROP POLICY IF EXISTS "Allow admins and moderators to manage announcements" ON public.announcements;
 
 CREATE POLICY "Allow public read access to announcements" ON public.announcements
   FOR SELECT USING (true);
 
-CREATE POLICY "Allow admins to manage announcements" ON public.announcements
-  FOR ALL USING (((select public.get_user_role((select auth.uid()))) = 'admin'))
-  WITH CHECK (((select public.get_user_role((select auth.uid()))) = 'admin'));
+CREATE POLICY "Allow admins and moderators to manage announcements" ON public.announcements
+  FOR ALL USING (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator')))
+  WITH CHECK (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator')));
 
 COMMIT;
 ```
@@ -858,10 +861,11 @@ DROP POLICY IF EXISTS "Allow public read access to app assets" ON storage.object
 CREATE POLICY "Allow public read access to app assets" ON storage.objects FOR SELECT USING ( bucket_id = 'app-assets' );
 
 DROP POLICY IF EXISTS "Allow admins to manage app assets" ON storage.objects;
-CREATE POLICY "Allow admins to manage app assets" ON storage.objects FOR ALL TO authenticated USING (
-    bucket_id = 'app-assets' AND (SELECT public.get_user_role((select auth.uid()))) = 'admin'
+DROP POLICY IF EXISTS "Allow admins and moderators to manage app assets" ON storage.objects;
+CREATE POLICY "Allow admins and moderators to manage app assets" ON storage.objects FOR ALL TO authenticated USING (
+    bucket_id = 'app-assets' AND (SELECT public.get_user_role((select auth.uid()))) IN ('admin', 'moderator')
 ) WITH CHECK (
-    bucket_id = 'app-assets' AND (SELECT public.get_user_role((select auth.uid()))) = 'admin'
+    bucket_id = 'app-assets' AND (SELECT public.get_user_role((select auth.uid()))) IN ('admin', 'moderator')
 );
 ```
 ---

@@ -13,6 +13,7 @@ import ResponderPage from './pages/ResponderPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import PublicDashboardPage from './pages/PublicDashboardPage';
 import HighlightsBanner from './components/HighlightsBanner';
+import AnnouncementsBanner from './components/AnnouncementsBanner';
 import { supabase } from './utils/supabase';
 // FIX: Changed to `import type` for better compatibility with modern TypeScript module resolution for Supabase v2. This may resolve downstream type inference issues.
 // FIX: Changed `Session` to `AuthSession` as `Session` is not exported in this version of `@supabase/supabase-js`.
@@ -37,6 +38,7 @@ const App: React.FC = () => {
   const [showPublicView, setShowPublicView] = useState(false);
   const { mainLogoUrl, faviconUrl } = useSettings();
   const [isGlobalMapModalOpen, setIsGlobalMapModalOpen] = useState(false);
+  const [isAnnouncementVisible, setIsAnnouncementVisible] = useState(false);
 
   useEffect(() => {
     const runSchemaCheck = async () => {
@@ -289,9 +291,12 @@ const App: React.FC = () => {
   const isFullWidthView = view === 'controller' || profile?.role === UserRole.RESPONDER;
   const isUserView = profile?.role === UserRole.USER;
   
+  const highlightsBannerTopClass = isAnnouncementVisible ? 'top-44' : 'top-20'; // 176px vs 80px
+  const mainPaddingTopClass = isAnnouncementVisible ? 'pt-56' : 'pt-36'; // 224px vs 144px
+
   const mainClasses = isFullWidthView
-    ? 'pt-36 pb-8 px-4 sm:px-6 lg:px-8'
-    : `container mx-auto pt-36 px-4 sm:px-6 lg:px-8 pb-8 ${isUserView ? 'max-w-7xl' : ''}`;
+    ? `pb-8 px-4 sm:px-6 lg:px-8`
+    : `container mx-auto px-4 sm:px-6 lg:px-8 pb-8 ${isUserView ? 'max-w-7xl' : ''}`;
 
   return (
     <div className="min-h-screen relative overflow-x-hidden">
@@ -310,8 +315,9 @@ const App: React.FC = () => {
               profile={profile}
               onNotificationClick={handleNotificationClick}
             />
-            <HighlightsBanner onSelectReport={handleSelectReportFromBanner} />
-            <main className={`${mainClasses} flex-grow flex flex-col`}>
+            <AnnouncementsBanner onVisibilityChange={setIsAnnouncementVisible} />
+            <HighlightsBanner onSelectReport={handleSelectReportFromBanner} topClass={highlightsBannerTopClass} />
+            <main className={`${mainClasses} ${mainPaddingTopClass} flex-grow flex flex-col`}>
               {renderView()}
             </main>
             <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">

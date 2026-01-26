@@ -9,6 +9,7 @@ const isVehicleReport = (report: Report): report is VehicleReport => 'license_pl
 
 interface HighlightsBannerProps {
     onSelectReport: (reportId: string) => void;
+    topClass?: string;
 }
 
 const HighlightCard: React.FC<{ report: Report, onSelect: (id: string) => void }> = ({ report, onSelect }) => {
@@ -36,7 +37,7 @@ const HighlightCard: React.FC<{ report: Report, onSelect: (id: string) => void }
     );
 };
 
-const HighlightsBanner: React.FC<HighlightsBannerProps> = ({ onSelectReport }) => {
+const HighlightsBanner: React.FC<HighlightsBannerProps> = ({ onSelectReport, topClass = 'top-20' }) => {
     const [reports, setReports] = useState<Report[]>([]);
     
     useEffect(() => {
@@ -88,7 +89,7 @@ const HighlightsBanner: React.FC<HighlightsBannerProps> = ({ onSelectReport }) =
     const animationStyle = { animation: `marquee ${animationDuration}s linear infinite` };
 
     return (
-        <div className="fixed top-20 left-0 right-0 z-40 bg-gray-100/50 dark:bg-gray-900/50 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800/50 text-gray-800 dark:text-gray-200 overflow-hidden py-1 print:hidden">
+        <div className={`fixed ${topClass} left-0 right-0 z-40 bg-gray-100/50 dark:bg-gray-900/50 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800/50 text-gray-800 dark:text-gray-200 overflow-hidden py-1 print:hidden`}>
             <div className={`flex w-max`} style={animationStyle}>
                 {duplicatedReports.map((report, index) => (
                     <div key={`${report.id}-${index}`} className="mx-2">

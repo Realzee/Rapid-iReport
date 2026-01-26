@@ -150,7 +150,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         {canAccessAdminPages && (
           <>
             <button onClick={() => clickHandler('users')} className={classGetter('users')}>Users</button>
-            <button onClick={() => clickHandler('companies')} className={classGetter('companies')}>Companies</button>
+            <button onClick={() => clickHandler('companies')} className={classGetter('companies')}>Settings</button>
           </>
         )}
       </>
