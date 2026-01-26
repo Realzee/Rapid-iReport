@@ -24,15 +24,16 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
     }
     setLoading(true);
 
-    // FIX: Changed `signUp` call from v2 to v1 signature to fix 'Expected 1 arguments, but got 2' error and 'signUp does not exist' type error.
-    const { error } = await supabase.auth.signUp(
-      { email, password },
-      {
-        data: {
-          full_name: fullName,
-        },
-      }
-    );
+    // Use the v2 signUp method with `options` for metadata.
+    const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            data: {
+                full_name: fullName,
+            }
+        }
+    });
 
     setLoading(false);
 

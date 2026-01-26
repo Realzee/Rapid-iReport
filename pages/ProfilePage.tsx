@@ -72,8 +72,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         e.preventDefault();
         setLoadingProfile(true);
 
-        // FIX: Changed `updateUser` (v2) to `update` (v1) to fix function non-existence error and adjusted destructuring.
-        const { error: userError } = await supabase.auth.update({
+        const { error: userError } = await supabase.auth.updateUser({
             data: { full_name: fullName }
         });
         
@@ -111,8 +110,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         }
 
         setLoadingPassword(true);
-        // FIX: Changed `updateUser` (v2) to `update` (v1) to fix function non-existence error.
-        const { error } = await supabase.auth.update({ password });
+        const { error } = await supabase.auth.updateUser({ password });
         if (error) {
             addToast('Error updating password: ' + error.message, 'error');
         } else {

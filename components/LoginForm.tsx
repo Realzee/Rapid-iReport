@@ -18,8 +18,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // FIX: Changed `signInWithPassword` (v2) to `signIn` (v1) to fix 'signInWithPassword does not exist' error.
-    const { error } = await supabase.auth.signIn({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       addToast(error.message, 'error');
     }

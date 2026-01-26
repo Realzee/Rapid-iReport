@@ -5,13 +5,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport } from '../types';
-import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon } from './icons';
+import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon } from '../components/icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { format } from 'date-fns';
-import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
+import { MapStyle } from '../components/MapStyleToggle';
 
 interface ReportModalProps {
     isOpen: boolean;
@@ -112,12 +112,20 @@ const LocationPicker: React.FC<{
     initialCoords?: LocationCoords | null;
     onLocationChange: (coords: LocationCoords, address: string) => void;
 }> = ({ initialCoords, onLocationChange }) => {
-    const { theme } = useTheme();
     const { addToast } = useToast();
     const [isLocating, setIsLocating] = useState(false);
-    const lightMapUrl = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
-    const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-    const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
+    const [mapStyle, setMapStyle] = useState<MapStyle>('street');
+
+    const streetTile = {
+        url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &amp; <a href="https://carto.com/attributions">CARTO</a>'
+    };
+    const satelliteTile = {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution: 'Tiles &copy; Esri'
+    };
+    const currentTile = mapStyle === 'street' ? streetTile : satelliteTile;
+
 
     const handleGetCurrentLocation = () => {
         setIsLocating(true);
@@ -152,12 +160,21 @@ const LocationPicker: React.FC<{
     return (
         <div className="relative h-64 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700">
             <MapContainer center={initialCoords ? [initialCoords.lat, initialCoords.lng] : [-1.286389, 36.817223]} zoom={initialCoords ? 16 : 13} style={{ height: '100%', width: '100%' }}>
-                <TileLayer key={theme} url={tileUrl} attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>' />
+                <TileLayer key={mapStyle} url={currentTile.url} attribution={currentTile.attribution} />
                 <MapClickHandler onLocationChange={onLocationChange} />
                 {initialCoords && <Marker position={[initialCoords.lat, initialCoords.lng]} icon={markerIcon} />}
                 <MapViewUpdater coords={initialCoords} />
             </MapContainer>
             
+            <button
+                type="button"
+                onClick={() => setMapStyle(s => s === 'street' ? 'satellite' : 'street')}
+                className="absolute top-2 left-2 z-[1000] p-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-full shadow-lg text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800 transition-all"
+                title="Toggle map style"
+            >
+                <LayersIcon className="w-5 h-5" />
+            </button>
+
             <button 
                 type="button" 
                 onClick={handleGetCurrentLocation}
@@ -252,9 +269,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         setLoading(true);
 
         try {
-            // FIX: Changed `getUser()` (v2) to `user()` (v1) to fix function non-existence error. This call is synchronous.
-            const user = supabase.auth.user();
-            if (!user) throw new Error("User not authenticated");
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) throw new Error("User not authenticated");
 
             const newImageUrls: string[] = [];
             const reportId = reportToEdit?.id || crypto.randomUUID();

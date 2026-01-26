@@ -14,8 +14,6 @@ import UserDashboardPage from './pages/UserDashboardPage';
 import PublicDashboardPage from './pages/PublicDashboardPage';
 import AnnouncementsBanner from './components/AnnouncementsBanner';
 import { supabase } from './utils/supabase';
-// FIX: Changed to `import type` for better compatibility with modern TypeScript module resolution for Supabase v2. This may resolve downstream type inference issues.
-// FIX: Changed `Session` to `AuthSession` as `Session` is not exported in this version of `@supabase/supabase-js`.
 import type { AuthSession as Session } from '@supabase/supabase-js';
 import { Profile, UserRole, Notification } from './types';
 import { ToastContainer } from './components/ToastContainer';
@@ -54,17 +52,15 @@ const App: React.FC = () => {
       const isSchemaValid = await runSchemaCheck();
       if (!isSchemaValid) return;
 
-      // Fetch the initial session.
-      // FIX: Changed `getSession` (v2) back to `session` (v1) to fix 'getSession does not exist' error.
-      const session = supabase.auth.session();
+      // Fetch the initial session using the v2 API.
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setLoading(false);
     };
   
     initializeApp();
   
-    // Set up a listener for subsequent auth state changes.
-    // FIX: Changed destructuring for onAuthStateChange subscription to match v1 API. The error 'onAuthStateChange does not exist' was likely due to cascading type errors.
+    // Set up a listener for subsequent auth state changes (v2 syntax).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setError(null); // Clear errors on auth state change
@@ -98,8 +94,6 @@ const App: React.FC = () => {
 
     if (session?.user) {
         const loadProfile = async () => {
-            // FIX: The explicit foreign key hint `!profiles_company_id_fkey` was causing a 500 error, likely due to a PostgREST ambiguity.
-            // Switched to the simpler `companies(*)` join syntax, which allows Supabase to infer the relationship. The `company:` alias is retained to match the expected data structure.
             const { data, error } = await supabase.from('profiles').select('*, company:companies(*)').eq('id', session.user.id).single();
 
             if (error) {
@@ -248,7 +242,6 @@ const App: React.FC = () => {
                   <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Application Error</h2>
                   <p className="mb-4">{error}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">This can happen due to network issues or incorrect database permissions (Row Level Security). Please check the console for more details.</p>
-                  {/* FIX: `signOut` is compatible with v1 and v2. The error was likely due to cascading type inference issues which other fixes should resolve. */}
                   <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
                       Logout and Try Again
                   </button>
