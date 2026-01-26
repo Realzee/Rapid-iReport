@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { Announcement, AnnouncementType } from '../types';
-import { MegaphoneIcon, AlertTriangleIcon, LightbulbIcon } from './icons';
+import { MegaphoneIcon, AlertTriangleIcon, LightbulbIcon, XIcon } from './icons';
 
 interface AnnouncementsBannerProps {
     onVisibilityChange: (isVisible: boolean) => void;
@@ -41,6 +41,7 @@ const AnnouncementCard: React.FC<{ announcement: Announcement }> = ({ announceme
 
 const AnnouncementsBanner: React.FC<AnnouncementsBannerProps> = ({ onVisibilityChange }) => {
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+    const [isDismissed, setIsDismissed] = useState(false);
 
     useEffect(() => {
         const fetchAnnouncements = async () => {
@@ -55,6 +56,7 @@ const AnnouncementsBanner: React.FC<AnnouncementsBannerProps> = ({ onVisibilityC
                 setAnnouncements([]);
             } else if (data) {
                 setAnnouncements(data);
+                setIsDismissed(false); // Re-show banner when new announcements are fetched
             }
         };
         fetchAnnouncements();
@@ -70,10 +72,10 @@ const AnnouncementsBanner: React.FC<AnnouncementsBannerProps> = ({ onVisibilityC
     }, []);
     
     useEffect(() => {
-        onVisibilityChange(announcements.length > 0);
-    }, [announcements, onVisibilityChange]);
+        onVisibilityChange(announcements.length > 0 && !isDismissed);
+    }, [announcements, isDismissed, onVisibilityChange]);
 
-    if (announcements.length === 0) {
+    if (announcements.length === 0 || isDismissed) {
         return null;
     }
     
@@ -83,7 +85,7 @@ const AnnouncementsBanner: React.FC<AnnouncementsBannerProps> = ({ onVisibilityC
     const animationStyle = { animation: `marquee ${animationDuration}s linear infinite` };
     
     return (
-        <div className={`fixed top-20 left-0 right-0 z-40 bg-gray-100/50 dark:bg-gray-900/50 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800/50 text-gray-800 dark:text-gray-200 overflow-hidden py-2 print:hidden h-16 flex items-center`}>
+        <div className={`fixed top-20 left-0 right-0 z-40 bg-gray-100/50 dark:bg-gray-900/50 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800/50 text-gray-800 dark:text-gray-200 overflow-hidden py-2 print:hidden h-16 flex items-center relative`}>
             <div className={`flex w-max`} style={animationStyle}>
                 {duplicatedAnnouncements.map((announcement, index) => (
                     <div key={`${announcement.id}-${index}`} className="mx-2">
@@ -91,6 +93,13 @@ const AnnouncementsBanner: React.FC<AnnouncementsBannerProps> = ({ onVisibilityC
                     </div>
                 ))}
             </div>
+            <button
+                onClick={() => setIsDismissed(true)}
+                className="absolute top-1/2 right-4 -translate-y-1/2 p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                aria-label="Dismiss announcements"
+            >
+                <XIcon className="w-5 h-5" />
+            </button>
         </div>
     );
 };
