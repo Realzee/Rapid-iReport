@@ -1,12 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { PlusIcon, BuildingIcon, UploadCloudIcon } from '../components/icons';
-import { Company, Profile, UserRole } from '../types';
+import { PlusIcon, BuildingIcon, UploadCloudIcon, MegaphoneIcon, EditIcon, TrashIcon, AlertTriangleIcon, LightbulbIcon } from '../components/icons';
+import { Company, Profile, UserRole, Announcement, AnnouncementType } from '../types';
 import CompanyManagementTable from '../components/CompanyManagementTable';
 import AddEditCompanyModal from '../components/AddEditCompanyModal';
 import DeleteCompanyModal from '../components/DeleteCompanyModal';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
 import { useSettings } from '../contexts/SettingsContext';
+import AddEditAnnouncementModal from '../components/AddEditAnnouncementModal';
+import ConfirmModal from '../components/ConfirmModal';
+import { format } from 'date-fns';
+
+const AnnouncementTypeIcon: React.FC<{ type: AnnouncementType, className?: string }> = ({ type, className="w-6 h-6" }) => {
+    switch (type) {
+        case AnnouncementType.ALERT: return <AlertTriangleIcon className={`${className} text-red-500`} />;
+        case AnnouncementType.NOTICE: return <MegaphoneIcon className={`${className} text-blue-500`} />;
+        case AnnouncementType.SAFETY_TIP: return <LightbulbIcon className={`${className} text-yellow-500`} />;
+        default: return <MegaphoneIcon className={`${className} text-gray-500`} />;
+    }
+};
 
 const CompaniesPage: React.FC = () => {
     const [companies, setCompanies] = useState<Company[]>([]);
@@ -27,6 +39,12 @@ const CompaniesPage: React.FC = () => {
     const [newFaviconFile, setNewFaviconFile] = useState<File | null>(null);
     const [faviconPreview, setFaviconPreview] = useState<string>(faviconUrl);
     const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
+
+    // Announcements states
+    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+    const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
+    const [announcementToEdit, setAnnouncementToEdit] = useState<Announcement | null>(null);
+    const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
 
 
     useEffect(() => {
@@ -57,24 +75,34 @@ const CompaniesPage: React.FC = () => {
         const fetchData = async () => {
             setLoading(true);
 
+            const canManageAll = [UserRole.ADMIN].includes(currentUserProfile.role);
+
             const companiesQuery = supabase.from('companies').select('*');
-            if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
+            if (!canManageAll && currentUserProfile.company_id) {
                 companiesQuery.eq('id', currentUserProfile.company_id);
             }
 
             const usersQuery = supabase.from('profiles').select('id, company_id');
-            if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
+            if (!canManageAll && currentUserProfile.company_id) {
                 usersQuery.eq('company_id', currentUserProfile.company_id);
             }
+            
+            const announcementsQuery = supabase.from('announcements').select('*').order('created_at', { ascending: false });
 
-            const { data: companiesData, error: cError } = await companiesQuery;
-            const { data: usersData, error: uError } = await usersQuery;
+            const [
+                { data: companiesData, error: cError },
+                { data: usersData, error: uError },
+                { data: announcementsData, error: aError }
+            ] = await Promise.all([companiesQuery, usersQuery, announcementsQuery]);
             
             if (cError) console.error('Error fetching companies:', cError);
             else setCompanies(companiesData || []);
             
             if (uError) console.error('Error fetching users:', uError);
             else setUsers(usersData || []);
+            
+            if (aError) console.error("Error fetching announcements:", aError);
+            else setAnnouncements(announcementsData || []);
 
             setLoading(false);
         };
@@ -300,6 +328,108 @@ const CompaniesPage: React.FC = () => {
             setIsUploadingFavicon(false);
         }
     };
+    
+    // Announcement handlers
+    const canManageSettings = currentUserProfile && [UserRole.ADMIN, UserRole.MODERATOR].includes(currentUserProfile.role);
+
+    const handleAddAnnouncement = () => {
+        setAnnouncementToEdit(null);
+        setIsAnnouncementModalOpen(true);
+    };
+
+    const handleEditAnnouncement = (announcement: Announcement) => {
+        setAnnouncementToEdit(announcement);
+        setIsAnnouncementModalOpen(true);
+    };
+
+    const handleDeleteAnnouncement = (announcement: Announcement) => {
+        setAnnouncementToDelete(announcement);
+    };
+    
+    const handleSaveAnnouncement = async (announcementData: Partial<Announcement>, imageFile: File | null) => {
+        let finalImageUrl = announcementData.image_url;
+
+        try {
+            // Case 1: A new file is being uploaded.
+            if (imageFile) {
+                // If editing and an old image existed, delete it first.
+                if (announcementToEdit?.image_url) {
+                    const urlParts = announcementToEdit.image_url.split('/app-assets/');
+                    if (urlParts.length > 1) {
+                        const filePath = urlParts[1].split('?')[0];
+                        await supabase.storage.from('app-assets').remove([filePath]);
+                    }
+                }
+
+                const announcementId = announcementData.id || crypto.randomUUID();
+                const fileExt = imageFile.name.split('.').pop();
+                const filePath = `announcements/${announcementId}/image-${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage.from('app-assets').upload(filePath, imageFile);
+                if (uploadError) throw uploadError;
+
+                const { data: urlData } = supabase.storage.from('app-assets').getPublicUrl(filePath);
+                finalImageUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+            } 
+            // Case 2: The existing image was removed (no new file, and url is now missing).
+            else if (!announcementData.image_url && announcementToEdit?.image_url) {
+                const urlParts = announcementToEdit.image_url.split('/app-assets/');
+                if (urlParts.length > 1) {
+                    const filePath = urlParts[1].split('?')[0];
+                    await supabase.storage.from('app-assets').remove([filePath]);
+                }
+                finalImageUrl = undefined;
+            }
+
+            const dbPayload = {
+                title: announcementData.title,
+                content: announcementData.content,
+                type: announcementData.type,
+                expires_at: announcementData.expires_at || null,
+                image_url: finalImageUrl,
+            };
+
+            const { data: savedAnnouncement, error } = announcementData.id
+                ? await supabase.from('announcements').update(dbPayload).eq('id', announcementData.id).select().single()
+                : await supabase.from('announcements').insert(dbPayload).select().single();
+
+            if (error) throw error;
+            
+            if (savedAnnouncement) {
+                setAnnouncements(prev => announcementData.id
+                    ? prev.map(a => a.id === savedAnnouncement.id ? savedAnnouncement : a)
+                    : [savedAnnouncement, ...prev].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                );
+                addToast(`Announcement '${savedAnnouncement.title}' saved successfully.`, 'success');
+            }
+        } catch (error: any) {
+            addToast('Error saving announcement: ' + error.message, 'error');
+        } finally {
+            setIsAnnouncementModalOpen(false);
+            setAnnouncementToEdit(null);
+        }
+    };
+
+    const confirmDeleteAnnouncement = async () => {
+        if (announcementToDelete) {
+            try {
+                if (announcementToDelete.image_url) {
+                    const pathParts = announcementToDelete.image_url.split('/app-assets/');
+                    if (pathParts.length > 1) {
+                        const filePath = pathParts[1].split('?')[0];
+                        await supabase.storage.from('app-assets').remove([filePath]);
+                    }
+                }
+                const { error } = await supabase.from('announcements').delete().eq('id', announcementToDelete.id);
+                if (error) throw error;
+                addToast(`Announcement '${announcementToDelete.title}' deleted successfully.`, 'success');
+                setAnnouncements(announcements.filter(a => a.id !== announcementToDelete.id));
+            } catch (error: any) {
+                 addToast('Error deleting announcement: ' + error.message, 'error');
+            }
+        }
+        setAnnouncementToDelete(null);
+    };
+
 
     return (
         <div className="container mx-auto space-y-8">
@@ -375,6 +505,77 @@ const CompaniesPage: React.FC = () => {
                 </div>
             )}
             
+            {canManageSettings && (
+                 <div>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                        <div>
+                            <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                                <MegaphoneIcon className="w-8 h-8"/> Announcements
+                            </h2>
+                            <p className="text-gray-500 dark:text-gray-400 mt-1">Create and manage global announcements for all users.</p>
+                        </div>
+                        <button onClick={handleAddAnnouncement} className="mt-4 md:mt-0 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2">
+                            <PlusIcon className="w-5 h-5" />
+                            <span>New Announcement</span>
+                        </button>
+                    </div>
+                    <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300">
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead className="bg-gray-50 dark:bg-gray-800/50">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Announcement</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Expires</th>
+                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                                    {announcements.map((announcement) => {
+                                        const isExpired = announcement.expires_at && new Date(announcement.expires_at) < new Date();
+                                        return (
+                                            <tr key={announcement.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors duration-200">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center gap-4">
+                                                        {announcement.image_url ? (
+                                                            <img src={announcement.image_url} alt="" className="w-12 h-12 object-cover rounded-md" />
+                                                        ) : (
+                                                            <div className="w-12 h-12 rounded-md bg-gray-200 dark:bg-gray-700 flex items-center justify-center"><AnnouncementTypeIcon type={announcement.type} /></div>
+                                                        )}
+                                                        <div>
+                                                            <div className="text-sm font-medium text-gray-900 dark:text-white">{announcement.title}</div>
+                                                            <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">{announcement.content}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 capitalize">{announcement.type.replace('_', ' ')}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    {isExpired ? (
+                                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">Expired</span>
+                                                    ) : (
+                                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 dark:bg-green-800/50 text-green-800 dark:text-green-300">Active</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                                    {announcement.expires_at ? format(new Date(announcement.expires_at), 'MMM d, yyyy HH:mm') : 'Never'}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                    <div className="flex items-center justify-end space-x-4">
+                                                        <button onClick={() => handleEditAnnouncement(announcement)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"><EditIcon className="w-5 h-5"/></button>
+                                                        <button onClick={() => handleDeleteAnnouncement(announcement)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"><TrashIcon className="w-5 h-5"/></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                     <div>
@@ -383,13 +584,12 @@ const CompaniesPage: React.FC = () => {
                         </h2>
                         <p className="text-gray-500 dark:text-gray-400 mt-1">Manage all companies and organizations.</p>
                     </div>
-                    <button 
-                        onClick={handleAddCompany}
-                        className="mt-4 md:mt-0 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
-                    >
-                        <PlusIcon className="w-5 h-5" />
-                        <span>Add New Company</span>
-                    </button>
+                    {currentUserProfile?.role === UserRole.ADMIN && (
+                         <button onClick={handleAddCompany} className="mt-4 md:mt-0 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2">
+                            <PlusIcon className="w-5 h-5" />
+                            <span>Add New Company</span>
+                        </button>
+                    )}
                 </div>
                 <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300">
                     {loading ? (
@@ -420,6 +620,23 @@ const CompaniesPage: React.FC = () => {
                 onConfirm={confirmDeleteCompany}
                 companyName={selectedCompany?.name || ''}
             />
+            <AddEditAnnouncementModal 
+                isOpen={isAnnouncementModalOpen}
+                onClose={() => setIsAnnouncementModalOpen(false)}
+                onSave={handleSaveAnnouncement}
+                announcementToEdit={announcementToEdit}
+            />
+            {announcementToDelete && (
+                <ConfirmModal
+                    isOpen={!!announcementToDelete}
+                    onClose={() => setAnnouncementToDelete(null)}
+                    onConfirm={confirmDeleteAnnouncement}
+                    title="Delete Announcement"
+                    message={`Are you sure you want to permanently delete the announcement: "<strong>${announcementToDelete.title}</strong>"? This action cannot be undone.`}
+                    confirmText="Delete"
+                    confirmVariant="danger"
+                />
+            )}
         </div>
     );
 };

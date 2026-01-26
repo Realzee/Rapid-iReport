@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Announcement, AnnouncementType } from '../types';
-import { XIcon, UploadCloudIcon } from './icons';
+import { XIcon, UploadCloudIcon, TrashIcon } from './icons';
 
 interface AddEditAnnouncementModalProps {
     isOpen: boolean;
@@ -44,6 +44,12 @@ const AddEditAnnouncementModal: React.FC<AddEditAnnouncementModalProps> = ({ isO
             setImagePreview(URL.createObjectURL(file));
         }
     };
+    
+    const handleRemoveImage = () => {
+        setImageFile(null);
+        setImagePreview(null);
+        setFormData(prev => ({...prev, image_url: undefined }));
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -82,7 +88,7 @@ const AddEditAnnouncementModal: React.FC<AddEditAnnouncementModalProps> = ({ isO
                         <div>
                             <label htmlFor="expires_at" className={labelClasses}>Expires At (Optional)</label>
                             <input type="datetime-local" name="expires_at" id="expires_at" 
-                                value={formData.expires_at ? formData.expires_at.slice(0, 16) : ''} 
+                                value={formData.expires_at ? new Date(new Date(formData.expires_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''} 
                                 onChange={handleChange} className={inputClasses}
                             />
                         </div>
@@ -97,11 +103,18 @@ const AddEditAnnouncementModal: React.FC<AddEditAnnouncementModalProps> = ({ isO
                                     <UploadCloudIcon className="h-8 w-8 text-gray-400" />
                                 )}
                             </div>
-                             <label htmlFor="image-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                <UploadCloudIcon className="w-5 h-5"/>
-                                <span>{imageFile ? 'Change Image' : 'Upload Image'}</span>
-                            </label>
-                            <input id="image-upload" type="file" className="sr-only" accept="image/png, image/jpeg" onChange={handleFileChange} />
+                             <div className="flex items-center gap-2">
+                                <label htmlFor="image-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                    <UploadCloudIcon className="w-5 h-5"/>
+                                    <span>{imageFile || imagePreview ? 'Change' : 'Upload'}</span>
+                                </label>
+                                <input id="image-upload" type="file" className="sr-only" accept="image/png, image/jpeg" onChange={handleFileChange} />
+                                {imagePreview && (
+                                    <button type="button" onClick={handleRemoveImage} className="p-2 text-red-600 dark:text-red-400 bg-red-500/10 rounded-md hover:bg-red-500/20" title="Remove image">
+                                        <TrashIcon className="w-5 h-5" />
+                                    </button>
+                                )}
+                             </div>
                         </div>
                     </div>
                     <div className="pt-6 flex justify-end space-x-4">

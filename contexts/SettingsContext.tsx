@@ -31,8 +31,12 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             console.warn('Could not fetch app settings, using defaults. Error:', error.message);
         } else if (data) {
           const settingsMap = new Map(data.map(s => [s.key, s.value]));
-          setMainLogoUrl(settingsMap.get('main_logo_url') || defaultLogoUrl);
-          setFaviconUrl(settingsMap.get('favicon_url') || defaultFaviconUrl);
+          // FIX: The value from Supabase can be 'unknown'. Ensure it's a string before setting state.
+          const dbLogoUrl = settingsMap.get('main_logo_url');
+          setMainLogoUrl(typeof dbLogoUrl === 'string' && dbLogoUrl ? dbLogoUrl : defaultLogoUrl);
+          // FIX: The value from Supabase can be 'unknown'. Ensure it's a string before setting state.
+          const dbFaviconUrl = settingsMap.get('favicon_url');
+          setFaviconUrl(typeof dbFaviconUrl === 'string' && dbFaviconUrl ? dbFaviconUrl : defaultFaviconUrl);
         }
       } catch(e) {
           console.error("Error in fetchSettings:", e);
