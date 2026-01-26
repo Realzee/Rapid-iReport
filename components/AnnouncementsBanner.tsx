@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { Announcement, AnnouncementType } from '../types';
-import { XIcon, MegaphoneIcon, AlertTriangleIcon, LightbulbIcon } from './icons';
+import { MegaphoneIcon, AlertTriangleIcon, LightbulbIcon } from './icons';
 
 interface AnnouncementsBannerProps {
     onVisibilityChange: (isVisible: boolean) => void;
@@ -9,89 +9,87 @@ interface AnnouncementsBannerProps {
 
 const typeStyles = {
     [AnnouncementType.ALERT]: {
-        bg: 'bg-red-500/10 dark:bg-red-500/20',
-        border: 'border-red-500/30',
-        icon: <AlertTriangleIcon className="w-6 h-6 text-red-500" />,
-        iconBg: 'bg-red-500/10'
+        icon: <AlertTriangleIcon className="w-5 h-5 text-red-500" />,
     },
     [AnnouncementType.NOTICE]: {
-        bg: 'bg-blue-500/10 dark:bg-blue-500/20',
-        border: 'border-blue-500/30',
-        icon: <MegaphoneIcon className="w-6 h-6 text-blue-500" />,
-        iconBg: 'bg-blue-500/10'
+        icon: <MegaphoneIcon className="w-5 h-5 text-blue-500" />,
     },
     [AnnouncementType.SAFETY_TIP]: {
-        bg: 'bg-yellow-500/10 dark:bg-yellow-500/20',
-        border: 'border-yellow-500/30',
-        icon: <LightbulbIcon className="w-6 h-6 text-yellow-500" />,
-        iconBg: 'bg-yellow-500/10'
+        icon: <LightbulbIcon className="w-5 h-5 text-yellow-500" />,
     },
 };
 
+const AnnouncementCard: React.FC<{ announcement: Announcement }> = ({ announcement }) => {
+    const styles = typeStyles[announcement.type] || typeStyles[AnnouncementType.NOTICE];
+    return (
+        <div className="flex items-center gap-3 bg-white/10 dark:bg-black/20 backdrop-blur-sm rounded-md px-3 py-2 border border-white/10 dark:border-black/20 flex-shrink-0 w-80">
+            {announcement.image_url ? (
+                <img src={announcement.image_url} alt={announcement.title} className="w-10 h-10 object-cover rounded-md flex-shrink-0" />
+            ) : (
+                <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gray-500/10">
+                    {styles.icon}
+                </div>
+            )}
+            <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm truncate">{announcement.title}</p>
+                <p className="text-xs opacity-80 truncate">{announcement.content}</p>
+            </div>
+        </div>
+    );
+};
+
+
 const AnnouncementsBanner: React.FC<AnnouncementsBannerProps> = ({ onVisibilityChange }) => {
-    const [announcement, setAnnouncement] = useState<Announcement | null>(null);
-    const [isVisible, setIsVisible] = useState(false);
+    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
     useEffect(() => {
-        const fetchAnnouncement = async () => {
+        const fetchAnnouncements = async () => {
             const { data, error } = await supabase
                 .from('announcements')
                 .select('*')
                 .or('expires_at.is.null,expires_at.gt.now()')
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
+                .order('created_at', { ascending: false });
             
-            if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
-                console.error("Error fetching announcement:", error);
+            if (error) {
+                console.error("Error fetching announcements:", error);
+                setAnnouncements([]);
             } else if (data) {
-                const dismissed = localStorage.getItem(`announcement_dismissed_${data.id}`);
-                if (!dismissed) {
-                    setAnnouncement(data);
-                    setIsVisible(true);
-                }
+                setAnnouncements(data);
             }
         };
-        fetchAnnouncement();
+        fetchAnnouncements();
+
+        const channel = supabase
+            .channel('public:announcements')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements'}, fetchAnnouncements)
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
     
     useEffect(() => {
-        onVisibilityChange(isVisible);
-    }, [isVisible, onVisibilityChange]);
+        onVisibilityChange(announcements.length > 0);
+    }, [announcements, onVisibilityChange]);
 
-    const handleDismiss = () => {
-        if (announcement) {
-            localStorage.setItem(`announcement_dismissed_${announcement.id}`, 'true');
-        }
-        setIsVisible(false);
-    };
-
-    if (!isVisible || !announcement) {
+    if (announcements.length === 0) {
         return null;
     }
     
-    const styles = typeStyles[announcement.type] || typeStyles[AnnouncementType.NOTICE];
-
+    // Duplicate for seamless marquee effect, ensure there's enough content to scroll
+    const duplicatedAnnouncements = announcements.length > 3 ? [...announcements, ...announcements] : [...announcements, ...announcements, ...announcements, ...announcements];
+    const animationDuration = Math.max(40, announcements.length * 15);
+    const animationStyle = { animation: `marquee ${animationDuration}s linear infinite` };
+    
     return (
-        <div className={`fixed top-20 left-0 right-0 z-40 p-4 h-24 transition-transform duration-300 ${styles.bg} border-b ${styles.border} print:hidden flex items-center`}>
-            <div className="container mx-auto flex items-center gap-4">
-                {announcement.image_url && (
-                    <div className="flex-shrink-0 w-16 h-16 rounded-md overflow-hidden bg-gray-200 dark:bg-gray-700">
-                        <img src={announcement.image_url} alt={announcement.title} className="w-full h-full object-cover" />
+        <div className={`fixed top-20 left-0 right-0 z-40 bg-gray-100/50 dark:bg-gray-900/50 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800/50 text-gray-800 dark:text-gray-200 overflow-hidden py-2 print:hidden h-16 flex items-center`}>
+            <div className={`flex w-max`} style={animationStyle}>
+                {duplicatedAnnouncements.map((announcement, index) => (
+                    <div key={`${announcement.id}-${index}`} className="mx-2">
+                        <AnnouncementCard announcement={announcement} />
                     </div>
-                )}
-                {!announcement.image_url && (
-                     <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${styles.iconBg}`}>
-                        {styles.icon}
-                    </div>
-                )}
-                <div className="flex-grow">
-                    <h4 className="font-bold text-gray-900 dark:text-white">{announcement.title}</h4>
-                    <p className="text-sm text-gray-700 dark:text-gray-300">{announcement.content}</p>
-                </div>
-                <button onClick={handleDismiss} className="flex-shrink-0 p-1.5 rounded-full text-gray-500 hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
-                    <XIcon className="w-5 h-5" />
-                </button>
+                ))}
             </div>
         </div>
     );

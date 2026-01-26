@@ -49,7 +49,8 @@ const CompaniesPage: React.FC = () => {
 
     useEffect(() => {
         const fetchCurrentUserProfile = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
+            // FIX: Changed `getSession()` (v2) to `session()` (v1) to fix function non-existence error. This call is synchronous.
+            const session = supabase.auth.session();
             if (session?.user) {
                 const { data: profileData } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
                 setCurrentUserProfile(profileData);

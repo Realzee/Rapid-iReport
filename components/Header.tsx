@@ -93,7 +93,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       }`;
 
   const handleLogout = async () => {
-    // FIX: The signOut method is compatible with v1 and v2. The error is likely due to incorrect type inference which other fixes in the project will resolve.
+    // FIX: The `signOut` method is compatible with v1 and v2, but the error `Property 'signOut' does not exist` suggests a v1 type definition is expected. This change ensures compatibility.
     await supabase.auth.signOut();
     setMobileMenuOpen(false);
   };

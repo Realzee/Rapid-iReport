@@ -3,8 +3,8 @@ import { Profile } from '../types';
 import { XIcon, RadioTowerIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
-// FIX: Removed `RealtimeChannel` import to resolve a type export conflict. The type will be inferred instead.
-import type { RealtimeChannel } from '@supabase/supabase-js';
+// FIX: Removed `RealtimeChannel` import to resolve a type export conflict. The type will be inferred instead using ReturnType.
+
 
 const isOnline = (lastSeen?: string): boolean => {
     if (!lastSeen) return false;

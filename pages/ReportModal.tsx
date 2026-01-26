@@ -269,8 +269,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         setLoading(true);
 
         try {
-            // FIX: Changed `user()` (v1) to `getUser()` (v2) to fix function non-existence error.
-            const { data: { user } } = await supabase.auth.getUser();
+            // FIX: Changed `getUser()` (v2) to `user()` (v1) to fix function non-existence error. This call is synchronous.
+            const user = supabase.auth.user();
             if (!user) throw new Error("User not authenticated");
 
             const newImageUrls: string[] = [];

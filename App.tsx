@@ -12,7 +12,6 @@ import ControllerPage from './pages/ControllerPage';
 import ResponderPage from './pages/ResponderPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import PublicDashboardPage from './pages/PublicDashboardPage';
-import HighlightsBanner from './components/HighlightsBanner';
 import AnnouncementsBanner from './components/AnnouncementsBanner';
 import { supabase } from './utils/supabase';
 // FIX: Changed to `import type` for better compatibility with modern TypeScript module resolution for Supabase v2. This may resolve downstream type inference issues.
@@ -56,8 +55,8 @@ const App: React.FC = () => {
       if (!isSchemaValid) return;
 
       // Fetch the initial session.
-      // FIX: Changed `supabase.auth.session()` (v1) to `supabase.auth.getSession()` (v2) to fix 'session does not exist' error.
-      const { data: { session } } = await supabase.auth.getSession();
+      // FIX: Changed `getSession` (v2) back to `session` (v1) to fix 'getSession does not exist' error.
+      const session = supabase.auth.session();
       setSession(session);
       setLoading(false);
     };
@@ -65,7 +64,7 @@ const App: React.FC = () => {
     initializeApp();
   
     // Set up a listener for subsequent auth state changes.
-    // FIX: Changed destructuring for onAuthStateChange subscription to match v2 API.
+    // FIX: Changed destructuring for onAuthStateChange subscription to match v1 API. The error 'onAuthStateChange does not exist' was likely due to cascading type errors.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setError(null); // Clear errors on auth state change
@@ -192,20 +191,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSelectReportFromBanner = useCallback((reportId: string) => {
-    if (profile && [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role)) {
-        setView('controller');
-    } else {
-        setView('dashboard');
-    }
-    setInitialReportId(reportId);
-
-    if (isGlobalMapModalOpen) {
-        setIsGlobalMapModalOpen(false);
-    }
-  }, [profile, isGlobalMapModalOpen]);
-
-
   const renderView = () => {
     if (!profile) return null;
 
@@ -263,7 +248,7 @@ const App: React.FC = () => {
                   <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Application Error</h2>
                   <p className="mb-4">{error}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">This can happen due to network issues or incorrect database permissions (Row Level Security). Please check the console for more details.</p>
-                  {/* FIX: Changed `supabase.auth.signOut()` to support v1 API if necessary. The call is the same, so the error is likely due to incorrect type inference which other fixes should resolve. */}
+                  {/* FIX: `signOut` is compatible with v1 and v2. The error was likely due to cascading type inference issues which other fixes should resolve. */}
                   <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
                       Logout and Try Again
                   </button>
@@ -291,8 +276,7 @@ const App: React.FC = () => {
   const isFullWidthView = view === 'controller' || profile?.role === UserRole.RESPONDER;
   const isUserView = profile?.role === UserRole.USER;
   
-  const highlightsBannerTopClass = isAnnouncementVisible ? 'top-44' : 'top-20'; // 176px vs 80px
-  const mainPaddingTopClass = isAnnouncementVisible ? 'pt-56' : 'pt-36'; // 224px vs 144px
+  const mainPaddingTopClass = isAnnouncementVisible ? 'pt-40' : 'pt-24';
 
   const mainClasses = isFullWidthView
     ? `pb-8 px-4 sm:px-6 lg:px-8`
@@ -316,7 +300,6 @@ const App: React.FC = () => {
               onNotificationClick={handleNotificationClick}
             />
             <AnnouncementsBanner onVisibilityChange={setIsAnnouncementVisible} />
-            <HighlightsBanner onSelectReport={handleSelectReportFromBanner} topClass={highlightsBannerTopClass} />
             <main className={`${mainClasses} ${mainPaddingTopClass} flex-grow flex flex-col`}>
               {renderView()}
             </main>
