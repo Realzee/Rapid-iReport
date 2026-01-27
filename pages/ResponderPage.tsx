@@ -1,14 +1,17 @@
 
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, ReportUpdate } from '../types';
 import { supabase } from '../utils/supabase';
 import { format, formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
-import { NavigationIcon, CameraIcon } from '../components/icons';
+import { NavigationIcon, CameraIcon, ScanIcon, XIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import IncidentChat from '../components/IncidentChat';
 import ResponderMapView from '../components/ResponderMapView';
+import ANPRModal from '../components/ANPRModal';
+import UserReportDetail from '../components/UserReportDetail';
 
 interface ResponderPageProps {
     profile: Profile;
@@ -41,6 +44,8 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     const [isSharingLocation, setIsSharingLocation] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [lastSyncTimestamp, setLastSyncTimestamp] = useState<Date | null>(null);
+    const [isAnprModalOpen, setIsAnprModalOpen] = useState(false);
+    const [anprFoundReport, setAnprFoundReport] = useState<VehicleReport | null>(null);
 
     const isInitialLoad = useRef(true);
     const audioContextRef = useRef<AudioContext | null>(null);
@@ -245,6 +250,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     const selectedReport = useMemo(() => assignedReports.find(r => r.id === selectedReportId), [assignedReports, selectedReportId]);
 
     return (
+        <>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             <div className="lg:col-span-1 space-y-6">
                  <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg sticky top-24 z-10">
@@ -265,6 +271,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                         </p>
                     )}
                     {isOnDuty && (
+                        <>
                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -304,6 +311,13 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                                 </div>
                             </div>
                         </div>
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
+                            <button onClick={() => setIsAnprModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold">
+                                <ScanIcon className="w-5 h-5"/>
+                                <span>ANPR Scan</span>
+                            </button>
+                        </div>
+                        </>
                     )}
                 </div>
 
@@ -339,6 +353,30 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                 </div>
             </div>
         </div>
+
+        <ANPRModal
+            isOpen={isAnprModalOpen}
+            onClose={() => setIsAnprModalOpen(false)}
+            onReportFound={(report) => {
+                setIsAnprModalOpen(false);
+                setAnprFoundReport(report);
+            }}
+        />
+
+        {anprFoundReport && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setAnprFoundReport(null)}>
+                <div className="relative w-full max-w-lg" onClick={e => e.stopPropagation()}>
+                    <div className="absolute -top-3 -right-3 z-10">
+                        <button onClick={() => setAnprFoundReport(null)} className="p-2 bg-gray-800/80 rounded-full text-white hover:bg-gray-700 transition">
+                            <XIcon className="w-5 h-5" />
+                        </button>
+                    </div>
+                    <UserReportDetail report={anprFoundReport} profile={profile} onEdit={() => {}} />
+                </div>
+            </div>
+        )}
+
+        </>
     );
 };
 

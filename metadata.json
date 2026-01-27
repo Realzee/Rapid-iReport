@@ -3,6 +3,7 @@
   "description": "A professional, modern community safety reporting system that allows users to report and track vehicle thefts and crime incidents in real-time with advanced mapping and analytics, using Supabase as the backend.",
   "requestFramePermissions": [
     "geolocation",
-    "microphone"
+    "microphone",
+    "camera"
   ]
 }
