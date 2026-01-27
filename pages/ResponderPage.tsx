@@ -531,7 +531,6 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
                 {isActionLoading === 'stand_down' ? <Spinner /> : 'Stand Down'}
             </button>
 
-            <a href={`https://www.google.com/maps/search/?api=1&query=${report.location_coords?.lat},${report.location_coords?.lng}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full text-center py-3 bg-gray-200 dark:bg-gray-700 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors mb-4"><NavigationIcon className="w-5 h-5"/> Navigate to Scene</a>
 
             <div className="space-y-4">
                 <div><h4 className="font-bold">Location</h4><p>{isVehicleReport(report) ? report.last_seen_location : report.location}</p></div>

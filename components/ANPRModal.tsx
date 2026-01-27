@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { XIcon, CameraIcon, CheckCircleIcon, SearchIcon, AlertTriangleIcon } from './icons';
+import { XIcon, CameraIcon, CheckCircleIcon, SearchIcon, AlertTriangleIcon, ScanIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { VehicleReport } from '../types';
 import { useToast } from '../contexts/ToastContext';
@@ -15,8 +15,11 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
+    const scanIntervalRef = useRef<number | null>(null);
+    const recognitionInProgress = useRef(false);
 
-    const [isLoading, setIsLoading] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false); // For manual capture analysis
+    const [isScanning, setIsScanning] = useState(false); // For automatic scanning state
     const [error, setError] = useState<string | null>(null);
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [extractedPlate, setExtractedPlate] = useState<string | null>(null);
@@ -24,8 +27,9 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
     const [searchResult, setSearchResult] = useState<VehicleReport | 'not_found' | null>(null);
 
     const { addToast } = useToast();
-
-    const cleanup = () => {
+    
+    // Stops camera stream
+    const cleanupCamera = () => {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
@@ -34,57 +38,108 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
             videoRef.current.srcObject = null;
         }
     };
+    
+    // Stops camera and scanning loop
+    const stopAllActivity = () => {
+        cleanupCamera();
+        if (scanIntervalRef.current) {
+            clearInterval(scanIntervalRef.current);
+            scanIntervalRef.current = null;
+        }
+        setIsScanning(false);
+        recognitionInProgress.current = false;
+    };
 
-    const setupCamera = async () => {
-        cleanup();
+    const setupCamera = async (): Promise<boolean> => {
+        cleanupCamera();
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             streamRef.current = stream;
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
             }
+            return true;
         } catch (err) {
             console.error("Camera error:", err);
             setError("Could not access camera. Please check permissions.");
             addToast("Could not access camera. Please check permissions.", 'error');
+            return false;
         }
     };
     
-    const resetState = () => {
+    const resetStateAndStartScan = () => {
+        stopAllActivity();
         setError(null);
         setCapturedImage(null);
         setExtractedPlate(null);
         setIsSearching(false);
         setSearchResult(null);
-        setupCamera();
+        setIsProcessing(false);
+        
+        setupCamera().then(success => {
+            if (success) {
+                setIsScanning(true);
+                scanIntervalRef.current = window.setInterval(scanFrameForPlate, 1000); // Scan every second
+            }
+        });
     };
-
-
+    
     useEffect(() => {
         if (isOpen) {
-            resetState();
+            resetStateAndStartScan();
         } else {
-            cleanup();
+            stopAllActivity();
         }
-        return cleanup;
+        return stopAllActivity;
     }, [isOpen]);
+    
+    const scanFrameForPlate = async () => {
+        if (recognitionInProgress.current || !videoRef.current || !canvasRef.current || videoRef.current.paused || videoRef.current.ended) {
+            return;
+        }
 
-    const handleCapture = () => {
-        if (!videoRef.current || !canvasRef.current) return;
+        recognitionInProgress.current = true;
+
         const video = videoRef.current;
         const canvas = canvasRef.current;
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const context = canvas.getContext('2d');
-        context?.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-        const imageDataUrl = canvas.toDataURL('image/jpeg');
-        setCapturedImage(imageDataUrl);
-        cleanup();
-        recognizePlate(imageDataUrl);
-    };
+        if (!context) {
+            recognitionInProgress.current = false;
+            return;
+        }
+        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+        const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
 
-    const recognizePlate = async (imageDataUrl: string) => {
-        setIsLoading(true);
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+            const base64Data = imageDataUrl.split(',')[1];
+            const imagePart = { inlineData: { mimeType: 'image/jpeg', data: base64Data } };
+            const textPart = { text: "Analyze this image from a video stream. If a clear, readable license plate is visible, return only the license plate text with no spaces or special characters. Otherwise, return the exact string 'NO_PLATE'." };
+            
+            const response = await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: { parts: [imagePart, textPart] },
+            });
+
+            const plateText = response.text?.trim().toUpperCase();
+
+            // Found a plate!
+            if (plateText && plateText !== 'NO_PLATE' && plateText.length > 3) {
+                stopAllActivity();
+                setCapturedImage(imageDataUrl);
+                setExtractedPlate(plateText);
+            }
+        } catch (err: any) {
+            console.warn("ANPR scan frame error:", err);
+        } finally {
+            recognitionInProgress.current = false;
+        }
+    };
+    
+    const processSingleFrame = async (imageDataUrl: string) => {
+        setIsProcessing(true);
         setError(null);
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
@@ -107,8 +162,25 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
             console.error("Gemini API error:", err);
             setError("Failed to analyze image. Please try again.");
         } finally {
-            setIsLoading(false);
+            setIsProcessing(false);
         }
+    };
+
+    const handleManualCapture = () => {
+        if (!videoRef.current || !canvasRef.current) return;
+        stopAllActivity();
+        
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        context?.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+        const imageDataUrl = canvas.toDataURL('image/jpeg');
+        
+        setCapturedImage(imageDataUrl);
+        cleanupCamera();
+        processSingleFrame(imageDataUrl);
     };
 
     const handleSearch = async () => {
@@ -144,10 +216,18 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
                     {!capturedImage && <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />}
                     <canvas ref={canvasRef} className="hidden"></canvas>
                     {capturedImage && <img src={capturedImage} alt="Captured plate" className="w-full h-full object-contain" />}
-                    {isLoading && (
+                    {isProcessing && (
                         <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white">
                             <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
                             <p className="mt-2">Analyzing image...</p>
+                        </div>
+                    )}
+                     {isScanning && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-11/12 h-2/3 border-4 border-dashed border-white/50 rounded-lg animate-pulse flex flex-col items-center justify-center p-4">
+                                <ScanIcon className="w-12 h-12 text-white/70" />
+                                <p className="text-white font-bold mt-2 bg-black/30 px-2 py-1 rounded">SCANNING FOR PLATE</p>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -155,8 +235,8 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
                 {error && <div className="mt-4 text-center text-red-500 bg-red-500/10 p-3 rounded-lg">{error}</div>}
 
                 {!capturedImage && (
-                    <button onClick={handleCapture} className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
-                        <CameraIcon className="w-5 h-5" /> Capture Plate
+                    <button onClick={handleManualCapture} className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                        <CameraIcon className="w-5 h-5" /> Manual Capture
                     </button>
                 )}
 
@@ -193,7 +273,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
                         )}
 
                         <div className="flex gap-2">
-                             <button onClick={resetState} className="flex-1 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                             <button onClick={resetStateAndStartScan} className="flex-1 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
                                 Scan Again
                             </button>
                             {extractedPlate && !searchResult && (
