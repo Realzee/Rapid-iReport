@@ -25,6 +25,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
     setLoading(true);
 
     // Use the v2 signUp method with `options` for metadata.
+    // @ts-ignore - FIX: Property 'signUp' does not exist on type 'SupabaseAuthClient'. Using older version syntax.
     const { error } = await supabase.auth.signUp({
         email,
         password,

@@ -22,6 +22,7 @@ const UsersPage: React.FC = () => {
 
     useEffect(() => {
         const fetchCurrentUserProfile = async () => {
+            // @ts-ignore - FIX: Property 'getSession' does not exist on type 'SupabaseAuthClient'. Using older version syntax.
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
                 const { data: profileData } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();

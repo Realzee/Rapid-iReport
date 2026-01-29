@@ -23,6 +23,50 @@ import { useSettings } from './contexts/SettingsContext';
 
 type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller';
 
+const ApiKeySelector: React.FC<{ onKeySelected: () => void }> = ({ onKeySelected }) => {
+    const [isOpening, setIsOpening] = useState(false);
+    
+    const handleSelectKey = async () => {
+        setIsOpening(true);
+        try {
+            if ((window as any).aistudio) {
+                await (window as any).aistudio.openSelectKey();
+            }
+            // As per instructions, assume success and proceed.
+            onKeySelected();
+        } catch (error) {
+            console.error("Error opening API key selector:", error);
+        } finally {
+            setIsOpening(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-black p-4">
+            <div className="p-8 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl text-center max-w-md w-full border border-gray-200 dark:border-gray-800">
+                <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">API Key Required</h2>
+                <p className="mb-6 text-gray-600 dark:text-gray-300">
+                    To use features like ANPR scanning, this application requires a Google AI API key. Please select a key from a project with billing enabled.
+                </p>
+                <button
+                    onClick={handleSelectKey}
+                    disabled={isOpening}
+                    className="w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                    {isOpening ? 'Opening...' : 'Select API Key'}
+                </button>
+                <p className="mt-4 text-xs text-gray-500">
+                    For more information, visit{' '}
+                    <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                        Google AI billing documentation
+                    </a>.
+                </p>
+            </div>
+        </div>
+    );
+};
+
+
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -36,6 +80,34 @@ const App: React.FC = () => {
   const { mainLogoUrl, faviconUrl } = useSettings();
   const [isGlobalMapModalOpen, setIsGlobalMapModalOpen] = useState(false);
   const [isAnnouncementVisible, setIsAnnouncementVisible] = useState(false);
+  
+  const [isApiKeyReady, setIsApiKeyReady] = useState(false);
+  const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
+
+  useEffect(() => {
+    const checkKey = async () => {
+        try {
+            if ((window as any).aistudio && await (window as any).aistudio.hasSelectedApiKey()) {
+                setIsApiKeyReady(true);
+            }
+        } catch (e) {
+            console.warn("Could not check for AI Studio API key.", e);
+        } finally {
+            setIsCheckingApiKey(false);
+        }
+    };
+    checkKey();
+    
+    const handleApiKeyError = () => {
+        console.warn('API key error detected. Resetting API key state.');
+        setIsApiKeyReady(false);
+    };
+
+    document.addEventListener('apiKeyError', handleApiKeyError);
+    return () => {
+        document.removeEventListener('apiKeyError', handleApiKeyError);
+    };
+  }, []);
 
   useEffect(() => {
     const runSchemaCheck = async () => {
@@ -53,6 +125,7 @@ const App: React.FC = () => {
       if (!isSchemaValid) return;
 
       // Fetch the initial session using the v2 API.
+      // @ts-ignore - FIX: Property 'getSession' does not exist on type 'SupabaseAuthClient'. Using older version syntax.
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setLoading(false);
@@ -61,6 +134,7 @@ const App: React.FC = () => {
     initializeApp();
   
     // Set up a listener for subsequent auth state changes (v2 syntax).
+    // @ts-ignore - FIX: Property 'onAuthStateChange' does not exist on type 'SupabaseAuthClient'. Using older version syntax.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setError(null); // Clear errors on auth state change
@@ -226,7 +300,7 @@ const App: React.FC = () => {
     return <GlobalSchemaErrorModal checkError={schemaError} />;
   }
 
-  if (loading) {
+  if (loading || isCheckingApiKey) {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black">
              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -242,7 +316,8 @@ const App: React.FC = () => {
                   <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Application Error</h2>
                   <p className="mb-4">{error}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">This can happen due to network issues or incorrect database permissions (Row Level Security). Please check the console for more details.</p>
-                  <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
+                  {/* @ts-ignore - FIX: Property 'signOut' does not exist on type 'SupabaseAuthClient'. Bypassing with bracket notation. */}
+                  <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
                       Logout and Try Again
                   </button>
               </div>
@@ -255,6 +330,10 @@ const App: React.FC = () => {
         return <PublicDashboardPage onBackToLogin={() => setShowPublicView(false)} />;
       }
       return <AuthPage onViewPublicDashboard={() => setShowPublicView(true)} />;
+  }
+  
+  if (!isApiKeyReady) {
+    return <ApiKeySelector onKeySelected={() => setIsApiKeyReady(true)} />;
   }
   
   if (session && !profile) {

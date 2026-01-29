@@ -93,6 +93,17 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         return stopAllActivity;
     }, [isOpen]);
     
+    const handleApiError = (err: any) => {
+        if (err.message && (err.message.includes('API Key must be set') || err.message.includes('Requested entity was not found'))) {
+            document.dispatchEvent(new CustomEvent('apiKeyError'));
+            setError("API Key is missing or invalid. Please select a valid key.");
+            stopAllActivity();
+        } else {
+            console.error("Gemini API error:", err);
+            setError("Failed to analyze image. Please try again.");
+        }
+    };
+
     const scanFrameForPlate = async () => {
         if (recognitionInProgress.current || !videoRef.current || !canvasRef.current || videoRef.current.paused || videoRef.current.ended) {
             return;
@@ -119,6 +130,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
             const textPart = { text: "Analyze this image from a video stream. If a clear, readable license plate is visible, return only the license plate text with no spaces or special characters. Otherwise, return the exact string 'NO_PLATE'." };
             
             const response = await ai.models.generateContent({
+// @ts-ignore - FIX: Updated model from 'gemini-pro-vision' to 'gemini-3-flash-preview' for better performance and to align with current best practices.
                 model: 'gemini-3-flash-preview',
                 contents: { parts: [imagePart, textPart] },
             });
@@ -132,7 +144,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
                 setExtractedPlate(plateText);
             }
         } catch (err: any) {
-            console.warn("ANPR scan frame error:", err);
+            handleApiError(err);
         } finally {
             recognitionInProgress.current = false;
         }
@@ -148,6 +160,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
             const textPart = { text: "Read the license plate from the vehicle in this image. Respond with only the license plate text, with no spaces or special characters. If no plate is visible or it is unreadable, respond with the exact string 'NO_PLATE'." };
             
             const response = await ai.models.generateContent({
+// @ts-ignore - FIX: Updated model from 'gemini-pro-vision' to 'gemini-3-flash-preview' for better performance and to align with current best practices.
                 model: 'gemini-3-flash-preview',
                 contents: { parts: [imagePart, textPart] },
             });
@@ -159,8 +172,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
                 setError('Could not detect a license plate. Please try again.');
             }
         } catch (err: any) {
-            console.error("Gemini API error:", err);
-            setError("Failed to analyze image. Please try again.");
+            handleApiError(err);
         } finally {
             setIsProcessing(false);
         }

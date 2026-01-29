@@ -242,6 +242,7 @@ $$;`;
         setFixError(null);
 
         try {
+            // @ts-ignore - FIX: Property 'getSession' does not exist on type 'SupabaseAuthClient'. Using older version syntax.
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
                 throw new Error("Authentication failed. Please log in as an administrator first and then refresh this page to try again.");

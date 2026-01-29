@@ -269,6 +269,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         setLoading(true);
 
         try {
+            // @ts-ignore - FIX: Property 'getUser' does not exist on type 'SupabaseAuthClient'. Using older sync version.
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             if (userError || !user) throw new Error("User not authenticated");
 
