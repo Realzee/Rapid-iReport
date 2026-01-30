@@ -16,6 +16,7 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
     const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
 
@@ -26,7 +27,9 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
     };
 
     useEffect(() => {
-        const fetchMessages = async () => {
+        // This function will fetch initial data and then set up the subscription.
+        const initializeChat = async () => {
+            // 1. Fetch initial messages
             const { data, error } = await supabase
                 .from('chat_messages')
                 .select('*')
@@ -35,6 +38,7 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
 
             if (error) {
                 console.error("Error fetching chat messages:", error);
+                setMessages([]); // Clear messages on error
             } else {
                 const messagesWithProfiles = data.map(msg => {
                     const profile = userMap.get(msg.user_id);
@@ -45,56 +49,74 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
                 });
                 setMessages(messagesWithProfiles as ChatMessage[]);
             }
+
+            if (disabled) return;
+
+            // 2. Set up subscription channel AFTER initial fetch is complete
+            const handleNewMessage = (payload: any) => {
+                setMessages(prev => {
+                    // Prevent duplicates
+                    if (prev.some(msg => msg.id === payload.new.id)) {
+                        return prev;
+                    }
+                    const userProfile = userMap.get(payload.new.user_id);
+                    const newMsg = {
+                        ...payload.new,
+                        profile: userProfile 
+                            ? { full_name: userProfile.full_name, avatar_url: userProfile.avatar_url } 
+                            : { full_name: 'Unknown User', avatar_url: undefined }
+                    } as ChatMessage;
+                    return [...prev, newMsg];
+                });
+            };
+
+            const channel = supabase
+                .channel(`chat-${reportId}`)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'chat_messages',
+                    filter: `report_id=eq.${reportId}`
+                }, handleNewMessage)
+                .subscribe();
+
+            channelRef.current = channel;
         };
 
-        fetchMessages();
+        initializeChat();
 
-        if (disabled) return;
-
-        const channel = supabase
-            .channel(`chat-${reportId}`)
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'chat_messages',
-                filter: `report_id=eq.${reportId}`
-            }, (payload) => {
-                const userProfile = userMap.get(payload.new.user_id);
-                const newMsg = {
-                    ...payload.new,
-                    profile: userProfile 
-                        ? { full_name: userProfile.full_name, avatar_url: userProfile.avatar_url } 
-                        : { full_name: 'Unknown User', avatar_url: undefined }
-                } as ChatMessage;
-                setMessages(prev => [...prev, newMsg]);
-            })
-            .subscribe();
-
+        // 3. Cleanup function: Unsubscribe from the channel
         return () => {
-            supabase.removeChannel(channel);
+            if (channelRef.current) {
+                supabase.removeChannel(channelRef.current);
+                channelRef.current = null;
+            }
         };
     }, [reportId, disabled, userMap]);
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages.length, noInternalScroll]);
+    }, [messages, noInternalScroll]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newMessage.trim() || disabled) return;
 
         setLoading(true);
+        const content = newMessage.trim();
+        setNewMessage(''); // Clear input immediately for better UX
+
         const { error } = await supabase.from('chat_messages').insert({
             report_id: reportId,
             user_id: currentUserProfile.id,
-            content: newMessage.trim(),
+            content: content,
         });
 
         if (error) {
             console.error("Error sending message:", error);
-        } else {
-            setNewMessage('');
+            setNewMessage(content); // Restore message on error
         }
+        // On success, the real-time subscription will add the message to the state.
         setLoading(false);
     };
 
@@ -135,7 +157,7 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
                     placeholder={disabled ? "Chat is closed for this incident." : "Type a message..."}
                     value={newMessage} 
                     onChange={(e) => setNewMessage(e.target.value)}
-                    disabled={disabled}
+                    disabled={disabled || loading}
                     className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all disabled:cursor-not-allowed disabled:opacity-70"
                 />
                 <button type="submit" disabled={loading || disabled} className="px-4 bg-blue-600 text-white font-semibold rounded-lg text-sm hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
