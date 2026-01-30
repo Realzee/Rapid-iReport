@@ -13,6 +13,7 @@ interface GlobalMapModalProps {
 const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profile }) => {
     const [reports, setReports] = useState<Report[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
+    const [allUsers, setAllUsers] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -23,39 +24,32 @@ const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profil
         setLoading(true);
 
         const fetchData = async () => {
-            const respondersQuery = supabase.from('profiles').select('*').eq('role', 'responder');
+            const usersQuery = supabase.from('profiles').select('*');
             if (profile.role !== UserRole.ADMIN && profile.company_id) {
-                respondersQuery.eq('company_id', profile.company_id);
+                usersQuery.eq('company_id', profile.company_id);
             }
 
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
-                { data: respondersData, error: rError }
+                { data: usersData, error: uError }
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*'),
                 supabase.from('crime_reports').select('*'),
-                respondersQuery
+                usersQuery
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
             if (cError) console.error('Error fetching crime reports:', cError);
-            if (rError) console.error('Error fetching responders:', rError);
+            if (uError) console.error('Error fetching users:', uError);
 
             const combinedReports = [
                 ...(vehicleData || []).map(r => ({...r, type: 'vehicle'})),
                 ...(crimeData || []).map(r => ({...r, type: 'crime'})),
             ];
-
-            const mappedResponders: Responder[] = (respondersData || []).map((p: Profile) => ({
-                id: p.id,
-                full_name: p.full_name,
-                status: p.responder_status || ResponderStatus.OFF_DUTY,
-                location_coords: p.location_coords || undefined,
-            }));
-
+            
+            setAllUsers(usersData || []);
             setReports(combinedReports);
-            setResponders(mappedResponders);
             setLoading(false);
         };
         fetchData();
@@ -84,42 +78,45 @@ const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profil
           .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'crime_reports' }, handleReportDelete)
           .subscribe();
         
-        const handleResponderUpdate = (payload: any) => {
-            if (payload.eventType === 'DELETE') {
-                setResponders(prev => prev.filter(r => r.id !== payload.old.id));
-                return;
-            }
-
-            const updatedProfile = payload.new as Profile;
-            const newResponderData: Responder = {
-                id: updatedProfile.id,
-                full_name: updatedProfile.full_name,
-                status: updatedProfile.responder_status || ResponderStatus.OFF_DUTY,
-                location_coords: updatedProfile.location_coords || undefined,
-            };
-
-            setResponders(prev => {
-                const index = prev.findIndex(r => r.id === updatedProfile.id);
-                if (index > -1) {
-                    const newResponders = [...prev];
-                    newResponders[index] = newResponderData;
-                    return newResponders;
+        const handleProfileUpdate = (payload: any) => {
+            setAllUsers(currentUsers => {
+                 if (payload.eventType === 'INSERT') {
+                    if (currentUsers.some(u => u.id === payload.new.id)) return currentUsers;
+                    return [...currentUsers, payload.new as Profile];
                 }
-                return [...prev, newResponderData];
+                if (payload.eventType === 'UPDATE') {
+                    return currentUsers.map(u => u.id === payload.new.id ? payload.new as Profile : u);
+                }
+                if (payload.eventType === 'DELETE') {
+                    return currentUsers.filter(u => u.id !== payload.old.id);
+                }
+                return currentUsers;
             });
         };
 
-        const respondersChannel = supabase
+        const profilesChannel = supabase
           .channel('public:profiles-map-modal')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `role=eq.${UserRole.RESPONDER}` }, handleResponderUpdate)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleProfileUpdate)
           .subscribe();
 
 
         return () => {
           supabase.removeChannel(reportsChannels);
-          supabase.removeChannel(respondersChannel);
+          supabase.removeChannel(profilesChannel);
         };
     }, [isOpen, profile]);
+
+    useEffect(() => {
+        const mappedResponders: Responder[] = allUsers
+            .filter(p => p.role === UserRole.RESPONDER)
+            .map((p: Profile) => ({
+                id: p.id,
+                full_name: p.full_name,
+                status: p.responder_status || ResponderStatus.OFF_DUTY,
+                location_coords: p.location_coords || undefined,
+            }));
+        setResponders(mappedResponders);
+    }, [allUsers]);
 
     if (!isOpen) return null;
 
@@ -141,7 +138,7 @@ const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profil
                         </div>
                     ) : (
                         <div className="absolute inset-0">
-                             <MapView reports={reports} responders={responders} selectedReportId={null} profile={profile ?? undefined} />
+                             <MapView reports={reports} responders={responders} selectedReportId={null} profile={profile ?? undefined} allUsers={allUsers} />
                         </div>
                     )}
                 </div>

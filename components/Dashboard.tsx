@@ -260,7 +260,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             <div className="flex flex-col lg:flex-row gap-6">
                 <div className="lg:w-[400px] lg:flex-shrink-0">
                     {selectedReport ? (
-                        <ReportDetailCard report={selectedReport} onClose={() => setSelectedReportId(null)} profile={profile} onEdit={handleOpenEditReportModal} onDelete={handleOpenDeleteReportModal} onViewOnMap={() => setIsMapModalOpen(true)} />
+                        <ReportDetailCard report={selectedReport} onClose={() => setSelectedReportId(null)} profile={profile} onEdit={handleOpenEditReportModal} onDelete={handleOpenDeleteReportModal} onViewOnMap={() => setIsMapModalOpen(true)} allUsers={allUsers} />
                     ) : (
                         <ReportList reports={sortedReports} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} onStatusUpdate={handleStatusUpdate} />
                     )}
@@ -273,6 +273,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                             selectedReportId={selectedReportId} 
                             profile={profile} 
                             onReportSelect={handleReportSelect}
+                            allUsers={allUsers}
                         />
                     </div>
                 </div>

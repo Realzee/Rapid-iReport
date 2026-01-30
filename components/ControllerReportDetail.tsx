@@ -41,7 +41,7 @@ const TimelineItem: React.FC<{
 );
 
 
-const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]; profile: Profile }> = ({ report, responders, profile }) => {
+const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]; profile: Profile; allUsers: Profile[] }> = ({ report, responders, profile, allUsers }) => {
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
     const [assignmentHistory, setAssignmentHistory] = useState<AssignmentLog[]>([]);
     const [reporter, setReporter] = useState<Profile | null>(null);
@@ -473,7 +473,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         </div>
                     </DetailField>
                     <DetailField label="Live Communication">
-                        <IncidentChat reportId={report.id} currentUserProfile={profile} disabled={isTerminalStatus} noInternalScroll={true} />
+                        <IncidentChat reportId={report.id} currentUserProfile={profile} allUsers={allUsers} disabled={isTerminalStatus} noInternalScroll={true} />
                     </DetailField>
                 </div>
 

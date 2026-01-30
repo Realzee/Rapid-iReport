@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { ChatMessage, Profile } from '../types';
 import { formatDistanceToNow } from 'date-fns';
@@ -6,15 +6,18 @@ import { formatDistanceToNow } from 'date-fns';
 interface IncidentChatProps {
     reportId: string;
     currentUserProfile: Profile;
+    allUsers: Profile[];
     disabled?: boolean;
     noInternalScroll?: boolean;
 }
 
-const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfile, disabled = false, noInternalScroll = false }) => {
+const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfile, allUsers, disabled = false, noInternalScroll = false }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
 
     const scrollToBottom = () => {
         if (!noInternalScroll) {
@@ -26,14 +29,21 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
         const fetchMessages = async () => {
             const { data, error } = await supabase
                 .from('chat_messages')
-                .select('*, profile:profiles(full_name, avatar_url)')
+                .select('*')
                 .eq('report_id', reportId)
                 .order('created_at', { ascending: true });
 
             if (error) {
                 console.error("Error fetching chat messages:", error);
             } else {
-                setMessages(data as any);
+                const messagesWithProfiles = data.map(msg => {
+                    const profile = userMap.get(msg.user_id);
+                    return {
+                        ...msg,
+                        profile: profile ? { full_name: profile.full_name, avatar_url: profile.avatar_url } : { full_name: 'Unknown User' }
+                    };
+                });
+                setMessages(messagesWithProfiles as ChatMessage[]);
             }
         };
 
@@ -48,9 +58,14 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
                 schema: 'public',
                 table: 'chat_messages',
                 filter: `report_id=eq.${reportId}`
-            }, async (payload) => {
-                const { data: profileData } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', payload.new.user_id).single();
-                const newMsg = { ...payload.new, profile: profileData } as ChatMessage;
+            }, (payload) => {
+                const userProfile = userMap.get(payload.new.user_id);
+                const newMsg = {
+                    ...payload.new,
+                    profile: userProfile 
+                        ? { full_name: userProfile.full_name, avatar_url: userProfile.avatar_url } 
+                        : { full_name: 'Unknown User', avatar_url: undefined }
+                } as ChatMessage;
                 setMessages(prev => [...prev, newMsg]);
             })
             .subscribe();
@@ -58,7 +73,7 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [reportId, disabled]);
+    }, [reportId, disabled, userMap]);
 
     useEffect(() => {
         scrollToBottom();

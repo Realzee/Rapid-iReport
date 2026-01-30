@@ -290,6 +290,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 selectedReportId={selectedReportId}
                                 profile={profile}
                                 onReportSelect={(id) => setSelectedReportId(id)}
+                                allUsers={allUsers}
                             />
                         </div>
                         <div className="lg:col-span-4">
@@ -299,6 +300,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                     report={selectedReport}
                                     responders={responders}
                                     profile={profile}
+                                    allUsers={allUsers}
                                 />
                             ) : (
                                 <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden min-h-[calc(100vh-12rem)]">

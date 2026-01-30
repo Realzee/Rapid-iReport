@@ -14,6 +14,7 @@ interface MapViewProps {
   selectedReportId: string | null;
   profile?: Profile;
   onReportSelect?: (reportId: string) => void;
+  allUsers: Profile[];
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
@@ -130,7 +131,7 @@ const MapFocusController: React.FC<{ selectedReport: Report | undefined, respond
     return null;
 };
 
-const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, profile, onReportSelect }) => {
+const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, profile, onReportSelect, allUsers }) => {
     const [copiedReportId, setCopiedReportId] = useState<string | null>(null);
     const [mapStyle, setMapStyle] = useState<MapStyle>('street');
 
@@ -217,7 +218,8 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                                     {profile && [ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(report.status) && (
                                         <>
                                             <hr className="border-gray-200 dark:border-gray-600 my-2" />
-                                            <IncidentChat reportId={report.id} currentUserProfile={profile} />
+                                            {/* FIX: Pass the required 'allUsers' prop to IncidentChat. */}
+                                            <IncidentChat reportId={report.id} currentUserProfile={profile} allUsers={allUsers} />
                                         </>
                                     )}
 

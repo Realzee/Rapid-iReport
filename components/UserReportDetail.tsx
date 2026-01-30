@@ -43,7 +43,7 @@ const TimelineItem: React.FC<{
 );
 
 
-const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (report: Report) => void }> = ({ report, profile, onEdit }) => {
+const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (report: Report) => void, allUsers: Profile[] }> = ({ report, profile, onEdit, allUsers }) => {
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
     const [assignmentHistory, setAssignmentHistory] = useState<AssignmentLog[]>([]);
     const { theme } = useTheme();
@@ -221,7 +221,7 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                 </div>
                  
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700/50">
-                    <IncidentChat reportId={report.id} currentUserProfile={profile} />
+                    <IncidentChat reportId={report.id} currentUserProfile={profile} allUsers={allUsers} />
                 </div>
             </div>
         </div>

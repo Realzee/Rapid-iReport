@@ -40,7 +40,7 @@ interface ReportsPageProps {
 
 const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const [reports, setReports] = useState<(Report & {type: 'vehicle' | 'crime'})[]>([]);
-    const [users, setUsers] = useState<Pick<Profile, 'id' | 'full_name'>[]>([]);
+    const [users, setUsers] = useState<Profile[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -60,7 +60,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         const fetchData = async () => {
             setLoading(true);
 
-            const usersQuery = supabase.from('profiles').select('id, full_name');
+            const usersQuery = supabase.from('profiles').select('*');
             const respondersQuery = supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER);
 
             if (profile.role !== UserRole.ADMIN && profile.company_id) {
@@ -269,6 +269,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 report={detailModalReport}
                 responders={responders}
                 profile={profile}
+                allUsers={users}
             />
         </div>
     );

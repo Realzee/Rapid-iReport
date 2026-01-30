@@ -9,9 +9,10 @@ interface ReportDetailModalProps {
     report: Report | null;
     responders: Responder[];
     profile: Profile;
+    allUsers: Profile[];
 }
 
-const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ isOpen, onClose, report, responders, profile }) => {
+const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ isOpen, onClose, report, responders, profile, allUsers }) => {
     if (!isOpen || !report) {
         return null;
     }
@@ -27,6 +28,7 @@ const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ isOpen, onClose, 
                         report={report}
                         responders={responders}
                         profile={profile}
+                        allUsers={allUsers}
                     />
                 </div>
             </div>

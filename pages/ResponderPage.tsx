@@ -1,7 +1,5 @@
-
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, ReportUpdate } from '../types';
+import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, ReportUpdate, Profile as UserProfile } from '../types';
 import { supabase } from '../utils/supabase';
 import { format, formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
@@ -37,6 +35,7 @@ const ResponderStatusBadge: React.FC<{ status: ResponderStatus }> = ({ status })
 // Main page component
 const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) => {
     const [assignedReports, setAssignedReports] = useState<Report[]>([]);
+    const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const locationWatchId = useRef<number | null>(null);
@@ -87,21 +86,26 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
 
 
     useEffect(() => {
-        const fetchAssignedReports = async () => {
+        const fetchInitialData = async () => {
             setLoading(true);
             const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').eq('assigned_to', profile.id);
             const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').eq('assigned_to', profile.id);
+            const { data: usersData, error: usersError } = await supabase.from('profiles').select('*').eq('company_id', profile.company_id);
+
             if (vError || cError) console.error("Error fetching reports:", vError || cError);
             else {
                 const combined = [...(vData || []), ...(cData || [])].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
                 setAssignedReports(combined);
                 if (combined.length > 0 && !selectedReportId) setSelectedReportId(combined[0].id);
             }
+            if(usersError) console.error("Error fetching company users:", usersError);
+            else setAllUsers(usersData || []);
+
             setLoading(false);
             isInitialLoad.current = false;
         };
-        fetchAssignedReports();
-    }, [profile.id]);
+        fetchInitialData();
+    }, [profile.id, profile.company_id]);
     
     useEffect(() => {
         const handleUpsert = (payload: any) => {
@@ -346,7 +350,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                     <div className="h-[40vh] rounded-2xl overflow-hidden">
                        <ResponderMapView report={selectedReport} responderProfile={profile} />
                     </div>
-                    {selectedReport ? <ResponderReportDetail key={selectedReport.id} report={selectedReport} profile={profile} /> : 
+                    {selectedReport ? <ResponderReportDetail key={selectedReport.id} report={selectedReport} profile={profile} allUsers={allUsers} /> : 
                     <div className="h-full bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center min-h-[50vh]">
                         <p className="text-gray-500 dark:text-gray-400">Select an incident to view details.</p>
                     </div>}
@@ -371,7 +375,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                             <XIcon className="w-5 h-5" />
                         </button>
                     </div>
-                    <UserReportDetail report={anprFoundReport} profile={profile} onEdit={() => {}} />
+                    <UserReportDetail report={anprFoundReport} profile={profile} onEdit={() => {}} allUsers={allUsers} />
                 </div>
             </div>
         )}
@@ -380,7 +384,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     );
 };
 
-const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({ report, profile }) => {
+const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUsers: Profile[] }> = ({ report, profile, allUsers }) => {
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
     const [newUpdate, setNewUpdate] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -559,7 +563,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile }> = ({
                     </form>
                 </div>
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700/50">
-                    <IncidentChat reportId={report.id} currentUserProfile={profile} />
+                    <IncidentChat reportId={report.id} currentUserProfile={profile} allUsers={allUsers} />
                 </div>
             </div>
         </div>

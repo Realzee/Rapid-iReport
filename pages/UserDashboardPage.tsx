@@ -11,16 +11,32 @@ const isVehicleReport = (report: Report): report is VehicleReport => 'license_pl
 
 const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
     const [myReports, setMyReports] = useState<Report[]>([]);
+    const [companyUsers, setCompanyUsers] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
 
     useEffect(() => {
-        const fetchMyReports = async () => {
+        const fetchMyData = async () => {
             setLoading(true);
-            const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').eq('reported_by', profile.id).neq('status', ReportStatus.DELETED);
-            const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').eq('reported_by', profile.id).neq('status', ReportStatus.DELETED);
+
+            const promises: any[] = [
+                supabase.from('vehicle_reports').select('*').eq('reported_by', profile.id).neq('status', ReportStatus.DELETED),
+                supabase.from('crime_reports').select('*').eq('reported_by', profile.id).neq('status', ReportStatus.DELETED)
+            ];
+
+            if (profile.company_id) {
+                promises.push(supabase.from('profiles').select('*').eq('company_id', profile.company_id));
+            } else {
+                promises.push(Promise.resolve({ data: [profile], error: null }));
+            }
+            
+            const [
+                { data: vData, error: vError }, 
+                { data: cData, error: cError },
+                { data: usersData, error: uError }
+            ] = await Promise.all(promises);
             
             if (vError || cError) {
                 console.error("Error fetching user reports:", vError || cError);
@@ -28,14 +44,21 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 const combined = [...(vData || []), ...(cData || [])]
                     .sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
                 setMyReports(combined);
-                if (combined.length > 0) {
+                if (combined.length > 0 && !selectedReportId) {
                     setSelectedReportId(combined[0].id);
                 }
             }
+
+            if (uError) {
+                 console.error("Error fetching company users:", uError);
+            } else {
+                 setCompanyUsers(usersData as Profile[] || [profile]);
+            }
+
             setLoading(false);
         };
-        fetchMyReports();
-    }, [profile.id]);
+        fetchMyData();
+    }, [profile.id, profile.company_id]);
 
     useEffect(() => {
         const handleUpsert = (payload: any) => {
@@ -124,7 +147,7 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                     </div>
 
                     <div className="lg:col-span-2 lg:sticky lg:top-24">
-                        {selectedReport ? <UserReportDetail key={selectedReport.id} report={selectedReport} profile={profile} onEdit={handleOpenEditReport} /> : 
+                        {selectedReport ? <UserReportDetail key={selectedReport.id} report={selectedReport} profile={profile} onEdit={handleOpenEditReport} allUsers={companyUsers} /> : 
                         <div className="h-full bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center min-h-[50vh]">
                             <p className="text-gray-500 dark:text-gray-400">Select a report to view details.</p>
                         </div>}

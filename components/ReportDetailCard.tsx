@@ -17,11 +17,12 @@ interface ReportDetailCardProps {
     onEdit: (report: Report) => void;
     onDelete: (report: Report) => void;
     onViewOnMap: () => void;
+    allUsers: Profile[];
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
-const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, profile, onEdit, onDelete, onViewOnMap }) => {
+const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, profile, onEdit, onDelete, onViewOnMap, allUsers }) => {
     const [reporter, setReporter] = useState<Profile | null>(null);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
@@ -268,7 +269,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
             {[ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(report.status) && (
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
-                    <IncidentChat reportId={report.id} currentUserProfile={profile} />
+                    {/* FIX: Pass the required 'allUsers' prop to IncidentChat. */}
+                    <IncidentChat reportId={report.id} currentUserProfile={profile} allUsers={allUsers} />
                 </div>
             )}
 
