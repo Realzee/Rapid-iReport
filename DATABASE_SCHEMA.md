@@ -458,6 +458,53 @@ BEGIN
 END;
 $$;
 
+-- Function to get the next OB number sequence for a company
+CREATE OR REPLACE FUNCTION public.get_next_ob_sequence(p_company_id uuid, p_report_date date)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+    report_month integer;
+    report_year integer;
+    vehicle_count integer;
+    crime_count integer;
+BEGIN
+    report_month := extract(month from p_report_date);
+    report_year := extract(year from p_report_date);
+
+    IF p_company_id IS NULL THEN
+        -- Count reports from users with no company for the given month and year
+        SELECT count(*) INTO vehicle_count
+        FROM public.vehicle_reports vr
+        WHERE vr.reported_by IN (SELECT id FROM public.profiles WHERE company_id IS NULL)
+        AND extract(year from vr.reported_at) = report_year
+        AND extract(month from vr.reported_at) = report_month;
+
+        SELECT count(*) INTO crime_count
+        FROM public.crime_reports cr
+        WHERE cr.reported_by IN (SELECT id FROM public.profiles WHERE company_id IS NULL)
+        AND extract(year from cr.reported_at) = report_year
+        AND extract(month from cr.reported_at) = report_month;
+    ELSE
+        -- Count reports from users of a specific company for the given month and year
+        SELECT count(*) INTO vehicle_count
+        FROM public.vehicle_reports vr
+        WHERE vr.reported_by IN (SELECT id FROM public.profiles WHERE company_id = p_company_id)
+        AND extract(year from vr.reported_at) = report_year
+        AND extract(month from vr.reported_at) = report_month;
+
+        SELECT count(*) INTO crime_count
+        FROM public.crime_reports cr
+        WHERE cr.reported_by IN (SELECT id FROM public.profiles WHERE company_id = p_company_id)
+        AND extract(year from cr.reported_at) = report_year
+        AND extract(month from cr.reported_at) = report_month;
+    END IF;
+
+    RETURN vehicle_count + crime_count + 1;
+END;
+$$;
+
 -- Function to create notifications for relevant staff
 CREATE OR REPLACE FUNCTION public.create_staff_notification(
     notification_type text,
@@ -561,7 +608,7 @@ AS $$
 BEGIN
   IF OLD.assigned_to IS DISTINCT FROM NEW.assigned_to THEN
     INSERT INTO public.assignment_logs (report_id, assigned_from, assigned_to, assigned_by)
-    VALUES (NEW.id, OLD.assigned_to, NEW.assigned_to, (select auth.uid()));
+    VALUES (NEW.id, OLD.assigned_to, (select auth.uid()));
   END IF;
   RETURN NEW;
 END;

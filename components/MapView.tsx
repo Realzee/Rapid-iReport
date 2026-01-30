@@ -194,12 +194,11 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                             position={[report.location_coords.lat, report.location_coords.lng]}
                             icon={createIncidentIcon(report, isSelected)}
                             zIndexOffset={isSelected ? 1000 : 0}
-                            eventHandlers={{
-                                click: () => {
-                                    if (onReportSelect) {
-                                        onReportSelect(report.id);
-                                    }
-                                },
+                            // FIX: Replaced `eventHandlers` prop with `onClick` on `Marker` component to align with react-leaflet API for event handling.
+                            onClick={() => {
+                                if (onReportSelect) {
+                                    onReportSelect(report.id);
+                                }
                             }}
                         >
                             <Popup>

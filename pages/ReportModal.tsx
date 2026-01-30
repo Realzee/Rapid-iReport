@@ -336,14 +336,35 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                  const { error } = await supabase.from(tableName).update(reportData).eq('id', reportToEdit.id);
                  if (error) throw error;
             } else {
+                const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('company_id, company:companies(name)')
+                    .eq('id', user.id)
+                    .single();
+
+                if (profileError) {
+                    console.warn("Could not fetch user's company for OB number generation:", profileError.message);
+                }
+                
+                const companyId = profileData?.company_id;
+                const initial = profileData?.company?.name ? profileData.company.name.charAt(0).toUpperCase() : 'P';
+                
                 const now = new Date();
-                const ob_timestamp = format(now, 'yyMMddHHmm');
-                // Add a random character to reduce collision chance within the same minute.
-                const randomChar = Math.random().toString(36).substring(2, 3).toUpperCase();
+                const { data: sequence, error: rpcError } = await supabase.rpc('get_next_ob_sequence', {
+                    p_company_id: companyId,
+                    p_report_date: now.toISOString()
+                });
+                
+                if (rpcError) throw new Error(`Failed to generate OB Number: ${rpcError.message}`);
+
+                const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                const year = now.getFullYear();
+                const ob_number = `${initial}${sequence}/${month}/${year}`;
+
                 const insertData = {
                     ...reportData,
                     id: reportId,
-                    ob_number: `${reportType === 'vehicle' ? 'V' : 'C'}${ob_timestamp}${randomChar}`,
+                    ob_number: ob_number,
                     status: ReportStatus.PENDING,
                     reported_by: user.id,
                     reported_at: now.toISOString(),
