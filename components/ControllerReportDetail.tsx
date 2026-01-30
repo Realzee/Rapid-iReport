@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
@@ -54,10 +54,10 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const { addToast } = useToast();
 
     const isTerminalStatus = useMemo(() => {
-        return [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(report.status);
+        return [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED, ReportStatus.DELETED].includes(report.status);
     }, [report.status]);
     
-    const canManageReport = useMemo(() => [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role), [profile.role]);
+    const canManageReport = useMemo(() => [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role), [profile.role]);
 
     useEffect(() => {
         setSelectedStatus(report.status);
@@ -296,6 +296,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 });
             } catch (error) {
                 console.error("Error fetching image for BOLO card:", error);
+                addToast("Failed to load image for BOLO card.", 'error');
                 return null;
             }
         };
@@ -334,7 +335,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 ${vehicleDetailsHtml}
                 <div style="flex-grow: 1; min-height: 50px;">
                     <p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; margin-bottom: 6px; font-weight: 500;">Details</p>
-                    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #374151; max-height: 60px; overflow: hidden;">
+                    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #374151; max-height: 60px; overflow: hidden; text-overflow: ellipsis;">
                         ${report.description}
                     </p>
                 </div>
@@ -345,7 +346,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             </div>`;
 
         const svgString = `<svg width="400" height="600" xmlns="http://www.w3.org/2000/svg"><foreignObject width="400" height="600">${boloHtml.replace(/#/g, '%23')}</foreignObject></svg>`;
-        const svgDataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
+        // FIX: Replaced deprecated `unescape` function. Direct `btoa` is sufficient for SVG strings without special multi-byte characters.
+        const svgDataUrl = `data:image/svg+xml;base64,${btoa(svgString)}`;
 
         const image = new Image();
         image.onload = () => {
@@ -354,11 +356,13 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             canvas.height = 600;
             const ctx = canvas.getContext('2d');
             if (ctx) {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(image, 0, 0);
-                const pngUrl = canvas.toDataURL('image/png');
+                const jpgUrl = canvas.toDataURL('image/jpeg', 0.9);
                 const a = document.createElement('a');
-                a.href = pngUrl;
-                a.download = `bolo-${report.ob_number.replace(/\//g, '-')}.png`;
+                a.href = jpgUrl;
+                a.download = `bolo-${report.ob_number.replace(/\//g, '-')}.jpg`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -392,27 +396,17 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     if (currentlyAssignedResponder && !availableResponders.some(r => r.id === currentlyAssignedResponder.id)) {
         responderOptions.push(currentlyAssignedResponder);
     }
-    const statusOptions = [ReportStatus.PENDING, ReportStatus.ASSIGNED, ReportStatus.ON_SCENE, ReportStatus.RESOLVED, ReportStatus.CLOSED];
+    const statusOptions = Object.values(ReportStatus).filter(s => s !== ReportStatus.DELETED);
 
     return (
         <>
-            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl flex flex-col text-gray-900 dark:text-white backdrop-blur-lg shadow-lg print:hidden h-full max-h-[calc(100vh-12rem)]">
+            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl flex flex-col text-gray-900 dark:text-white backdrop-blur-lg shadow-lg print:hidden h-full">
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700/50 flex-shrink-0 flex justify-between items-center">
                     <div>
                         <h3 className="text-lg font-bold">Report Details: {report.ob_number}</h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                             {isVehicleReport(report) ? 'Stolen Vehicle' : report.title} - {format(new Date(report.reported_at), 'MM/dd/yyyy, hh:mm a')}
                         </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {canManageReport && (
-                            <button onClick={() => setDeleteModalOpen(true)} disabled={isTerminalStatus} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-red-500/10 dark:hover:bg-red-500/20 hover:text-red-500 dark:hover:text-red-400 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Delete Report">
-                                <TrashIcon className="w-5 h-5" />
-                            </button>
-                        )}
-                        <button onClick={handlePrint} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50 rounded-full transition-colors" title="Print Report">
-                            <PrintIcon className="w-5 h-5" />
-                        </button>
                     </div>
                 </div>
 
@@ -479,8 +473,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     </DetailField>
                 </div>
 
-                <div className={`p-4 border-t border-gray-200 dark:border-gray-700/50 space-y-2 flex-shrink-0 bg-white/50 dark:bg-gray-900/50`}>
-                    <div className="grid grid-cols-2 gap-2">
+                <div className={`p-4 border-t border-gray-200 dark:border-gray-700/50 space-y-3 flex-shrink-0 bg-white/50 dark:bg-gray-900/50`}>
+                    <div className="grid grid-cols-2 gap-3">
                         <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2.5 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold">
                             <WhatsappIcon className="w-5 h-5"/> Share BOLO
                         </button>
@@ -489,6 +483,16 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                             <span>{isGeneratingBolo ? 'Generating...' : 'BOLO Card'}</span>
                         </button>
                     </div>
+                    {canManageReport && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <button onClick={handlePrint} className="flex items-center justify-center gap-2 py-2 px-3 bg-gray-500/90 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-semibold">
+                                <PrintIcon className="w-5 h-5"/> Print
+                            </button>
+                            <button onClick={() => setDeleteModalOpen(true)} disabled={isTerminalStatus} className="flex items-center justify-center gap-2 py-2 px-3 bg-red-600/90 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                                <TrashIcon className="w-5 h-5"/> Delete
+                            </button>
+                        </div>
+                    )}
                     <div className={`${isTerminalStatus ? 'opacity-50 cursor-not-allowed' : ''} space-y-2`}>
                         <form onSubmit={handleUpdateSubmit} className="flex-shrink-0">
                              <div className="relative">
@@ -502,7 +506,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         <div>
                             <div className="flex items-center gap-2">
                                 <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value as ReportStatus)} disabled={isTerminalStatus} className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 capitalize disabled:cursor-not-allowed">
-                                    {statusOptions.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                                    {statusOptions.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
                                 </select>
                                  <button onClick={() => handleStatusUpdate(selectedStatus)} disabled={isTerminalStatus} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:cursor-not-allowed">
                                     <CheckCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />

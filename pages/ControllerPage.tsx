@@ -280,32 +280,31 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                     </div>
                 </div>
 
+                {/* FIX: Refactored layout for sticky map and scrollable details */}
                 <div className="lg:col-span-9">
-                    <div className="lg:sticky lg:top-24">
-                        <div className="grid grid-cols-1 lg:grid-cols-9 gap-4">
-                            <div className="lg:col-span-5 min-h-[50vh] lg:h-[calc(100vh-12rem)] print:hidden">
-                                <MapView
-                                    reports={reports}
+                    <div className="grid grid-cols-1 lg:grid-cols-9 gap-4">
+                        <div className="lg:col-span-5 lg:sticky lg:top-24 h-[60vh] lg:h-[calc(100vh-12rem)] print:hidden">
+                            <MapView
+                                reports={reports}
+                                responders={responders}
+                                selectedReportId={selectedReportId}
+                                profile={profile}
+                                onReportSelect={(id) => setSelectedReportId(id)}
+                            />
+                        </div>
+                        <div className="lg:col-span-4">
+                            {selectedReport ? (
+                                <ControllerReportDetail
+                                    key={selectedReport.id}
+                                    report={selectedReport}
                                     responders={responders}
-                                    selectedReportId={selectedReportId}
                                     profile={profile}
-                                    onReportSelect={(id) => setSelectedReportId(id)}
                                 />
-                            </div>
-                            <div className="lg:col-span-4 min-h-[50vh]">
-                                {selectedReport ? (
-                                    <ControllerReportDetail
-                                        key={selectedReport.id}
-                                        report={selectedReport}
-                                        responders={responders}
-                                        profile={profile}
-                                    />
-                                ) : (
-                                    <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden">
-                                        <p className="text-gray-500 dark:text-gray-400">No reports available or selected.</p>
-                                    </div>
-                                )}
-                            </div>
+                            ) : (
+                                <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden min-h-[calc(100vh-12rem)]">
+                                    <p className="text-gray-500 dark:text-gray-400">No reports available or selected.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
