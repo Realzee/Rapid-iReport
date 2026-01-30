@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
-import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon } from './icons';
+import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon } from './icons';
 import PrintableReport from './PrintableReport';
 import { useToast } from '../contexts/ToastContext';
 import IncidentChat from './IncidentChat';
 import ConfirmModal from './ConfirmModal';
+import { logoUrl } from '../assets/logo';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -49,6 +50,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const [selectedStatus, setSelectedStatus] = useState<ReportStatus>(report.status);
     const [selectedResponder, setSelectedResponder] = useState<string>(report.assigned_to || '');
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const { addToast } = useToast();
 
     const isTerminalStatus = useMemo(() => {
@@ -256,9 +258,122 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         }
     };
     
-    const handlePrint = () => {
-        window.print();
+    const handleShareWhatsApp = () => {
+        let text = `*RAPID iREPORT ALERT*\n\n`;
+        if (isVehicleReport(report)) {
+            text += `*Type:* Vehicle Theft\n`;
+            text += `*License Plate:* ${report.license_plate}\n`;
+            text += `*Vehicle:* ${report.vehicle_make} ${report.vehicle_model} (${report.vehicle_color})\n`;
+            text += `*Last Seen:* ${report.last_seen_location}\n`;
+        } else {
+            text += `*Type:* Crime Incident\n`;
+            text += `*Title:* ${report.title}\n`;
+            text += `*Crime Type:* ${report.crime_type}\n`;
+            text += `*Location:* ${report.location}\n`;
+        }
+        text += `*OB Number:* ${report.ob_number}\n`;
+        text += `*Severity:* ${report.severity.charAt(0).toUpperCase() + report.severity.slice(1)}\n\n`;
+        text += `*Description:* ${report.description}\n\n`;
+        text += `View our official channel: https://whatsapp.com/channel/0029Vb6sVknBqbr1vAMsJ80U`;
+        
+        const encodedText = encodeURIComponent(text);
+        window.open(`https://wa.me/?text=${encodedText}`, '_blank');
     };
+
+    const generateBoloImage = async () => {
+        setIsGeneratingBolo(true);
+
+        const fetchImageAsDataURL = async (url: string) => {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+                const blob = await response.blob();
+                return new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            } catch (error) {
+                console.error("Error fetching image for BOLO card:", error);
+                return null;
+            }
+        };
+
+        const imageUrl = report.evidence_images && report.evidence_images.length > 0 ? report.evidence_images[0] : null;
+        const imageAsDataUrl = imageUrl ? await fetchImageAsDataURL(imageUrl) : null;
+        
+        const companyLogoUrl = profile.company?.logo_url;
+        const companyLogoAsDataUrl = companyLogoUrl ? await fetchImageAsDataURL(companyLogoUrl) : logoUrl;
+
+        const reportImageHtml = imageAsDataUrl
+            ? `<img src="${imageAsDataUrl}" alt="Evidence" style="width: 100%; height: 100%; object-fit: cover;" />`
+            : `<span style="color: #9CA3AF; font-size: 16px;">No Image Available</span>`;
+        
+        const vehicleDetailsHtml = isVehicleReport(report) ? `
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Make</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${report.vehicle_make}</p></div>
+                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Model</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${report.vehicle_model}</p></div>
+                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Color</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${report.vehicle_color}</p></div>
+            </div>
+        ` : '';
+
+        const boloHtml = `
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; flex-direction: column; width: 380px; height: 580px; background-color: #FFFFFF; color: #111827; border-radius: 12px; padding: 20px; border: 1px solid #E5E7EB; box-sizing: border-box; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #EF4444; padding-bottom: 12px; margin-bottom: 12px;">
+                    <h1 style="font-size: 28px; font-weight: 700; color: #111827; margin: 0; text-transform: uppercase;">BOLO Alert</h1>
+                    <img src="${companyLogoAsDataUrl}" alt="Logo" style="width: 50px; height: auto; object-fit: contain;" />
+                </div>
+                <div style="width: 100%; height: 200px; background-color: #F3F4F6; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #E5E7EB;">
+                    ${reportImageHtml}
+                </div>
+                <div style="background-color: #F3F4F6; padding: 12px; border-radius: 8px; margin-bottom: 16px; text-align: center; border: 1px solid #E5E7EB;">
+                    <p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">${isVehicleReport(report) ? 'License Plate' : 'Incident'}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 28px; font-weight: 700; letter-spacing: 2px; color: #1E40AF;">${isVehicleReport(report) ? report.license_plate : report.title}</p>
+                </div>
+                ${vehicleDetailsHtml}
+                <div style="flex-grow: 1; min-height: 50px;">
+                    <p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; margin-bottom: 6px; font-weight: 500;">Details</p>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #374151; max-height: 60px; overflow: hidden;">
+                        ${report.description}
+                    </p>
+                </div>
+                <div style="border-top: 1px solid #E5E7EB; padding-top: 12px; margin-top: auto; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #9CA3AF; font-family: monospace;">
+                    <span>OB: ${report.ob_number}</span>
+                    <span>${format(new Date(report.reported_at), 'yyyy-MM-dd HH:mm')}</span>
+                </div>
+            </div>`;
+
+        const svgString = `<svg width="400" height="600" xmlns="http://www.w3.org/2000/svg"><foreignObject width="400" height="600">${boloHtml.replace(/#/g, '%23')}</foreignObject></svg>`;
+        const svgDataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
+
+        const image = new Image();
+        image.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 600;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(image, 0, 0);
+                const pngUrl = canvas.toDataURL('image/png');
+                const a = document.createElement('a');
+                a.href = pngUrl;
+                a.download = `bolo-${report.ob_number.replace(/\//g, '-')}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+            setIsGeneratingBolo(false);
+        };
+        image.onerror = (e) => {
+            addToast("Failed to generate BOLO card image. Check console for errors.", 'error');
+            console.error("Image loading error for BOLO card:", e);
+            setIsGeneratingBolo(false);
+        }
+        image.src = svgDataUrl;
+    };
+
+    const handlePrint = () => { window.print(); };
 
     const handleConfirmDelete = async () => {
         const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
@@ -281,7 +396,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
     return (
         <>
-            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl flex flex-col text-gray-900 dark:text-white backdrop-blur-lg shadow-lg print:hidden">
+            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl flex flex-col text-gray-900 dark:text-white backdrop-blur-lg shadow-lg print:hidden h-full max-h-[calc(100vh-12rem)]">
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700/50 flex-shrink-0 flex justify-between items-center">
                     <div>
                         <h3 className="text-lg font-bold">Report Details: {report.ob_number}</h3>
@@ -301,7 +416,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     </div>
                 </div>
 
-                <div className="p-4 space-y-6 print:overflow-visible">
+                <div className="flex-grow overflow-y-auto p-4 space-y-6">
                      <div className="grid grid-cols-2 gap-4">
                         <DetailField label="Severity"><p className="font-semibold text-md capitalize">{report.severity}</p></DetailField>
                         <DetailField label="Status"><span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">{report.status.replace(/_/g, ' ')}</span></DetailField>
@@ -364,42 +479,51 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     </DetailField>
                 </div>
 
-                <div className={`p-4 border-t border-gray-200 dark:border-gray-700/50 space-y-4 flex-shrink-0 bg-white/50 dark:bg-gray-900/50 ${isTerminalStatus ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    <form onSubmit={handleUpdateSubmit} className="flex-shrink-0">
-                         <div className="relative">
-                            <textarea value={newUpdate} onChange={(e) => setNewUpdate(e.target.value)} placeholder={isTerminalStatus ? "This incident is closed. No new updates can be added." : "Type an update..."} rows={2} disabled={isTerminalStatus} className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none disabled:cursor-not-allowed"/>
-                            <button type="submit" disabled={isSubmittingUpdate || isTerminalStatus} className="absolute top-2 right-2 p-2 text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                            </button>
-                        </div>
-                    </form>
-
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block">Update Status</label>
-                         <div className="flex items-center gap-2">
-                            <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value as ReportStatus)} disabled={isTerminalStatus} className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 capitalize disabled:cursor-not-allowed">
-                                {statusOptions.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                            </select>
-                             <button onClick={() => handleStatusUpdate(selectedStatus)} disabled={isTerminalStatus} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:cursor-not-allowed">
-                                <CheckCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                            </button>
-                        </div>
+                <div className={`p-4 border-t border-gray-200 dark:border-gray-700/50 space-y-2 flex-shrink-0 bg-white/50 dark:bg-gray-900/50`}>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2.5 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold">
+                            <WhatsappIcon className="w-5 h-5"/> Share BOLO
+                        </button>
+                         <button onClick={generateBoloImage} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 py-2.5 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-wait">
+                            {isGeneratingBolo ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <DownloadIcon className="w-5 h-5"/>}
+                            <span>{isGeneratingBolo ? 'Generating...' : 'BOLO Card'}</span>
+                        </button>
                     </div>
-                     <div>
-                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 block">Dispatch Responder</label>
-                        <div className="flex items-center gap-2">
-                            <select value={selectedResponder} onChange={(e) => setSelectedResponder(e.target.value)} disabled={isTerminalStatus} className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed">
-                                <option value="">{report.assigned_to ? 'Unassign' : (availableResponders.length > 0 ? 'Select Responder...' : 'No responders available')}</option>
-                                {responderOptions.map(r => (
-                                    <option key={r.id} value={r.id}>
-                                        {r.full_name}
-                                        {r.status !== ResponderStatus.AVAILABLE ? ` (${r.status.replace(/_/g, ' ')})` : ''}
-                                    </option>
-                                ))}
-                            </select>
-                            <button onClick={() => handleDispatchResponder(selectedResponder)} disabled={isTerminalStatus} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:cursor-not-allowed">
-                                <AssignResponderIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                            </button>
+                    <div className={`${isTerminalStatus ? 'opacity-50 cursor-not-allowed' : ''} space-y-2`}>
+                        <form onSubmit={handleUpdateSubmit} className="flex-shrink-0">
+                             <div className="relative">
+                                <textarea value={newUpdate} onChange={(e) => setNewUpdate(e.target.value)} placeholder={isTerminalStatus ? "This incident is closed." : "Type an update..."} rows={2} disabled={isTerminalStatus} className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 pl-3 pr-10 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none disabled:cursor-not-allowed"/>
+                                <button type="submit" disabled={isSubmittingUpdate || isTerminalStatus} className="absolute top-2 right-2 p-2 text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                                </button>
+                            </div>
+                        </form>
+
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value as ReportStatus)} disabled={isTerminalStatus} className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 capitalize disabled:cursor-not-allowed">
+                                    {statusOptions.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                                </select>
+                                 <button onClick={() => handleStatusUpdate(selectedStatus)} disabled={isTerminalStatus} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:cursor-not-allowed">
+                                    <CheckCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                                </button>
+                            </div>
+                        </div>
+                         <div>
+                            <div className="flex items-center gap-2">
+                                <select value={selectedResponder} onChange={(e) => setSelectedResponder(e.target.value)} disabled={isTerminalStatus} className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed">
+                                    <option value="">{report.assigned_to ? 'Unassign' : (availableResponders.length > 0 ? 'Select Responder...' : 'No responders available')}</option>
+                                    {responderOptions.map(r => (
+                                        <option key={r.id} value={r.id}>
+                                            {r.full_name}
+                                            {r.status !== ResponderStatus.AVAILABLE ? ` (${r.status.replace(/_/g, ' ')})` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button onClick={() => handleDispatchResponder(selectedResponder)} disabled={isTerminalStatus} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:cursor-not-allowed">
+                                    <AssignResponderIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
