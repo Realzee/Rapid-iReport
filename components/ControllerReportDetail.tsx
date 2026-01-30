@@ -410,7 +410,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     </div>
                 </div>
 
-                <div className="flex-grow overflow-y-auto p-4 space-y-6">
+                <div className="flex-grow p-4 space-y-6">
                      <div className="grid grid-cols-2 gap-4">
                         <DetailField label="Severity"><p className="font-semibold text-md capitalize">{report.severity}</p></DetailField>
                         <DetailField label="Status"><span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">{report.status.replace(/_/g, ' ')}</span></DetailField>

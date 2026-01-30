@@ -81,23 +81,10 @@ const App: React.FC = () => {
   const [isGlobalMapModalOpen, setIsGlobalMapModalOpen] = useState(false);
   const [isAnnouncementVisible, setIsAnnouncementVisible] = useState(false);
   
-  const [isApiKeyReady, setIsApiKeyReady] = useState(false);
-  const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
+  const [isApiKeyReady, setIsApiKeyReady] = useState(true);
+  const [isCheckingApiKey, setIsCheckingApiKey] = useState(false);
 
   useEffect(() => {
-    const checkKey = async () => {
-        try {
-            if ((window as any).aistudio && await (window as any).aistudio.hasSelectedApiKey()) {
-                setIsApiKeyReady(true);
-            }
-        } catch (e) {
-            console.warn("Could not check for AI Studio API key.", e);
-        } finally {
-            setIsCheckingApiKey(false);
-        }
-    };
-    checkKey();
-    
     const handleApiKeyError = () => {
         console.warn('API key error detected. Resetting API key state.');
         setIsApiKeyReady(false);
