@@ -172,7 +172,11 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const confirmDeleteReport = useCallback(async () => {
         if (!reportToDelete) return;
         const tableName = isVehicleReport(reportToDelete) ? 'vehicle_reports' : 'crime_reports';
-        const { error } = await supabase.from(tableName).update({ status: ReportStatus.DELETED }).eq('id', reportToDelete.id);
+        const { error } = await supabase.from(tableName).update({ 
+            status: ReportStatus.DELETED,
+            deleted_by: profile.id,
+            deleted_at: new Date().toISOString()
+        }).eq('id', reportToDelete.id);
         
         if (error) {
             addToast(`Error deleting report: ${error.message}`, 'error');
@@ -183,7 +187,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             }
         }
         setReportToDelete(null);
-    }, [reportToDelete, addToast, selectedReportId]);
+    }, [reportToDelete, addToast, selectedReportId, profile.id]);
     
     const handleStatusUpdate = useCallback(async (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => {
         const tableName = reportType === 'vehicle' ? 'vehicle_reports' : 'crime_reports';

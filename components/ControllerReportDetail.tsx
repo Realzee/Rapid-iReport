@@ -381,7 +381,11 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
     const handleConfirmDelete = async () => {
         const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
-        const { error } = await supabase.from(tableName).update({ status: ReportStatus.DELETED }).eq('id', report.id);
+        const { error } = await supabase.from(tableName).update({ 
+            status: ReportStatus.DELETED,
+            deleted_by: profile.id,
+            deleted_at: new Date().toISOString()
+        }).eq('id', report.id);
         if (error) {
             addToast(`Error deleting report: ${error.message}`, 'error');
         } else {

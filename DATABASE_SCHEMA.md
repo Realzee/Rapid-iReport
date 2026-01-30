@@ -319,6 +319,9 @@ CREATE TABLE IF NOT EXISTS public.vehicle_reports (
     CONSTRAINT vehicle_reports_reported_by_fkey FOREIGN KEY (reported_by) REFERENCES public.profiles(id) ON DELETE CASCADE,
     CONSTRAINT vehicle_reports_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES public.profiles(id) ON DELETE SET NULL
 );
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+
 
 -- Crime Reports Table
 CREATE TABLE IF NOT EXISTS public.crime_reports (
@@ -341,6 +344,9 @@ CREATE TABLE IF NOT EXISTS public.crime_reports (
     CONSTRAINT crime_reports_reported_by_fkey FOREIGN KEY (reported_by) REFERENCES public.profiles(id) ON DELETE CASCADE,
     CONSTRAINT crime_reports_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES public.profiles(id) ON DELETE SET NULL
 );
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+
 
 -- Report Updates Table
 CREATE TABLE IF NOT EXISTS public.report_updates (

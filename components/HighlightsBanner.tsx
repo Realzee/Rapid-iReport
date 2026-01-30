@@ -3,7 +3,8 @@ import { supabase } from '../utils/supabase';
 import { Report, Severity, VehicleReport } from '../types';
 import { CarIcon, CrimeIcon, AlertTriangleIcon } from './icons';
 import { formatDistanceToNow } from 'date-fns';
-import { subDays } from 'date-fns';
+// FIX: The 'subDays' function is not a direct export from 'date-fns'; the correct function is 'sub'.
+import { sub } from 'date-fns';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -42,7 +43,8 @@ const HighlightsBanner: React.FC<HighlightsBannerProps> = ({ onSelectReport, top
     
     useEffect(() => {
         const fetchHighlights = async () => {
-            const sevenDaysAgo = subDays(new Date(), 7).toISOString();
+            // FIX: Replaced 'subDays' with 'sub' and updated its usage to the correct object-based syntax.
+            const sevenDaysAgo = sub(new Date(), { days: 7 }).toISOString();
             
             const [
                 { data: vehicleData, error: vError },

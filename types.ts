@@ -93,6 +93,8 @@ export interface VehicleReport {
   evidence_images?: string[];
   location_boundary?: any; // GeoJSON
   location_boundingbox?: [number, number, number, number]; // south, north, west, east
+  deleted_by?: string; // profile id
+  deleted_at?: string; // ISO date string
 }
 
 export interface CrimeReport {
@@ -111,6 +113,8 @@ export interface CrimeReport {
   evidence_images?: string[];
   location_boundary?: any; // GeoJSON
   location_boundingbox?: [number, number, number, number]; // south, north, west, east
+  deleted_by?: string; // profile id
+  deleted_at?: string; // ISO date string
 }
 
 export type Report = VehicleReport | CrimeReport;
