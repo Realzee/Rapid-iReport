@@ -3,7 +3,6 @@ import { Profile } from '../types';
 import { XIcon, RadioTowerIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
-// FIX: Removed `RealtimeChannel` import to resolve a type export conflict. The type will be inferred instead using ReturnType.
 
 
 const isOnline = (lastSeen?: string): boolean => {
@@ -58,14 +57,15 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
     const [error, setError] = useState<string | null>(null);
     const [target, setTarget] = useState<'all' | string>('all');
     const { addToast } = useToast();
+    const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null);
 
-    // FIX: Infer the channel type from the supabase client to avoid import issues.
     const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const outputAudioContextRef = useRef<AudioContext | null>(null);
     const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const nextPlayTimeRef = useRef<number>(0);
+    const speakerTimeoutRef = useRef<number | null>(null);
 
     useEffect(() => {
         if (!isOpen || !profile.company_id) {
@@ -95,6 +95,14 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
 
         pttChannel.on('broadcast', { event: 'audio-chunk' }, async ({ payload }) => {
             if (payload.audio && payload.from !== profile.id) {
+                setActiveSpeakerId(payload.from);
+                if (speakerTimeoutRef.current) {
+                    clearTimeout(speakerTimeoutRef.current);
+                }
+                speakerTimeoutRef.current = window.setTimeout(() => {
+                    setActiveSpeakerId(null);
+                }, 500);
+
                 const isForAll = payload.target === 'all';
                 const isForMe = payload.target === profile.id;
                 
@@ -141,6 +149,9 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
             supabase.removeChannel(pttChannel);
             supabase.removeChannel(profileChannel);
             channelRef.current = null;
+            if (speakerTimeoutRef.current) {
+                clearTimeout(speakerTimeoutRef.current);
+            }
         };
     }, [isOpen, profile.company_id, profile.id]);
     
@@ -149,7 +160,15 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 throw new Error("Your browser does not support audio capture.");
             }
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } });
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    sampleRate: 16000,
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                },
+            });
             mediaStreamRef.current = stream;
 
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
@@ -243,15 +262,22 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
                 <div className="flex-grow space-y-2 h-56 overflow-y-auto pr-2">
                     {isLoading ? <p>Loading users...</p> : companyUsers.map(user => {
                         const isSelected = target === user.id;
+                        const isSpeaking = activeSpeakerId === user.id;
                         return (
-                            <div key={user.id} className={`flex items-center justify-between p-2 rounded-md transition-colors ${isSelected ? 'bg-blue-500/20' : 'bg-gray-50 dark:bg-gray-800/50'}`}>
+                            <div key={user.id} className={`flex items-center justify-between p-2 rounded-md transition-all duration-200 ${isSelected ? 'bg-blue-500/20' : 'bg-gray-50 dark:bg-gray-800/50'} ${isSpeaking ? 'ring-2 ring-green-500' : ''}`}>
                                 <div className="flex items-center gap-3">
                                     <img src={user.avatar_url || `https://i.pravatar.cc/40?u=${user.id}`} alt={user.full_name} className="w-8 h-8 rounded-full" />
                                     <span className="font-medium text-sm">{user.full_name}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className={`w-2.5 h-2.5 rounded-full ${isOnline(user.last_seen_at) ? 'bg-green-500' : 'bg-gray-500'}`}></div>
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">{isOnline(user.last_seen_at) ? 'Online' : 'Offline'}</span>
+                                    {isSpeaking ? (
+                                        <span className="px-2 py-0.5 text-xs font-bold text-green-800 dark:text-green-200 bg-green-500/20 rounded-full animate-pulse">TALKING</span>
+                                    ) : (
+                                        <>
+                                            <div className={`w-2.5 h-2.5 rounded-full ${isOnline(user.last_seen_at) ? 'bg-green-500' : 'bg-gray-500'}`}></div>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">{isOnline(user.last_seen_at) ? 'Online' : 'Offline'}</span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         );
