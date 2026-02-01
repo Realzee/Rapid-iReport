@@ -6,6 +6,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import ThemeToggle from './ThemeToggle';
 import NotificationsPanel from './NotificationsPanel';
 import PTTModal from './PTTModal';
+import { format } from 'date-fns';
 
 interface HeaderProps {
     currentView: string;
@@ -21,12 +22,23 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isPTTModalOpen, setIsPTTModalOpen] = useState(false);
   const { mainLogoUrl } = useSettings();
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   
   const unreadCount = useMemo(() => notifications.filter(n => !n.is_read).length, [notifications]);
   const canAccessAdminPages = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+        setCurrentTime(new Date());
+    }, 1000);
+
+    return () => {
+        clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     if (!profile) return;
@@ -173,6 +185,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
             <NavLinks />
           </nav>
           <div className="flex items-center space-x-4">
+            <div className="hidden md:flex items-center text-sm font-mono text-gray-500 dark:text-gray-400">
+                {format(currentTime, 'EEE, MMM d, yyyy h:mm:ss aa')}
+            </div>
             <ThemeToggle />
             {profile.company_id && (
                 <button onClick={() => setIsPTTModalOpen(true)} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300" title="Push-to-Talk">
