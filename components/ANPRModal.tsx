@@ -159,7 +159,13 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
                 if (/^[A-Z0-9]{4,8}$/.test(cleanedText)) return cleanedText;
             }
         } else if (ocrEngine === 'tesseract' && tesseractWorkerRef.current) {
-            const { data: { text } } = await tesseractWorkerRef.current.recognize(canvas);
+            const imageBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (!imageBlob) {
+                console.error("Failed to convert canvas to blob for OCR.");
+                return null;
+            }
+
+            const { data: { text } } = await tesseractWorkerRef.current.recognize(imageBlob);
             const lines = text.split('\n');
             for (const line of lines) {
                 const cleanedText = line.replace(/[^A-Z0-9]/g, '').toUpperCase();
