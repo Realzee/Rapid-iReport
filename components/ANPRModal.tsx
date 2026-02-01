@@ -182,8 +182,14 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         }
 
         recognitionInProgress.current = true;
-
         const video = videoRef.current;
+
+        if (video.videoWidth === 0 || video.videoHeight === 0) {
+            console.warn("Video dimensions not available yet, skipping frame.");
+            recognitionInProgress.current = false;
+            return;
+        }
+
         const canvas = canvasRef.current;
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -232,9 +238,15 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
 
     const handleManualCapture = () => {
         if (!videoRef.current || !canvasRef.current) return;
-        stopAllActivity();
         
         const video = videoRef.current;
+        if (video.videoWidth === 0 || video.videoHeight === 0) {
+            addToast("Camera feed is not ready. Please try again in a moment.", 'warning');
+            return;
+        }
+
+        stopAllActivity();
+        
         const canvas = canvasRef.current;
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
