@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI } from '@google/genai';
 import { XIcon, CameraIcon, CheckCircleIcon, SearchIcon, AlertTriangleIcon, ScanIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { VehicleReport } from '../types';
 import { useToast } from '../contexts/ToastContext';
+
+declare global {
+    interface Window {
+        TextDetector: new () => {
+            detect: (image: ImageBitmapSource) => Promise<{ rawValue: string; boundingBox: DOMRectReadOnly; }[]>;
+        };
+    }
+}
 
 interface ANPRModalProps {
     isOpen: boolean;
@@ -52,6 +59,12 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
 
     const setupCamera = async (): Promise<boolean> => {
         cleanupCamera();
+        if (!('TextDetector' in window)) {
+            const errorMessage = "ANPR scanning is not supported on this browser. Please try Chrome or Edge on a desktop or Android device.";
+            setError(errorMessage);
+            addToast(errorMessage, 'warning');
+            return false;
+        }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             streamRef.current = stream;
@@ -61,8 +74,9 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
             return true;
         } catch (err) {
             console.error("Camera error:", err);
-            setError("Could not access camera. Please check permissions.");
-            addToast("Could not access camera. Please check permissions.", 'error');
+            const errorMessage = "Could not access camera. Please check permissions.";
+            setError(errorMessage);
+            addToast(errorMessage, 'error');
             return false;
         }
     };
@@ -92,17 +106,6 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         }
         return stopAllActivity;
     }, [isOpen]);
-    
-    const handleApiError = (err: any) => {
-        if (err.message && (err.message.includes('API Key must be set') || err.message.includes('Requested entity was not found'))) {
-            document.dispatchEvent(new CustomEvent('apiKeyError'));
-            setError("API Key is missing or invalid. Please select a valid key.");
-            stopAllActivity();
-        } else {
-            console.error("Gemini API error:", err);
-            setError("Failed to analyze image. Please try again.");
-        }
-    };
 
     const scanFrameForPlate = async () => {
         if (recognitionInProgress.current || !videoRef.current || !canvasRef.current || videoRef.current.paused || videoRef.current.ended) {
@@ -121,58 +124,66 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
             return;
         }
         context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-        const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-
+        
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-            const base64Data = imageDataUrl.split(',')[1];
-            const imagePart = { inlineData: { mimeType: 'image/jpeg', data: base64Data } };
-            const textPart = { text: "Analyze this image from a video stream. If a clear, readable license plate is visible, return only the license plate text with no spaces or special characters. Otherwise, return the exact string 'NO_PLATE'." };
-            
-            const response = await ai.models.generateContent({
-// @ts-ignore - FIX: Updated model from 'gemini-pro-vision' to 'gemini-3-flash-preview' for better performance and to align with current best practices.
-                model: 'gemini-3-flash-preview',
-                contents: { parts: [imagePart, textPart] },
-            });
+            const textDetector = new window.TextDetector();
+            const detectedTexts = await textDetector.detect(canvas);
 
-            const plateText = response.text?.trim().toUpperCase();
-
-            // Found a plate!
-            if (plateText && plateText !== 'NO_PLATE' && plateText.length > 3) {
-                stopAllActivity();
-                setCapturedImage(imageDataUrl);
-                setExtractedPlate(plateText);
+            for (const detectedText of detectedTexts) {
+                const cleanedText = detectedText.rawValue.replace(/[\s-]/g, '').toUpperCase();
+                // A simple regex for common license plate formats.
+                if (/^[A-Z0-9]{4,8}$/.test(cleanedText)) {
+                    stopAllActivity();
+                    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    setCapturedImage(imageDataUrl);
+                    setExtractedPlate(cleanedText);
+                    recognitionInProgress.current = false;
+                    return; // Found one, exit.
+                }
             }
         } catch (err: any) {
-            handleApiError(err);
+            console.error("TextDetector error:", err);
+            setError("Error during text detection.");
+            stopAllActivity();
         } finally {
             recognitionInProgress.current = false;
         }
     };
     
-    const processSingleFrame = async (imageDataUrl: string) => {
+    const processSingleFrame = async () => {
+        if (!canvasRef.current) return;
+        
         setIsProcessing(true);
         setError(null);
+        
+        if (!('TextDetector' in window)) {
+            setError("ANPR is not supported on this browser.");
+            setIsProcessing(false);
+            return;
+        }
+    
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-            const base64Data = imageDataUrl.split(',')[1];
-            const imagePart = { inlineData: { mimeType: 'image/jpeg', data: base64Data } };
-            const textPart = { text: "Read the license plate from the vehicle in this image. Respond with only the license plate text, with no spaces or special characters. If no plate is visible or it is unreadable, respond with the exact string 'NO_PLATE'." };
+            const textDetector = new window.TextDetector();
+            const detectedTexts = await textDetector.detect(canvasRef.current);
+            let foundPlate = null;
+    
+            for (const detectedText of detectedTexts) {
+                const cleanedText = detectedText.rawValue.replace(/[\s-]/g, '').toUpperCase();
+                if (/^[A-Z0-9]{4,8}$/.test(cleanedText)) {
+                    foundPlate = cleanedText;
+                    break;
+                }
+            }
             
-            const response = await ai.models.generateContent({
-// @ts-ignore - FIX: Updated model from 'gemini-pro-vision' to 'gemini-3-flash-preview' for better performance and to align with current best practices.
-                model: 'gemini-3-flash-preview',
-                contents: { parts: [imagePart, textPart] },
-            });
-
-            const plateText = response.text?.trim().toUpperCase();
-            if (plateText && plateText !== 'NO_PLATE') {
-                setExtractedPlate(plateText);
+            if (foundPlate) {
+                setExtractedPlate(foundPlate);
             } else {
                 setError('Could not detect a license plate. Please try again.');
             }
+    
         } catch (err: any) {
-            handleApiError(err);
+            console.error("TextDetector error:", err);
+            setError("An error occurred during image analysis.");
         } finally {
             setIsProcessing(false);
         }
@@ -192,7 +203,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         
         setCapturedImage(imageDataUrl);
         cleanupCamera();
-        processSingleFrame(imageDataUrl);
+        processSingleFrame();
     };
 
     const handleSearch = async () => {
