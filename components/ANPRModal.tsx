@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Tesseract from 'tesseract.js';
 import { XIcon, CameraIcon, CheckCircleIcon, SearchIcon, AlertTriangleIcon, ScanIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { VehicleReport } from '../types';
@@ -24,18 +25,20 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
     const streamRef = useRef<MediaStream | null>(null);
     const scanIntervalRef = useRef<number | null>(null);
     const recognitionInProgress = useRef(false);
+    const tesseractWorkerRef = useRef<Tesseract.Worker | null>(null);
 
-    const [isProcessing, setIsProcessing] = useState(false); // For manual capture analysis
-    const [isScanning, setIsScanning] = useState(false); // For automatic scanning state
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
     const [extractedPlate, setExtractedPlate] = useState<string | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [searchResult, setSearchResult] = useState<VehicleReport | 'not_found' | null>(null);
+    const [ocrEngine, setOcrEngine] = useState<'native' | 'tesseract' | 'none'>('none');
+    const [ocrInitializationStatus, setOcrInitializationStatus] = useState<string | null>(null);
 
     const { addToast } = useToast();
     
-    // Stops camera stream
     const cleanupCamera = () => {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
@@ -46,7 +49,13 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         }
     };
     
-    // Stops camera and scanning loop
+    const cleanupOcr = async () => {
+        if (tesseractWorkerRef.current) {
+            await tesseractWorkerRef.current.terminate();
+            tesseractWorkerRef.current = null;
+        }
+    };
+
     const stopAllActivity = () => {
         cleanupCamera();
         if (scanIntervalRef.current) {
@@ -57,14 +66,40 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         recognitionInProgress.current = false;
     };
 
-    const setupCamera = async (): Promise<boolean> => {
-        cleanupCamera();
-        if (!('TextDetector' in window)) {
-            const errorMessage = "ANPR scanning is not supported on this browser. Please try Chrome or Edge on a desktop or Android device.";
+    const initializeOcr = async (): Promise<boolean> => {
+        if ('TextDetector' in window) {
+            setOcrEngine('native');
+            return true;
+        }
+
+        try {
+            setOcrEngine('tesseract');
+            setOcrInitializationStatus('Initializing fallback ANPR engine...');
+            addToast('Using fallback ANPR engine, which may be slower.', 'info');
+            
+            if (!tesseractWorkerRef.current) {
+                const worker = await Tesseract.createWorker('eng');
+                await worker.setParameters({
+                    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+                });
+                tesseractWorkerRef.current = worker;
+            }
+            setOcrInitializationStatus(null);
+            return true;
+        } catch (err) {
+            console.error("Failed to initialize Tesseract.js", err);
+            const errorMessage = "The ANPR fallback engine failed to start. This feature is unavailable.";
             setError(errorMessage);
-            addToast(errorMessage, 'warning');
+            addToast(errorMessage, 'error');
+            setOcrEngine('none');
+            setOcrInitializationStatus(null);
+            await cleanupOcr();
             return false;
         }
+    };
+
+    const setupCamera = async (): Promise<boolean> => {
+        cleanupCamera();
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             streamRef.current = stream;
@@ -81,7 +116,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         }
     };
     
-    const resetStateAndStartScan = () => {
+    const resetStateAndStartScan = async () => {
         stopAllActivity();
         setError(null);
         setCapturedImage(null);
@@ -89,13 +124,17 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         setIsSearching(false);
         setSearchResult(null);
         setIsProcessing(false);
+        setOcrInitializationStatus(null);
         
-        setupCamera().then(success => {
-            if (success) {
-                setIsScanning(true);
-                scanIntervalRef.current = window.setInterval(scanFrameForPlate, 1000); // Scan every second
-            }
-        });
+        const ocrReady = await initializeOcr();
+        if (!ocrReady) return;
+
+        const cameraReady = await setupCamera();
+        if (!cameraReady) return;
+
+        setIsScanning(true);
+        const scanInterval = ocrEngine === 'tesseract' ? 1500 : 1000;
+        scanIntervalRef.current = window.setInterval(scanFrameForPlate, scanInterval);
     };
     
     useEffect(() => {
@@ -103,9 +142,33 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
             resetStateAndStartScan();
         } else {
             stopAllActivity();
+            cleanupOcr();
         }
-        return stopAllActivity;
+        return () => {
+            stopAllActivity();
+            cleanupOcr();
+        };
     }, [isOpen]);
+
+    const recognizePlate = async (canvas: HTMLCanvasElement): Promise<string | null> => {
+        if (ocrEngine === 'native') {
+            const textDetector = new window.TextDetector();
+            const detectedTexts = await textDetector.detect(canvas);
+            for (const detectedText of detectedTexts) {
+                const cleanedText = detectedText.rawValue.replace(/[\s-]/g, '').toUpperCase();
+                if (/^[A-Z0-9]{4,8}$/.test(cleanedText)) return cleanedText;
+            }
+        } else if (ocrEngine === 'tesseract' && tesseractWorkerRef.current) {
+            const { data: { text } } = await tesseractWorkerRef.current.recognize(canvas);
+            const lines = text.split('\n');
+            for (const line of lines) {
+                const cleanedText = line.replace(/[^A-Z0-9]/g, '').toUpperCase();
+                if (/^[A-Z0-9]{5,8}$/.test(cleanedText)) return cleanedText;
+            }
+        }
+        return null;
+    };
+
 
     const scanFrameForPlate = async () => {
         if (recognitionInProgress.current || !videoRef.current || !canvasRef.current || videoRef.current.paused || videoRef.current.ended) {
@@ -126,24 +189,16 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
         
         try {
-            const textDetector = new window.TextDetector();
-            const detectedTexts = await textDetector.detect(canvas);
-
-            for (const detectedText of detectedTexts) {
-                const cleanedText = detectedText.rawValue.replace(/[\s-]/g, '').toUpperCase();
-                // A simple regex for common license plate formats.
-                if (/^[A-Z0-9]{4,8}$/.test(cleanedText)) {
-                    stopAllActivity();
-                    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                    setCapturedImage(imageDataUrl);
-                    setExtractedPlate(cleanedText);
-                    recognitionInProgress.current = false;
-                    return; // Found one, exit.
-                }
+            const foundPlate = await recognizePlate(canvas);
+            if (foundPlate) {
+                stopAllActivity();
+                const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                setCapturedImage(imageDataUrl);
+                setExtractedPlate(foundPlate);
             }
         } catch (err: any) {
-            console.error("TextDetector error:", err);
-            setError("Error during text detection.");
+            console.error("Recognition error:", err);
+            setError("Error during license plate detection.");
             stopAllActivity();
         } finally {
             recognitionInProgress.current = false;
@@ -152,37 +207,17 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
     
     const processSingleFrame = async () => {
         if (!canvasRef.current) return;
-        
         setIsProcessing(true);
         setError(null);
-        
-        if (!('TextDetector' in window)) {
-            setError("ANPR is not supported on this browser.");
-            setIsProcessing(false);
-            return;
-        }
-    
         try {
-            const textDetector = new window.TextDetector();
-            const detectedTexts = await textDetector.detect(canvasRef.current);
-            let foundPlate = null;
-    
-            for (const detectedText of detectedTexts) {
-                const cleanedText = detectedText.rawValue.replace(/[\s-]/g, '').toUpperCase();
-                if (/^[A-Z0-9]{4,8}$/.test(cleanedText)) {
-                    foundPlate = cleanedText;
-                    break;
-                }
-            }
-            
+            const foundPlate = await recognizePlate(canvasRef.current);
             if (foundPlate) {
                 setExtractedPlate(foundPlate);
             } else {
                 setError('Could not detect a license plate. Please try again.');
             }
-    
         } catch (err: any) {
-            console.error("TextDetector error:", err);
+            console.error("Recognition error on single frame:", err);
             setError("An error occurred during image analysis.");
         } finally {
             setIsProcessing(false);
@@ -239,13 +274,19 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
                     {!capturedImage && <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />}
                     <canvas ref={canvasRef} className="hidden"></canvas>
                     {capturedImage && <img src={capturedImage} alt="Captured plate" className="w-full h-full object-contain" />}
-                    {isProcessing && (
+                    {ocrInitializationStatus && (
+                         <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white">
+                            <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <p className="mt-2 text-center px-4">{ocrInitializationStatus}</p>
+                        </div>
+                    )}
+                    {isProcessing && !ocrInitializationStatus && (
                         <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white">
                             <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
                             <p className="mt-2">Analyzing image...</p>
                         </div>
                     )}
-                     {isScanning && (
+                     {isScanning && !ocrInitializationStatus && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div className="w-11/12 h-2/3 border-4 border-dashed border-white/50 rounded-lg animate-pulse flex flex-col items-center justify-center p-4">
                                 <ScanIcon className="w-12 h-12 text-white/70" />
@@ -257,7 +298,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
 
                 {error && <div className="mt-4 text-center text-red-500 bg-red-500/10 p-3 rounded-lg">{error}</div>}
 
-                {!capturedImage && (
+                {!capturedImage && !ocrInitializationStatus && (
                     <button onClick={handleManualCapture} className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
                         <CameraIcon className="w-5 h-5" /> Manual Capture
                     </button>

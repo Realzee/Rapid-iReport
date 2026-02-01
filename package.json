@@ -16,6 +16,7 @@
     "leaflet": "1.9.4",
     "react-leaflet": "4.2.1",
     "@supabase/supabase-js": "2.44.4",
+    "tesseract.js": "5.1.0",
     "chart.js": "4.4.3",
     "react-chartjs-2": "5.2.0",
     "@kurkle/color": "0.3.2"
