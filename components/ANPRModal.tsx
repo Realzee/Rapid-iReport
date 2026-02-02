@@ -31,9 +31,9 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
     const [isScanning, setIsScanning] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
-    const [extractedPlate, setExtractedPlate] = useState<string | null>(null);
-    const [isSearching, setIsSearching] = useState(false);
-    const [searchResult, setSearchResult] = useState<VehicleReport | 'not_found' | null>(null);
+    const [extractedPlates, setExtractedPlates] = useState<string[] | null>(null);
+    const [searchingPlates, setSearchingPlates] = useState<Record<string, boolean>>({});
+    const [searchResults, setSearchResults] = useState<Record<string, VehicleReport | 'not_found' | null>>({});
     const [ocrEngine, setOcrEngine] = useState<'native' | 'tesseract' | 'none'>('none');
     const [ocrInitializationStatus, setOcrInitializationStatus] = useState<string | null>(null);
 
@@ -120,9 +120,9 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         stopAllActivity();
         setError(null);
         setCapturedImage(null);
-        setExtractedPlate(null);
-        setIsSearching(false);
-        setSearchResult(null);
+        setExtractedPlates(null);
+        setSearchingPlates({});
+        setSearchResults({});
         setIsProcessing(false);
         setOcrInitializationStatus(null);
         
@@ -172,13 +172,14 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         ctx.putImageData(imageData, 0, 0);
     };
 
-    const recognizePlate = async (canvas: HTMLCanvasElement): Promise<string | null> => {
+    const recognizePlate = async (canvas: HTMLCanvasElement): Promise<string[] | null> => {
+        const plateSet = new Set<string>();
         if (ocrEngine === 'native') {
             const textDetector = new window.TextDetector();
             const detectedTexts = await textDetector.detect(canvas);
             for (const detectedText of detectedTexts) {
                 const cleanedText = detectedText.rawValue.replace(/[\s-]/g, '').toUpperCase();
-                if (/^[A-Z0-9]{4,8}$/.test(cleanedText)) return cleanedText;
+                if (/^[A-Z0-9]{4,8}$/.test(cleanedText)) plateSet.add(cleanedText);
             }
         } else if (ocrEngine === 'tesseract' && tesseractWorkerRef.current) {
             const imageBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -191,10 +192,10 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
             const lines = text.split('\n');
             for (const line of lines) {
                 const cleanedText = line.replace(/[^A-Z0-9]/g, '').toUpperCase();
-                if (/^[A-Z0-9]{5,8}$/.test(cleanedText)) return cleanedText;
+                if (/^[A-Z0-9]{5,8}$/.test(cleanedText)) plateSet.add(cleanedText);
             }
         }
-        return null;
+        return plateSet.size > 0 ? Array.from(plateSet) : null;
     };
 
 
@@ -222,7 +223,6 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         }
         context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
         
-        // Capture original color image before preprocessing
         const originalImageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
 
         if (ocrEngine === 'tesseract') {
@@ -230,11 +230,11 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         }
 
         try {
-            const foundPlate = await recognizePlate(canvas);
-            if (foundPlate) {
+            const foundPlates = await recognizePlate(canvas);
+            if (foundPlates && foundPlates.length > 0) {
                 stopAllActivity();
                 setCapturedImage(originalImageDataUrl);
-                setExtractedPlate(foundPlate);
+                setExtractedPlates(foundPlates);
             }
         } catch (err: any) {
             console.error("Recognition error:", err);
@@ -250,17 +250,16 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         setIsProcessing(true);
         setError(null);
 
-        // Preprocess for Tesseract before recognition
         if (ocrEngine === 'tesseract') {
             preprocessCanvas(canvasRef.current);
         }
 
         try {
-            const foundPlate = await recognizePlate(canvasRef.current);
-            if (foundPlate) {
-                setExtractedPlate(foundPlate);
+            const foundPlates = await recognizePlate(canvasRef.current);
+            if (foundPlates && foundPlates.length > 0) {
+                setExtractedPlates(foundPlates);
             } else {
-                setError('Could not detect a license plate. Please try again.');
+                setError('Could not detect any license plates. Please try again.');
             }
         } catch (err: any) {
             console.error("Recognition error on single frame:", err);
@@ -287,7 +286,6 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         const context = canvas.getContext('2d');
         context?.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
         
-        // Capture the original color image for display before any preprocessing
         const imageDataUrl = canvas.toDataURL('image/jpeg');
         setCapturedImage(imageDataUrl);
         
@@ -295,23 +293,48 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         processSingleFrame();
     };
 
-    const handleSearch = async () => {
-        if (!extractedPlate) return;
-        setIsSearching(true);
-        setSearchResult(null);
+    const handleSearch = async (plate: string) => {
+        if (!plate) return;
+        setSearchingPlates(prev => ({ ...prev, [plate]: true }));
+        setSearchResults(prev => ({ ...prev, [plate]: null }));
+        
         const { data, error } = await supabase
             .from('vehicle_reports')
             .select('*')
-            .eq('license_plate', extractedPlate)
+            .eq('license_plate', plate)
             .limit(1)
             .single();
 
         if (error || !data) {
-            setSearchResult('not_found');
+            setSearchResults(prev => ({ ...prev, [plate]: 'not_found' }));
         } else {
-            setSearchResult(data as VehicleReport);
+            setSearchResults(prev => ({ ...prev, [plate]: data as VehicleReport }));
         }
-        setIsSearching(false);
+        setSearchingPlates(prev => ({ ...prev, [plate]: false }));
+    };
+    
+    const handlePlateEdit = (index: number, newValue: string) => {
+        setExtractedPlates(currentPlates => {
+            if (!currentPlates) return null;
+            const newPlates = [...currentPlates];
+            const oldPlate = newPlates[index];
+            const updatedPlate = newValue.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            newPlates[index] = updatedPlate;
+
+            if (oldPlate !== updatedPlate) {
+                setSearchResults(prevResults => {
+                    const newResults = { ...prevResults };
+                    if (newResults[oldPlate]) delete newResults[oldPlate];
+                    return newResults;
+                });
+                setSearchingPlates(prevSearching => {
+                    const newSearching = { ...prevSearching };
+                    if (newSearching[oldPlate]) delete newSearching[oldPlate];
+                    return newSearching;
+                });
+            }
+            return newPlates;
+        });
     };
 
     if (!isOpen) return null;
@@ -360,57 +383,63 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
 
                 {capturedImage && (
                     <div className="mt-4 space-y-4">
-                        {extractedPlate !== null && (
-                            <div className="text-center">
-                                <label htmlFor="detected-plate" className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1">
-                                    Detected Plate <span className="font-semibold">(Editable)</span>
-                                    <EditIcon className="w-4 h-4 text-gray-400"/>
-                                </label>
-                                <input
-                                    id="detected-plate"
-                                    type="text"
-                                    value={extractedPlate}
-                                    onChange={(e) => setExtractedPlate(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                                    className="mt-1 w-full max-w-xs mx-auto text-center font-mono text-3xl font-bold tracking-widest bg-yellow-300 text-black py-2 px-4 rounded-md border-2 border-transparent focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-yellow-200 transition"
-                                    aria-label="Detected license plate, you can edit this value"
-                                />
-                            </div>
-                        )}
-                        
-                        {searchResult && (
-                            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-                                {searchResult === 'not_found' ? (
-                                    <div className="flex items-center gap-3 text-yellow-600 dark:text-yellow-400">
-                                        <AlertTriangleIcon className="w-6 h-6" />
-                                        <p className="font-semibold">No active report found for this plate.</p>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
-                                            <CheckCircleIcon className="w-6 h-6" />
-                                            <p className="font-semibold">Matching report found!</p>
+                        {extractedPlates && extractedPlates.length > 0 ? (
+                            <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                                <p className="text-sm text-center text-gray-500 dark:text-gray-400">
+                                    Detected {extractedPlates.length} potential plate{extractedPlates.length > 1 ? 's' : ''}. Edit if necessary and search.
+                                </p>
+                                {extractedPlates.map((plate, index) => {
+                                    const result = searchResults[plate];
+                                    const isSearching = searchingPlates[plate];
+                                    return (
+                                    <div key={index} className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="relative flex-grow">
+                                                <input
+                                                    type="text"
+                                                    value={plate}
+                                                    onChange={(e) => handlePlateEdit(index, e.target.value)}
+                                                    className="w-full font-mono text-xl font-bold tracking-widest bg-yellow-300 text-black py-1 px-2 rounded-md border-2 border-transparent focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-yellow-200 transition"
+                                                    aria-label={`Detected license plate ${index + 1}, editable`}
+                                                />
+                                                <EditIcon className="w-4 h-4 text-gray-500 absolute top-1/2 right-2 -translate-y-1/2 pointer-events-none"/>
+                                            </div>
+                                            <button onClick={() => handleSearch(plate)} disabled={isSearching} className="py-2 px-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-50 w-28">
+                                                {isSearching ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><SearchIcon className="w-5 h-5"/><span>Search</span></>}
+                                            </button>
                                         </div>
-                                        <p><strong>Status:</strong> <span className="capitalize">{searchResult.status.replace(/_/g, ' ')}</span></p>
-                                        <p><strong>Vehicle:</strong> {searchResult.vehicle_make} {searchResult.vehicle_model}</p>
-                                        <button onClick={() => onReportFound(searchResult)} className="w-full mt-2 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition">
-                                            View Report
-                                        </button>
+                                        {result && (
+                                            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                                                 {result === 'not_found' ? (
+                                                    <div className="flex items-center gap-2 text-sm text-yellow-600 dark:text-yellow-400">
+                                                        <AlertTriangleIcon className="w-5 h-5" />
+                                                        <p className="font-semibold">No active report found.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 mb-1">
+                                                            <CheckCircleIcon className="w-5 h-5" />
+                                                            <p className="font-semibold">Matching report found!</p>
+                                                        </div>
+                                                        <button onClick={() => onReportFound(result)} className="w-full text-sm text-left px-2 py-1 bg-green-500/10 rounded-md hover:bg-green-500/20 transition">
+                                                            <strong>Status:</strong> <span className="capitalize">{result.status.replace(/_/g, ' ')}</span>
+                                                            <br/>
+                                                            <strong>Vehicle:</strong> {result.vehicle_make} {result.vehicle_model}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+                                )})}
                             </div>
+                        ) : (
+                             extractedPlates !== null && <p className="text-center text-gray-500 dark:text-gray-400">No plates were detected in the image.</p>
                         )}
 
-                        <div className="flex gap-2">
-                             <button onClick={resetStateAndStartScan} className="flex-1 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
-                                Scan Again
-                            </button>
-                            {extractedPlate && !searchResult && (
-                                <button onClick={handleSearch} disabled={isSearching} className="flex-1 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-50">
-                                    {isSearching ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <SearchIcon className="w-5 h-5"/>}
-                                    {isSearching ? 'Searching...' : 'Search for Plate'}
-                                </button>
-                            )}
-                        </div>
+                        <button onClick={resetStateAndStartScan} className="w-full py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                            Scan Again
+                        </button>
                     </div>
                 )}
             </div>
