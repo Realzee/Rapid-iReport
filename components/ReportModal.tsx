@@ -17,6 +17,7 @@ interface ReportModalProps {
     isOpen: boolean;
     onClose: () => void;
     reportToEdit: Report | null;
+    isQuickAdd?: boolean;
 }
 
 type ReportType = 'vehicle' | 'crime';
@@ -193,7 +194,7 @@ const LocationPicker: React.FC<{
 };
 // --- End Location Picker Component ---
 
-const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit }) => {
+const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit, isQuickAdd = false }) => {
     const [reportType, setReportType] = useState<ReportType>('vehicle');
     const [formData, setFormData] = useState<any>({});
     const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -217,13 +218,13 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 setImagePreviews(reportToEdit.evidence_images || []);
                 setImageFiles([]);
             } else {
-                setReportType('vehicle');
-                setFormData({ severity: Severity.MEDIUM });
+                setReportType(isQuickAdd ? 'vehicle' : 'vehicle');
+                setFormData({ severity: Severity.HIGH }); // Default to HIGH for quick adds
                 setImagePreviews([]);
                 setImageFiles([]);
             }
         }
-    }, [isOpen, reportToEdit]);
+    }, [isOpen, reportToEdit, isQuickAdd]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -365,7 +366,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     ...reportData,
                     id: reportId,
                     ob_number: ob_number,
-                    status: ReportStatus.PENDING,
+                    status: ReportStatus.ACTIVE, // Quick adds go straight to active
                     reported_by: user.id,
                     reported_at: now.toISOString(),
                 };
@@ -399,10 +400,10 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     <XIcon className="w-6 h-6" />
                 </button>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                    {reportToEdit ? 'Edit Report' : 'File a New Report'}
+                    {isQuickAdd ? 'Quick Add to Blacklist' : (reportToEdit ? 'Edit Report' : 'File a New Report')}
                 </h3>
                 
-                {!reportToEdit && (
+                {(!reportToEdit && !isQuickAdd) && (
                     <div className="mb-6">
                         <div className="flex bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
                             <button onClick={() => setReportType('vehicle')} className={`w-1/2 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'vehicle' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-5 h-5" /> Vehicle</button>

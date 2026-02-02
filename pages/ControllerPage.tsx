@@ -7,6 +7,7 @@ import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
 import { ZapIcon, UsersIcon, PlusIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
+import BlacklistManager from '../components/BlacklistManager';
 
 interface ControllerPageProps {
     profile: Profile;
@@ -24,6 +25,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<ControllerTab>('events');
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
 
     const isInitialLoad = useRef(true);
@@ -219,6 +221,10 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         setReportToEdit(null);
         setIsReportModalOpen(true);
     };
+    
+    const handleOpenQuickAddModal = () => {
+        setIsQuickAddModalOpen(true);
+    };
 
     const selectedReport = useMemo(() => {
         return reports.find(r => r.id === selectedReportId);
@@ -293,7 +299,11 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 allUsers={allUsers}
                             />
                         </div>
-                        <div className="lg:col-span-4 h-[calc(100vh-12rem)] overflow-y-auto space-y-4">
+                        <div className="lg:col-span-4 space-y-4">
+                            <BlacklistManager 
+                                onSelectReport={setSelectedReportId}
+                                onQuickAdd={handleOpenQuickAddModal}
+                            />
                             {selectedReport ? (
                                 <ControllerReportDetail
                                     key={selectedReport.id}
@@ -303,8 +313,8 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                     allUsers={allUsers}
                                 />
                             ) : (
-                                <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden min-h-[60vh]">
-                                    <p className="text-gray-500 dark:text-gray-400">No reports available or selected.</p>
+                                <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden min-h-[40vh]">
+                                    <p className="text-gray-500 dark:text-gray-400">Select an incident to view details.</p>
                                 </div>
                             )}
                         </div>
@@ -315,6 +325,12 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 isOpen={isReportModalOpen}
                 onClose={() => setIsReportModalOpen(false)}
                 reportToEdit={reportToEdit}
+            />
+             <ReportModal
+                isOpen={isQuickAddModalOpen}
+                onClose={() => setIsQuickAddModalOpen(false)}
+                reportToEdit={null}
+                isQuickAdd={true}
             />
         </>
     );

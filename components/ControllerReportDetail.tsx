@@ -403,7 +403,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
     return (
         <>
-            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl flex flex-col text-gray-900 dark:text-white backdrop-blur-lg shadow-lg print:hidden h-full">
+            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl flex flex-col text-gray-900 dark:text-white backdrop-blur-lg shadow-lg print:hidden">
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700/50 flex-shrink-0 flex justify-between items-center">
                     <div>
                         <h3 className="text-lg font-bold">Report Details: {report.ob_number}</h3>
@@ -413,7 +413,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     </div>
                 </div>
 
-                <div className="flex-grow p-4 space-y-6 overflow-y-auto">
+                <div className="flex-grow p-4 space-y-6">
                      <div className="grid grid-cols-2 gap-4">
                         <DetailField label="Severity"><p className="font-semibold text-md capitalize">{report.severity}</p></DetailField>
                         <DetailField label="Status"><span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">{report.status.replace(/_/g, ' ')}</span></DetailField>

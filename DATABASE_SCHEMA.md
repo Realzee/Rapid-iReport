@@ -614,7 +614,7 @@ AS $$
 BEGIN
   IF OLD.assigned_to IS DISTINCT FROM NEW.assigned_to THEN
     INSERT INTO public.assignment_logs (report_id, assigned_from, assigned_to, assigned_by)
-    VALUES (NEW.id, OLD.assigned_to, (select auth.uid()));
+    VALUES (NEW.id, OLD.assigned_to, NEW.assigned_to, (select auth.uid()));
   END IF;
   RETURN NEW;
 END;
@@ -723,13 +723,17 @@ DROP POLICY IF EXISTS "Allow staff to delete reports" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.vehicle_reports;
 
 CREATE POLICY "Allow view access to relevant users" ON public.vehicle_reports FOR SELECT USING (
-  ((select public.get_user_role((select auth.uid()))) = 'admin') OR
-  (reported_by = (select auth.uid())) OR
+  (get_user_role(auth.uid()) = 'admin') OR
+  (reported_by = auth.uid()) OR
   (
-    ((select public.get_my_company_id()) IS NOT NULL) AND
-    (
-      (select public.get_user_company_id(reported_by)) = (select public.get_my_company_id()) OR
-      (select public.get_user_company_id(assigned_to)) = (select public.get_my_company_id())
+    (get_user_role(auth.uid()) IN ('responder', 'controller', 'moderator')) AND (
+      status IN ('pending', 'active', 'assigned', 'in_progress', 'on_scene') OR
+      (
+        (get_my_company_id() IS NOT NULL) AND (
+          get_user_company_id(reported_by) = get_my_company_id() OR
+          get_user_company_id(assigned_to) = get_my_company_id()
+        )
+      )
     )
   )
 );
@@ -759,13 +763,17 @@ DROP POLICY IF EXISTS "Allow staff to delete reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.crime_reports;
 
 CREATE POLICY "Allow view access to relevant users" ON public.crime_reports FOR SELECT USING (
-  ((select public.get_user_role((select auth.uid()))) = 'admin') OR
-  (reported_by = (select auth.uid())) OR
+  (get_user_role(auth.uid()) = 'admin') OR
+  (reported_by = auth.uid()) OR
   (
-    ((select public.get_my_company_id()) IS NOT NULL) AND
-    (
-      (select public.get_user_company_id(reported_by)) = (select public.get_my_company_id()) OR
-      (select public.get_user_company_id(assigned_to)) = (select public.get_my_company_id())
+    (get_user_role(auth.uid()) IN ('responder', 'controller', 'moderator')) AND (
+      status IN ('pending', 'active', 'assigned', 'in_progress', 'on_scene') OR
+      (
+        (get_my_company_id() IS NOT NULL) AND (
+          get_user_company_id(reported_by) = get_my_company_id() OR
+          get_user_company_id(assigned_to) = get_my_company_id()
+        )
+      )
     )
   )
 );

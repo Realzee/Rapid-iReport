@@ -209,8 +209,9 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
         }
     };
     
-    const sortedHits = useMemo(() => Array.from(plateHits.values()).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()), [plateHits]);
-    // FIX: Add explicit types to the sort callback parameters to resolve TypeScript inference issue.
+    // FIX: Add explicit types to sort callback parameters to prevent type inference errors.
+    const sortedHits = useMemo(() => Array.from(plateHits.values()).sort((a: { timestamp: Date }, b: { timestamp: Date }) => b.timestamp.getTime() - a.timestamp.getTime()), [plateHits]);
+    // FIX: Add explicit types to the sort callback parameters to resolve TypeScript inference issue. Also corrected a typo in the dependency array.
     const sortedScans = useMemo(() => Array.from(scannedPlates.entries()).sort((a: [string, { timestamp: Date }], b: [string, { timestamp: Date }]) => b[1].timestamp.getTime() - a[1].timestamp.getTime()), [scannedPlates]);
 
     return (
