@@ -5,14 +5,6 @@ import { supabase } from '../utils/supabase';
 import { VehicleReport } from '../types';
 import { useToast } from '../contexts/ToastContext';
 
-declare global {
-    interface Window {
-        TextDetector: new () => {
-            detect: (image: ImageBitmapSource) => Promise<{ rawValue: string; boundingBox: DOMRectReadOnly; }[]>;
-        };
-    }
-}
-
 interface ANPRModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -34,7 +26,6 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
     const [extractedPlates, setExtractedPlates] = useState<string[] | null>(null);
     const [searchingPlates, setSearchingPlates] = useState<Record<string, boolean>>({});
     const [searchResults, setSearchResults] = useState<Record<string, VehicleReport | 'not_found' | null>>({});
-    const [ocrEngine, setOcrEngine] = useState<'native' | 'tesseract' | 'none'>('none');
     const [ocrInitializationStatus, setOcrInitializationStatus] = useState<string | null>(null);
 
     const { addToast } = useToast();
@@ -67,15 +58,8 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
     };
 
     const initializeOcr = async (): Promise<boolean> => {
-        if ('TextDetector' in window) {
-            setOcrEngine('native');
-            return true;
-        }
-
         try {
-            setOcrEngine('tesseract');
-            setOcrInitializationStatus('Initializing fallback ANPR engine...');
-            addToast('Using fallback ANPR engine, which may be slower.', 'info');
+            setOcrInitializationStatus('Initializing ANPR engine...');
             
             if (!tesseractWorkerRef.current) {
                 const worker = await Tesseract.createWorker('eng');
@@ -88,10 +72,9 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
             return true;
         } catch (err) {
             console.error("Failed to initialize Tesseract.js", err);
-            const errorMessage = "The ANPR fallback engine failed to start. This feature is unavailable.";
+            const errorMessage = "The ANPR engine failed to start. This feature is unavailable.";
             setError(errorMessage);
             addToast(errorMessage, 'error');
-            setOcrEngine('none');
             setOcrInitializationStatus(null);
             await cleanupOcr();
             return false;
@@ -133,7 +116,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         if (!cameraReady) return;
 
         setIsScanning(true);
-        const scanInterval = ocrEngine === 'tesseract' ? 1500 : 1000;
+        const scanInterval = 1500;
         scanIntervalRef.current = window.setInterval(scanFrameForPlate, scanInterval);
     };
     
@@ -174,14 +157,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
 
     const recognizePlate = async (canvas: HTMLCanvasElement): Promise<string[] | null> => {
         const plateSet = new Set<string>();
-        if (ocrEngine === 'native') {
-            const textDetector = new window.TextDetector();
-            const detectedTexts = await textDetector.detect(canvas);
-            for (const detectedText of detectedTexts) {
-                const cleanedText = detectedText.rawValue.replace(/[\s-]/g, '').toUpperCase();
-                if (/^[A-Z0-9]{4,8}$/.test(cleanedText)) plateSet.add(cleanedText);
-            }
-        } else if (ocrEngine === 'tesseract' && tesseractWorkerRef.current) {
+        if (tesseractWorkerRef.current) {
             const imageBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
             if (!imageBlob) {
                 console.error("Failed to convert canvas to blob for OCR.");
@@ -225,9 +201,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         
         const originalImageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
 
-        if (ocrEngine === 'tesseract') {
-            preprocessCanvas(canvas);
-        }
+        preprocessCanvas(canvas);
 
         try {
             const foundPlates = await recognizePlate(canvas);
@@ -250,9 +224,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         setIsProcessing(true);
         setError(null);
 
-        if (ocrEngine === 'tesseract') {
-            preprocessCanvas(canvasRef.current);
-        }
+        preprocessCanvas(canvasRef.current);
 
         try {
             const foundPlates = await recognizePlate(canvasRef.current);
