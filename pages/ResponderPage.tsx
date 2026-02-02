@@ -8,7 +8,7 @@ import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import IncidentChat from '../components/IncidentChat';
 import ResponderMapView from '../components/ResponderMapView';
-import ANPRModal from '../components/ANPRModal';
+import ANPRScanner from '../components/ANPRScanner';
 import UserReportDetail from '../components/UserReportDetail';
 
 interface ResponderPageProps {
@@ -43,11 +43,11 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     const [isSharingLocation, setIsSharingLocation] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [lastSyncTimestamp, setLastSyncTimestamp] = useState<Date | null>(null);
-    const [isAnprModalOpen, setIsAnprModalOpen] = useState(false);
     const [anprFoundReport, setAnprFoundReport] = useState<VehicleReport | null>(null);
 
     const isInitialLoad = useRef(true);
     const audioContextRef = useRef<AudioContext | null>(null);
+    const { addToast } = useToast();
 
     const isOnDuty = profile.responder_status !== ResponderStatus.OFF_DUTY;
 
@@ -253,6 +253,22 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     
     const selectedReport = useMemo(() => assignedReports.find(r => r.id === selectedReportId), [assignedReports, selectedReportId]);
 
+    const handleAnprHit = async (reportId: string) => {
+        const { data, error } = await supabase
+            .from('vehicle_reports')
+            .select('*')
+            .eq('id', reportId)
+            .single();
+
+        if (data) {
+            setAnprFoundReport(data as VehicleReport);
+        } else {
+            addToast('Could not fetch details for the flagged vehicle.', 'error');
+            console.error(error);
+        }
+    };
+
+
     return (
         <>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -275,7 +291,6 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                         </p>
                     )}
                     {isOnDuty && (
-                        <>
                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -315,18 +330,13 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                                 </div>
                             </div>
                         </div>
-                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
-                            <button onClick={() => setIsAnprModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold">
-                                <ScanIcon className="w-5 h-5"/>
-                                <span>ANPR Scan</span>
-                            </button>
-                        </div>
-                        </>
                     )}
                 </div>
 
                 {locationError && <div className="bg-red-500/10 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-r-lg" role="alert"><p className="font-bold">System Error</p><p>{locationError}</p></div>}
                 
+                {isOnDuty && <ANPRScanner onReportHit={handleAnprHit} />}
+
                 <div className="space-y-3 lg:h-[calc(100vh-22rem)] lg:overflow-y-auto">
                     <h2 className="text-xl font-bold px-1">Assigned Incidents ({assignedReports.length})</h2>
                      {loading ? <div className="flex justify-center items-center h-64"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
@@ -357,15 +367,6 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                 </div>
             </div>
         </div>
-
-        <ANPRModal
-            isOpen={isAnprModalOpen}
-            onClose={() => setIsAnprModalOpen(false)}
-            onReportFound={(report) => {
-                setIsAnprModalOpen(false);
-                setAnprFoundReport(report);
-            }}
-        />
 
         {anprFoundReport && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setAnprFoundReport(null)}>
