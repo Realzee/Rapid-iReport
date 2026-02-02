@@ -346,7 +346,6 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             </div>`;
 
         const svgString = `<svg width="400" height="600" xmlns="http://www.w3.org/2000/svg"><foreignObject width="400" height="600">${boloHtml.replace(/#/g, '%23')}</foreignObject></svg>`;
-        // FIX: Replaced deprecated `unescape` function. Direct `btoa` is sufficient for SVG strings without special multi-byte characters.
         const svgDataUrl = `data:image/svg+xml;base64,${btoa(svgString)}`;
 
         const image = new Image();
@@ -414,7 +413,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     </div>
                 </div>
 
-                <div className="flex-grow p-4 space-y-6">
+                <div className="flex-grow p-4 space-y-6 overflow-y-auto">
                      <div className="grid grid-cols-2 gap-4">
                         <DetailField label="Severity"><p className="font-semibold text-md capitalize">{report.severity}</p></DetailField>
                         <DetailField label="Status"><span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">{report.status.replace(/_/g, ' ')}</span></DetailField>
