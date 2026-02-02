@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Tesseract from 'tesseract.js';
-import { XIcon, CameraIcon, CheckCircleIcon, SearchIcon, AlertTriangleIcon, ScanIcon } from './icons';
+import { XIcon, CameraIcon, CheckCircleIcon, SearchIcon, AlertTriangleIcon, ScanIcon, EditIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { VehicleReport } from '../types';
 import { useToast } from '../contexts/ToastContext';
@@ -150,6 +150,28 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         };
     }, [isOpen]);
 
+    const preprocessCanvas = (canvas: HTMLCanvasElement) => {
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+    
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+    
+        // Grayscale and contrast adjustment for better OCR
+        for (let i = 0; i < data.length; i += 4) {
+            const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+            
+            const contrast = 2.0; // Increased contrast factor
+            const contrastedValue = 128 + contrast * (gray - 128);
+            const finalValue = Math.max(0, Math.min(255, contrastedValue));
+    
+            data[i] = finalValue;     // red
+            data[i + 1] = finalValue; // green
+            data[i + 2] = finalValue; // blue
+        }
+        ctx.putImageData(imageData, 0, 0);
+    };
+
     const recognizePlate = async (canvas: HTMLCanvasElement): Promise<string | null> => {
         if (ocrEngine === 'native') {
             const textDetector = new window.TextDetector();
@@ -200,12 +222,18 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         }
         context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
         
+        // Capture original color image before preprocessing
+        const originalImageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+        if (ocrEngine === 'tesseract') {
+            preprocessCanvas(canvas);
+        }
+
         try {
             const foundPlate = await recognizePlate(canvas);
             if (foundPlate) {
                 stopAllActivity();
-                const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                setCapturedImage(imageDataUrl);
+                setCapturedImage(originalImageDataUrl);
                 setExtractedPlate(foundPlate);
             }
         } catch (err: any) {
@@ -221,6 +249,12 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         if (!canvasRef.current) return;
         setIsProcessing(true);
         setError(null);
+
+        // Preprocess for Tesseract before recognition
+        if (ocrEngine === 'tesseract') {
+            preprocessCanvas(canvasRef.current);
+        }
+
         try {
             const foundPlate = await recognizePlate(canvasRef.current);
             if (foundPlate) {
@@ -252,9 +286,11 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
         canvas.height = video.videoHeight;
         const context = canvas.getContext('2d');
         context?.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-        const imageDataUrl = canvas.toDataURL('image/jpeg');
         
+        // Capture the original color image for display before any preprocessing
+        const imageDataUrl = canvas.toDataURL('image/jpeg');
         setCapturedImage(imageDataUrl);
+        
         cleanupCamera();
         processSingleFrame();
     };
@@ -324,10 +360,20 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
 
                 {capturedImage && (
                     <div className="mt-4 space-y-4">
-                        {extractedPlate && (
-                             <div className="text-center">
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Detected Plate:</p>
-                                <p className="font-mono text-3xl font-bold tracking-widest bg-yellow-300 text-black py-2 px-4 rounded-md inline-block">{extractedPlate}</p>
+                        {extractedPlate !== null && (
+                            <div className="text-center">
+                                <label htmlFor="detected-plate" className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1">
+                                    Detected Plate <span className="font-semibold">(Editable)</span>
+                                    <EditIcon className="w-4 h-4 text-gray-400"/>
+                                </label>
+                                <input
+                                    id="detected-plate"
+                                    type="text"
+                                    value={extractedPlate}
+                                    onChange={(e) => setExtractedPlate(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                                    className="mt-1 w-full max-w-xs mx-auto text-center font-mono text-3xl font-bold tracking-widest bg-yellow-300 text-black py-2 px-4 rounded-md border-2 border-transparent focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-yellow-200 transition"
+                                    aria-label="Detected license plate, you can edit this value"
+                                />
                             </div>
                         )}
                         
