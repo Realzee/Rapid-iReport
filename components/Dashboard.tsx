@@ -8,7 +8,7 @@ import ArchiveReportModal from './ArchiveReportModal';
 import ReportDetailCard from './ReportDetailCard';
 import MapModal from './MapModal';
 import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon } from './icons';
-import { supabase } from './utils/supabase';
+import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
 
 interface DashboardProps {
