@@ -347,7 +347,10 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 }
                 
                 const companyId = profileData?.company_id;
-                const initial = profileData?.company?.name ? profileData.company.name.charAt(0).toUpperCase() : 'P';
+                // FIX: The Supabase client can infer a joined table as an array. Handle this case.
+                const company = profileData?.company;
+                const companyName = Array.isArray(company) ? company[0]?.name : company?.name;
+                const initial = companyName ? companyName.charAt(0).toUpperCase() : 'P';
                 
                 const now = new Date();
                 const { data: sequence, error: rpcError } = await supabase.rpc('get_next_ob_sequence', {

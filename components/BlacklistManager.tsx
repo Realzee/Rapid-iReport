@@ -43,7 +43,8 @@ const SoughtListManager: React.FC<SoughtListManagerProps> = ({ onSelectReport, o
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, (payload) => {
                  setSoughtListReports(currentList => {
                     const newReport = payload.new as VehicleReport;
-                    const oldId = payload.old?.id;
+                    // FIX: Cast payload.old to inform TypeScript that it may contain an 'id' property.
+                    const oldId = (payload.old as Partial<VehicleReport>)?.id;
                     const isNowActive = newReport && activeStatuses.includes(newReport.status);
 
                     if (payload.eventType === 'INSERT' && isNowActive) {
