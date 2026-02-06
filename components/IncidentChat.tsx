@@ -22,6 +22,7 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
     const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
     const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
     const { addToast } = useToast();
+    const audioContextRef = useRef<AudioContext | null>(null);
 
     const canClearChat = useMemo(() => {
         return [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(currentUserProfile.role);
@@ -33,6 +34,42 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
         if (!noInternalScroll) {
             messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
         }
+    };
+
+    useEffect(() => {
+        // Initialize AudioContext on mount. It might be 'suspended' and will be resumed on first sound play.
+        if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+
+        return () => {
+            if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+                audioContextRef.current.close();
+            }
+        };
+    }, []);
+
+    const playNotificationSound = () => {
+        const context = audioContextRef.current;
+        if (!context) return;
+
+        if (context.state === 'suspended') {
+            context.resume();
+        }
+
+        const oscillator = context.createOscillator();
+        const gainNode = context.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(1200, context.currentTime); // High-pitched "blip"
+        gainNode.gain.setValueAtTime(0.1, context.currentTime); // Low volume
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.1);
+
+        oscillator.start(context.currentTime);
+        oscillator.stop(context.currentTime + 0.1);
     };
 
     useEffect(() => {
@@ -61,6 +98,11 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
 
             const handleMessageChange = (payload: any) => {
                 if (payload.eventType === 'INSERT') {
+                    // Play sound if the message is from another user.
+                    if (payload.new.user_id !== currentUserProfile.id) {
+                        playNotificationSound();
+                    }
+
                     setMessages(prev => {
                         if (prev.some(msg => msg.id === payload.new.id)) return prev;
                         const userProfile = userMap.get(payload.new.user_id);
@@ -98,7 +140,7 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
                 channelRef.current = null;
             }
         };
-    }, [reportId, disabled, userMap]);
+    }, [reportId, disabled, userMap, currentUserProfile.id]);
 
     useEffect(() => {
         scrollToBottom();
