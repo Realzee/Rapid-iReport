@@ -739,17 +739,9 @@ CREATE POLICY "Allow view access to relevant users" ON public.vehicle_reports FO
 );
 CREATE POLICY "Allow users to create reports" ON public.vehicle_reports FOR INSERT WITH CHECK ((select auth.role()) = 'authenticated');
 CREATE POLICY "Allow authorized users to update reports" ON public.vehicle_reports FOR UPDATE USING (
-  ((select public.get_user_role((select auth.uid()))) = 'admin') OR
+  ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) OR
   (reported_by = (select auth.uid()) AND status::text = 'pending') OR
-  ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid())) OR
-  (
-    ((select public.get_user_role((select auth.uid()))) IN ('moderator', 'controller')) AND
-    ((select public.get_my_company_id()) IS NOT NULL) AND
-    (
-      (select public.get_user_company_id(reported_by)) = (select public.get_my_company_id()) OR
-      (select public.get_user_company_id(assigned_to)) = (select public.get_my_company_id())
-    )
-  )
+  ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid()))
 );
 CREATE POLICY "Allow staff to delete reports" ON public.vehicle_reports FOR DELETE USING ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller'));
 CREATE POLICY "Allow public read access to recent, active reports" ON public.vehicle_reports FOR SELECT TO anon USING ( status::text IN ('active', 'resolved', 'recovered', 'on_scene') AND reported_at > (now() - interval '72 hours') );
@@ -779,17 +771,9 @@ CREATE POLICY "Allow view access to relevant users" ON public.crime_reports FOR 
 );
 CREATE POLICY "Allow users to create reports" ON public.crime_reports FOR INSERT WITH CHECK ((select auth.role()) = 'authenticated');
 CREATE POLICY "Allow authorized users to update reports" ON public.crime_reports FOR UPDATE USING (
-  ((select public.get_user_role((select auth.uid()))) = 'admin') OR
+  ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) OR
   (reported_by = (select auth.uid()) AND status::text = 'pending') OR
-  ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid())) OR
-  (
-    ((select public.get_user_role((select auth.uid()))) IN ('moderator', 'controller')) AND
-    ((select public.get_my_company_id()) IS NOT NULL) AND
-    (
-      (select public.get_user_company_id(reported_by)) = (select public.get_my_company_id()) OR
-      (select public.get_user_company_id(assigned_to)) = (select public.get_my_company_id())
-    )
-  )
+  ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid()))
 );
 CREATE POLICY "Allow staff to delete reports" ON public.crime_reports FOR DELETE USING ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller'));
 CREATE POLICY "Allow public read access to recent, active reports" ON public.crime_reports FOR SELECT TO anon USING ( status::text IN ('active', 'resolved', 'closed', 'on_scene') AND reported_at > (now() - interval '72 hours') );
