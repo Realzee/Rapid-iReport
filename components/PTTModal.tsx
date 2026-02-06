@@ -122,9 +122,18 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
                     source.connect(audioContext.destination);
 
                     const now = audioContext.currentTime;
-                    const startTime = nextPlayTimeRef.current > now ? nextPlayTimeRef.current : now;
+                    const bufferDuration = buffer.duration;
+                    const MAX_QUEUE_AHEAD_TIME = 0.5; // 500ms latency tolerance
+
+                    // If playback schedule is too far ahead, reset it to prevent runaway latency.
+                    if (nextPlayTimeRef.current > now + MAX_QUEUE_AHEAD_TIME) {
+                        console.warn(`PTT audio queue is ${(nextPlayTimeRef.current - now).toFixed(2)}s ahead. Resetting playback time to catch up.`);
+                        nextPlayTimeRef.current = now;
+                    }
+
+                    const startTime = Math.max(now, nextPlayTimeRef.current);
                     source.start(startTime);
-                    nextPlayTimeRef.current = startTime + buffer.duration;
+                    nextPlayTimeRef.current = startTime + bufferDuration;
                 }
             }
         });
@@ -175,12 +184,9 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
             inputAudioContextRef.current = audioContext;
 
             const source = audioContext.createMediaStreamSource(stream);
-            // Using a smaller buffer size (1024) reduces latency from ~128ms to ~64ms.
             const scriptProcessor = audioContext.createScriptProcessor(1024, 1, 1);
             scriptProcessorRef.current = scriptProcessor;
             
-            // A muted GainNode is necessary to keep the script processor running
-            // without playing the microphone input back to the user's speakers, which causes an echo.
             const gainNode = audioContext.createGain();
             gainNode.gain.setValueAtTime(0, audioContext.currentTime);
 
@@ -208,6 +214,7 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
     };
     
     const stopTransmitting = () => {
+        if (!isTransmitting) return; // Prevent multiple stop calls
         setIsTransmitting(false);
         if (mediaStreamRef.current) {
             mediaStreamRef.current.getTracks().forEach(track => track.stop());
@@ -288,8 +295,10 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
                     <button
                         onMouseDown={startTransmitting}
                         onMouseUp={stopTransmitting}
+                        onMouseLeave={stopTransmitting}
                         onTouchStart={startTransmitting}
                         onTouchEnd={stopTransmitting}
+                        onTouchCancel={stopTransmitting}
                         className={`w-24 h-24 rounded-full border-4 transition-all duration-200 flex items-center justify-center mx-auto focus:outline-none ${
                             isTransmitting 
                             ? 'bg-red-500 border-red-300 text-white animate-pulse' 
