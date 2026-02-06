@@ -5,13 +5,13 @@ import { useToast } from '../contexts/ToastContext';
 import { CarIcon, PlusIcon, SearchIcon, AlertTriangleIcon } from './icons';
 import ConfirmModal from './ConfirmModal';
 
-interface BlacklistManagerProps {
+interface SoughtListManagerProps {
     onSelectReport: (reportId: string) => void;
     onQuickAdd: () => void;
 }
 
-const BlacklistManager: React.FC<BlacklistManagerProps> = ({ onSelectReport, onQuickAdd }) => {
-    const [blacklistReports, setBlacklistReports] = useState<VehicleReport[]>([]);
+const SoughtListManager: React.FC<SoughtListManagerProps> = ({ onSelectReport, onQuickAdd }) => {
+    const [soughtListReports, setSoughtListReports] = useState<VehicleReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [reportToResolve, setReportToResolve] = useState<VehicleReport | null>(null);
@@ -20,7 +20,7 @@ const BlacklistManager: React.FC<BlacklistManagerProps> = ({ onSelectReport, onQ
     useEffect(() => {
         const activeStatuses = [ReportStatus.PENDING, ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE];
 
-        const fetchBlacklist = async () => {
+        const fetchSoughtList = async () => {
             setLoading(true);
             const { data, error } = await supabase
                 .from('vehicle_reports')
@@ -29,19 +29,19 @@ const BlacklistManager: React.FC<BlacklistManagerProps> = ({ onSelectReport, onQ
                 .order('reported_at', { ascending: false });
             
             if (error) {
-                addToast('Failed to load vehicle blacklist.', 'error');
+                addToast('Failed to load vehicle sought list.', 'error');
                 console.error(error);
             } else {
-                setBlacklistReports(data as VehicleReport[]);
+                setSoughtListReports(data as VehicleReport[]);
             }
             setLoading(false);
         };
 
-        fetchBlacklist();
+        fetchSoughtList();
 
         const channel = supabase.channel('blacklist-manager-updates')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, (payload) => {
-                 setBlacklistReports(currentList => {
+                 setSoughtListReports(currentList => {
                     const newReport = payload.new as VehicleReport;
                     const oldId = payload.old?.id;
                     const isNowActive = newReport && activeStatuses.includes(newReport.status);
@@ -70,13 +70,13 @@ const BlacklistManager: React.FC<BlacklistManagerProps> = ({ onSelectReport, onQ
     
     const filteredReports = useMemo(() => {
         const lowercasedTerm = searchTerm.toLowerCase();
-        if (!lowercasedTerm) return blacklistReports;
-        return blacklistReports.filter(report =>
+        if (!lowercasedTerm) return soughtListReports;
+        return soughtListReports.filter(report =>
             report.license_plate.toLowerCase().includes(lowercasedTerm) ||
             report.vehicle_make.toLowerCase().includes(lowercasedTerm) ||
             report.vehicle_model.toLowerCase().includes(lowercasedTerm)
         );
-    }, [blacklistReports, searchTerm]);
+    }, [soughtListReports, searchTerm]);
     
     const handleResolve = async () => {
         if (!reportToResolve) return;
@@ -98,9 +98,9 @@ const BlacklistManager: React.FC<BlacklistManagerProps> = ({ onSelectReport, onQ
         <>
             <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg">
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold">Vehicle Blacklist Manager</h3>
+                    <h3 className="text-lg font-bold">Vehicle Sought List</h3>
                     <button onClick={onQuickAdd} className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
-                        <PlusIcon className="w-4 h-4" /> Add to Blacklist
+                        <PlusIcon className="w-4 h-4" /> Add to List
                     </button>
                 </div>
                  <div className="relative mb-4">
@@ -108,10 +108,10 @@ const BlacklistManager: React.FC<BlacklistManagerProps> = ({ onSelectReport, onQ
                     <input type="text" placeholder="Search by plate or make..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-100 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg py-2 pl-10 pr-4" />
                  </div>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {loading ? <p>Loading blacklist...</p> : filteredReports.length === 0 ? (
+                    {loading ? <p>Loading sought list...</p> : filteredReports.length === 0 ? (
                         <div className="text-center py-8">
                             <CarIcon className="w-12 h-12 mx-auto text-gray-400" />
-                            <p className="mt-2 text-sm text-gray-500">No vehicles on the active blacklist.</p>
+                            <p className="mt-2 text-sm text-gray-500">No vehicles on the active sought list.</p>
                         </div>
                     ) : filteredReports.map(report => (
                         <div key={report.id} className="p-2 bg-gray-100/50 dark:bg-gray-800/50 rounded-lg">
@@ -135,7 +135,7 @@ const BlacklistManager: React.FC<BlacklistManagerProps> = ({ onSelectReport, onQ
                     onClose={() => setReportToResolve(null)}
                     onConfirm={handleResolve}
                     title="Resolve Incident"
-                    message={`Are you sure you want to mark the report for vehicle <strong>${reportToResolve.license_plate}</strong> as resolved? This will remove it from the active blacklist.`}
+                    message={`Are you sure you want to mark the report for vehicle <strong>${reportToResolve.license_plate}</strong> as resolved? This will remove it from the active sought list.`}
                     confirmText="Confirm Resolution"
                     confirmVariant="primary"
                 />
@@ -144,4 +144,4 @@ const BlacklistManager: React.FC<BlacklistManagerProps> = ({ onSelectReport, onQ
     );
 };
 
-export default BlacklistManager;
+export default SoughtListManager;

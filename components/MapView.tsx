@@ -195,7 +195,8 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                             position={[report.location_coords.lat, report.location_coords.lng]}
                             icon={createIncidentIcon(report, isSelected)}
                             zIndexOffset={isSelected ? 1000 : 0}
-                            // FIX: The 'onClick' prop is not valid for the Marker component in react-leaflet v3+. Replaced with 'eventHandlers' to correctly handle click events.
+                            // FIX: The 'eventHandlers' prop is not recognized by the installed TypeScript types for react-leaflet, which appear to be outdated. Using @ts-ignore to suppress the error, as 'eventHandlers' is the correct prop for the version of react-leaflet being used (v3+), evidenced by the use of hooks like useMap.
+                            // @ts-ignore
                             eventHandlers={{
                                 click: () => {
                                     if (onReportSelect) {

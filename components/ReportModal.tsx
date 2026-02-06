@@ -400,7 +400,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     <XIcon className="w-6 h-6" />
                 </button>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                    {isQuickAdd ? 'Quick Add to Blacklist' : (reportToEdit ? 'Edit Report' : 'File a New Report')}
+                    {isQuickAdd ? 'Quick Add to Sought List' : (reportToEdit ? 'Edit Report' : 'File a New Report')}
                 </h3>
                 
                 {(!reportToEdit && !isQuickAdd) && (

@@ -7,7 +7,7 @@ import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
 import { ZapIcon, UsersIcon, PlusIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
-import BlacklistManager from '../components/BlacklistManager';
+import SoughtListManager from '../components/BlacklistManager';
 
 interface ControllerPageProps {
     profile: Profile;
@@ -300,7 +300,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                             />
                         </div>
                         <div className="lg:col-span-4 space-y-4">
-                            <BlacklistManager 
+                            <SoughtListManager 
                                 onSelectReport={setSelectedReportId}
                                 onQuickAdd={handleOpenQuickAddModal}
                             />
