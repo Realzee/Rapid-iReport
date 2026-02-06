@@ -175,8 +175,8 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
             inputAudioContextRef.current = audioContext;
 
             const source = audioContext.createMediaStreamSource(stream);
-            // Using a smaller buffer size reduces latency
-            const scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
+            // Using a smaller buffer size (1024) reduces latency from ~128ms to ~64ms.
+            const scriptProcessor = audioContext.createScriptProcessor(1024, 1, 1);
             scriptProcessorRef.current = scriptProcessor;
             
             // A muted GainNode is necessary to keep the script processor running
