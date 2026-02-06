@@ -3,8 +3,9 @@ import { supabase } from '../utils/supabase';
 import { Report, ReportStatus, Severity, VehicleReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus } from '../types';
 import { format } from 'date-fns';
 import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon } from '../components/icons';
-import StatusBadge from '../components/StatusBadge';
 import ReportDetailModal from '../components/ReportDetailModal';
+import { useToast } from '../contexts/ToastContext';
+import ConfirmModal from '../components/ConfirmModal';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -52,6 +53,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' } | null>({ key: 'deleted_at', direction: 'descending' });
 
     const [detailModalReport, setDetailModalReport] = useState<Report | null>(null);
+    const [reportToRestore, setReportToRestore] = useState<Report | null>(null);
+    const { addToast } = useToast();
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(15);
@@ -163,6 +166,28 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         }
     };
     
+    const handleRestoreClick = (report: Report) => {
+        setReportToRestore(report);
+    };
+
+    const handleConfirmRestore = async () => {
+        if (!reportToRestore) return;
+
+        const tableName = isVehicleReport(reportToRestore) ? 'vehicle_reports' : 'crime_reports';
+        const { error } = await supabase
+            .from(tableName)
+            .update({ status: ReportStatus.PENDING, deleted_at: null, deleted_by: null })
+            .eq('id', reportToRestore.id);
+
+        if (error) {
+            addToast(`Error restoring report: ${error.message}`, 'error');
+        } else {
+            addToast('Report restored successfully. It has been moved to the active queue.', 'success');
+            setReports(prev => prev.filter(r => r.id !== reportToRestore!.id));
+        }
+        setReportToRestore(null);
+    };
+
     const filterInputClasses = "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500";
 
     if (loading) {
@@ -208,7 +233,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                 <SortableHeader label="Reported By" sortKey="reported_by_name" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Deleted At" sortKey="deleted_at" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Deleted By" sortKey="deleted_by_name" sortConfig={sortConfig} onSort={handleSort} />
-                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Details</th>
+                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -237,7 +262,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{report.deleted_at ? format(new Date(report.deleted_at), 'MMM d, yyyy HH:mm') : 'N/A'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{report.deleted_by_name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button onClick={() => setDetailModalReport(report)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">View</button>
+                                        <div className="flex items-center justify-end space-x-4">
+                                            <button onClick={() => setDetailModalReport(report)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">View</button>
+                                            <button onClick={() => handleRestoreClick(report)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">Restore</button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -271,6 +299,18 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 profile={profile}
                 allUsers={users}
             />
+
+            {reportToRestore && (
+                <ConfirmModal
+                    isOpen={!!reportToRestore}
+                    onClose={() => setReportToRestore(null)}
+                    onConfirm={handleConfirmRestore}
+                    title="Restore Incident Report"
+                    message={`Are you sure you want to restore this report? It will be moved back to the active incident queue with a status of "Pending".`}
+                    confirmText="Confirm Restore"
+                    confirmVariant="primary"
+                />
+            )}
         </div>
     );
 };
