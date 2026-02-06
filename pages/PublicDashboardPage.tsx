@@ -83,9 +83,12 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
 
     const selectedReport = useMemo(() => reports.find(r => r.id === selectedReportId), [reports, selectedReportId]);
     
-    const lightMapUrl = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+    const lightMapUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
     const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
     const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
+    const attribution = theme === 'dark' 
+        ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' 
+        : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -141,7 +144,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                 </aside>
                 <div className="flex-grow h-full">
                      <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
-                        <TileLayer key={theme} url={tileUrl} attribution='&copy; CARTO' />
+                        <TileLayer key={theme} url={tileUrl} attribution={attribution} />
                         <MapFocusController selectedReport={selectedReport} />
                         {reports.map(report => report.location_coords && (
                             <Marker key={report.id} position={[report.location_coords.lat, report.location_coords.lng]} icon={isVehicleReport(report) ? createVehicleIcon() : createCrimeIcon()}>
