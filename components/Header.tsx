@@ -150,6 +150,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         </button>
       );
     }
+
+    if (profile.role === UserRole.RESPONDER) {
+      return null; // Responders do not have main navigation items.
+    }
   
     // For Admin/Moderator
     return (
