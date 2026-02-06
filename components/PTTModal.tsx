@@ -4,6 +4,30 @@ import { XIcon, RadioTowerIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
 
+// Helper function to play a beep sound using Web Audio API
+const playBeep = (audioContext: AudioContext | null, frequency = 1000, duration = 0.15, volume = 0.3) => {
+    if (!audioContext) return;
+    if (audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Fade in and out to prevent clicking
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.01);
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+    
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + duration);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + duration);
+};
 
 const isOnline = (lastSeen?: string): boolean => {
     if (!lastSeen) return false;
@@ -66,6 +90,8 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const nextPlayTimeRef = useRef<number>(0);
     const speakerTimeoutRef = useRef<number | null>(null);
+    const lastSpeakerIdRef = useRef<string | null>(null);
+    const lastPacketTimeRef = useRef<number>(0);
 
     useEffect(() => {
         if (!isOpen || !profile.company_id) {
@@ -95,14 +121,6 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
 
         pttChannel.on('broadcast', { event: 'audio-chunk' }, async ({ payload }) => {
             if (payload.audio && payload.from !== profile.id) {
-                setActiveSpeakerId(payload.from);
-                if (speakerTimeoutRef.current) {
-                    clearTimeout(speakerTimeoutRef.current);
-                }
-                speakerTimeoutRef.current = window.setTimeout(() => {
-                    setActiveSpeakerId(null);
-                }, 500);
-
                 const isForAll = payload.target === 'all';
                 const isForMe = payload.target === profile.id;
                 
@@ -116,24 +134,53 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
                         await audioContext.resume();
                     }
 
+                    // --- New Transmission Detection Logic ---
+                    const nowMs = Date.now();
+                    const isNewSpeaker = lastSpeakerIdRef.current !== payload.from;
+                    const isAfterPause = (nowMs - lastPacketTimeRef.current) > 700; // 700ms pause defines a new burst
+                    const isNewTransmission = isNewSpeaker || isAfterPause;
+
+                    // Update trackers for the next packet
+                    lastSpeakerIdRef.current = payload.from;
+                    lastPacketTimeRef.current = nowMs;
+
+                    // UI Active Speaker Logic
+                    setActiveSpeakerId(payload.from);
+                    if (speakerTimeoutRef.current) clearTimeout(speakerTimeoutRef.current);
+                    speakerTimeoutRef.current = window.setTimeout(() => {
+                        setActiveSpeakerId(null);
+                    }, 700); // Match pause threshold
+
+                    // --- Playback Scheduling ---
+                    const now = audioContext.currentTime;
+                    const MAX_QUEUE_AHEAD_TIME = 0.5;
+
+                    // If playback schedule is too far ahead, reset it to catch up.
+                    if (nextPlayTimeRef.current > now + MAX_QUEUE_AHEAD_TIME) {
+                        console.warn(`PTT audio queue is ${(nextPlayTimeRef.current - now).toFixed(2)}s ahead. Resetting playback time.`);
+                        nextPlayTimeRef.current = now;
+                    }
+                    
+                    // If queue has fallen behind, reset to now.
+                    if (nextPlayTimeRef.current < now) {
+                        nextPlayTimeRef.current = now;
+                    }
+                    
+                    // If it's a new transmission, play a beep and advance the queue cursor.
+                    if (isNewTransmission) {
+                        playBeep(audioContext, 1200, 0.15, 0.2); // Incoming alert beep
+                        // Ensure the next audio chunk starts after the beep finishes
+                        nextPlayTimeRef.current = Math.max(nextPlayTimeRef.current, now + 0.15);
+                    }
+
                     const buffer = await base64ToAudioBuffer(payload.audio, audioContext);
                     const source = audioContext.createBufferSource();
                     source.buffer = buffer;
                     source.connect(audioContext.destination);
-
-                    const now = audioContext.currentTime;
-                    const bufferDuration = buffer.duration;
-                    const MAX_QUEUE_AHEAD_TIME = 0.5; // 500ms latency tolerance
-
-                    // If playback schedule is too far ahead, reset it to prevent runaway latency.
-                    if (nextPlayTimeRef.current > now + MAX_QUEUE_AHEAD_TIME) {
-                        console.warn(`PTT audio queue is ${(nextPlayTimeRef.current - now).toFixed(2)}s ahead. Resetting playback time to catch up.`);
-                        nextPlayTimeRef.current = now;
-                    }
-
-                    const startTime = Math.max(now, nextPlayTimeRef.current);
+                    
+                    const startTime = nextPlayTimeRef.current;
                     source.start(startTime);
-                    nextPlayTimeRef.current = startTime + bufferDuration;
+                    nextPlayTimeRef.current = startTime + buffer.duration;
                 }
             }
         });
@@ -145,7 +192,6 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
                     if (payload.eventType === 'UPDATE') {
                         return current.map(u => u.id === payload.new.id ? payload.new as Profile : u);
                     }
-                    // Handle INSERT and DELETE if necessary
                     return current;
                 });
             })
@@ -166,6 +212,14 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
     
     const startTransmitting = async () => {
         try {
+             if (!outputAudioContextRef.current) {
+                outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+            }
+            playBeep(outputAudioContextRef.current, 1000, 0.15, 0.3); // Outgoing beep
+
+            // Wait for the beep to finish before starting to record to avoid capturing it
+            await new Promise(resolve => setTimeout(resolve, 150));
+
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 throw new Error("Your browser does not support audio capture.");
             }
