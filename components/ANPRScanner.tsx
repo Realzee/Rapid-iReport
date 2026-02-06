@@ -24,6 +24,10 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
     const [scannedPlates, setScannedPlates] = useState<Map<string, { timestamp: Date }>>(new Map());
     const [plateHits, setPlateHits] = useState<Map<string, { report: VehicleReport, timestamp: Date }>>(new Map());
     const [blacklist, setBlacklist] = useState<Set<string>>(new Set());
+    
+    // State for live visual feedback
+    const [detections, setDetections] = useState<{ text: string; bbox: Tesseract.Bbox }[]>([]);
+    const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
 
     const { addToast } = useToast();
 
@@ -94,11 +98,31 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
         };
     }, []);
 
+    // Effect to track video's rendered dimensions for scaling the overlay
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video || !isScanning) return;
+    
+        const handleResize = () => {
+            if (video) {
+                setVideoDimensions({ width: video.clientWidth, height: video.clientHeight });
+            }
+        };
+        
+        handleResize(); // Initial size
+    
+        const resizeObserver = new ResizeObserver(handleResize);
+        resizeObserver.observe(video);
+    
+        return () => resizeObserver.disconnect();
+    }, [isScanning]);
+
     const startScan = async () => {
         if (isScanning) return;
         
         setScannedPlates(new Map());
         setPlateHits(new Map());
+        setDetections([]);
         setStatus('Initializing');
         
         // Init OCR
@@ -131,6 +155,7 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
     const stopScan = (isUnmounting = false) => {
         setIsScanning(false);
         setStatus('Idle');
+        setDetections([]);
         if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
         scanIntervalRef.current = null;
         
@@ -161,13 +186,24 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
             
             try {
                 const result = await tesseractWorkerRef.current?.recognize(canvas);
-                if (result?.data.text) {
-                    const plates = result.data.text.split('\n')
-                        .map(line => line.replace(/[^A-Z0-9]/g, '').toUpperCase())
-                        .filter(plate => /^[A-Z0-9]{5,8}$/.test(plate));
-                    
-                    if (plates.length > 0) processDetections(plates);
+                const foundPlates: { text: string; bbox: Tesseract.Bbox }[] = [];
+                const plateTexts: string[] = [];
+    
+                if (result?.data.lines) {
+                    for (const line of result.data.lines) {
+                        const cleanedText = line.text.replace(/[^A-Z0-9]/g, '').toUpperCase();
+                        if (/^[A-Z0-9]{5,8}$/.test(cleanedText) && line.confidence > 65) {
+                            foundPlates.push({ text: cleanedText, bbox: line.bbox });
+                            plateTexts.push(cleanedText);
+                        }
+                    }
                 }
+    
+                setDetections(foundPlates);
+                if (plateTexts.length > 0) {
+                    processDetections(plateTexts);
+                }
+
             } catch (err) {
                 console.warn('OCR recognition error:', err);
             }
@@ -209,10 +245,11 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
         }
     };
     
-    // FIX: Add explicit types to sort callback parameters to prevent type inference errors.
-    const sortedHits = useMemo(() => Array.from(plateHits.values()).sort((a: { timestamp: Date }, b: { timestamp: Date }) => b.timestamp.getTime() - a.timestamp.getTime()), [plateHits]);
-    // FIX: Add explicit types to the sort callback parameters to resolve TypeScript inference issue. Also corrected a typo in the dependency array.
-    const sortedScans = useMemo(() => Array.from(scannedPlates.entries()).sort((a: [string, { timestamp: Date }], b: [string, { timestamp: Date }]) => b[1].timestamp.getTime() - a[1].timestamp.getTime()), [scannedPlates]);
+    const sortedHits = useMemo(() => Array.from(plateHits.values()).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()), [plateHits]);
+    const sortedScans = useMemo(() => Array.from(scannedPlates.entries()).sort((a, b) => b[1].timestamp.getTime() - a[1].timestamp.getTime()), [scannedPlates]);
+    
+    const scaleX = videoDimensions.width / (videoRef.current?.videoWidth || 1);
+    const scaleY = videoDimensions.height / (videoRef.current?.videoHeight || 1);
 
     return (
         <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg">
@@ -220,13 +257,33 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
             <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center mb-4">
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                 <canvas ref={canvasRef} className="hidden" />
-                {isScanning && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-11/12 h-2/3 border-4 border-dashed border-white/50 rounded-lg animate-pulse flex flex-col items-center justify-center p-4">
-                            <ScanIcon className="w-12 h-12 text-white/70" />
-                        </div>
-                    </div>
-                )}
+
+                <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" viewBox={`0 0 ${videoDimensions.width} ${videoDimensions.height}`}>
+                    {detections.map((d, i) => {
+                        const x = d.bbox.x0 * scaleX;
+                        const y = d.bbox.y0 * scaleY;
+                        const width = (d.bbox.x1 - d.bbox.x0) * scaleX;
+                        const height = (d.bbox.y1 - d.bbox.y0) * scaleY;
+
+                        return (
+                            <g key={i}>
+                                <rect
+                                    x={x} y={y} width={width} height={height}
+                                    style={{ fill: 'rgba(74, 222, 128, 0.2)', stroke: 'rgb(34, 197, 94)', strokeWidth: 2 }}
+                                />
+                                <rect x={x} y={y - 20} width={width} height={20} style={{ fill: 'rgb(34, 197, 94)' }} />
+                                <text
+                                    x={x + width / 2} y={y - 6}
+                                    textAnchor="middle"
+                                    style={{ fill: 'white', fontSize: '14px', fontWeight: 'bold', fontFamily: 'monospace' }}
+                                >
+                                    {d.text}
+                                </text>
+                            </g>
+                        )
+                    })}
+                </svg>
+
                 {!isScanning && (
                     <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white">
                         <p className="font-semibold">{status}</p>
@@ -242,7 +299,6 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
             </button>
 
             <div className="mt-4 space-y-4">
-                {/* Alerts / Hits */}
                 <div>
                     <h4 className="font-bold text-red-500 dark:text-red-400">Alerts ({plateHits.size})</h4>
                     <div className="space-y-2 mt-2 max-h-40 overflow-y-auto">
@@ -258,7 +314,6 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
                     </div>
                 </div>
 
-                {/* Scan Log */}
                 <div>
                     <h4 className="font-bold">Scan Log ({scannedPlates.size})</h4>
                      <div className="space-y-1 mt-2 max-h-48 overflow-y-auto text-sm">
