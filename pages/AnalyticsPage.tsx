@@ -4,7 +4,9 @@ import { Report, Profile, Severity, ReportStatus, VehicleReport } from '../types
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
 import { useTheme } from '../contexts/ThemeContext';
-import { format, subDays } from 'date-fns';
+import { format } from 'date-fns';
+// FIX: Changed import to be compatible with older versions of date-fns
+import subDays from 'date-fns/sub_days';
 import { CarIcon, CrimeIcon, ChartBarIcon, ChartPieIcon, MapIcon, ZapIcon, CheckCircleIcon, AlertTriangleIcon } from '../components/icons';
 import StatCard from '../components/StatCard';
 
@@ -132,11 +134,9 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
 
 const TrendsReport: React.FC<{ reports: Report[], options: any }> = ({ reports, options }) => {
     const data = useMemo(() => {
-        // FIX: Replaced 'sub' with 'subDays' to fix import error.
         const labels = Array.from({ length: 30 }).map((_, i) => format(subDays(new Date(), 29 - i), 'MMM d'));
         const vehicleData = new Array(30).fill(0);
         const crimeData = new Array(30).fill(0);
-        // FIX: Replaced 'sub' with 'subDays' to fix import error.
         const thirtyDaysAgo = subDays(new Date(), 29);
 
         reports.forEach(report => {

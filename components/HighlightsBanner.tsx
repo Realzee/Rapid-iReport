@@ -3,7 +3,8 @@ import { supabase } from '../utils/supabase';
 import { Report, Severity, VehicleReport } from '../types';
 import { CarIcon, CrimeIcon, AlertTriangleIcon } from './icons';
 import { formatDistanceToNow } from 'date-fns';
-import { subDays } from 'date-fns';
+// FIX: Changed import to be compatible with older versions of date-fns
+import subDays from 'date-fns/sub_days';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -42,7 +43,6 @@ const HighlightsBanner: React.FC<HighlightsBannerProps> = ({ onSelectReport, top
     
     useEffect(() => {
         const fetchHighlights = async () => {
-            // FIX: Replaced 'sub' with 'subDays' to fix import error.
             const sevenDaysAgo = subDays(new Date(), 7).toISOString();
             
             const [
