@@ -304,6 +304,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         const imageUrl = report.evidence_images && report.evidence_images.length > 0 ? report.evidence_images[0] : null;
         const imageAsDataUrl = imageUrl ? await fetchImageAsDataURL(imageUrl) : null;
         
+        const companyName = profile.company?.name || '';
         const companyLogoUrl = profile.company?.logo_url;
         const companyLogoAsDataUrl = companyLogoUrl ? await fetchImageAsDataURL(companyLogoUrl) : logoUrl;
 
@@ -323,7 +324,10 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; flex-direction: column; width: 380px; height: 580px; background-color: #FFFFFF; color: #111827; border-radius: 12px; padding: 20px; border: 1px solid #E5E7EB; box-sizing: border-box; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #EF4444; padding-bottom: 12px; margin-bottom: 12px;">
                     <h1 style="font-size: 28px; font-weight: 700; color: #111827; margin: 0; text-transform: uppercase;">BOLO Alert</h1>
-                    <img src="${companyLogoAsDataUrl}" alt="Logo" style="width: 50px; height: auto; object-fit: contain;" />
+                    <div style="text-align: right;">
+                        <img src="${companyLogoAsDataUrl}" alt="Logo" style="width: 80px; height: auto; object-fit: contain; margin-bottom: 4px;" />
+                        ${companyName ? `<p style="margin: 0; font-weight: 700; font-size: 14px; color: #111827;">${companyName}</p>` : ''}
+                    </div>
                 </div>
                 <div style="width: 100%; height: 200px; background-color: #F3F4F6; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #E5E7EB;">
                     ${reportImageHtml}
