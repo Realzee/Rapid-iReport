@@ -164,8 +164,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 </div>
             </div>`;
 
-        const svgString = `<svg width="400" height="600" xmlns="http://www.w3.org/2000/svg"><foreignObject width="400" height="600">${boloHtml.replace(/#/g, '%23')}</foreignObject></svg>`;
-        const svgDataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
+        const svgString = `<svg width="400" height="600" xmlns="http://www.w3.org/2000/svg"><foreignObject width="400" height="600">${boloHtml}</foreignObject></svg>`;
+        const svgDataUrl = `data:image/svg+xml;base64,${btoa(svgString)}`;
 
         const image = new Image();
         image.onload = () => {
