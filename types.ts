@@ -132,6 +132,7 @@ export interface ChatMessage {
   user_id: string;
   content: string;
   created_at: string;
+  read_by: string[];
   profile?: { // Joined from profiles table
     full_name: string;
     avatar_url?: string;

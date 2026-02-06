@@ -380,9 +380,11 @@ CREATE TABLE IF NOT EXISTS public.chat_messages (
     user_id uuid NOT NULL,
     content text NOT NULL,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
+    read_by uuid[] NOT NULL DEFAULT '{}',
     CONSTRAINT chat_messages_pkey PRIMARY KEY (id),
     CONSTRAINT chat_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE
 );
+ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS read_by uuid[] NOT NULL DEFAULT '{}';
 
 -- Notifications Table
 CREATE TABLE IF NOT EXISTS public.notifications (
@@ -528,6 +530,19 @@ BEGIN
   SELECT id, notification_type, notification_title, notification_message, ref_id
   FROM public.profiles
   WHERE role::text = ANY(target_roles);
+END;
+$$;
+
+-- Function to mark a chat message as read by a user
+CREATE OR REPLACE FUNCTION public.mark_message_as_read(message_id uuid, reader_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.chat_messages
+  SET read_by = array_append(read_by, reader_id)
+  WHERE id = message_id AND NOT (read_by @> ARRAY[reader_id]);
 END;
 $$;
 
