@@ -190,10 +190,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
           </nav>
           <div className="flex items-center space-x-4">
             <div className="hidden md:flex flex-col items-center justify-center bg-gray-900 dark:bg-black rounded-lg px-4 py-2 border border-gray-700 dark:border-gray-800 shadow-inner shadow-black/50">
-                <div className="font-mono font-bold text-xl text-red-500 leading-none tracking-widest [text-shadow:0_0_5px_rgba(239,68,68,0.7)]">
+                <div className="font-mono font-bold text-xl text-cyan-400 leading-none tracking-widest [text-shadow:0_0_5px_rgba(34,211,238,0.7)]">
                     {format(currentTime, 'h:mm:ss aa')}
                 </div>
-                <div className="font-mono text-xs text-red-500/70 tracking-wide mt-1">
+                <div className="font-mono text-xs text-cyan-400/70 tracking-wide mt-1">
                     {format(currentTime, 'EEE, MMM d, yyyy')}
                 </div>
             </div>
