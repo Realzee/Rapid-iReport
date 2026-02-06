@@ -112,16 +112,30 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
         const content = newMessage.trim();
         setNewMessage('');
 
-        const { error } = await supabase.from('chat_messages').insert({
+        const { data: newDbMessage, error } = await supabase.from('chat_messages').insert({
             report_id: reportId,
             user_id: currentUserProfile.id,
             content: content,
-        });
+        }).select().single();
 
         if (error) {
             console.error("Error sending message:", error);
             setNewMessage(content);
+            addToast('Failed to send message: ' + error.message, 'error');
+        } else if (newDbMessage) {
+            // Locally update the state for an instant UI update.
+            // The realtime subscription will receive this update but the handler
+            // already prevents adding duplicate messages.
+            const newUIMessage: ChatMessage = {
+                ...newDbMessage,
+                profile: {
+                    full_name: currentUserProfile.full_name,
+                    avatar_url: currentUserProfile.avatar_url,
+                }
+            };
+            setMessages(prevMessages => [...prevMessages, newUIMessage]);
         }
+        
         setLoading(false);
     };
 
