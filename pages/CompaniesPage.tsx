@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { PlusIcon, BuildingIcon, UploadCloudIcon, MegaphoneIcon, EditIcon, TrashIcon, AlertTriangleIcon, LightbulbIcon } from '../components/icons';
+import React, { useState, useEffect, useMemo } from 'react';
+import { PlusIcon, BuildingIcon, UploadCloudIcon, MegaphoneIcon, EditIcon, TrashIcon, AlertTriangleIcon, LightbulbIcon, DatabaseIcon } from '../components/icons';
 import { Company, Profile, UserRole, Announcement, AnnouncementType } from '../types';
 import CompanyManagementTable from '../components/CompanyManagementTable';
 import AddEditCompanyModal from '../components/AddEditCompanyModal';
@@ -9,6 +9,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useSettings } from '../contexts/SettingsContext';
 import AddEditAnnouncementModal from '../components/AddEditAnnouncementModal';
 import ConfirmModal from '../components/ConfirmModal';
+import DatabaseBackupModal from '../components/DatabaseBackupModal';
 import { format } from 'date-fns';
 
 const AnnouncementTypeIcon: React.FC<{ type: AnnouncementType, className?: string }> = ({ type, className="w-6 h-6" }) => {
@@ -45,6 +46,20 @@ const CompaniesPage: React.FC = () => {
     const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
     const [announcementToEdit, setAnnouncementToEdit] = useState<Announcement | null>(null);
     const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
+    
+    // Backup Modal State
+    const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+
+    const dbHost = useMemo(() => {
+        const supabaseUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co';
+        try {
+            const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1];
+            if (projectRef) {
+                return `db.${projectRef}.supabase.co`;
+            }
+        } catch {}
+        return 'db.<your-project-ref>.supabase.co';
+    }, []);
 
 
     useEffect(() => {
@@ -506,6 +521,29 @@ const CompaniesPage: React.FC = () => {
                 </div>
             )}
             
+            {currentUserProfile?.role === UserRole.ADMIN && (
+                <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 backdrop-blur-lg shadow-lg">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+                        <DatabaseIcon className="w-7 h-7" />
+                        Database Management
+                    </h3>
+                    <div className="space-y-4">
+                        <div>
+                            <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Database Backup</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                Create a full backup of the PostgreSQL database. This requires using the `pg_dump` command-line tool.
+                            </p>
+                        </div>
+                        <button 
+                            onClick={() => setIsBackupModalOpen(true)}
+                            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition"
+                        >
+                            Generate Backup Command
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {canManageSettings && (
                  <div>
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -638,6 +676,11 @@ const CompaniesPage: React.FC = () => {
                     confirmVariant="danger"
                 />
             )}
+            <DatabaseBackupModal 
+                isOpen={isBackupModalOpen}
+                onClose={() => setIsBackupModalOpen(false)}
+                dbHost={dbHost}
+            />
         </div>
     );
 };
