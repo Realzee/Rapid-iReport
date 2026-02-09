@@ -2,7 +2,7 @@
  * @file ReportModal.tsx
  * @description Modal for creating and editing vehicle or crime reports.
  */
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport } from '../types';
 import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon } from '../components/icons';
@@ -12,6 +12,7 @@ import L from 'leaflet';
 import { format } from 'date-fns';
 import { useToast } from '../contexts/ToastContext';
 import { MapStyle } from '../components/MapStyleToggle';
+import { useFormPersistence } from '../useFormPersistence';
 
 interface ReportModalProps {
     isOpen: boolean;
@@ -118,8 +119,8 @@ const LocationPicker: React.FC<{
     const [mapStyle, setMapStyle] = useState<MapStyle>('street');
 
     const streetTile = {
-        url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     };
     const satelliteTile = {
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -196,35 +197,59 @@ const LocationPicker: React.FC<{
 
 const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit, isQuickAdd = false }) => {
     const [reportType, setReportType] = useState<ReportType>('vehicle');
-    const [formData, setFormData] = useState<any>({});
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [isMapVisible, setMapVisible] = useState(false);
     const { addToast } = useToast();
     
+    const getInitialData = useCallback(() => {
+        if (reportToEdit) {
+            const isVehicle = isVehicleReport(reportToEdit);
+            const location = isVehicle ? (reportToEdit as VehicleReport).last_seen_location : (reportToEdit as CrimeReport).location;
+            return { ...reportToEdit, location };
+        }
+        return { severity: isQuickAdd ? Severity.HIGH : '' };
+    }, [reportToEdit, isQuickAdd]);
+
+    const [initialData, setInitialData] = useState(getInitialData);
+    const [formData, setFormData] = useState<any>(initialData);
+
     useEffect(() => {
         if (isOpen) {
-            setMapVisible(false); // Hide map on modal open/re-open
-            if (reportToEdit) {
-                const isVehicle = isVehicleReport(reportToEdit);
-                setReportType(isVehicle ? 'vehicle' : 'crime');
-                
-                const location = isVehicle 
-                    ? (reportToEdit as VehicleReport).last_seen_location 
-                    : (reportToEdit as CrimeReport).location;
+            const data = getInitialData();
+            setInitialData(data);
+            setFormData(data);
 
-                setFormData({ ...reportToEdit, location });
-                setImagePreviews(reportToEdit.evidence_images || []);
-                setImageFiles([]);
-            } else {
-                setReportType(isQuickAdd ? 'vehicle' : 'vehicle');
-                setFormData({ severity: Severity.HIGH }); // Default to HIGH for quick adds
-                setImagePreviews([]);
-                setImageFiles([]);
-            }
+            setReportType(reportToEdit ? (isVehicleReport(reportToEdit) ? 'vehicle' : 'crime') : (isQuickAdd ? 'vehicle' : 'vehicle'));
+            setMapVisible(false);
+            setImagePreviews(reportToEdit?.evidence_images || []);
+            setImageFiles([]);
         }
-    }, [isOpen, reportToEdit, isQuickAdd]);
+    }, [isOpen, reportToEdit, isQuickAdd, getInitialData]);
+
+    const formId = useMemo(() => 
+        reportToEdit ? `edit-report-${reportToEdit.id}` : (isQuickAdd ? 'quick-add-report' : 'new-report'),
+    [reportToEdit, isQuickAdd]);
+
+    const { clearDraft, isDirty } = useFormPersistence(formId, {
+        formData,
+        setFormData,
+        initialData,
+        isEnabled: isOpen,
+    });
+    
+    const handleClose = () => {
+        if (isDirty) {
+            if (window.confirm("You have unsaved changes. Are you sure you want to close? Your draft will be saved for next time.")) {
+                onClose();
+            }
+        } else {
+            clearDraft();
+            onClose();
+        }
+    };
+
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -270,7 +295,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         setLoading(true);
 
         try {
-            // @ts-ignore - FIX: Property 'getUser' does not exist on type 'SupabaseAuthClient'. Using older sync version.
+            // @ts-ignore
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             if (userError || !user) throw new Error("User not authenticated");
 
@@ -348,7 +373,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 }
                 
                 const companyId = profileData?.company_id;
-                // FIX: The Supabase client can infer a joined table as an array. Handle this case.
                 const company = profileData?.company;
                 const companyName = Array.isArray(company) ? company[0]?.name : company?.name;
                 const initial = companyName ? companyName.charAt(0).toUpperCase() : 'P';
@@ -369,7 +393,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     ...reportData,
                     id: reportId,
                     ob_number: ob_number,
-                    status: ReportStatus.ACTIVE, // Quick adds go straight to active
+                    status: ReportStatus.ACTIVE,
                     reported_by: user.id,
                     reported_at: now.toISOString(),
                 };
@@ -378,6 +402,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             }
             
             addToast(`Report ${reportToEdit ? 'updated' : 'submitted'} successfully!`, 'success');
+            clearDraft();
             onClose();
 
         } catch (error: any) {
@@ -399,7 +424,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-8 w-full max-w-lg lg:max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
+                <button onClick={handleClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
                     <XIcon className="w-6 h-6" />
                 </button>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
@@ -493,7 +518,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     )}
 
                     <div className="pt-6 flex justify-end space-x-4">
-                        <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                        <button type="button" onClick={handleClose} className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
                         <button type="submit" disabled={loading} className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg hover:scale-105 transition-transform duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
                             {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>}
                             {loading ? 'Saving...' : 'Save Report'}

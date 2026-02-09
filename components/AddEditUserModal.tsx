@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Profile, Company, UserRole, UserStatus, ResponderStatus } from '../types';
 import { XIcon, UploadCloudIcon, UserIcon } from './icons';
+import { useFormPersistence } from '../useFormPersistence';
 
 interface AddEditUserModalProps {
     isOpen: boolean;
@@ -11,37 +12,65 @@ interface AddEditUserModalProps {
 }
 
 const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, onSave, user, companies }) => {
-    const [formData, setFormData] = useState<Partial<Profile>>({});
+    
+    const getInitialData = useCallback(() => {
+        return user ? user : {
+            first_name: '',
+            surname: '',
+            email: '',
+            role: UserRole.USER,
+            status: UserStatus.PENDING,
+            company_id: undefined,
+            responder_status: ResponderStatus.OFF_DUTY,
+            cell: '',
+            vehicle_reg: '',
+            home_address: '',
+            ice_no: '',
+            medical_aid: '',
+            psira_number: '',
+        };
+    }, [user]);
+
+    const [initialData, setInitialData] = useState<Partial<Profile>>(getInitialData);
+    const [formData, setFormData] = useState<Partial<Profile>>(initialData);
     const [password, setPassword] = useState('');
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
 
     useEffect(() => {
-        if (user) {
-            setFormData(user);
-            setAvatarPreview(user.avatar_url || null);
-        } else {
-            setFormData({
-                first_name: '',
-                surname: '',
-                email: '',
-                role: UserRole.USER,
-                status: UserStatus.PENDING,
-                company_id: undefined,
-                responder_status: ResponderStatus.OFF_DUTY,
-                cell: '',
-                vehicle_reg: '',
-                home_address: '',
-                ice_no: '',
-                medical_aid: '',
-                psira_number: '',
-            });
-            setAvatarPreview(null);
+        if (isOpen) {
+            const data = getInitialData();
+            setInitialData(data);
+            setFormData(data);
+            setAvatarPreview(user?.avatar_url || null);
+            setPassword('');
+            setAvatarFile(null);
         }
-        setPassword('');
-        setAvatarFile(null);
-    }, [user, isOpen]);
+    }, [user, isOpen, getInitialData]);
+
+    const formId = useMemo(() => `user-form-${user?.id || 'new'}`, [user]);
+
+    const { clearDraft, isDirty } = useFormPersistence(formId, {
+        formData,
+        setFormData,
+        initialData,
+        isEnabled: isOpen,
+    });
+
+    const isFormDirty = isDirty || password !== '' || avatarFile !== null;
+
+    const handleClose = () => {
+        if (isFormDirty) {
+            if (window.confirm("You have unsaved changes. Are you sure you want to close? A draft will be saved.")) {
+                onClose();
+            }
+        } else {
+            clearDraft();
+            onClose();
+        }
+    };
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -63,6 +92,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
             alert('A profile selfie is required for all users.');
             return;
         }
+        clearDraft();
         onSave(formData as Profile, password, avatarFile);
     };
 
@@ -74,7 +104,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-8 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
+                <button onClick={handleClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
                     <XIcon className="w-6 h-6" />
                 </button>
                 <h3 id="modal-title" className="text-2xl font-bold text-gray-900 dark:text-white mb-6">{user ? 'Edit User' : 'Add New User'}</h3>
@@ -187,7 +217,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                         <input type="text" name="psira_number" id="psira_number" value={formData.psira_number || ''} onChange={handleChange} className={inputClasses} />
                     </div>
                     <div className="pt-6 flex justify-end space-x-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                        <button type="button" onClick={handleClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
                         <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-md hover:scale-105 transition-transform duration-300">Save</button>
                     </div>
                 </form>

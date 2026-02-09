@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Profile } from '../types';
 import { supabase } from '../utils/supabase';
 import { UserIcon, LockIcon, UploadCloudIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
+import { useFormPersistence } from '../useFormPersistence';
 
 interface ProfilePageProps {
   profile: Profile;
@@ -10,7 +11,8 @@ interface ProfilePageProps {
 }
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
-    const [formData, setFormData] = useState<Partial<Profile>>({
+    
+    const initialData = useMemo(() => ({
         first_name: profile.first_name || '',
         surname: profile.surname || '',
         cell: profile.cell || '',
@@ -19,7 +21,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         ice_no: profile.ice_no || '',
         medical_aid: profile.medical_aid || '',
         psira_number: profile.psira_number || '',
-    });
+    }), [profile]);
+
+    const [formData, setFormData] = useState<Partial<Profile>>(initialData);
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -28,6 +32,16 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
     const [loadingProfile, setLoadingProfile] = useState(false);
     const [loadingPassword, setLoadingPassword] = useState(false);
     const { addToast } = useToast();
+
+    const formId = `profile-edit-${profile.id}`;
+
+    const { clearDraft } = useFormPersistence(formId, {
+        formData,
+        setFormData,
+        initialData,
+        isEnabled: true,
+    });
+
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -81,7 +95,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
             setProfile(updatedProfile);
             setAvatarPreview(updatedProfile.avatar_url);
             addToast('Profile updated successfully!', 'success');
-            setAvatarFile(null); // Clear file after successful upload
+            setAvatarFile(null);
+            clearDraft();
         }
         
         setLoadingProfile(false);

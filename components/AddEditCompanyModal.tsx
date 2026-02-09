@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Company } from '../types';
 import { XIcon, UploadCloudIcon, TrashIcon, BuildingIcon } from './icons';
+import { useFormPersistence } from '../useFormPersistence';
 
 interface AddEditCompanyModalProps {
     isOpen: boolean;
@@ -10,34 +11,55 @@ interface AddEditCompanyModalProps {
 }
 
 const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClose, onSave, company }) => {
-    const [formData, setFormData] = useState<Partial<Company>>({});
+    
+    const getInitialData = () => {
+        return company ? company : {
+            name: '',
+            owners_name: '',
+            address: '',
+            contact_person: '',
+            cell_number: '',
+            psira_number: ''
+        };
+    };
+
+    const [initialData, setInitialData] = useState<Partial<Company>>(getInitialData);
+    const [formData, setFormData] = useState<Partial<Company>>(initialData);
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-    const openedWithCompanyRef = useRef<Company | null | undefined>(undefined);
-
     useEffect(() => {
-        if (isOpen && openedWithCompanyRef.current !== company) {
-            if (company) {
-                setFormData(company);
-                setLogoPreview(company.logo_url || null);
-            } else {
-                setFormData({
-                    name: '',
-                    owners_name: '',
-                    address: '',
-                    contact_person: '',
-                    cell_number: '',
-                    psira_number: ''
-                });
-                setLogoPreview(null);
-            }
+        if (isOpen) {
+            const data = getInitialData();
+            setInitialData(data);
+            setFormData(data);
+            setLogoPreview(company?.logo_url || null);
             setLogoFile(null);
-            openedWithCompanyRef.current = company;
-        } else if (!isOpen) {
-            openedWithCompanyRef.current = undefined;
         }
     }, [isOpen, company]);
+    
+    const formId = useMemo(() => `company-form-${company?.id || 'new'}`, [company]);
+    
+    const { clearDraft, isDirty } = useFormPersistence(formId, {
+        formData,
+        setFormData,
+        initialData,
+        isEnabled: isOpen,
+    });
+    
+    const isFormDirty = isDirty || logoFile !== null;
+
+    const handleClose = () => {
+        if (isFormDirty) {
+            if (window.confirm("You have unsaved changes. Are you sure you want to close? A draft will be saved.")) {
+                onClose();
+            }
+        } else {
+            clearDraft();
+            onClose();
+        }
+    };
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -54,11 +76,13 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
     const handleRemoveLogo = () => {
         setLogoFile(null);
         setLogoPreview(null);
+        setFormData(prev => ({...prev, logo_url: undefined }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const dataToSave = { ...formData, logo_url: logoPreview || undefined };
+        clearDraft();
         onSave(dataToSave, logoFile);
     };
 
@@ -70,7 +94,7 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-8 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
+                <button onClick={handleClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
                     <XIcon className="w-6 h-6" />
                 </button>
                 <h3 id="modal-title" className="text-2xl font-bold text-gray-900 dark:text-white mb-6">{company ? 'Edit Company' : 'Add New Company'}</h3>
@@ -132,7 +156,7 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
                     </div>
 
                     <div className="pt-6 flex justify-end space-x-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                        <button type="button" onClick={handleClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
                         <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-md hover:scale-105 transition-transform duration-300">Save Company</button>
                     </div>
                 </form>
