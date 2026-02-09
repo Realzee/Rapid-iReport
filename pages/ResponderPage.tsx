@@ -396,11 +396,14 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
 
     useEffect(() => {
         const fetchUpdates = async () => { 
-            const { data } = await supabase.from('report_updates').select('*, profile:profiles(full_name)').eq('report_id', report.id).order('created_at');
-            setUpdates(data?.map(u => ({...u, user_full_name: (u.profile as any)?.full_name || 'System'})) || []);
+            const { data } = await supabase.from('report_updates').select('*, profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at');
+            setUpdates(data?.map(u => {
+                const profile = u.profile as { first_name: string, surname: string } | null;
+                return {...u, user_full_name: profile ? `${profile.first_name} ${profile.surname}` : 'System'};
+            }) || []);
         };
         fetchUpdates();
-        const channel = supabase.channel(`updates-${report.id}`).on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'report_updates', filter: `report_id=eq.${report.id}`}, () => fetchUpdates()).subscribe();
+        const channel = supabase.channel(`updates-${report.id}`).on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'report_updates', filter: `report_id=eq.${report.id}`}, fetchUpdates).subscribe();
         return () => { supabase.removeChannel(channel); };
     }, [report.id]);
 
@@ -462,7 +465,6 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                     const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
                     const updatePromises: PromiseLike<any>[] = [];
                     updatePromises.push(supabase.from(tableName).update({ assigned_to: null, status: ReportStatus.ACTIVE }).eq('id', report.id));
-                    // FIX: Property 'full_name' does not exist on type 'Profile'.
                     updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Responder ${profile.first_name} ${profile.surname} has stood down.` }));
 
                     const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);

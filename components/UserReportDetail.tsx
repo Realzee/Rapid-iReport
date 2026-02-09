@@ -61,19 +61,22 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                 { data: updatesData, error: updatesError },
                 { data: historyData, error: historyError }
             ] = await Promise.all([
-                supabase.from('report_updates').select('*, profile:profiles(full_name)').eq('report_id', report.id).order('created_at', { ascending: true }),
-                supabase.from('assignment_logs').select('*, assigned_by_profile:profiles(full_name)').eq('report_id', report.id).order('created_at', { ascending: true })
+                supabase.from('report_updates').select('*, profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at', { ascending: true }),
+                supabase.from('assignment_logs').select('*, assigned_by_profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at', { ascending: true })
             ]);
                 
             if (updatesError) console.error("Error fetching updates:", updatesError);
-            else setUpdates(updatesData?.map(u => ({...u, user_full_name: (u.profile as any)?.full_name || 'System'})) || []);
+            else setUpdates(updatesData?.map(u => {
+                const profile = u.profile as { first_name: string, surname: string } | null;
+                return {...u, user_full_name: profile ? `${profile.first_name} ${profile.surname}` : 'System'};
+            }) || []);
 
             if (historyError) console.error("Error fetching assignment history:", historyError);
             else {
-                const formattedHistory = historyData?.map((log: any) => ({
-                    ...log,
-                    assigned_by_name: log.assigned_by_profile?.full_name || 'System',
-                })) || [];
+                const formattedHistory = historyData?.map((log: any) => {
+                    const byProfile = log.assigned_by_profile;
+                    return { ...log, assigned_by_name: byProfile ? `${byProfile.first_name} ${byProfile.surname}` : 'System' };
+                }) || [];
                 setAssignmentHistory(formattedHistory);
             }
         };
@@ -82,8 +85,8 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
         const updatesChannel = supabase.channel(`user-updates-${report.id}`)
             .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'report_updates', filter: `report_id=eq.${report.id}`}, 
             async (payload) => {
-                const { data: profileData } = await supabase.from('profiles').select('full_name').eq('id', payload.new.user_id).single();
-                const newUpdateWithUser = { ...payload.new, user_full_name: profileData?.full_name || 'System' };
+                const { data: profileData } = await supabase.from('profiles').select('first_name, surname').eq('id', payload.new.user_id).single();
+                const newUpdateWithUser = { ...payload.new, user_full_name: profileData ? `${profileData.first_name} ${profileData.surname}` : 'System' };
                 setUpdates(prev => [...prev, newUpdateWithUser as ReportUpdate]);
             })
             .subscribe();
@@ -91,10 +94,10 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
         const historyChannel = supabase.channel(`user-history-${report.id}`)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'assignment_logs', filter: `report_id=eq.${report.id}`},
             async (payload) => {
-                const { data: byData } = await supabase.from('profiles').select('full_name').eq('id', payload.new.assigned_by).single();
+                const { data: byData } = await supabase.from('profiles').select('first_name, surname').eq('id', payload.new.assigned_by).single();
                 const newLog = { 
                     ...payload.new,
-                    assigned_by_name: byData?.full_name || 'System',
+                    assigned_by_name: byData ? `${byData.first_name} ${byData.surname}` : 'System',
                 }
                 setAssignmentHistory(prev => [...prev, newLog as AssignmentLog]);
             })

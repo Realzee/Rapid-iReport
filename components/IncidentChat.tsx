@@ -63,7 +63,7 @@ const ChatMessageItem: React.FC<{
             <div className={`flex flex-col max-w-[80%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
                 <div className="flex items-center space-x-2 rtl:space-x-reverse">
                     {!isCurrentUser && (
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">{msg.profile?.full_name || 'Unknown'}</span>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">{(msg.profile?.first_name || 'Unknown') + ' ' + (msg.profile?.surname || '')}</span>
                     )}
                     <span className="text-xs font-normal text-gray-500 dark:text-gray-400">{!isCurrentUser ? timeAgo : ''}</span>
                 </div>
@@ -150,11 +150,15 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
                 console.error("Error fetching chat messages:", error);
                 setMessages([]);
             } else {
-                const messagesWithProfiles = data.map(msg => ({
-                    ...msg,
-                    // FIX: Property 'full_name' does not exist on type 'Profile'.
-                    profile: userMap.get(msg.user_id) ? { full_name: `${userMap.get(msg.user_id)!.first_name} ${userMap.get(msg.user_id)!.surname}`, avatar_url: userMap.get(msg.user_id)!.avatar_url } : { full_name: 'Unknown User' }
-                }));
+                const messagesWithProfiles = data.map(msg => {
+                    const userProfile = userMap.get(msg.user_id);
+                    return {
+                        ...msg,
+                        profile: userProfile 
+                            ? { first_name: userProfile.first_name, surname: userProfile.surname, avatar_url: userProfile.avatar_url } 
+                            : { first_name: 'Unknown', surname: 'User' }
+                    };
+                });
                 setMessages(messagesWithProfiles as ChatMessage[]);
             }
 
@@ -168,8 +172,9 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
                         const userProfile = userMap.get(payload.new.user_id);
                         return [...prev, {
                             ...payload.new,
-                            // FIX: Property 'full_name' does not exist on type 'Profile'.
-                            profile: userProfile ? { full_name: `${userProfile.first_name} ${userProfile.surname}`, avatar_url: userProfile.avatar_url } : { full_name: 'Unknown User', avatar_url: undefined }
+                            profile: userProfile 
+                                ? { first_name: userProfile.first_name, surname: userProfile.surname, avatar_url: userProfile.avatar_url } 
+                                : { first_name: 'Unknown', surname: 'User', avatar_url: undefined }
                         } as ChatMessage];
                     });
                 } else if (payload.eventType === 'UPDATE') {
@@ -222,8 +227,7 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
         } else if (newDbMessage) {
             const newUIMessage: ChatMessage = {
                 ...newDbMessage,
-                // FIX: Property 'full_name' does not exist on type 'Profile'.
-                profile: { full_name: `${currentUserProfile.first_name} ${currentUserProfile.surname}`, avatar_url: currentUserProfile.avatar_url }
+                profile: { first_name: currentUserProfile.first_name, surname: currentUserProfile.surname, avatar_url: currentUserProfile.avatar_url }
             };
             setMessages(prevMessages => [...prevMessages, newUIMessage]);
         }

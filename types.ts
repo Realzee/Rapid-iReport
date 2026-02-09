@@ -147,7 +147,8 @@ export interface ChatMessage {
   created_at: string;
   read_by: string[];
   profile?: { // Joined from profiles table
-    full_name: string;
+    first_name: string;
+    surname: string;
     avatar_url?: string;
   };
 }
@@ -158,7 +159,11 @@ export interface ReportUpdate {
   user_id: string; // profile id
   content: string;
   created_at: string; // ISO date string
-  user_full_name?: string; // Joined from profiles table
+  user_full_name?: string; // Combined name for display
+  profile?: { // Joined from profiles table
+    first_name: string;
+    surname: string;
+  } | null;
 }
 
 export interface Notification {
