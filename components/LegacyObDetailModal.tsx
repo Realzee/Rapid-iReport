@@ -31,8 +31,14 @@ const LegacyObDetailModal: React.FC<LegacyObDetailModalProps> = ({ isOpen, onClo
                 </div>
                 
                 <div className="space-y-4">
-                    <DetailItem label="OB Number" value={<p className="font-mono text-lg">{entry.obNumber}</p>} />
-                    <DetailItem label="Timestamp" value={entry.timestamp} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <DetailItem label="OB Number" value={<p className="font-mono text-lg">{entry.obNumber}</p>} />
+                        <DetailItem label="Timestamp" value={entry.timestamp} />
+                        <DetailItem label="Entry Type" value={entry.entryType} />
+                        <DetailItem label="Logged By" value={entry.loggedBy} />
+                        <DetailItem label="Location" value={entry.location} />
+                        <DetailItem label="Reference" value={entry.reference} />
+                    </div>
                     <DetailItem label="Details" value={<p className="whitespace-pre-wrap">{entry.details}</p>} />
                 </div>
             </div>

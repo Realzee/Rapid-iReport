@@ -75,6 +75,8 @@ const LegacyObLog: React.FC<LegacyObLogProps> = ({ onRowClick }) => {
                     <tr>
                         <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">OB#</th>
                         <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Details</th>
+                        <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Type</th>
+                        <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Logged By</th>
                         <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Time</th>
                     </tr>
                 </thead>
@@ -83,6 +85,8 @@ const LegacyObLog: React.FC<LegacyObLogProps> = ({ onRowClick }) => {
                         <tr key={entry.obNumber} className="hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer" onClick={() => onRowClick(entry)}>
                             <td className="px-2 py-3 font-mono whitespace-nowrap">{entry.obNumber}</td>
                             <td className="px-2 py-3">{entry.details}</td>
+                            <td className="px-2 py-3 whitespace-nowrap">{entry.entryType || 'N/A'}</td>
+                            <td className="px-2 py-3 whitespace-nowrap">{entry.loggedBy || 'N/A'}</td>
                             <td className="px-2 py-3 whitespace-nowrap">{entry.timestamp}</td>
                         </tr>
                     ))}

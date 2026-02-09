@@ -211,4 +211,8 @@ export interface LegacyObEntry {
   obNumber: string;
   details: string;
   timestamp: string;
+  loggedBy?: string;
+  entryType?: string;
+  location?: string;
+  reference?: string;
 }
