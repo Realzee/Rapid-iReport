@@ -74,20 +74,28 @@ const LegacyObLog: React.FC<LegacyObLogProps> = ({ onRowClick }) => {
                 <thead className="sticky top-0 bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-sm z-10">
                     <tr>
                         <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">OB#</th>
-                        <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Details</th>
-                        <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Type</th>
-                        <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Logged By</th>
-                        <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Time</th>
+                        <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Vehicle Reg</th>
+                        <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Make & Model</th>
+                        <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date of Incident</th>
+                        <th className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Recovered</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700/50">
                     {legacyData.map((entry) => (
                         <tr key={entry.obNumber} className="hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer" onClick={() => onRowClick(entry)}>
                             <td className="px-2 py-3 font-mono whitespace-nowrap">{entry.obNumber}</td>
-                            <td className="px-2 py-3">{entry.details}</td>
-                            <td className="px-2 py-3 whitespace-nowrap">{entry.entryType || 'N/A'}</td>
-                            <td className="px-2 py-3 whitespace-nowrap">{entry.loggedBy || 'N/A'}</td>
-                            <td className="px-2 py-3 whitespace-nowrap">{entry.timestamp}</td>
+                            <td className="px-2 py-3 font-semibold whitespace-nowrap">{entry.vehicleRegistration || 'N/A'}</td>
+                            <td className="px-2 py-3 whitespace-nowrap">{entry.make || entry.model ? `${entry.make || ''} ${entry.model || ''}`.trim() : 'N/A'}</td>
+                            <td className="px-2 py-3 whitespace-nowrap">{entry.dateOfIncident || 'N/A'}</td>
+                            <td className="px-2 py-3 whitespace-nowrap">
+                                {typeof entry.recovered === 'string' ? (
+                                    <span className={`px-2 py-1 text-xs font-bold rounded-full ${entry.recovered.toLowerCase() === 'yes' ? 'bg-green-500/20 text-green-700 dark:text-green-300' : 'bg-red-500/20 text-red-700 dark:text-red-300'}`}>{entry.recovered}</span>
+                                ) : typeof entry.recovered === 'boolean' ? (
+                                    <span className={`px-2 py-1 text-xs font-bold rounded-full ${entry.recovered ? 'bg-green-500/20 text-green-700 dark:text-green-300' : 'bg-red-500/20 text-red-700 dark:text-red-300'}`}>{entry.recovered ? 'Yes' : 'No'}</span>
+                                ) : (
+                                    'N/A'
+                                )}
+                            </td>
                         </tr>
                     ))}
                 </tbody>

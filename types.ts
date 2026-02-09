@@ -215,4 +215,19 @@ export interface LegacyObEntry {
   entryType?: string;
   location?: string;
   reference?: string;
+
+  // New detailed fields from PHP backend
+  vehicleRegistration?: string;
+  make?: string;
+  model?: string;
+  color?: string;
+  cosName?: string;
+  cosContact?: string;
+  caseNumber?: string;
+  stationReportedAt?: string;
+  ioName?: string;
+  ioContact?: string;
+  recovered?: boolean | string;
+  tracker?: boolean | string;
+  dateOfIncident?: string;
 }
