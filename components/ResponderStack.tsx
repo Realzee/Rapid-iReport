@@ -1,5 +1,3 @@
-
-
 import React, { useMemo } from 'react';
 import { Report, Responder, ResponderStatus } from '../types';
 import { PhoneIcon, ClockIcon } from './icons';
@@ -102,7 +100,7 @@ const ResponderStack: React.FC<ResponderStackProps> = ({ responders, reports }) 
                     <span>{onDutyResponders.length} On Duty</span>
                 </p>
             </div>
-            <div className="space-y-3 overflow-y-auto pr-2 -mr-2">
+            <div className="space-y-3">
                 {sortedResponders.map(responder => (
                     <ResponderCard
                         key={responder.id}

@@ -95,7 +95,7 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, on
                 </div>
             </div>
 
-            <div className="space-y-2 overflow-y-auto pr-2 -mr-2">
+            <div className="space-y-2">
                 {reports.map(report => (
                     <LiveEventItem
                         key={report.id}
