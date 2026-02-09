@@ -59,18 +59,20 @@ const LedClock: React.FC = () => {
     const minutes = format(time, 'mm');
     const amPm = format(time, 'aa');
     const dayOfWeek = format(time, 'eee'); // Mon, Tue, etc.
+    const dateStr = format(time, 'dd MMM');
 
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     return (
         <div className="led-clock-container hidden md:flex items-center justify-between gap-2 font-mono">
-            {/* Day of Week */}
-            <div className="flex flex-col pr-1 border-r border-red-900/50">
+            {/* Day of Week & Date */}
+            <div className="flex flex-col pr-1 border-r border-red-900/50 justify-center">
                 {days.map(day => (
                     <span key={day} className={`led-day ${day.toLowerCase() === dayOfWeek.toLowerCase() ? 'lit' : ''}`}>
                         {day}
                     </span>
                 ))}
+                <span className="led-small-text text-center mt-1">{dateStr.toUpperCase()}</span>
             </div>
 
             {/* Main Time */}
