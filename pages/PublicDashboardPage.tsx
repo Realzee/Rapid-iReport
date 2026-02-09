@@ -13,6 +13,7 @@ import AnnouncementsPanel from '../components/AnnouncementsPanel';
 import LegacyObLog from '../components/LegacyObLog';
 import PublicReportDetailModal from '../components/PublicReportDetailModal';
 import LegacyObDetailModal from '../components/LegacyObDetailModal';
+import MapStyleToggle, { MapStyle } from '../components/MapStyleToggle';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -48,6 +49,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
     const [detailReport, setDetailReport] = useState<Report | null>(null);
     const [activeTab, setActiveTab] = useState<'incidents' | 'legacy'>('incidents');
     const [selectedLegacyEntry, setSelectedLegacyEntry] = useState<LegacyObEntry | null>(null);
+    const [mapStyle, setMapStyle] = useState<MapStyle>('street');
     const { theme } = useTheme();
     const { mainLogoUrl } = useSettings();
 
@@ -100,10 +102,22 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
 
     const selectedReport = useMemo(() => reports.find(r => r.id === selectedReportId), [reports, selectedReportId]);
     
-    const lightMapUrl = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-    const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-    const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
-    const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    const streetLightUrl = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+    const streetDarkUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+    const satelliteUrl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+    const streetAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    const satelliteAttribution = 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community';
+
+    const currentTile = useMemo(() => {
+        if (mapStyle === 'satellite') {
+            return { url: satelliteUrl, attribution: satelliteAttribution };
+        }
+        // street style
+        return {
+            url: theme === 'dark' ? streetDarkUrl : streetLightUrl,
+            attribution: streetAttribution
+        };
+    }, [mapStyle, theme]);
     
     const tabButtonClasses = (tabName: 'incidents' | 'legacy') => 
         `w-1/2 py-2.5 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${
@@ -132,9 +146,9 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                 </header>
                 <main className="flex-grow grid grid-cols-1 lg:grid-cols-10 gap-4 p-4 overflow-hidden h-[calc(100vh-5rem)]">
                     {/* Map Section */}
-                    <div className="lg:col-span-6 h-[50vh] lg:h-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700/50 shadow-md">
+                    <div className="relative lg:col-span-6 h-[50vh] lg:h-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700/50 shadow-md">
                          <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
-                            <TileLayer key={theme} url={tileUrl} attribution={attribution} />
+                            <TileLayer key={`${theme}-${mapStyle}`} url={currentTile.url} attribution={currentTile.attribution} />
                             <MapFocusController selectedReport={selectedReport} />
                             {reports.map(report => report.location_coords && (
                                 <Marker 
@@ -153,6 +167,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                                 </Marker>
                             ))}
                         </MapContainer>
+                        <MapStyleToggle currentStyle={mapStyle} onStyleChange={setMapStyle} />
                     </div>
                     
                     {/* Content Section */}
