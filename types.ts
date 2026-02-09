@@ -206,3 +206,9 @@ export interface Toast {
   message: string;
   type: ToastType;
 }
+
+export interface LegacyObEntry {
+  obNumber: string;
+  details: string;
+  timestamp: string;
+}

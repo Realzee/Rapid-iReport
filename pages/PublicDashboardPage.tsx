@@ -10,6 +10,7 @@ import { CarIcon, CrimeIcon, XIcon, MenuIcon } from '../components/icons';
 import { formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
 import AnnouncementsPanel from '../components/AnnouncementsPanel';
+import LegacyObLog from '../components/LegacyObLog';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -138,6 +139,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                             )}
                         </div>
                         <AnnouncementsPanel announcements={announcements} />
+                        <LegacyObLog />
                     </div>
                 </aside>
                 <div className="flex-grow h-full">
