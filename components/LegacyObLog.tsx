@@ -44,7 +44,7 @@ const LegacyObLog: React.FC = () => {
                 <DatabaseIcon className="w-5 h-5" />
                 Legacy OB Log
             </h2>
-            <div className="max-h-96 overflow-y-auto pr-2">
+            <div>
                 {loading && (
                     <div className="flex justify-center items-center py-8">
                         <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>

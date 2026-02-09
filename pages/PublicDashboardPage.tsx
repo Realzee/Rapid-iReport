@@ -4,13 +4,14 @@ import L from 'leaflet';
 import { supabase } from '../utils/supabase';
 import { Report, VehicleReport, Announcement } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
-import { rapid911LogoUrl } from '../assets/rapid911logo';
+import { useSettings } from '../contexts/SettingsContext';
 import ThemeToggle from '../components/ThemeToggle';
 import { CarIcon, CrimeIcon, XIcon, MenuIcon } from '../components/icons';
 import { formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
 import AnnouncementsPanel from '../components/AnnouncementsPanel';
 import LegacyObLog from '../components/LegacyObLog';
+import PublicReportDetailModal from '../components/PublicReportDetailModal';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -28,7 +29,6 @@ const createCrimeIcon = () => {
     return new L.DivIcon({ html: iconHtml, className: '', iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -16] });
 };
 
-
 const MapFocusController: React.FC<{ selectedReport: Report | undefined }> = ({ selectedReport }) => {
     const map = useMap();
     useEffect(() => {
@@ -45,7 +45,9 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [isSidePanelOpen, setSidePanelOpen] = useState(true);
+    const [detailReport, setDetailReport] = useState<Report | null>(null);
     const { theme } = useTheme();
+    const { mainLogoUrl } = useSettings();
 
     const fetchData = async () => {
         const [
@@ -81,6 +83,17 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
 
         return () => { supabase.removeChannel(channel); };
     }, []);
+    
+    const handleSelectReport = (reportId: string) => {
+        const report = reports.find(r => r.id === reportId);
+        if (report) {
+            setSelectedReportId(report.id);
+            setDetailReport(report);
+            if (window.innerWidth < 768) {
+                setSidePanelOpen(false);
+            }
+        }
+    };
 
     const selectedReport = useMemo(() => reports.find(r => r.id === selectedReportId), [reports, selectedReportId]);
     
@@ -90,27 +103,27 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
     const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
     return (
-        <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-            <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700/50 z-20">
-                <div className="px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                         <button onClick={() => setSidePanelOpen(!isSidePanelOpen)} className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors md:hidden">
-                            {isSidePanelOpen ? <XIcon className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
-                        </button>
-                        <img src={rapid911LogoUrl} alt="Logo" className="w-auto h-14 object-contain" />
-                        <h1 className="text-xl font-bold hidden sm:block">Community Safety Map</h1>
+        <>
+            <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+                <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700/50 z-20">
+                    <div className="px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setSidePanelOpen(!isSidePanelOpen)} className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors md:hidden">
+                                {isSidePanelOpen ? <XIcon className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
+                            </button>
+                            <img src={mainLogoUrl} alt="Logo" className="w-auto h-14 object-contain" />
+                            <h1 className="text-xl font-bold hidden sm:block">Community Safety Map</h1>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <ThemeToggle />
+                            <button onClick={onBackToLogin} className="px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 rounded-lg hover:bg-blue-500/20 transition-colors">
+                                Operator Login
+                            </button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <ThemeToggle />
-                        <button onClick={onBackToLogin} className="px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 rounded-lg hover:bg-blue-500/20 transition-colors">
-                            Operator Login
-                        </button>
-                    </div>
-                </div>
-            </header>
-            <main className="flex-grow flex relative overflow-hidden">
-                <aside className={`absolute md:relative top-0 bottom-0 left-0 z-10 w-full max-w-sm md:w-96 flex-shrink-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-r border-gray-200 dark:border-gray-700/50 flex flex-col transition-transform duration-300 ease-in-out ${isSidePanelOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-                    <div className="flex-grow overflow-y-auto">
+                </header>
+                <main className="flex-grow flex relative overflow-hidden">
+                    <aside className={`absolute md:relative top-0 bottom-0 left-0 z-10 w-full max-w-sm md:w-96 flex-shrink-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-r border-gray-200 dark:border-gray-700/50 flex flex-col transition-transform duration-300 ease-in-out ${isSidePanelOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 overflow-y-auto`}>
                         <div className="p-4 border-b border-gray-200 dark:border-gray-700/50">
                             <h2 className="font-bold text-lg">Live Incidents ({reports.length})</h2>
                             <p className="text-xs text-gray-500 dark:text-gray-400">Showing reports from the last 72 hours.</p>
@@ -123,7 +136,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                             ) : (
                                 <div className="space-y-2">
                                 {reports.map(report => (
-                                    <div key={report.id} onClick={() => { setSelectedReportId(report.id); if (window.innerWidth < 768) setSidePanelOpen(false); }} className={`p-3 cursor-pointer rounded-lg border-2 transition-all ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-gray-100/50 dark:bg-gray-800/50 border-transparent hover:border-gray-300 dark:hover:border-gray-600'}`}>
+                                    <div key={report.id} onClick={() => handleSelectReport(report.id)} className={`p-3 cursor-pointer rounded-lg border-2 transition-all ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-gray-100/50 dark:bg-gray-800/50 border-transparent hover:border-gray-300 dark:hover:border-gray-600'}`}>
                                         <div className="flex justify-between items-start gap-2">
                                             <h3 className="font-semibold text-md truncate">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
                                             <StatusBadge status={report.status} />
@@ -140,27 +153,33 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                         </div>
                         <AnnouncementsPanel announcements={announcements} />
                         <LegacyObLog />
+                    </aside>
+                    <div className="flex-grow h-full">
+                        <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
+                            <TileLayer key={theme} url={tileUrl} attribution={attribution} />
+                            <MapFocusController selectedReport={selectedReport} />
+                            {reports.map(report => report.location_coords && (
+                                <Marker 
+                                    key={report.id} 
+                                    position={[report.location_coords.lat, report.location_coords.lng]} 
+                                    icon={isVehicleReport(report) ? createVehicleIcon() : createCrimeIcon()}
+                                    eventHandlers={{ click: () => handleSelectReport(report.id) }}
+                                >
+                                    <Popup>
+                                        <div className="w-56">
+                                            <h4 className="font-bold mb-1">{isVehicleReport(report) ? report.license_plate : report.title}</h4>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{isVehicleReport(report) ? report.last_seen_location : report.location}</p>
+                                            <StatusBadge status={report.status} />
+                                        </div>
+                                    </Popup>
+                                </Marker>
+                            ))}
+                        </MapContainer>
                     </div>
-                </aside>
-                <div className="flex-grow h-full">
-                     <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
-                        <TileLayer key={theme} url={tileUrl} attribution={attribution} />
-                        <MapFocusController selectedReport={selectedReport} />
-                        {reports.map(report => report.location_coords && (
-                            <Marker key={report.id} position={[report.location_coords.lat, report.location_coords.lng]} icon={isVehicleReport(report) ? createVehicleIcon() : createCrimeIcon()}>
-                                <Popup>
-                                    <div className="w-56">
-                                        <h4 className="font-bold mb-1">{isVehicleReport(report) ? report.license_plate : report.title}</h4>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{isVehicleReport(report) ? report.last_seen_location : report.location}</p>
-                                        <StatusBadge status={report.status} />
-                                    </div>
-                                </Popup>
-                            </Marker>
-                        ))}
-                     </MapContainer>
-                </div>
-            </main>
-        </div>
+                </main>
+            </div>
+            <PublicReportDetailModal isOpen={!!detailReport} onClose={() => setDetailReport(null)} report={detailReport} />
+        </>
     );
 };
 
