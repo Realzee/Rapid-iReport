@@ -6,7 +6,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import ThemeToggle from './ThemeToggle';
 import NotificationsPanel from './NotificationsPanel';
 import PTTModal from './PTTModal';
-import { format } from 'date-fns';
+import LedClock from './LedClock';
 
 interface HeaderProps {
     currentView: string;
@@ -22,23 +22,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isPTTModalOpen, setIsPTTModalOpen] = useState(false);
   const { mainLogoUrl } = useSettings();
-  const [currentTime, setCurrentTime] = useState(new Date());
 
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   
   const unreadCount = useMemo(() => notifications.filter(n => !n.is_read).length, [notifications]);
   const canAccessAdminPages = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-        setCurrentTime(new Date());
-    }, 1000);
-
-    return () => {
-        clearInterval(timer);
-    };
-  }, []);
 
   useEffect(() => {
     if (!profile) return;
@@ -189,14 +178,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
             <NavLinks />
           </nav>
           <div className="flex items-center space-x-4">
-            <div className="hidden font-mono md:flex flex-col items-center justify-center bg-gray-900 dark:bg-black rounded-lg px-4 py-2 border border-gray-700 dark:border-gray-800 shadow-inner shadow-black/50">
-                <div className="font-bold text-xl text-cyan-400 leading-none tracking-widest [text-shadow:0_0_5px_rgba(34,211,238,0.7)]">
-                    {format(currentTime, 'h:mm:ss aa')}
-                </div>
-                <div className="text-xs text-cyan-400/70 tracking-wide mt-1">
-                    {format(currentTime, 'EEE, MMM d, yyyy')}
-                </div>
-            </div>
+            <LedClock />
             <ThemeToggle />
             {profile.company_id && (
                 <button onClick={() => setIsPTTModalOpen(true)} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300" title="Push-to-Talk">
