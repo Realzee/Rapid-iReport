@@ -74,7 +74,7 @@ const LedClock: React.FC = () => {
             </div>
 
             {/* Main Time */}
-            <div className="flex items-center">
+            <div className="flex items-center gap-1">
                 <SevenSegmentChar char={hours[0] as Char} size="compact" />
                 <SevenSegmentChar char={hours[1] as Char} size="compact" />
                 <Colon size="compact" />
