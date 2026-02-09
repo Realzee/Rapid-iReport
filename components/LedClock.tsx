@@ -72,7 +72,7 @@ const LedClock: React.FC = () => {
                         {day}
                     </span>
                 ))}
-                <span className="led-small-text text-center mt-1">{dateStr.toUpperCase()}</span>
+                <span className="led-small-text text-center">{dateStr.toUpperCase()}</span>
             </div>
 
             {/* Main Time */}
