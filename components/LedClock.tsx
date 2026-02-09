@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 
 type Segment = 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g';
 type Char = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | ' ' | 'c' | 'f' | 'd' | 'm';
-type Size = 'medium';
+type Size = 'compact';
 
 const segmentMap: Record<Char, Segment[]> = {
     '0': ['a', 'b', 'c', 'd', 'e', 'f'],
@@ -26,7 +26,7 @@ const segmentMap: Record<Char, Segment[]> = {
 const SevenSegmentChar: React.FC<{ char: Char; size: Size }> = ({ char, size }) => {
     const activeSegments = segmentMap[char] || [];
     const segments: Segment[] = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
-    const sizeClass = 'seg-char-medium';
+    const sizeClass = 'seg-char-compact';
 
     return (
         <div className={`segment-char ${sizeClass}`}>
@@ -38,9 +38,9 @@ const SevenSegmentChar: React.FC<{ char: Char; size: Size }> = ({ char, size }) 
 };
 
 const Colon: React.FC<{ size: Size }> = ({ size }) => {
-    const sizeClass = 'colon-medium';
+    const sizeClass = 'colon-compact';
     return (
-        <div className={`relative ${sizeClass}`} style={{ width: '6px'}}>
+        <div className={`relative ${sizeClass}`} style={{ width: '4px'}}>
             <div className="segment lit dot dot-top absolute"></div>
             <div className="segment lit dot dot-bottom absolute"></div>
         </div>
@@ -75,11 +75,11 @@ const LedClock: React.FC = () => {
 
             {/* Main Time */}
             <div className="flex items-center">
-                <SevenSegmentChar char={hours[0] as Char} size="medium" />
-                <SevenSegmentChar char={hours[1] as Char} size="medium" />
-                <Colon size="medium" />
-                <SevenSegmentChar char={minutes[0] as Char} size="medium" />
-                <SevenSegmentChar char={minutes[1] as Char} size="medium" />
+                <SevenSegmentChar char={hours[0] as Char} size="compact" />
+                <SevenSegmentChar char={hours[1] as Char} size="compact" />
+                <Colon size="compact" />
+                <SevenSegmentChar char={minutes[0] as Char} size="compact" />
+                <SevenSegmentChar char={minutes[1] as Char} size="compact" />
             </div>
 
             {/* AM/PM */}
