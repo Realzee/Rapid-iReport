@@ -229,7 +229,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
                   alt="User Avatar"
                   className="w-10 h-10 rounded-full border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 transition"
                 />
-                <span className="hidden sm:inline text-gray-900 dark:text-white">{profile.full_name}</span>
+                <span className="hidden sm:inline text-gray-900 dark:text-white">{`${profile.first_name} ${profile.surname}`}</span>
                 <ChevronDownIcon className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               {dropdownOpen && (

@@ -140,7 +140,7 @@ const CompaniesPage: React.FC = () => {
         setIsDeleteModalOpen(true);
     };
 
-    const handleSaveCompany = async (companyData: { id?: string; name: string; logo_url?: string; }, logoFile: File | null) => {
+    const handleSaveCompany = async (companyData: Partial<Company>, logoFile: File | null) => {
         let finalLogoUrl = companyData.logo_url;
 
         try {
@@ -162,7 +162,7 @@ const CompaniesPage: React.FC = () => {
             let savedCompany: Company | null = null;
             let error;
 
-            const dbPayload = { name: companyData.name, logo_url: finalLogoUrl };
+            const { id, ...dbPayload } = { ...companyData, logo_url: finalLogoUrl };
 
             if (companyData.id) {
                 const { data, error: updateError } = await supabase.from('companies').update(dbPayload).eq('id', companyData.id).select().single();
@@ -178,7 +178,7 @@ const CompaniesPage: React.FC = () => {
             
             if (savedCompany) {
                 if (companyData.id) {
-                    setCompanies(companies.map(c => c.id === savedCompany!.id ? savedCompany : c));
+                    setCompanies(companies.map(c => c.id === savedCompany!.id ? savedCompany! : c));
                 } else {
                     setCompanies([...companies, savedCompany]);
                 }

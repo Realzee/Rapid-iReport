@@ -71,7 +71,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             ] = await Promise.all([
                 supabase.from('report_updates').select('*, profile:profiles(full_name)').eq('report_id', report.id).order('created_at', { ascending: true }),
                 supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(full_name), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(full_name), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(full_name)`).eq('report_id', report.id).order('created_at', { ascending: false }),
-                supabase.from('profiles').select('full_name').eq('id', report.reported_by).single()
+                supabase.from('profiles').select('first_name, surname').eq('id', report.reported_by).single()
             ]);
 
             if (updatesError) console.error("Error fetching report updates:", updatesError);
@@ -525,10 +525,9 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                                 <select value={selectedResponder} onChange={(e) => setSelectedResponder(e.target.value)} disabled={isTerminalStatus} className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed">
                                     <option value="">{report.assigned_to ? 'Unassign' : (availableResponders.length > 0 ? 'Select Responder...' : 'No responders available')}</option>
                                     {responderOptions.map(r => (
-                                        <option key={r.id} value={r.id}>
-                                            {r.full_name}
-                                            {r.status !== ResponderStatus.AVAILABLE ? ` (${r.status.replace(/_/g, ' ')})` : ''}
-                                        </option>
+                                        <option key={r.id} value={r.id}>{/* FIX: Property 'full_name' does not exist on type 'Responder'. */}
+                                        {r.first_name} {r.surname}
+                                        {r.status !== ResponderStatus.AVAILABLE ? ` (${r.status.replace(/_/g, ' ')})` : ''}</option>
                                     ))}
                                 </select>
                                 <button onClick={() => handleDispatchResponder(selectedResponder)} disabled={isTerminalStatus} className="p-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:cursor-not-allowed">
@@ -542,7 +541,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             <PrintableReport
                 report={report}
                 timelineEvents={timelineEvents}
-                reporterName={reporter?.full_name}
+                // FIX: Property 'full_name' does not exist on type 'Profile'.
+                reporterName={reporter ? `${reporter.first_name} ${reporter.surname}` : null}
                 company={profile.company}
             />
             {deleteModalOpen && (

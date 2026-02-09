@@ -182,7 +182,9 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         const responderProfiles = allUsers.filter(p => p.role === UserRole.RESPONDER);
         const mappedResponders: Responder[] = responderProfiles.map(p => ({
             id: p.id,
-            full_name: p.full_name,
+            // FIX: Property 'full_name' does not exist on type 'Profile'.
+            first_name: p.first_name,
+            surname: p.surname,
             status: p.responder_status || ResponderStatus.OFF_DUTY,
             location_coords: p.location_coords || undefined,
         }));

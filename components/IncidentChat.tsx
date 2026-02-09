@@ -152,7 +152,8 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
             } else {
                 const messagesWithProfiles = data.map(msg => ({
                     ...msg,
-                    profile: userMap.get(msg.user_id) ? { full_name: userMap.get(msg.user_id)!.full_name, avatar_url: userMap.get(msg.user_id)!.avatar_url } : { full_name: 'Unknown User' }
+                    // FIX: Property 'full_name' does not exist on type 'Profile'.
+                    profile: userMap.get(msg.user_id) ? { full_name: `${userMap.get(msg.user_id)!.first_name} ${userMap.get(msg.user_id)!.surname}`, avatar_url: userMap.get(msg.user_id)!.avatar_url } : { full_name: 'Unknown User' }
                 }));
                 setMessages(messagesWithProfiles as ChatMessage[]);
             }
@@ -167,7 +168,8 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
                         const userProfile = userMap.get(payload.new.user_id);
                         return [...prev, {
                             ...payload.new,
-                            profile: userProfile ? { full_name: userProfile.full_name, avatar_url: userProfile.avatar_url } : { full_name: 'Unknown User', avatar_url: undefined }
+                            // FIX: Property 'full_name' does not exist on type 'Profile'.
+                            profile: userProfile ? { full_name: `${userProfile.first_name} ${userProfile.surname}`, avatar_url: userProfile.avatar_url } : { full_name: 'Unknown User', avatar_url: undefined }
                         } as ChatMessage];
                     });
                 } else if (payload.eventType === 'UPDATE') {
@@ -220,7 +222,8 @@ const IncidentChat: React.FC<IncidentChatProps> = ({ reportId, currentUserProfil
         } else if (newDbMessage) {
             const newUIMessage: ChatMessage = {
                 ...newDbMessage,
-                profile: { full_name: currentUserProfile.full_name, avatar_url: currentUserProfile.avatar_url }
+                // FIX: Property 'full_name' does not exist on type 'Profile'.
+                profile: { full_name: `${currentUserProfile.first_name} ${currentUserProfile.surname}`, avatar_url: currentUserProfile.avatar_url }
             };
             setMessages(prevMessages => [...prevMessages, newUIMessage]);
         }

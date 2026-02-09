@@ -21,12 +21,19 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
             setFormData(user);
         } else {
             setFormData({
-                full_name: '',
+                first_name: '',
+                surname: '',
                 email: '',
                 role: UserRole.USER,
                 status: UserStatus.PENDING,
                 company_id: undefined,
                 responder_status: ResponderStatus.OFF_DUTY,
+                cell: '',
+                vehicle_reg: '',
+                home_address: '',
+                ice_no: '',
+                medical_aid: '',
+                psira_number: '',
             });
         }
         setPassword('');
@@ -49,16 +56,22 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-8 w-full max-w-lg mx-4">
+            <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-8 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
                 <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
                     <XIcon className="w-6 h-6" />
                 </button>
                 <h3 id="modal-title" className="text-2xl font-bold text-gray-900 dark:text-white mb-6">{user ? 'Edit User' : 'Add New User'}</h3>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label htmlFor="full_name" className={labelClasses}>Full Name</label>
-                        <input type="text" name="full_name" id="full_name" value={formData.full_name || ''} onChange={handleChange} required className={inputClasses}/>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="first_name" className={labelClasses}>First Name</label>
+                            <input type="text" name="first_name" id="first_name" value={formData.first_name || ''} onChange={handleChange} required className={inputClasses}/>
+                        </div>
+                        <div>
+                            <label htmlFor="surname" className={labelClasses}>Surname</label>
+                            <input type="text" name="surname" id="surname" value={formData.surname || ''} onChange={handleChange} required className={inputClasses}/>
+                        </div>
                     </div>
                     <div>
                         <label htmlFor="email" className={labelClasses}>Email</label>
@@ -78,11 +91,19 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                             placeholder={user ? "Leave blank to keep current password" : "••••••••"}
                         />
                     </div>
-                    <div>
-                        <label htmlFor="role" className={labelClasses}>Role</label>
-                        <select name="role" id="role" value={formData.role || ''} onChange={handleChange} className={inputClasses}>
-                            {Object.values(UserRole).map(role => <option key={role} value={role} className="capitalize">{role}</option>)}
-                        </select>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="role" className={labelClasses}>Role</label>
+                            <select name="role" id="role" value={formData.role || ''} onChange={handleChange} className={inputClasses}>
+                                {Object.values(UserRole).map(role => <option key={role} value={role} className="capitalize">{role}</option>)}
+                            </select>
+                        </div>
+                         <div>
+                            <label htmlFor="status" className={labelClasses}>Status</label>
+                            <select name="status" id="status" value={formData.status || ''} onChange={handleChange} className={inputClasses}>
+                                {Object.values(UserStatus).map(status => <option key={status} value={status} className="capitalize">{status}</option>)}
+                            </select>
+                        </div>
                     </div>
                     {formData.role === UserRole.RESPONDER && (
                         <div>
@@ -92,18 +113,43 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                             </select>
                         </div>
                     )}
-                    <div>
-                        <label htmlFor="status" className={labelClasses}>Status</label>
-                        <select name="status" id="status" value={formData.status || ''} onChange={handleChange} className={inputClasses}>
-                            {Object.values(UserStatus).map(status => <option key={status} value={status} className="capitalize">{status}</option>)}
-                        </select>
-                    </div>
-                    <div>
+                     <div>
                         <label htmlFor="company_id" className={labelClasses}>Company</label>
                         <select name="company_id" id="company_id" value={formData.company_id || ''} onChange={handleChange} className={inputClasses}>
                             <option value="">None</option>
                             {companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
                         </select>
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div>
+                                <label htmlFor="cell" className={labelClasses}>Cell Number</label>
+                                <input type="tel" name="cell" id="cell" value={formData.cell || ''} onChange={handleChange} className={inputClasses} />
+                            </div>
+                             <div>
+                                <label htmlFor="ice_no" className={labelClasses}>ICE Number</label>
+                                <input type="tel" name="ice_no" id="ice_no" value={formData.ice_no || ''} onChange={handleChange} className={inputClasses} />
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label htmlFor="home_address" className={labelClasses}>Home Address</label>
+                        <input type="text" name="home_address" id="home_address" value={formData.home_address || ''} onChange={handleChange} className={inputClasses} />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="vehicle_reg" className={labelClasses}>Vehicle Reg (Optional)</label>
+                            <input type="text" name="vehicle_reg" id="vehicle_reg" value={formData.vehicle_reg || ''} onChange={handleChange} className={inputClasses} />
+                        </div>
+                         <div>
+                            <label htmlFor="medical_aid" className={labelClasses}>Medical Aid (Optional)</label>
+                            <input type="text" name="medical_aid" id="medical_aid" value={formData.medical_aid || ''} onChange={handleChange} className={inputClasses} />
+                        </div>
+                    </div>
+                    <div>
+                        <label htmlFor="psira_number" className={labelClasses}>PSIRA Number</label>
+                        <input type="text" name="psira_number" id="psira_number" value={formData.psira_number || ''} onChange={handleChange} className={inputClasses} />
                     </div>
                     <div className="pt-6 flex justify-end space-x-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>

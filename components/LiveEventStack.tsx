@@ -82,7 +82,8 @@ interface LiveEventStackProps {
 const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, onReportSelect, selectedReportId }) => {
     
     const responderMap = useMemo(() => {
-        return new Map(responders.map(r => [r.id, r.full_name]));
+        // FIX: Property 'full_name' does not exist on type 'Responder'.
+        return new Map(responders.map(r => [r.id, `${r.first_name} ${r.surname}`]));
     }, [responders]);
 
     return (

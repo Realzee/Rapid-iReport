@@ -54,12 +54,18 @@ export interface Company {
     id: string;
     name: string;
     logo_url?: string;
+    owners_name?: string;
+    address?: string;
+    contact_person?: string;
+    cell_number?: string;
+    psira_number?: string;
 }
 
 export interface Profile {
   id: string;
   email: string;
-  full_name: string;
+  first_name: string;
+  surname: string;
   role: UserRole;
   status: UserStatus;
   company_id?: string;
@@ -68,6 +74,12 @@ export interface Profile {
   last_seen_at?: string;
   responder_status?: ResponderStatus;
   location_coords?: LocationCoords;
+  cell?: string;
+  vehicle_reg?: string;
+  home_address?: string;
+  ice_no?: string;
+  medical_aid?: string;
+  psira_number?: string;
 }
 
 export interface LocationCoords {
@@ -121,7 +133,8 @@ export type Report = VehicleReport | CrimeReport;
 
 export interface Responder {
     id: string;
-    full_name: string;
+    first_name: string;
+    surname: string;
     status: ResponderStatus;
     location_coords?: LocationCoords;
 }

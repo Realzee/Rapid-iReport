@@ -109,7 +109,8 @@ const UsersPage: React.FC = () => {
         const lowercasedTerm = debouncedSearchTerm.toLowerCase();
         if (!lowercasedTerm) return users;
         return users.filter(user =>
-            user.full_name.toLowerCase().includes(lowercasedTerm) ||
+            (user.first_name || '').toLowerCase().includes(lowercasedTerm) ||
+            (user.surname || '').toLowerCase().includes(lowercasedTerm) ||
             user.email.toLowerCase().includes(lowercasedTerm)
         );
     }, [users, debouncedSearchTerm]);
@@ -178,9 +179,16 @@ const UsersPage: React.FC = () => {
             }
 
             const user_metadata: { [key: string]: any } = {
-                full_name: userToSave.full_name,
+                first_name: userToSave.first_name,
+                surname: userToSave.surname,
                 role: userToSave.role,
                 status: userToSave.status,
+                cell: userToSave.cell,
+                vehicle_reg: userToSave.vehicle_reg,
+                home_address: userToSave.home_address,
+                ice_no: userToSave.ice_no,
+                medical_aid: userToSave.medical_aid,
+                psira_number: userToSave.psira_number,
             };
 
             if (userToSave.company_id) {
@@ -282,7 +290,7 @@ const UsersPage: React.FC = () => {
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={confirmDeleteUser}
-                userName={selectedUser?.full_name || ''}
+                userName={selectedUser ? `${selectedUser.first_name} ${selectedUser.surname}` : ''}
             />
         </div>
     );

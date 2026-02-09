@@ -30,7 +30,8 @@ const ResponderCard: React.FC<ResponderCardProps> = ({ responder, assignedReport
                 <div className="flex items-center gap-3">
                     <img src={`https://i.pravatar.cc/40?u=${responder.id}`} alt="avatar" className="w-10 h-10 rounded-full" />
                     <div className="flex items-baseline gap-2">
-                        <p className="font-bold text-gray-900 dark:text-white">{responder.full_name}</p>
+                        {/* FIX: Property 'full_name' does not exist on type 'Responder'. */}
+                        <p className="font-bold text-gray-900 dark:text-white">{responder.first_name} {responder.surname}</p>
                         <ResponderStatusBadge status={responder.status} />
                     </div>
                 </div>

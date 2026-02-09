@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { Report, ReportStatus, Profile } from '../types';
 import ReportListItem from './ReportListItem';
@@ -19,7 +20,7 @@ const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onRe
     
     const userMap = useMemo(() => {
         return allUsers.reduce((acc, user) => {
-            acc[user.id] = user.full_name;
+            acc[user.id] = `${user.first_name} ${user.surname}`;
             return acc;
         }, {} as Record<string, string>);
     }, [allUsers]);

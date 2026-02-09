@@ -93,7 +93,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 setUsers(usersData || []);
                 setResponders((respondersData || []).map(p => ({
                     id: p.id,
-                    full_name: p.full_name,
+                    first_name: p.first_name,
+                    surname: p.surname,
                     status: p.responder_status || ResponderStatus.OFF_DUTY,
                     location_coords: p.location_coords || undefined,
                 })));
@@ -103,7 +104,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         fetchData();
     }, [profile]);
 
-    const userMap = useMemo(() => new Map(users.map(u => [u.id, u.full_name])), [users]);
+    const userMap = useMemo(() => new Map(users.map(u => [u.id, `${u.first_name} ${u.surname}`])), [users]);
 
     const processedReports = useMemo(() => {
         let filtered = reports

@@ -266,7 +266,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                  {reporter && (
                     <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported By</p>
-                        <p className="text-gray-700 dark:text-gray-300">{reporter.full_name} ({reporter.email})</p>
+                        {/* FIX: Property 'full_name' does not exist on type 'Profile'. */}
+                        <p className="text-gray-700 dark:text-gray-300">{reporter.first_name} {reporter.surname} ({reporter.email})</p>
                     </div>
                  )}
             </div>

@@ -179,7 +179,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                             zIndexOffset={100}
                         >
                             <Tooltip direction="top" offset={[0, -10]}>
-                                <div className="font-bold">{responder.full_name}</div>
+                                <div className="font-bold">{`${responder.first_name} ${responder.surname}`}</div>
                                 <div className="capitalize">{responder.status.replace('_', ' ')}</div>
                             </Tooltip>
                         </Marker>

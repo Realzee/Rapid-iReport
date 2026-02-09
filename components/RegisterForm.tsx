@@ -8,7 +8,14 @@ interface RegisterFormProps {
 }
 
 const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [surname, setSurname] = useState('');
+  const [cell, setCell] = useState('');
+  const [vehicleReg, setVehicleReg] = useState('');
+  const [homeAddress, setHomeAddress] = useState('');
+  const [iceNo, setIceNo] = useState('');
+  const [medicalAid, setMedicalAid] = useState('');
+  const [psiraNumber, setPsiraNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -24,14 +31,22 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
     }
     setLoading(true);
 
-    // Use the v2 signUp method with `options` for metadata.
+    // Pass all new user details in the metadata object.
+    // The `handle_new_user` trigger will use this to populate the profile.
     // @ts-ignore - FIX: Property 'signUp' does not exist on type 'SupabaseAuthClient'. Using older version syntax.
     const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
             data: {
-                full_name: fullName,
+                first_name: firstName,
+                surname: surname,
+                cell: cell,
+                vehicle_reg: vehicleReg || null,
+                home_address: homeAddress,
+                ice_no: iceNo,
+                medical_aid: medicalAid || null,
+                psira_number: psiraNumber,
             }
         }
     });
@@ -58,12 +73,20 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
       <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Join the community safety network.</p>
       
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="full_name_reg" className={labelClasses}>Full Name</label>
-          <div className={inputContainerClasses}>
-            <div className={iconClasses}><UserIcon className="w-5 h-5 text-gray-400" /></div>
-            <input id="full_name_reg" name="fullName" type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClasses} placeholder="John Doe" />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="first_name_reg" className={labelClasses}>First Name</label>
+              <div className={inputContainerClasses}>
+                <div className={iconClasses}><UserIcon className="w-5 h-5 text-gray-400" /></div>
+                <input id="first_name_reg" name="firstName" type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputClasses} placeholder="John" />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="surname_reg" className={labelClasses}>Surname</label>
+              <div className={inputContainerClasses}>
+                <input id="surname_reg" name="surname" type="text" required value={surname} onChange={(e) => setSurname(e.target.value)} className={`${inputClasses} pl-3`} placeholder="Doe" />
+              </div>
+            </div>
         </div>
         <div>
           <label htmlFor="email_reg" className={labelClasses}>Email Address</label>
@@ -72,18 +95,48 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
             <input id="email_reg" name="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClasses} placeholder="you@example.com" />
           </div>
         </div>
-        <div>
-          <label htmlFor="password_reg" className={labelClasses}>Password</label>
-          <div className={inputContainerClasses}>
-            <div className={iconClasses}><LockIcon className="w-5 h-5 text-gray-400" /></div>
-            <input id="password_reg" name="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className={inputClasses} placeholder="••••••••" />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label htmlFor="cell_reg" className={labelClasses}>Cell Number</label>
+                <input id="cell_reg" name="cell" type="tel" required value={cell} onChange={(e) => setCell(e.target.value)} className={`${inputClasses} pl-3`} placeholder="0821234567" />
+            </div>
+            <div>
+                <label htmlFor="ice_no_reg" className={labelClasses}>ICE Number</label>
+                <input id="ice_no_reg" name="iceNo" type="tel" required value={iceNo} onChange={(e) => setIceNo(e.target.value)} className={`${inputClasses} pl-3`} placeholder="Emergency Contact" />
+            </div>
         </div>
         <div>
-          <label htmlFor="confirm_password_reg" className={labelClasses}>Confirm Password</label>
-          <div className={inputContainerClasses}>
-            <div className={iconClasses}><LockIcon className="w-5 h-5 text-gray-400" /></div>
-            <input id="confirm_password_reg" name="confirmPassword" type="password" required minLength={6} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={inputClasses} placeholder="••••••••" />
+            <label htmlFor="home_address_reg" className={labelClasses}>Home Address</label>
+            <input id="home_address_reg" name="homeAddress" type="text" required value={homeAddress} onChange={(e) => setHomeAddress(e.target.value)} className={`${inputClasses} pl-3`} placeholder="123 Main St, Suburb" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label htmlFor="vehicle_reg_reg" className={labelClasses}>Vehicle Reg (Optional)</label>
+                <input id="vehicle_reg_reg" name="vehicleReg" type="text" value={vehicleReg} onChange={(e) => setVehicleReg(e.target.value)} className={`${inputClasses} pl-3`} placeholder="AB 12 CD GP" />
+            </div>
+             <div>
+                <label htmlFor="medical_aid_reg" className={labelClasses}>Medical Aid (Optional)</label>
+                <input id="medical_aid_reg" name="medicalAid" type="text" value={medicalAid} onChange={(e) => setMedicalAid(e.target.value)} className={`${inputClasses} pl-3`} placeholder="Discovery, Bonitas, etc." />
+            </div>
+        </div>
+        <div>
+            <label htmlFor="psira_number_reg" className={labelClasses}>PSIRA Number</label>
+            <input id="psira_number_reg" name="psiraNumber" type="text" required value={psiraNumber} onChange={(e) => setPsiraNumber(e.target.value)} className={`${inputClasses} pl-3`} placeholder="1234567" />
+        </div>
+        <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="password_reg" className={labelClasses}>Password</label>
+            <div className={inputContainerClasses}>
+              <div className={iconClasses}><LockIcon className="w-5 h-5 text-gray-400" /></div>
+              <input id="password_reg" name="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className={inputClasses} placeholder="••••••••" />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="confirm_password_reg" className={labelClasses}>Confirm Password</label>
+            <div className={inputContainerClasses}>
+              <div className={iconClasses}><LockIcon className="w-5 h-5 text-gray-400" /></div>
+              <input id="confirm_password_reg" name="confirmPassword" type="password" required minLength={6} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={inputClasses} placeholder="••••••••" />
+            </div>
           </div>
         </div>
         <div>

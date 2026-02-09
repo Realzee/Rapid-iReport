@@ -313,7 +313,8 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
                         {companyUsers
                             .filter(user => user.id !== profile.id)
                             .map(user => (
-                                <option key={user.id} value={user.id}>{user.full_name}</option>
+                                // FIX: Property 'full_name' does not exist on type 'Profile'.
+                                <option key={user.id} value={user.id}>{user.first_name} {user.surname}</option>
                             ))
                         }
                     </select>
@@ -327,8 +328,10 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
                         return (
                             <div key={user.id} className={`flex items-center justify-between p-2 rounded-md transition-all duration-200 ${isSelected ? 'bg-blue-500/20' : 'bg-gray-50 dark:bg-gray-800/50'} ${isSpeaking ? 'ring-2 ring-green-500' : ''}`}>
                                 <div className="flex items-center gap-3">
-                                    <img src={user.avatar_url || `https://i.pravatar.cc/40?u=${user.id}`} alt={user.full_name} className="w-8 h-8 rounded-full" />
-                                    <span className="font-medium text-sm">{user.full_name}</span>
+                                    {/* FIX: Property 'full_name' does not exist on type 'Profile'. */}
+                                    <img src={user.avatar_url || `https://i.pravatar.cc/40?u=${user.id}`} alt={`${user.first_name} ${user.surname}`} className="w-8 h-8 rounded-full" />
+                                    {/* FIX: Property 'full_name' does not exist on type 'Profile'. */}
+                                    <span className="font-medium text-sm">{user.first_name} {user.surname}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {isSpeaking ? (

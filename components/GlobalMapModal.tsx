@@ -111,9 +111,11 @@ const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profil
             .filter(p => p.role === UserRole.RESPONDER)
             .map((p: Profile) => ({
                 id: p.id,
-                full_name: p.full_name,
+                // FIX: Property 'full_name' does not exist on type 'Profile'.
+                first_name: p.first_name,
+                surname: p.surname,
                 status: p.responder_status || ResponderStatus.OFF_DUTY,
-                location_coords: p.location_coords || undefined,
+                location_coords: p.location_coords || undefined
             }));
         setResponders(mappedResponders);
     }, [allUsers]);
