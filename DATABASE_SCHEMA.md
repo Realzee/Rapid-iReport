@@ -272,29 +272,80 @@ CREATE TABLE IF NOT EXISTS public.companies (
     id uuid NOT NULL DEFAULT uuid_generate_v4(),
     name text NOT NULL,
     logo_url text,
+    owners_name text,
+    address text,
+    contact_person text,
+    cell_number text,
+    psira_number text,
     CONSTRAINT companies_pkey PRIMARY KEY (id)
 );
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS logo_url text;
-
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS owners_name text;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS address text;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS contact_person text;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS cell_number text;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS psira_number text;
 
 -- Profiles Table (linked to auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
     id uuid NOT NULL,
     email text NOT NULL,
-    full_name text NOT NULL,
+    first_name text,
+    surname text,
     role public.user_role NOT NULL DEFAULT 'user'::public.user_role,
     status public.user_status NOT NULL DEFAULT 'pending'::public.user_status,
     company_id uuid,
     avatar_url text,
     last_seen_at timestamp with time zone,
+    cell text,
+    vehicle_reg text,
+    home_address text,
+    ice_no text,
+    medical_aid text,
+    psira_number text,
     CONSTRAINT profiles_pkey PRIMARY KEY (id),
     CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE,
     CONSTRAINT profiles_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE SET NULL
 );
+-- Migration: Add new columns if they don't exist and migrate from old 'full_name' column
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS first_name text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS surname text;
+DO $$
+BEGIN
+   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='full_name') THEN
+      UPDATE public.profiles
+      SET
+         first_name = COALESCE(first_name, split_part(full_name, ' ', 1)),
+         surname = COALESCE(surname, substring(full_name from position(' ' in full_name) + 1))
+      WHERE full_name IS NOT NULL AND (first_name IS NULL OR surname IS NULL);
+
+      -- Check if migration was successful before dropping column and adding NOT NULL constraints
+      IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE first_name IS NULL OR surname IS NULL) THEN
+        ALTER TABLE public.profiles ALTER COLUMN first_name SET NOT NULL;
+        ALTER TABLE public.profiles ALTER COLUMN surname SET NOT NULL;
+        ALTER TABLE public.profiles DROP COLUMN full_name;
+      ELSE
+        RAISE NOTICE 'Migration from full_name skipped: Some first_name or surname fields would become NULL. Please manually migrate.';
+        -- Optionally, drop the column if you're sure it's safe
+        -- ALTER TABLE public.profiles DROP COLUMN full_name;
+      END IF;
+   END IF;
+END $$;
+-- Ensure the columns are NOT NULL for new setups
+ALTER TABLE public.profiles ALTER COLUMN first_name SET NOT NULL;
+ALTER TABLE public.profiles ALTER COLUMN surname SET NOT NULL;
 
 -- Ensure responder-specific columns exist for backward compatibility.
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS responder_status public.responder_status;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS location_coords jsonb;
+
+-- Add new user detail columns if they don't exist
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS cell text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS vehicle_reg text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS home_address text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS ice_no text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS medical_aid text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS psira_number text;
 
 -- Vehicle Reports Table
 CREATE TABLE IF NOT EXISTS public.vehicle_reports (
@@ -421,9 +472,9 @@ CREATE TABLE IF NOT EXISTS public.announcements (
 ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS image_url text;
 
 -- Insert default settings if they don't exist
-INSERT INTO public.app_settings (key, value)
-VALUES ('main_logo_url', NULL)
-ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.app_settings (key, value) VALUES ('main_logo_url', NULL) ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.app_settings (key, value) VALUES ('favicon_url', NULL) ON CONFLICT (key) DO NOTHING;
+
 
 -- Drop deprecated registration requests table
 DROP TABLE IF EXISTS public.registration_requests;
@@ -546,24 +597,37 @@ BEGIN
 END;
 $$;
 
--- Trigger Function to create a profile and notification for new users (IDEMPOTENT)
+-- Trigger Function to create a profile and notification for new users (IDEMPOTENT & UPDATED for first_name/surname)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER SET search_path = public
 AS $$
 DECLARE
-  user_full_name text;
+  user_first_name text;
+  user_surname text;
   user_role_text text;
   user_status_text text;
   user_company_id uuid;
   user_responder_status_text text;
+  user_cell text;
+  user_vehicle_reg text;
+  user_home_address text;
+  user_ice_no text;
+  user_medical_aid text;
+  user_psira_number text;
 BEGIN
   -- Extract metadata, providing sensible defaults
-  user_full_name := COALESCE(new.raw_user_meta_data->>'full_name', new.email);
+  user_first_name := COALESCE(new.raw_user_meta_data->>'first_name', 'New');
+  user_surname := COALESCE(new.raw_user_meta_data->>'surname', 'User');
   user_role_text := COALESCE(new.raw_user_meta_data->>'role', 'user');
-  -- Self-service users should be active by default after email confirmation.
   user_status_text := COALESCE(new.raw_user_meta_data->>'status', 'active');
+  user_cell := new.raw_user_meta_data->>'cell';
+  user_vehicle_reg := new.raw_user_meta_data->>'vehicle_reg';
+  user_home_address := new.raw_user_meta_data->>'home_address';
+  user_ice_no := new.raw_user_meta_data->>'ice_no';
+  user_medical_aid := new.raw_user_meta_data->>'medical_aid';
+  user_psira_number := new.raw_user_meta_data->>'psira_number';
   
   -- Safely cast company_id to uuid
   BEGIN
@@ -574,25 +638,22 @@ BEGIN
 
   user_responder_status_text := new.raw_user_meta_data->>'responder_status';
 
-  -- Insert into profiles table, but do nothing if a profile for this ID already exists.
-  INSERT INTO public.profiles (id, full_name, email, role, status, company_id, responder_status)
+  INSERT INTO public.profiles (id, first_name, surname, email, role, status, company_id, responder_status, cell, vehicle_reg, home_address, ice_no, medical_aid, psira_number)
   VALUES (
     new.id,
-    user_full_name,
+    user_first_name,
+    user_surname,
     new.email,
     user_role_text::public.user_role,
     user_status_text::public.user_status,
     user_company_id,
-    CASE
-      WHEN user_role_text = 'responder' THEN user_responder_status_text::public.responder_status
-      ELSE NULL
-    END
+    CASE WHEN user_role_text = 'responder' THEN user_responder_status_text::public.responder_status ELSE NULL END,
+    user_cell, user_vehicle_reg, user_home_address, user_ice_no, user_medical_aid, user_psira_number
   ) ON CONFLICT (id) DO NOTHING;
 
-  -- The notification should only be sent if the profile was actually inserted.
   IF FOUND THEN
     PERFORM public.create_staff_notification(
-      'new_user', 'New User Registered', 'A new user (' || user_full_name || ') has signed up.', new.id, ARRAY['admin', 'moderator']
+      'new_user', 'New User Registered', 'A new user (' || user_first_name || ' ' || user_surname || ') has signed up.', new.id, ARRAY['admin', 'moderator']
     );
   END IF;
   
@@ -758,7 +819,7 @@ CREATE POLICY "Allow authorized users to update reports" ON public.vehicle_repor
   (reported_by = (select auth.uid()) AND status::text = 'pending') OR
   ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid()))
 );
-CREATE POLICY "Allow staff to delete reports" ON public.vehicle_reports FOR DELETE USING ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller'));
+CREATE POLICY "Allow staff to delete reports" ON public.vehicle_reports FOR DELETE USING (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) AND status::text != 'deleted');
 CREATE POLICY "Allow public read access to recent, active reports" ON public.vehicle_reports FOR SELECT TO anon USING ( status::text IN ('active', 'resolved', 'recovered', 'on_scene') AND reported_at > (now() - interval '72 hours') );
 
 -- CRIME REPORTS
@@ -790,7 +851,7 @@ CREATE POLICY "Allow authorized users to update reports" ON public.crime_reports
   (reported_by = (select auth.uid()) AND status::text = 'pending') OR
   ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid()))
 );
-CREATE POLICY "Allow staff to delete reports" ON public.crime_reports FOR DELETE USING ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller'));
+CREATE POLICY "Allow staff to delete reports" ON public.crime_reports FOR DELETE USING (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) AND status::text != 'deleted');
 CREATE POLICY "Allow public read access to recent, active reports" ON public.crime_reports FOR SELECT TO anon USING ( status::text IN ('active', 'resolved', 'closed', 'on_scene') AND reported_at > (now() - interval '72 hours') );
 
 -- REPORT UPDATES, ASSIGNMENT LOGS, CHAT MESSAGES
@@ -1021,8 +1082,8 @@ These server-side functions are required for secure administrative actions. Foll
         
         // 2. Main logic: Create the user using the admin client.
         const { email, password, user_metadata } = await req.json()
-        if (!email || !password || !user_metadata?.full_name) {
-          throw new Error('Email, password, and full_name are required.')
+        if (!email || !password || !user_metadata?.first_name || !user_metadata?.surname) {
+          throw new Error('Email, password, first_name, and surname are required.')
         }
         if (password.length < 6) {
             throw new Error("Password must be at least 6 characters long.");
