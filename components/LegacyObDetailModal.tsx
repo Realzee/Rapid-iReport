@@ -8,11 +8,11 @@ interface LegacyObDetailModalProps {
     entry: LegacyObEntry | null;
 }
 
-const DetailItem: React.FC<{ label: string; value?: string | React.ReactNode }> = ({ label, value }) => (
-    <div>
-        <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{label}</p>
-        <div className="text-gray-800 dark:text-gray-200">{value || 'N/A'}</div>
-    </div>
+const DetailRow: React.FC<{ label: string; value?: string | React.ReactNode; isMono?: boolean }> = ({ label, value, isMono = false }) => (
+    <>
+        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</dt>
+        <dd className={`text-sm text-gray-900 dark:text-white ${isMono ? 'font-mono' : ''}`}>{value || 'N/A'}</dd>
+    </>
 );
 
 const LegacyObDetailModal: React.FC<LegacyObDetailModalProps> = ({ isOpen, onClose, entry }) => {
@@ -34,54 +34,57 @@ const LegacyObDetailModal: React.FC<LegacyObDetailModalProps> = ({ isOpen, onClo
                     {/* Incident Info */}
                     <div>
                         <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-200 dark:border-gray-700 pb-1">Incident Info</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <DetailItem label="OB Number" value={<p className="font-mono text-lg">{entry.obNumber}</p>} />
-                            <DetailItem label="Case Number" value={entry.caseNumber} />
-                            <DetailItem label="Date of Incident" value={entry.dateOfIncident} />
-                            <DetailItem label="Station Reported At" value={entry.stationReportedAt} />
-                             <DetailItem label="Timestamp" value={entry.timestamp} />
-                        </div>
+                        <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-3 items-center">
+                            <DetailRow label="OB Number" value={entry.obNumber} isMono />
+                            <DetailRow label="Case Number" value={entry.caseNumber} isMono />
+                            <DetailRow label="Date of Incident" value={entry.dateOfIncident} />
+                            <DetailRow label="Station Reported At" value={entry.stationReportedAt} />
+                            <DetailRow label="Timestamp" value={entry.timestamp} />
+                        </dl>
                     </div>
 
                     {/* Vehicle Info */}
                     <div>
                         <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-200 dark:border-gray-700 pb-1">Vehicle Info</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <DetailItem label="Vehicle Registration" value={<p className="font-mono">{entry.vehicleRegistration}</p>} />
-                            <DetailItem label="Make" value={entry.make} />
-                            <DetailItem label="Model" value={entry.model} />
-                            <DetailItem label="Color" value={entry.color} />
-                        </div>
+                         <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-3 items-center">
+                            <DetailRow label="Vehicle Registration" value={entry.vehicleRegistration} isMono />
+                            <DetailRow label="Make" value={entry.make} />
+                            <DetailRow label="Model" value={entry.model} />
+                            <DetailRow label="Color" value={entry.color} />
+                        </dl>
                     </div>
                     
                     {/* Case Details */}
                     <div>
                         <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-200 dark:border-gray-700 pb-1">Case Details</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <DetailItem label="Investigating Officer" value={entry.ioName} />
-                            <DetailItem label="IO Contact" value={entry.ioContact} />
-                        </div>
-                        <div className="mt-4">
-                            <DetailItem label="Details" value={<p className="whitespace-pre-wrap">{entry.details}</p>} />
-                        </div>
+                        <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-3 items-center">
+                            <DetailRow label="Investigating Officer" value={entry.ioName} />
+                            <DetailRow label="IO Contact" value={entry.ioContact} />
+                        </dl>
                     </div>
 
                     {/* Status */}
                     <div>
                         <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-200 dark:border-gray-700 pb-1">Status</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <DetailItem label="Recovered" value={typeof entry.recovered === 'boolean' ? (entry.recovered ? 'Yes' : 'No') : entry.recovered} />
-                            <DetailItem label="Tracker" value={typeof entry.tracker === 'boolean' ? (entry.tracker ? 'Yes' : 'No') : entry.tracker} />
-                        </div>
+                        <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-3 items-center">
+                             <DetailRow label="Recovered" value={typeof entry.recovered === 'boolean' ? (entry.recovered ? 'Yes' : 'No') : entry.recovered} />
+                             <DetailRow label="Tracker" value={typeof entry.tracker === 'boolean' ? (entry.tracker ? 'Yes' : 'No') : entry.tracker} />
+                        </dl>
                     </div>
 
                     {/* Client Info */}
                     <div>
                         <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-200 dark:border-gray-700 pb-1">Client Info</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <DetailItem label="COS Name" value={entry.cosName} />
-                            <DetailItem label="COS Contact" value={entry.cosContact} />
-                        </div>
+                        <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-3 items-center">
+                            <DetailRow label="COS Name" value={entry.cosName} />
+                            <DetailRow label="COS Contact" value={entry.cosContact} />
+                        </dl>
+                    </div>
+
+                    {/* Full Details */}
+                    <div>
+                        <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-200 dark:border-gray-700 pb-1">Full Details</h4>
+                        <p className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200 mt-2">{entry.details || 'N/A'}</p>
                     </div>
                 </div>
             </div>
