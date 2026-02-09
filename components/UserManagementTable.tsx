@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Profile, Company, UserRole, UserStatus } from '../types';
-import { EditIcon, TrashIcon } from './icons';
+import { EditIcon, TrashIcon, EyeIcon } from './icons';
 import { formatDistanceToNow } from 'date-fns';
 
 interface RoleBadgeProps { role: UserRole; }
@@ -73,6 +73,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                 </div>
                             </button>
                             <div className="flex space-x-2 flex-shrink-0">
+                                <button onClick={() => onView(user)} className="p-2 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"><EyeIcon className="w-5 h-5"/></button>
                                 <button onClick={() => onEdit(user)} className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"><EditIcon className="w-5 h-5"/></button>
                                 <button onClick={() => onDelete(user)} className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"><TrashIcon className="w-5 h-5"/></button>
                             </div>
@@ -183,10 +184,13 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex items-center justify-end space-x-4">
-                                            <button onClick={() => onEdit(user)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
+                                            <button onClick={() => onView(user)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors" title="View Details">
+                                                <EyeIcon className="w-5 h-5"/>
+                                            </button>
+                                            <button onClick={() => onEdit(user)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" title="Edit User">
                                                 <EditIcon className="w-5 h-5"/>
                                             </button>
-                                            <button onClick={() => onDelete(user)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors">
+                                            <button onClick={() => onDelete(user)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors" title="Delete User">
                                                 <TrashIcon className="w-5 h-5"/>
                                             </button>
                                         </div>
