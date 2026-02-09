@@ -183,8 +183,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
                                 </div>
                             </div>
                              <div>
-                                <label htmlFor="psira_number" className={labelClasses}>PSIRA Number</label>
-                                <input id="psira_number" name="psira_number" type="text" value={formData.psira_number} onChange={handleFormChange} required className={inputClasses} />
+                                <label htmlFor="psira_number" className={labelClasses}>PSIRA Number (Optional)</label>
+                                <input id="psira_number" name="psira_number" type="text" value={formData.psira_number} onChange={handleFormChange} className={inputClasses} />
                             </div>
                             <div className="pt-2">
                                 <button type="submit" disabled={loadingProfile} className={buttonClasses}>

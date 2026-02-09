@@ -183,7 +183,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                         </div>
                     </div>
                     <div>
-                        <label htmlFor="psira_number" className={labelClasses}>PSIRA Number</label>
+                        <label htmlFor="psira_number" className={labelClasses}>PSIRA Number (Optional)</label>
                         <input type="text" name="psira_number" id="psira_number" value={formData.psira_number || ''} onChange={handleChange} className={inputClasses} />
                     </div>
                     <div className="pt-6 flex justify-end space-x-4">

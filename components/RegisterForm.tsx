@@ -58,7 +58,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
                 home_address: homeAddress,
                 ice_no: iceNo,
                 medical_aid: medicalAid || null,
-                psira_number: psiraNumber,
+                psira_number: psiraNumber || null,
             }
         }
     });
@@ -185,8 +185,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
             </div>
         </div>
         <div>
-            <label htmlFor="psira_number_reg" className={labelClasses}>PSIRA Number</label>
-            <input id="psira_number_reg" name="psiraNumber" type="text" required value={psiraNumber} onChange={(e) => setPsiraNumber(e.target.value)} className={`${inputClasses} pl-3`} placeholder="1234567" />
+            <label htmlFor="psira_number_reg" className={labelClasses}>PSIRA Number (Optional)</label>
+            <input id="psira_number_reg" name="psiraNumber" type="text" value={psiraNumber} onChange={(e) => setPsiraNumber(e.target.value)} className={`${inputClasses} pl-3`} placeholder="1234567" />
         </div>
         <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
