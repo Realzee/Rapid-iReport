@@ -1,5 +1,3 @@
-
-
 import React, { memo } from 'react';
 import { Profile, Company, UserRole, UserStatus } from '../types';
 import { EditIcon, TrashIcon } from './icons';
@@ -32,6 +30,7 @@ interface UserManagementTableProps {
   companies: Company[];
   onEdit: (user: Profile) => void;
   onDelete: (user: Profile) => void;
+  onView: (user: Profile) => void;
   currentUserProfile: Profile | null;
   onRoleChange: (userId: string, newRole: UserRole) => void;
   updatingRoleId: string | null;
@@ -44,7 +43,7 @@ const isOnline = (lastSeen?: string): boolean => {
     return lastSeenDate > fiveMinutesAgo;
 };
 
-const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, companies, onEdit, onDelete, currentUserProfile, onRoleChange, updatingRoleId }) => {
+const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, companies, onEdit, onDelete, onView, currentUserProfile, onRoleChange, updatingRoleId }) => {
     const getCompanyName = (companyId?: string) => {
         return companies.find(c => c.id === companyId)?.name || 'N/A';
     };
@@ -63,7 +62,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                 {users.map(user => (
                     <div key={user.id} className="bg-gray-50 dark:bg-gray-800/40 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700/50">
                         <div className="flex items-start justify-between">
-                            <div className="flex items-center space-x-4">
+                            <button onClick={() => onView(user)} className="flex items-center space-x-4 text-left hover:opacity-80 transition-opacity">
                                 <div className="flex-shrink-0 h-10 w-10 relative">
                                     <img className="h-10 w-10 rounded-full" src={user.avatar_url || `https://i.pravatar.cc/40?u=${user.id}`} alt="" />
                                     <span className={`absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-gray-800 ${isOnline(user.last_seen_at) ? 'bg-green-400' : 'bg-gray-500'}`} />
@@ -72,7 +71,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                     <p className="font-bold text-gray-900 dark:text-white truncate">{`${user.first_name || ''} ${user.surname || ''}`}</p>
                                     <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                                 </div>
-                            </div>
+                            </button>
                             <div className="flex space-x-2 flex-shrink-0">
                                 <button onClick={() => onEdit(user)} className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"><EditIcon className="w-5 h-5"/></button>
                                 <button onClick={() => onDelete(user)} className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"><TrashIcon className="w-5 h-5"/></button>
@@ -139,7 +138,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                             return (
                                 <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors duration-200">
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
+                                        <button onClick={() => onView(user)} className="flex items-center text-left hover:opacity-80 transition-opacity">
                                             <div className="flex-shrink-0 h-10 w-10 relative">
                                                 <img className="h-10 w-10 rounded-full" src={user.avatar_url || `https://i.pravatar.cc/40?u=${user.id}`} alt="" />
                                                 <span
@@ -152,7 +151,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                                 <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{`${user.first_name || ''} ${user.surname || ''}`}</div>
                                                 <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</div>
                                             </div>
-                                        </div>
+                                        </button>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{user.cell || 'N/A'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{getCompanyName(user.company_id)}</td>

@@ -11,6 +11,7 @@ import AddEditAnnouncementModal from '../components/AddEditAnnouncementModal';
 import ConfirmModal from '../components/ConfirmModal';
 import DatabaseBackupModal from '../components/DatabaseBackupModal';
 import { format } from 'date-fns';
+import CompanyDetailModal from '../components/CompanyDetailModal';
 
 const AnnouncementTypeIcon: React.FC<{ type: AnnouncementType, className?: string }> = ({ type, className="w-6 h-6" }) => {
     switch (type) {
@@ -23,11 +24,12 @@ const AnnouncementTypeIcon: React.FC<{ type: AnnouncementType, className?: strin
 
 const CompaniesPage: React.FC = () => {
     const [companies, setCompanies] = useState<Company[]>([]);
-    const [users, setUsers] = useState<Pick<Profile, 'id' | 'company_id'>[]>([]);
+    const [users, setUsers] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+    const [viewCompany, setViewCompany] = useState<Company | null>(null);
     const { addToast } = useToast();
     const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
 
@@ -98,7 +100,7 @@ const CompaniesPage: React.FC = () => {
                 companiesQuery.eq('id', currentUserProfile.company_id);
             }
 
-            const usersQuery = supabase.from('profiles').select('id, company_id');
+            const usersQuery = supabase.from('profiles').select('*');
             if (!canManageAll && currentUserProfile.company_id) {
                 usersQuery.eq('company_id', currentUserProfile.company_id);
             }
@@ -138,6 +140,10 @@ const CompaniesPage: React.FC = () => {
     const handleDeleteCompany = (company: Company) => {
         setSelectedCompany(company);
         setIsDeleteModalOpen(true);
+    };
+
+    const handleViewCompany = (company: Company) => {
+        setViewCompany(company);
     };
 
     const handleSaveCompany = async (companyData: Partial<Company>, logoFile: File | null) => {
@@ -641,6 +647,7 @@ const CompaniesPage: React.FC = () => {
                             users={users}
                             onEdit={handleEditCompany}
                             onDelete={handleDeleteCompany}
+                            onView={handleViewCompany}
                         />
                     )}
                 </div>
@@ -658,6 +665,12 @@ const CompaniesPage: React.FC = () => {
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={confirmDeleteCompany}
                 companyName={selectedCompany?.name || ''}
+            />
+            <CompanyDetailModal
+                isOpen={!!viewCompany}
+                onClose={() => setViewCompany(null)}
+                company={viewCompany}
+                users={users}
             />
             <AddEditAnnouncementModal 
                 isOpen={isAnnouncementModalOpen}

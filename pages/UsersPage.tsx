@@ -6,6 +6,7 @@ import AddEditUserModal from '../components/AddEditUserModal';
 import DeleteUserModal from '../components/DeleteUserModal';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
+import UserDetailModal from '../components/UserDetailModal';
 
 const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<Profile[]>([]);
@@ -16,6 +17,7 @@ const UsersPage: React.FC = () => {
     const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+    const [viewUser, setViewUser] = useState<Profile | null>(null);
     const { addToast } = useToast();
     const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
     const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
@@ -128,6 +130,10 @@ const UsersPage: React.FC = () => {
     const handleDeleteUser = useCallback((user: Profile) => {
         setSelectedUser(user);
         setIsDeleteModalOpen(true);
+    }, []);
+
+    const handleViewUser = useCallback((user: Profile) => {
+        setViewUser(user);
     }, []);
     
     const handleRoleChange = useCallback(async (userId: string, newRole: UserRole) => {
@@ -271,6 +277,7 @@ const UsersPage: React.FC = () => {
                         companies={companies}
                         onEdit={handleEditUser}
                         onDelete={handleDeleteUser}
+                        onView={handleViewUser}
                         currentUserProfile={currentUserProfile}
                         onRoleChange={handleRoleChange}
                         updatingRoleId={updatingRoleId}
@@ -291,6 +298,13 @@ const UsersPage: React.FC = () => {
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={confirmDeleteUser}
                 userName={selectedUser ? `${selectedUser.first_name} ${selectedUser.surname}` : ''}
+            />
+            
+            <UserDetailModal
+                isOpen={!!viewUser}
+                onClose={() => setViewUser(null)}
+                user={viewUser}
+                companyName={companies.find(c => c.id === viewUser?.company_id)?.name}
             />
         </div>
     );
