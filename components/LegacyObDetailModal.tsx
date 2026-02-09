@@ -36,9 +36,10 @@ const LegacyObDetailModal: React.FC<LegacyObDetailModalProps> = ({ isOpen, onClo
                         <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-200 dark:border-gray-700 pb-1">Incident Info</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <DetailItem label="OB Number" value={<p className="font-mono text-lg">{entry.obNumber}</p>} />
-                            <DetailItem label="Case Number" value={entry.caseNumber || entry.reference} />
+                            <DetailItem label="Case Number" value={entry.caseNumber} />
                             <DetailItem label="Date of Incident" value={entry.dateOfIncident} />
                             <DetailItem label="Station Reported At" value={entry.stationReportedAt} />
+                             <DetailItem label="Timestamp" value={entry.timestamp} />
                         </div>
                     </div>
 
@@ -80,17 +81,6 @@ const LegacyObDetailModal: React.FC<LegacyObDetailModalProps> = ({ isOpen, onClo
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <DetailItem label="COS Name" value={entry.cosName} />
                             <DetailItem label="COS Contact" value={entry.cosContact} />
-                        </div>
-                    </div>
-                    
-                    {/* Log Info */}
-                    <div>
-                        <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-200 dark:border-gray-700 pb-1">Log Info</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <DetailItem label="Entry Type" value={entry.entryType} />
-                            <DetailItem label="Location" value={entry.location} />
-                            <DetailItem label="Logged By" value={entry.loggedBy} />
-                            <DetailItem label="Logged At" value={entry.timestamp} />
                         </div>
                     </div>
                 </div>

@@ -208,19 +208,16 @@ export interface Toast {
 }
 
 export interface LegacyObEntry {
-  obNumber: string;
-  details: string;
-  timestamp: string;
-  loggedBy?: string;
-  entryType?: string;
-  location?: string;
-  reference?: string;
+  // Essential identifiers assumed to be present
+  obNumber?: string;
+  timestamp?: string;
 
-  // New detailed fields from PHP backend
+  // Fields from the provided list
   vehicleRegistration?: string;
   make?: string;
   model?: string;
   color?: string;
+  details?: string;
   cosName?: string;
   cosContact?: string;
   caseNumber?: string;
