@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserIcon, MailIcon, LockIcon } from './icons';
+import { UserIcon, MailIcon, LockIcon, UploadCloudIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
 
@@ -19,9 +19,19 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        setAvatarFile(file);
+        setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,12 +39,14 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
       addToast('Passwords do not match.', 'error');
       return;
     }
+     if (!avatarFile) {
+        addToast('Please upload a selfie to complete registration.', 'error');
+        return;
+    }
     setLoading(true);
 
-    // Pass all new user details in the metadata object.
-    // The `handle_new_user` trigger will use this to populate the profile.
-    // @ts-ignore - FIX: Property 'signUp' does not exist on type 'SupabaseAuthClient'. Using older version syntax.
-    const { error } = await supabase.auth.signUp({
+    // @ts-ignore
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -51,14 +63,49 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
         }
     });
 
-    setLoading(false);
-
-    if (error) {
-      addToast(`Registration failed: ${error.message}`, 'error');
-    } else {
-      addToast('Success! Please check your email for a verification link to complete your registration.', 'success');
-      onSwitchToLogin();
+    if (signUpError) {
+        addToast(`Registration failed: ${signUpError.message}`, 'error');
+        setLoading(false);
+        return;
     }
+
+    if (!signUpData.user) {
+        addToast('Registration succeeded but no user was returned. Please try logging in.', 'warning');
+        setLoading(false);
+        onSwitchToLogin();
+        return;
+    }
+
+    // Now upload avatar
+    const user = signUpData.user;
+    const fileExt = avatarFile.name.split('.').pop();
+    const filePath = `${user.id}/avatar.${fileExt}`;
+    const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, avatarFile, { upsert: true });
+    
+    if (uploadError) {
+        addToast('Account created, but selfie upload failed. Please update it on your profile page.', 'warning');
+        setLoading(false);
+        onSwitchToLogin();
+        return;
+    }
+
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    
+    const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: `${urlData.publicUrl}?t=${new Date().getTime()}` })
+        .eq('id', user.id);
+
+    if (profileUpdateError) {
+        addToast('Account created and selfie uploaded, but could not link it to your profile. Please re-upload on your profile page.', 'warning');
+    } else {
+        addToast('Success! Please check your email for a verification link to complete your registration.', 'success');
+    }
+    
+    setLoading(false);
+    onSwitchToLogin();
   };
   
   const inputContainerClasses = "mt-1 relative";
@@ -73,6 +120,24 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
       <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Join the community safety network.</p>
       
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+            <label className={labelClasses}>Profile Picture / Selfie</label>
+            <div className="mt-1 flex items-center gap-4">
+                <span className="h-20 w-20 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-300 dark:border-gray-700">
+                    {avatarPreview ? (
+                        <img src={avatarPreview} alt="Selfie preview" className="h-full w-full object-cover" />
+                    ) : (
+                        <UserIcon className="h-12 w-12 text-gray-400" />
+                    )}
+                </span>
+                <label htmlFor="avatar-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                    <UploadCloudIcon className="w-5 h-5"/>
+                    <span>Upload Selfie</span>
+                </label>
+                <input id="avatar-upload" name="avatar-upload" type="file" className="sr-only" accept="image/*" capture="user" onChange={handleAvatarChange} required />
+            </div>
+            {!avatarFile && <p className="text-xs text-red-500 dark:text-red-400 mt-1">A profile selfie is required for registration.</p>}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="first_name_reg" className={labelClasses}>First Name</label>

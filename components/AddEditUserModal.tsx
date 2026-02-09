@@ -1,13 +1,11 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { Profile, Company, UserRole, UserStatus, ResponderStatus } from '../types';
-import { XIcon } from './icons';
+import { XIcon, UploadCloudIcon, UserIcon } from './icons';
 
 interface AddEditUserModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (user: Profile, password?: string) => void;
+    onSave: (user: Profile, password?: string, avatarFile?: File | null) => void;
     user: Profile | null;
     companies: Company[];
 }
@@ -15,10 +13,14 @@ interface AddEditUserModalProps {
 const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, onSave, user, companies }) => {
     const [formData, setFormData] = useState<Partial<Profile>>({});
     const [password, setPassword] = useState('');
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
 
     useEffect(() => {
         if (user) {
             setFormData(user);
+            setAvatarPreview(user.avatar_url || null);
         } else {
             setFormData({
                 first_name: '',
@@ -35,8 +37,10 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                 medical_aid: '',
                 psira_number: '',
             });
+            setAvatarPreview(null);
         }
         setPassword('');
+        setAvatarFile(null);
     }, [user, isOpen]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -44,9 +48,22 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setAvatarFile(file);
+            setAvatarPreview(URL.createObjectURL(file));
+        }
+    };
+
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData as Profile, password);
+        if (!avatarPreview) {
+            alert('A profile selfie is required for all users.');
+            return;
+        }
+        onSave(formData as Profile, password, avatarFile);
     };
 
     if (!isOpen) return null;
@@ -63,6 +80,24 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                 <h3 id="modal-title" className="text-2xl font-bold text-gray-900 dark:text-white mb-6">{user ? 'Edit User' : 'Add New User'}</h3>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className={labelClasses}>Profile Picture / Selfie</label>
+                        <div className="mt-1 flex items-center gap-4">
+                            <span className="h-20 w-20 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-300 dark:border-gray-700">
+                                {avatarPreview ? (
+                                    <img src={avatarPreview} alt="Selfie preview" className="h-full w-full object-cover" />
+                                ) : (
+                                    <UserIcon className="h-12 w-12 text-gray-400" />
+                                )}
+                            </span>
+                            <label htmlFor="user-avatar-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                <UploadCloudIcon className="w-5 h-5"/>
+                                <span>Upload Selfie</span>
+                            </label>
+                            <input id="user-avatar-upload" name="avatar-upload" type="file" className="sr-only" accept="image/*" onChange={handleAvatarChange} required={!user} />
+                        </div>
+                        {!avatarPreview && <p className="text-xs text-red-500 dark:text-red-400 mt-1">A profile selfie is required.</p>}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label htmlFor="first_name" className={labelClasses}>First Name</label>

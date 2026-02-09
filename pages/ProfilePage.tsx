@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Profile } from '../types';
 import { supabase } from '../utils/supabase';
-import { UserIcon, LockIcon, MailIcon, UploadCloudIcon } from '../components/icons';
+import { UserIcon, LockIcon, UploadCloudIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
 
 interface ProfilePageProps {
@@ -27,7 +27,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
     
     const [loadingProfile, setLoadingProfile] = useState(false);
     const [loadingPassword, setLoadingPassword] = useState(false);
-    const [loadingAvatar, setLoadingAvatar] = useState(false);
     const { addToast } = useToast();
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,60 +41,49 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         }
     };
     
-    const handleAvatarUpload = async () => {
-        if (!avatarFile) return;
-        setLoadingAvatar(true);
-
-        const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `${profile.id}/avatar.${fileExt}`;
-
-        const { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(filePath, avatarFile, { upsert: true });
-
-        if (uploadError) {
-            addToast('Error uploading selfie: ' + uploadError.message, 'error');
-            setLoadingAvatar(false);
-            return;
-        }
-
-        const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-
-        const { data: updatedProfile, error: updateError } = await supabase
-            .from('profiles')
-            .update({ avatar_url: `${data.publicUrl}?t=${new Date().getTime()}` }) // Add timestamp to bust cache
-            .eq('id', profile.id)
-            .select()
-            .single();
-
-        if (updateError) {
-            addToast('Error updating profile picture URL: ' + updateError.message, 'error');
-        } else if (updatedProfile) {
-            setProfile(updatedProfile);
-            setAvatarPreview(updatedProfile.avatar_url);
-            addToast('Selfie / Profile Pic updated successfully!', 'success');
-        }
-        setLoadingAvatar(false);
-        setAvatarFile(null);
-    };
-
     const handleProfileUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoadingProfile(true);
 
+        let avatarUrlToUpdate = profile.avatar_url;
+
+        if (!avatarUrlToUpdate && !avatarFile) {
+            addToast('A profile selfie is required. Please upload one.', 'error');
+            setLoadingProfile(false);
+            return;
+        }
+
+        if (avatarFile) {
+            const fileExt = avatarFile.name.split('.').pop();
+            const filePath = `${profile.id}/avatar.${fileExt}`;
+            const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, avatarFile, { upsert: true });
+
+            if (uploadError) {
+                addToast('Error uploading selfie: ' + uploadError.message, 'error');
+                setLoadingProfile(false);
+                return;
+            }
+            
+            const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+            avatarUrlToUpdate = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+        }
+        
         const { data: updatedProfile, error: profileError } = await supabase
             .from('profiles')
-            .update(formData)
+            .update({ ...formData, avatar_url: avatarUrlToUpdate })
             .eq('id', profile.id)
             .select()
             .single();
-
+        
         if (profileError) {
-            addToast('Error updating profile details: ' + profileError.message, 'error');
+            addToast('Error updating profile: ' + profileError.message, 'error');
         } else if (updatedProfile) {
             setProfile(updatedProfile);
+            setAvatarPreview(updatedProfile.avatar_url);
             addToast('Profile updated successfully!', 'success');
+            setAvatarFile(null); // Clear file after successful upload
         }
+        
         setLoadingProfile(false);
     };
 
@@ -111,7 +99,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         }
 
         setLoadingPassword(true);
-        // @ts-ignore - FIX: Property 'updateUser' does not exist on type 'SupabaseAuthClient'. Using older 'update' method.
+        // @ts-ignore
         const { error } = await supabase.auth.updateUser({ password });
         if (error) {
             addToast('Error updating password: ' + error.message, 'error');
@@ -132,39 +120,30 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         <div className="container mx-auto">
              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3"><UserIcon className="w-8 h-8"/> My Profile</h2>
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Selfie Card */}
-                <div className={`${cardClasses} lg:col-span-1 flex flex-col items-center text-center`}>
-                    <div className="relative group w-32 h-32 mb-4">
-                        <img 
-                            src={avatarPreview || `https://i.pravatar.cc/128?u=${profile.id}`} 
-                            alt="User Selfie"
-                            className="w-32 h-32 rounded-full object-cover border-4 border-gray-300 dark:border-gray-600"
-                        />
-                        <label htmlFor="avatar-upload" className="absolute inset-0 bg-black/50 rounded-full flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                            <UploadCloudIcon className="w-8 h-8"/>
-                            <span className="text-xs font-semibold mt-1">Upload Selfie</span>
-                        </label>
-                        <input type="file" id="avatar-upload" className="sr-only" accept="image/*" onChange={handleAvatarChange} />
-                    </div>
-                    {avatarFile && (
-                        <button onClick={handleAvatarUpload} disabled={loadingAvatar} className={`${buttonClasses} mb-4`}>
-                            {loadingAvatar ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Upload Selfie'}
-                        </button>
-                    )}
-                    <h3 className="text-xl font-bold">{profile.first_name} {profile.surname}</h3>
-                    <p className="text-gray-500 dark:text-gray-400">{profile.email}</p>
-                    <div className="mt-4 space-x-2">
-                        <span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-blue-500/20 text-blue-500 dark:text-blue-400 border-blue-500/30">{profile.role}</span>
-                        <span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">{profile.status}</span>
-                    </div>
-                </div>
-
-                {/* Forms Column */}
-                <div className="lg:col-span-2 space-y-8">
+                <div className="lg:col-span-3 space-y-8">
                     {/* Profile Form */}
                     <div className={cardClasses}>
                          <h3 className="text-xl font-bold mb-4">Profile Information</h3>
                          <form onSubmit={handleProfileUpdate} className="space-y-4">
+                            <div>
+                                <label className={labelClasses}>Profile Picture / Selfie</label>
+                                <div className="mt-1 flex items-center gap-4">
+                                     <span className="h-20 w-20 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-300 dark:border-gray-700">
+                                        {avatarPreview ? (
+                                            <img src={avatarPreview} alt="Selfie preview" className="h-full w-full object-cover" />
+                                        ) : (
+                                            <UserIcon className="h-12 w-12 text-gray-400" />
+                                        )}
+                                    </span>
+                                    <label htmlFor="avatar-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                        <UploadCloudIcon className="w-5 h-5"/>
+                                        <span>Change Selfie</span>
+                                    </label>
+                                    <input id="avatar-upload" name="avatar-upload" type="file" className="sr-only" accept="image/*" capture="user" onChange={handleAvatarChange} />
+                                </div>
+                                {!avatarPreview && <p className="text-xs text-red-500 dark:text-red-400 mt-1">A profile selfie is required to save changes.</p>}
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label htmlFor="first_name" className={labelClasses}>First Name</label>

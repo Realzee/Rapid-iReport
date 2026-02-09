@@ -24,7 +24,7 @@ const UsersPage: React.FC = () => {
 
     useEffect(() => {
         const fetchCurrentUserProfile = async () => {
-            // @ts-ignore - FIX: Property 'getSession' does not exist on type 'SupabaseAuthClient'. Using older version syntax.
+            // @ts-ignore
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
                 const { data: profileData } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
@@ -151,15 +151,31 @@ const UsersPage: React.FC = () => {
         setUpdatingRoleId(null);
     }, [addToast]);
 
-    const handleSaveUser = useCallback(async (userToSave: Profile, password?: string) => {
-        if (userToSave.id) { // UPDATE
-            const { id, email, ...updateData } = userToSave;
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .update(updateData)
-                .eq('id', id)
-                .select()
-                .single();
+    const handleSaveUser = useCallback(async (userToSave: Profile, password?: string, avatarFile?: File | null) => {
+        // UPDATE user
+        if (userToSave.id) {
+            let avatarUrlToUpdate = userToSave.avatar_url;
+
+            if (!avatarUrlToUpdate && !avatarFile) {
+                addToast('A profile selfie is required for this user. Please upload one.', 'error');
+                return;
+            }
+
+            if (avatarFile) {
+                const fileExt = avatarFile.name.split('.').pop();
+                const filePath = `${userToSave.id}/avatar.${fileExt}`;
+                const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, avatarFile, { upsert: true });
+
+                if (uploadError) {
+                    addToast('Error uploading selfie: ' + uploadError.message, 'error');
+                    return;
+                }
+                const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+                avatarUrlToUpdate = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+            }
+
+            const { id, email, ...updateData } = { ...userToSave, avatar_url: avatarUrlToUpdate };
+            const { error: profileError } = await supabase.from('profiles').update(updateData).eq('id', id);
 
             if (profileError) {
                 addToast('Error updating user profile: ' + profileError.message, 'error');
@@ -173,51 +189,62 @@ const UsersPage: React.FC = () => {
                 });
 
                 if (functionError) {
-                    addToast(`Profile saved, but failed to update password: ${functionError.message}. Ensure the 'reset-password' Edge Function is deployed correctly.`, 'warning');
+                    addToast(`Profile saved, but password update failed: ${functionError.message}.`, 'warning');
                 } else {
                     addToast('User password was also updated successfully.', 'success');
                 }
             }
-        } else { // CREATE
+        } 
+        // CREATE user
+        else {
             if (!password) {
                 addToast("Password is required to create a new user.", 'error');
                 return;
             }
-
-            const user_metadata: { [key: string]: any } = {
-                first_name: userToSave.first_name,
-                surname: userToSave.surname,
-                role: userToSave.role,
-                status: userToSave.status,
-                cell: userToSave.cell,
-                vehicle_reg: userToSave.vehicle_reg,
-                home_address: userToSave.home_address,
-                ice_no: userToSave.ice_no,
-                medical_aid: userToSave.medical_aid,
-                psira_number: userToSave.psira_number,
-            };
-
-            if (userToSave.company_id) {
-                user_metadata.company_id = userToSave.company_id;
-            }
-
-            if (userToSave.role === UserRole.RESPONDER && userToSave.responder_status) {
-                user_metadata.responder_status = userToSave.responder_status;
-            }
-
-            const { error } = await supabase.functions.invoke('create-user', {
-                body: {
-                    email: userToSave.email,
-                    password: password,
-                    user_metadata: user_metadata
-                }
-            });
-            
-            if (error) {
-                addToast(`Error creating user: ${error.message}`, 'error');
+            if (!avatarFile) {
+                addToast("A profile selfie is required to create a new user.", 'error');
                 return;
             }
-            addToast('User created successfully!', 'success');
+
+            const user_metadata: { [key: string]: any } = { ...userToSave };
+            delete user_metadata.id;
+            delete user_metadata.email;
+            
+            const { data: functionData, error: functionError } = await supabase.functions.invoke('create-user', {
+                body: { email: userToSave.email, password: password, user_metadata: user_metadata }
+            });
+            
+            if (functionError) {
+                addToast(`Error creating user: ${functionError.message}`, 'error');
+                return;
+            }
+
+            const newAuthUser = functionData.user;
+            if (!newAuthUser) {
+                addToast('User creation failed to return a user object.', 'error');
+                return;
+            }
+
+            // Now upload avatar for the newly created user
+            const fileExt = avatarFile.name.split('.').pop();
+            const filePath = `${newAuthUser.id}/avatar.${fileExt}`;
+            const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, avatarFile, { upsert: true });
+
+            if (uploadError) {
+                addToast(`User account created, but selfie upload failed. Please edit the user to add one.`, 'warning');
+            } else {
+                const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+                const { error: profileUpdateError } = await supabase
+                    .from('profiles')
+                    .update({ avatar_url: `${urlData.publicUrl}?t=${new Date().getTime()}` })
+                    .eq('id', newAuthUser.id);
+                
+                if(profileUpdateError) {
+                     addToast(`User created, but linking selfie failed: ${profileUpdateError.message}`, 'warning');
+                } else {
+                    addToast('User created successfully!', 'success');
+                }
+            }
         }
         setIsAddEditModalOpen(false);
         setSelectedUser(null);
