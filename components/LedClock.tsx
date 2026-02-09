@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 
 type Segment = 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g';
 type Char = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | ' ' | 'c' | 'f' | 'd' | 'm';
-type Size = 'large' | 'small';
+type Size = 'medium';
 
 const segmentMap: Record<Char, Segment[]> = {
     '0': ['a', 'b', 'c', 'd', 'e', 'f'],
@@ -26,7 +26,7 @@ const segmentMap: Record<Char, Segment[]> = {
 const SevenSegmentChar: React.FC<{ char: Char; size: Size }> = ({ char, size }) => {
     const activeSegments = segmentMap[char] || [];
     const segments: Segment[] = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
-    const sizeClass = size === 'large' ? 'seg-char-large' : 'seg-char-small';
+    const sizeClass = 'seg-char-medium';
 
     return (
         <div className={`segment-char ${sizeClass}`}>
@@ -38,9 +38,9 @@ const SevenSegmentChar: React.FC<{ char: Char; size: Size }> = ({ char, size }) 
 };
 
 const Colon: React.FC<{ size: Size }> = ({ size }) => {
-    const sizeClass = size === 'large' ? 'colon-large' : 'colon-small';
+    const sizeClass = 'colon-medium';
     return (
-        <div className={`relative ${sizeClass}`} style={{ width: size === 'large' ? '10px' : '5px'}}>
+        <div className={`relative ${sizeClass}`} style={{ width: '6px'}}>
             <div className="segment lit dot dot-top absolute"></div>
             <div className="segment lit dot dot-bottom absolute"></div>
         </div>
@@ -63,9 +63,9 @@ const LedClock: React.FC = () => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     return (
-        <div className="led-clock-container hidden md:flex items-center justify-between gap-4 font-mono">
+        <div className="led-clock-container hidden md:flex items-center justify-between gap-2 font-mono">
             {/* Day of Week */}
-            <div className="flex flex-col text-sm pr-2 border-r border-red-900/50">
+            <div className="flex flex-col pr-1 border-r border-red-900/50">
                 {days.map(day => (
                     <span key={day} className={`led-day ${day.toLowerCase() === dayOfWeek.toLowerCase() ? 'lit' : ''}`}>
                         {day}
@@ -75,41 +75,17 @@ const LedClock: React.FC = () => {
 
             {/* Main Time */}
             <div className="flex items-center">
-                <SevenSegmentChar char={hours[0] as Char} size="large" />
-                <SevenSegmentChar char={hours[1] as Char} size="large" />
-                <Colon size="large" />
-                <SevenSegmentChar char={minutes[0] as Char} size="large" />
-                <SevenSegmentChar char={minutes[1] as Char} size="large" />
+                <SevenSegmentChar char={hours[0] as Char} size="medium" />
+                <SevenSegmentChar char={hours[1] as Char} size="medium" />
+                <Colon size="medium" />
+                <SevenSegmentChar char={minutes[0] as Char} size="medium" />
+                <SevenSegmentChar char={minutes[1] as Char} size="medium" />
             </div>
 
-            {/* AM/PM and Secondary Info */}
-            <div className="flex flex-col items-start justify-between h-full pl-2 border-l border-red-900/50">
-                <span className={`led-small-text text-sm ${amPm.toLowerCase() === 'am' ? 'opacity-100' : 'opacity-20'}`}>AM</span>
-                <span className={`led-small-text text-sm ${amPm.toLowerCase() === 'pm' ? 'opacity-100' : 'opacity-20'}`}>PM</span>
-            </div>
-            
-            <div className="flex flex-col items-center">
-                {/* Temperature */}
-                <div className="flex items-end">
-                    <SevenSegmentChar char="1" size="small" />
-                    <SevenSegmentChar char="3" size="small" />
-                    <SevenSegmentChar char="8" size="small" />
-                    <div className="flex flex-col ml-1 text-xs">
-                        <span className="led-small-text">°F</span>
-                        <span className="led-small-text opacity-30">°C</span>
-                    </div>
-                </div>
-                 {/* Date */}
-                <div className="flex items-end mt-1">
-                    <SevenSegmentChar char="2" size="small" />
-                    <SevenSegmentChar char="3" size="small" />
-                    <SevenSegmentChar char="1" size="small" />
-                    <SevenSegmentChar char="1" size="small" />
-                    <div className="flex flex-col ml-1 text-xs">
-                        <span className="led-small-text">D</span>
-                        <span className="led-small-text opacity-30">M</span>
-                    </div>
-                </div>
+            {/* AM/PM */}
+            <div className="flex flex-col items-start justify-between h-full pl-1 border-l border-red-900/50">
+                <span className={`led-small-text ${amPm.toLowerCase() === 'am' ? 'opacity-100' : 'opacity-20'}`}>AM</span>
+                <span className={`led-small-text ${amPm.toLowerCase() === 'pm' ? 'opacity-100' : 'opacity-20'}`}>PM</span>
             </div>
         </div>
     );

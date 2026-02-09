@@ -170,15 +170,19 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     <>
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700/50 transition-colors duration-300 print:hidden">
       <div className={headerContainerClasses}>
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-20 relative">
           <div className="flex items-center space-x-2">
             <img src={profile.company?.logo_url || mainLogoUrl} alt="Company Logo" className="w-auto h-14 object-contain" />
           </div>
-          <nav className="hidden md:flex items-center space-x-2">
-            <NavLinks />
-          </nav>
-          <div className="flex items-center space-x-4">
+
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex flex-col items-center gap-1">
+            <nav className="flex items-center space-x-2">
+                <NavLinks />
+            </nav>
             <LedClock />
+          </div>
+          
+          <div className="flex items-center space-x-4">
             <ThemeToggle />
             {profile.company_id && (
                 <button onClick={() => setIsPTTModalOpen(true)} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300" title="Push-to-Talk">

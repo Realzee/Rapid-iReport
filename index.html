@@ -143,10 +143,10 @@
     
     /* LED Clock Styles */
     .led-clock-container {
-      background: black;
-      border-radius: 8px;
-      padding: 10px 16px;
-      box-shadow: inset 0 2px 4px rgba(255,255,255,0.1), 0 10px 20px rgba(0,0,0,0.5), 0 0 15px 5px rgba(255,0,0,0.3);
+      background: #0a0a0a;
+      border-radius: 4px;
+      padding: 4px 8px;
+      box-shadow: inset 0 1px 2px rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.5);
       border: 1px solid #333;
     }
     .segment-char { position: relative; }
@@ -154,35 +154,26 @@
     .segment.off { background: #1a0000; }
     .segment.lit {
       background: #ff0000;
-      box-shadow: 0 0 4px #ff0000, 0 0 8px #ff0000;
+      box-shadow: 0 0 2px #ff0000, 0 0 4px #ff0000;
     }
-    /* Large Segments */
-    .seg-char-large { width: 32px; height: 60px; }
-    .seg-char-large .s-a { top: 0; left: 4px; width: 24px; height: 5px; }
-    .seg-char-large .s-b { top: 4px; left: 28px; width: 5px; height: 24px; }
-    .seg-char-large .s-c { top: 32px; left: 28px; width: 5px; height: 24px; }
-    .seg-char-large .s-d { bottom: 0; left: 4px; width: 24px; height: 5px; }
-    .seg-char-large .s-e { top: 32px; left: 0; width: 5px; height: 24px; }
-    .seg-char-large .s-f { top: 4px; left: 0; width: 5px; height: 24px; }
-    .seg-char-large .s-g { top: 27.5px; left: 4px; width: 24px; height: 5px; }
-    /* Small Segments */
-    .seg-char-small { width: 16px; height: 30px; }
-    .seg-char-small .s-a { top: 0; left: 2px; width: 12px; height: 3px; }
-    .seg-char-small .s-b { top: 2px; left: 14px; width: 3px; height: 12px; }
-    .seg-char-small .s-c { top: 16px; left: 14px; width: 3px; height: 12px; }
-    .seg-char-small .s-d { bottom: 0; left: 2px; width: 12px; height: 3px; }
-    .seg-char-small .s-e { top: 16px; left: 0; width: 3px; height: 12px; }
-    .seg-char-small .s-f { top: 2px; left: 0; width: 3px; height: 12px; }
-    .seg-char-small .s-g { top: 13.5px; left: 2px; width: 12px; height: 3px; }
+    /* Medium Segments */
+    .seg-char-medium { width: 18px; height: 34px; }
+    .seg-char-medium .s-a { top: 0; left: 2px; width: 14px; height: 3px; }
+    .seg-char-medium .s-b { top: 2px; left: 15px; width: 3px; height: 14px; }
+    .seg-char-medium .s-c { top: 18px; left: 15px; width: 3px; height: 14px; }
+    .seg-char-medium .s-d { bottom: 0; left: 2px; width: 14px; height: 3px; }
+    .seg-char-medium .s-e { top: 18px; left: 0; width: 3px; height: 14px; }
+    .seg-char-medium .s-f { top: 2px; left: 0; width: 3px; height: 14px; }
+    .seg-char-medium .s-g { top: 15.5px; left: 2px; width: 14px; height: 3px; }
     /* Colon */
-    .colon-large .dot { width: 5px; height: 5px; }
-    .colon-large .dot-top { top: 15px; }
-    .colon-large .dot-bottom { bottom: 15px; }
+    .colon-medium .dot { width: 3px; height: 3px; }
+    .colon-medium .dot-top { top: 8px; }
+    .colon-medium .dot-bottom { bottom: 8px; }
     /* Day of week */
-    .led-day { color: #550000; font-family: 'Arial', sans-serif; font-weight: bold; transition: color 0.2s, text-shadow 0.2s; }
-    .led-day.lit { color: #ffffff; text-shadow: 0 0 5px #ff4d4d; }
+    .led-day { color: #550000; font-family: 'Arial', sans-serif; font-weight: bold; transition: color 0.2s, text-shadow 0.2s; font-size: 10px; }
+    .led-day.lit { color: #ffffff; text-shadow: 0 0 3px #ff4d4d; }
     /* Small Text */
-    .led-small-text { color: #ff0000; text-shadow: 0 0 4px #ff0000; font-family: 'Arial', sans-serif; font-weight: bold; }
+    .led-small-text { color: #ff0000; text-shadow: 0 0 2px #ff0000; font-family: 'Arial', sans-serif; font-weight: bold; font-size: 10px; }
   </style>
 <script type="importmap">
 {
