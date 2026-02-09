@@ -69,22 +69,30 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 { data: historyData, error: historyError },
                 { data: reporterData, error: reporterError }
             ] = await Promise.all([
-                supabase.from('report_updates').select('*, profile:profiles(full_name)').eq('report_id', report.id).order('created_at', { ascending: true }),
-                supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(full_name), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(full_name), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(full_name)`).eq('report_id', report.id).order('created_at', { ascending: false }),
+                supabase.from('report_updates').select('*, profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at', { ascending: true }),
+                supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(first_name, surname), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(first_name, surname), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(first_name, surname)`).eq('report_id', report.id).order('created_at', { ascending: false }),
                 supabase.from('profiles').select('first_name, surname').eq('id', report.reported_by).single()
             ]);
 
             if (updatesError) console.error("Error fetching report updates:", updatesError);
-            else setUpdates(updatesData?.map(u => ({...u, user_full_name: (u.profile as any)?.full_name || 'System'})) || []);
+            else setUpdates(updatesData?.map(u => {
+                const profile = u.profile as { first_name: string; surname: string } | null;
+                return {...u, user_full_name: profile ? `${profile.first_name} ${profile.surname}` : 'System' };
+            }) || []);
 
             if (historyError) console.error("Error fetching assignment history:", historyError);
             else if (historyData) {
-                const formattedHistory = historyData.map((log: any) => ({
-                    ...log,
-                    assigned_from_name: log.assigned_from_profile?.full_name || null,
-                    assigned_to_name: log.assigned_to_profile?.full_name || null,
-                    assigned_by_name: log.assigned_by_profile?.full_name || 'System',
-                }));
+                const formattedHistory = historyData.map((log: any) => {
+                    const fromProfile = log.assigned_from_profile;
+                    const toProfile = log.assigned_to_profile;
+                    const byProfile = log.assigned_by_profile;
+                    return {
+                        ...log,
+                        assigned_from_name: fromProfile ? `${fromProfile.first_name} ${fromProfile.surname}` : null,
+                        assigned_to_name: toProfile ? `${toProfile.first_name} ${toProfile.surname}` : null,
+                        assigned_by_name: byProfile ? `${byProfile.first_name} ${byProfile.surname}` : 'System',
+                    }
+                });
                 setAssignmentHistory(formattedHistory);
             }
             
@@ -98,8 +106,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             .channel(`report-updates-${report.id}`)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'report_updates', filter: `report_id=eq.${report.id}`}, 
             async (payload) => {
-                const { data: profileData } = await supabase.from('profiles').select('full_name').eq('id', payload.new.user_id).single();
-                const newUpdateWithUser = { ...payload.new, user_full_name: profileData?.full_name || 'System' };
+                const { data: profileData } = await supabase.from('profiles').select('first_name, surname').eq('id', payload.new.user_id).single();
+                const newUpdateWithUser = { ...payload.new, user_full_name: profileData ? `${profileData.first_name} ${profileData.surname}` : 'System' };
                 setUpdates(prev => [...prev, newUpdateWithUser as ReportUpdate]);
             })
             .subscribe();
@@ -108,9 +116,19 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             .channel(`report-history-${report.id}`)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'assignment_logs', filter: `report_id=eq.${report.id}`}, 
             async () => {
-                const { data: historyData, error: historyError } = await supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(full_name), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(full_name), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(full_name)`).eq('report_id', report.id).order('created_at', { ascending: false });
+                const { data: historyData, error: historyError } = await supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(first_name, surname), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(first_name, surname), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(first_name, surname)`).eq('report_id', report.id).order('created_at', { ascending: false });
                 if (!historyError && historyData) {
-                    const formattedHistory = historyData.map((log: any) => ({ ...log, assigned_from_name: log.assigned_from_profile?.full_name || null, assigned_to_name: log.assigned_to_profile?.full_name || null, assigned_by_name: log.assigned_by_profile?.full_name || 'System' }));
+                    const formattedHistory = historyData.map((log: any) => {
+                        const fromProfile = log.assigned_from_profile;
+                        const toProfile = log.assigned_to_profile;
+                        const byProfile = log.assigned_by_profile;
+                        return {
+                            ...log,
+                            assigned_from_name: fromProfile ? `${fromProfile.first_name} ${fromProfile.surname}` : null,
+                            assigned_to_name: toProfile ? `${toProfile.first_name} ${toProfile.surname}` : null,
+                            assigned_by_name: byProfile ? `${byProfile.first_name} ${byProfile.surname}` : 'System',
+                        }
+                    });
                     setAssignmentHistory(formattedHistory);
                 }
             })
@@ -525,8 +543,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                                 <select value={selectedResponder} onChange={(e) => setSelectedResponder(e.target.value)} disabled={isTerminalStatus} className="flex-grow bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed">
                                     <option value="">{report.assigned_to ? 'Unassign' : (availableResponders.length > 0 ? 'Select Responder...' : 'No responders available')}</option>
                                     {responderOptions.map(r => (
-                                        <option key={r.id} value={r.id}>{/* FIX: Property 'full_name' does not exist on type 'Responder'. */}
-                                        {r.first_name} {r.surname}
+                                        <option key={r.id} value={r.id}>{`${r.first_name} ${r.surname}`}
                                         {r.status !== ResponderStatus.AVAILABLE ? ` (${r.status.replace(/_/g, ' ')})` : ''}</option>
                                     ))}
                                 </select>
@@ -541,7 +558,6 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             <PrintableReport
                 report={report}
                 timelineEvents={timelineEvents}
-                // FIX: Property 'full_name' does not exist on type 'Profile'.
                 reporterName={reporter ? `${reporter.first_name} ${reporter.surname}` : null}
                 company={profile.company}
             />
