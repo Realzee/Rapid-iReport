@@ -40,7 +40,7 @@ const SevenSegmentChar: React.FC<{ char: Char; size: Size }> = ({ char, size }) 
 const Colon: React.FC<{ size: Size }> = ({ size }) => {
     const sizeClass = 'colon-compact';
     return (
-        <div className={`relative ${sizeClass}`} style={{ width: '4px'}}>
+        <div className={`relative ${sizeClass}`} style={{ width: '6px'}}>
             <div className="segment lit dot dot-top absolute"></div>
             <div className="segment lit dot dot-bottom absolute"></div>
         </div>
