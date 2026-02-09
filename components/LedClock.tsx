@@ -55,9 +55,8 @@ const LedClock: React.FC = () => {
         return () => clearInterval(timer);
     }, []);
 
-    const hours = format(time, 'hh');
+    const hours = format(time, 'HH');
     const minutes = format(time, 'mm');
-    const amPm = format(time, 'aa');
     const dayOfWeek = format(time, 'eee'); // Mon, Tue, etc.
     const dateStr = format(time, 'dd MMM');
 
@@ -76,12 +75,6 @@ const LedClock: React.FC = () => {
                 <Colon size="compact" />
                 <SevenSegmentChar char={minutes[0] as Char} size="compact" />
                 <SevenSegmentChar char={minutes[1] as Char} size="compact" />
-            </div>
-
-            {/* AM/PM */}
-            <div className="flex flex-col items-start justify-between h-full pl-1 border-l border-red-900/50">
-                <span className={`led-small-text ${amPm.toLowerCase() === 'am' ? 'opacity-100' : 'opacity-20'}`}>AM</span>
-                <span className={`led-small-text ${amPm.toLowerCase() === 'pm' ? 'opacity-100' : 'opacity-20'}`}>PM</span>
             </div>
         </div>
     );
