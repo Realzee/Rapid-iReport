@@ -1,13 +1,67 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Report, Profile, ResponderStatus } from '../types';
 import MapStyleToggle, { MapStyle } from './MapStyleToggle';
+import { createPortal } from 'react-dom';
+import { NavigationIcon } from './icons';
 
 interface ResponderMapViewProps {
     report: Report | null;
     responderProfile: Profile;
 }
+
+const NavigateToReportControl: React.FC<{ report: Report | null }> = ({ report }) => {
+    const map = useMap();
+    const controlContainerRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const NavigateControl = L.Control.extend({
+            onAdd: function() {
+                const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                L.DomEvent.disableClickPropagation(container);
+                controlContainerRef.current = container;
+                return container;
+            },
+            onRemove: function() {
+                controlContainerRef.current = null;
+            }
+        });
+
+        const control = new NavigateControl({ position: 'bottomleft' });
+        control.addTo(map);
+
+        return () => {
+            if (map && control) {
+                map.removeControl(control);
+            }
+        };
+    }, [map]);
+
+    const handleNavigate = () => {
+        if (report?.location_coords) {
+            const { lat, lng } = report.location_coords;
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+            window.open(url, '_blank');
+        }
+    };
+    
+    if (!controlContainerRef.current || !report?.location_coords) {
+        return null;
+    }
+
+    return createPortal(
+        <button
+            onClick={handleNavigate}
+            className="p-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg shadow-lg text-blue-600 dark:text-blue-400 hover:bg-white dark:hover:bg-gray-800 transition-all"
+            title="Navigate to incident"
+        >
+            <NavigationIcon className="w-6 h-6" />
+        </button>,
+        controlContainerRef.current
+    );
+};
+
 
 const createIncidentIcon = () => {
     const iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 40px; height: 40px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));">
@@ -80,8 +134,8 @@ const ResponderMapView: React.FC<ResponderMapViewProps> = ({ report, responderPr
     const [mapStyle, setMapStyle] = useState<MapStyle>('street');
 
     const streetTile = {
-        url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     };
     const satelliteTile = {
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -109,6 +163,7 @@ const ResponderMapView: React.FC<ResponderMapViewProps> = ({ report, responderPr
                         <Tooltip direction="top">Incident Location</Tooltip>
                     </Marker>
                 )}
+                <NavigateToReportControl report={report} />
             </MapContainer>
             <MapStyleToggle currentStyle={mapStyle} onStyleChange={setMapStyle} />
         </div>

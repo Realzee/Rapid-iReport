@@ -83,12 +83,10 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
 
     const selectedReport = useMemo(() => reports.find(r => r.id === selectedReportId), [reports, selectedReportId]);
     
-    const lightMapUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+    const lightMapUrl = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
     const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
     const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
-    const attribution = theme === 'dark' 
-        ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' 
-        : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+    const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
