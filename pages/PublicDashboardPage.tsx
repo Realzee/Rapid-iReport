@@ -2,16 +2,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { supabase } from '../utils/supabase';
-import { Report, VehicleReport, Announcement } from '../types';
+import { Report, VehicleReport, Announcement, LegacyObEntry } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSettings } from '../contexts/SettingsContext';
 import ThemeToggle from '../components/ThemeToggle';
-import { CarIcon, CrimeIcon, XIcon, MenuIcon } from '../components/icons';
+import { CarIcon, CrimeIcon, DatabaseIcon, ZapIcon } from '../components/icons';
 import { formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
 import AnnouncementsPanel from '../components/AnnouncementsPanel';
 import LegacyObLog from '../components/LegacyObLog';
 import PublicReportDetailModal from '../components/PublicReportDetailModal';
+import LegacyObDetailModal from '../components/LegacyObDetailModal';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -44,8 +45,9 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
-    const [isSidePanelOpen, setSidePanelOpen] = useState(true);
     const [detailReport, setDetailReport] = useState<Report | null>(null);
+    const [activeTab, setActiveTab] = useState<'incidents' | 'legacy'>('incidents');
+    const [selectedLegacyEntry, setSelectedLegacyEntry] = useState<LegacyObEntry | null>(null);
     const { theme } = useTheme();
     const { mainLogoUrl } = useSettings();
 
@@ -89,10 +91,11 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
         if (report) {
             setSelectedReportId(report.id);
             setDetailReport(report);
-            if (window.innerWidth < 768) {
-                setSidePanelOpen(false);
-            }
         }
+    };
+    
+    const handleLegacyRowClick = (entry: LegacyObEntry) => {
+        setSelectedLegacyEntry(entry);
     };
 
     const selectedReport = useMemo(() => reports.find(r => r.id === selectedReportId), [reports, selectedReportId]);
@@ -101,6 +104,14 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
     const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
     const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
     const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    
+    const tabButtonClasses = (tabName: 'incidents' | 'legacy') => 
+        `w-1/2 py-2.5 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${
+            activeTab === tabName 
+            ? 'bg-blue-600 text-white shadow-md' 
+            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'
+        }`;
+
 
     return (
         <>
@@ -108,9 +119,6 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                 <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700/50 z-20">
                     <div className="px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <button onClick={() => setSidePanelOpen(!isSidePanelOpen)} className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors md:hidden">
-                                {isSidePanelOpen ? <XIcon className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
-                            </button>
                             <img src={mainLogoUrl} alt="Logo" className="w-auto h-14 object-contain" />
                             <h1 className="text-xl font-bold hidden sm:block">Community Safety Map</h1>
                         </div>
@@ -122,40 +130,10 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                         </div>
                     </div>
                 </header>
-                <main className="flex-grow flex relative overflow-hidden">
-                    <aside className={`absolute md:relative top-0 bottom-0 left-0 z-10 w-full max-w-sm md:w-96 flex-shrink-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-r border-gray-200 dark:border-gray-700/50 flex flex-col transition-transform duration-300 ease-in-out ${isSidePanelOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 overflow-y-auto`}>
-                        <div className="p-4 border-b border-gray-200 dark:border-gray-700/50">
-                            <h2 className="font-bold text-lg">Live Incidents ({reports.length})</h2>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Showing reports from the last 72 hours.</p>
-                        </div>
-                        <div className="p-2">
-                            {loading ? (
-                                <div className="flex justify-center items-center h-full"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
-                            ) : reports.length === 0 ? (
-                                <p className="text-center p-8 text-gray-500 dark:text-gray-400">No active public incidents at this time.</p>
-                            ) : (
-                                <div className="space-y-2">
-                                {reports.map(report => (
-                                    <div key={report.id} onClick={() => handleSelectReport(report.id)} className={`p-3 cursor-pointer rounded-lg border-2 transition-all ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-gray-100/50 dark:bg-gray-800/50 border-transparent hover:border-gray-300 dark:hover:border-gray-600'}`}>
-                                        <div className="flex justify-between items-start gap-2">
-                                            <h3 className="font-semibold text-md truncate">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
-                                            <StatusBadge status={report.status} />
-                                        </div>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1">
-                                            {isVehicleReport(report) ? <CarIcon className="w-4 h-4 text-yellow-500" /> : <CrimeIcon className="w-4 h-4 text-red-500" />}
-                                            <span>{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : report.crime_type}</span>
-                                        </p>
-                                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
-                                    </div>
-                                ))}
-                                </div>
-                            )}
-                        </div>
-                        <AnnouncementsPanel announcements={announcements} />
-                        <LegacyObLog />
-                    </aside>
-                    <div className="flex-grow h-full">
-                        <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
+                <main className="flex-grow grid grid-cols-1 lg:grid-cols-10 gap-4 p-4 overflow-hidden h-[calc(100vh-5rem)]">
+                    {/* Map Section */}
+                    <div className="lg:col-span-6 h-[50vh] lg:h-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700/50 shadow-md">
+                         <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
                             <TileLayer key={theme} url={tileUrl} attribution={attribution} />
                             <MapFocusController selectedReport={selectedReport} />
                             {reports.map(report => report.location_coords && (
@@ -176,9 +154,59 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                             ))}
                         </MapContainer>
                     </div>
+                    
+                    {/* Content Section */}
+                    <div className="lg:col-span-4 h-full flex flex-col bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border border-gray-200 dark:border-gray-700/50 rounded-2xl overflow-hidden shadow-md">
+                        {/* Tabs */}
+                        <div className="flex-shrink-0 p-2 border-b border-gray-200 dark:border-gray-700/50 bg-gray-100/50 dark:bg-gray-900/50">
+                             <div className="flex bg-gray-200 dark:bg-gray-800/70 border border-gray-300 dark:border-gray-700 rounded-lg p-1">
+                                <button onClick={() => setActiveTab('incidents')} className={tabButtonClasses('incidents')}>
+                                    <ZapIcon className="w-5 h-5"/> Live Incidents
+                                </button>
+                                <button onClick={() => setActiveTab('legacy')} className={tabButtonClasses('legacy')}>
+                                    <DatabaseIcon className="w-5 h-5"/> Legacy OB Log
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Tab Content */}
+                        <div className="flex-grow overflow-y-auto">
+                            {activeTab === 'incidents' ? (
+                                <>
+                                    <div className="p-2">
+                                        {loading ? (
+                                            <div className="flex justify-center items-center h-full py-10"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
+                                        ) : reports.length === 0 ? (
+                                            <p className="text-center p-8 text-gray-500 dark:text-gray-400">No active public incidents at this time.</p>
+                                        ) : (
+                                            <div className="space-y-2">
+                                            {reports.map(report => (
+                                                <div key={report.id} onClick={() => handleSelectReport(report.id)} className={`p-3 cursor-pointer rounded-lg border-2 transition-all ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-gray-100/50 dark:bg-gray-800/50 border-transparent hover:border-gray-300 dark:hover:border-gray-600'}`}>
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <h3 className="font-semibold text-md truncate">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                                                        <StatusBadge status={report.status} />
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1">
+                                                        {isVehicleReport(report) ? <CarIcon className="w-4 h-4 text-yellow-500" /> : <CrimeIcon className="w-4 h-4 text-red-500" />}
+                                                        <span>{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : report.crime_type}</span>
+                                                    </p>
+                                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
+                                                </div>
+                                            ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <AnnouncementsPanel announcements={announcements} />
+                                </>
+                            ) : (
+                                <LegacyObLog onRowClick={handleLegacyRowClick} />
+                            )}
+                        </div>
+                    </div>
                 </main>
             </div>
             <PublicReportDetailModal isOpen={!!detailReport} onClose={() => setDetailReport(null)} report={detailReport} />
+            <LegacyObDetailModal isOpen={!!selectedLegacyEntry} onClose={() => setSelectedLegacyEntry(null)} entry={selectedLegacyEntry} />
         </>
     );
 };
