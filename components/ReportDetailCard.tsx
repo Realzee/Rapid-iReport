@@ -48,7 +48,6 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         const fetchReporter = async () => {
             const { data, error } = await supabase
                 .from('profiles')
-                // FIX: Select all fields to match the Profile type.
                 .select('*')
                 .eq('id', report.reported_by)
                 .single();
@@ -266,7 +265,6 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                  {reporter && (
                     <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported By</p>
-                        {/* FIX: Property 'full_name' does not exist on type 'Profile'. */}
                         <p className="text-gray-700 dark:text-gray-300">{reporter.first_name} {reporter.surname} ({reporter.email})</p>
                     </div>
                  )}
@@ -274,7 +272,6 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
             {[ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(report.status) && (
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
-                    {/* FIX: Pass the required 'allUsers' prop to IncidentChat. */}
                     <IncidentChat reportId={report.id} currentUserProfile={profile} allUsers={allUsers} />
                 </div>
             )}
