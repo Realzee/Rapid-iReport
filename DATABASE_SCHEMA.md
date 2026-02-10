@@ -801,15 +801,13 @@ DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON pu
 CREATE POLICY "Allow view access to relevant users" ON public.vehicle_reports FOR SELECT USING (
   (get_user_role(auth.uid()) = 'admin') OR
   (reported_by = auth.uid()) OR
+  (assigned_to = auth.uid()) OR
   (
-    (get_user_role(auth.uid()) IN ('responder', 'controller', 'moderator')) AND (
-      status IN ('pending', 'active', 'assigned', 'in_progress', 'on_scene') OR
-      (
-        (get_my_company_id() IS NOT NULL) AND (
-          get_user_company_id(reported_by) = get_my_company_id() OR
-          get_user_company_id(assigned_to) = get_my_company_id()
-        )
-      )
+    (get_user_role(auth.uid()) IN ('moderator', 'controller')) AND
+    (get_my_company_id() IS NOT NULL) AND
+    (
+      get_user_company_id(reported_by) = get_my_company_id() OR
+      get_user_company_id(assigned_to) = get_my_company_id()
     )
   )
 );
@@ -833,15 +831,13 @@ DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON pu
 CREATE POLICY "Allow view access to relevant users" ON public.crime_reports FOR SELECT USING (
   (get_user_role(auth.uid()) = 'admin') OR
   (reported_by = auth.uid()) OR
+  (assigned_to = auth.uid()) OR
   (
-    (get_user_role(auth.uid()) IN ('responder', 'controller', 'moderator')) AND (
-      status IN ('pending', 'active', 'assigned', 'in_progress', 'on_scene') OR
-      (
-        (get_my_company_id() IS NOT NULL) AND (
-          get_user_company_id(reported_by) = get_my_company_id() OR
-          get_user_company_id(assigned_to) = get_my_company_id()
-        )
-      )
+    (get_user_role(auth.uid()) IN ('moderator', 'controller')) AND
+    (get_my_company_id() IS NOT NULL) AND
+    (
+      get_user_company_id(reported_by) = get_my_company_id() OR
+      get_user_company_id(assigned_to) = get_my_company_id()
     )
   )
 );

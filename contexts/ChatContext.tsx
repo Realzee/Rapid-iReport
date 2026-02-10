@@ -89,7 +89,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
         };
 
         const chatChannel = supabase
-            .channel('public:chat_messages')
+            .channel(`chat-notifications-listener-${profile.id}`)
             .on(
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'chat_messages' },
