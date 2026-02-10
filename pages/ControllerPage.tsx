@@ -5,7 +5,7 @@ import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
 import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
-import { ZapIcon, UsersIcon, PlusIcon } from '../components/icons';
+import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
 import SoughtListManager from '../components/BlacklistManager';
 
@@ -27,6 +27,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
+    const [isDetailsVisible, setIsDetailsVisible] = useState(true);
 
     const isInitialLoad = useRef(true);
     const audioContextRef = useRef<AudioContext | null>(null);
@@ -288,10 +289,12 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                     </div>
                 </div>
 
-                {/* FIX: Refactored layout for sticky map and scrollable details */}
                 <div className="lg:col-span-9">
                     <div className="grid grid-cols-1 lg:grid-cols-9 gap-4">
-                        <div className="lg:col-span-5 lg:sticky lg:top-24 h-[60vh] lg:h-[calc(100vh-12rem)] print:hidden">
+                        <div className={`
+                            lg:sticky lg:top-24 h-[60vh] lg:h-[calc(100vh-12rem)] print:hidden relative transition-all duration-300
+                            ${isDetailsVisible ? 'lg:col-span-5' : 'lg:col-span-9'}
+                        `}>
                             <MapView
                                 reports={reports}
                                 responders={responders}
@@ -300,26 +303,35 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 onReportSelect={(id) => setSelectedReportId(id)}
                                 allUsers={allUsers}
                             />
+                            <button
+                                onClick={() => setIsDetailsVisible(!isDetailsVisible)}
+                                className="absolute top-1/2 -right-4 -translate-y-1/2 z-10 bg-white dark:bg-gray-800 p-1.5 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hidden lg:flex"
+                                title={isDetailsVisible ? 'Hide Details' : 'Show Details'}
+                            >
+                                {isDetailsVisible ? <ChevronRightIcon className="w-5 h-5" /> : <ChevronLeftIcon className="w-5 h-5" />}
+                            </button>
                         </div>
-                        <div className="lg:col-span-4 space-y-4">
-                            <SoughtListManager 
-                                onSelectReport={setSelectedReportId}
-                                onQuickAdd={handleOpenQuickAddModal}
-                            />
-                            {selectedReport ? (
-                                <ControllerReportDetail
-                                    key={selectedReport.id}
-                                    report={selectedReport}
-                                    responders={responders}
-                                    profile={profile}
-                                    allUsers={allUsers}
+                        {isDetailsVisible && (
+                             <div className="lg:col-span-4 space-y-4">
+                                <SoughtListManager 
+                                    onSelectReport={setSelectedReportId}
+                                    onQuickAdd={handleOpenQuickAddModal}
                                 />
-                            ) : (
-                                <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden min-h-[40vh]">
-                                    <p className="text-gray-500 dark:text-gray-400">Select an incident to view details.</p>
-                                </div>
-                            )}
-                        </div>
+                                {selectedReport ? (
+                                    <ControllerReportDetail
+                                        key={selectedReport.id}
+                                        report={selectedReport}
+                                        responders={responders}
+                                        profile={profile}
+                                        allUsers={allUsers}
+                                    />
+                                ) : (
+                                    <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden min-h-[40vh]">
+                                        <p className="text-gray-500 dark:text-gray-400">Select an incident to view details.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
