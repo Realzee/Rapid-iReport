@@ -4,10 +4,10 @@ import { Report, Profile, VehicleReport, ReportUpdate, ReportStatus, AssignmentL
 import StatusBadge from './StatusBadge';
 import { MapPinIcon, EditIcon, AssignResponderIcon, ZapIcon } from './icons';
 import { format, formatDistanceToNow } from 'date-fns';
-import IncidentChat from './IncidentChat';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import { useTheme } from '../contexts/ThemeContext';
+import { useChat } from '../contexts/ChatContext';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -47,6 +47,7 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
     const [assignmentHistory, setAssignmentHistory] = useState<AssignmentLog[]>([]);
     const { theme } = useTheme();
+    const { openChat } = useChat();
 
     const lightMapUrl = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
     const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
@@ -225,7 +226,9 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                 </div>
                  
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700/50">
-                    <IncidentChat reportId={report.id} currentUserProfile={profile} allUsers={allUsers} />
+                    <button onClick={() => openChat(report)} className="w-full py-2 px-4 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition">
+                        Open Live Chat
+                    </button>
                 </div>
             </div>
         </div>

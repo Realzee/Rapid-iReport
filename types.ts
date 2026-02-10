@@ -205,6 +205,7 @@ export interface Toast {
   id: string;
   message: string;
   type: ToastType;
+  onClick?: () => void;
 }
 
 export interface LegacyObEntry {

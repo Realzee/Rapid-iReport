@@ -5,7 +5,6 @@ import { Report, Responder, VehicleReport, ReportStatus, Severity, ResponderStat
 import StatusBadge from './StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon, ShareIcon } from './icons';
-import IncidentChat from './IncidentChat';
 import MapStyleToggle, { MapStyle } from './MapStyleToggle';
 
 interface MapViewProps {
@@ -216,14 +215,6 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                                         <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Severity</span><span className={`capitalize px-2 py-1 text-xs font-semibold rounded-full ${report.severity === 'critical' ? 'bg-red-500/20 text-red-400' : report.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : report.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}`}>{report.severity}</span></div>
                                     </div>
                                     
-                                    {profile && [ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(report.status) && (
-                                        <>
-                                            <hr className="border-gray-200 dark:border-gray-600 my-2" />
-                                            {/* FIX: Pass the required 'allUsers' prop to IncidentChat. */}
-                                            <IncidentChat reportId={report.id} currentUserProfile={profile} allUsers={allUsers} />
-                                        </>
-                                    )}
-
                                     <hr className="border-gray-200 dark:border-gray-600 my-2" />
                                     <div className="flex justify-between items-center">
                                         <p className="text-xs text-gray-400 dark:text-gray-500">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>

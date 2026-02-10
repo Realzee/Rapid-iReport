@@ -5,9 +5,9 @@ import { supabase } from '../utils/supabase';
 import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon } from './icons';
 import PrintableReport from './PrintableReport';
 import { useToast } from '../contexts/ToastContext';
-import IncidentChat from './IncidentChat';
 import ConfirmModal from './ConfirmModal';
 import { logoUrl } from '../assets/logo';
+import { useChat } from '../contexts/ChatContext';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -52,6 +52,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const { addToast } = useToast();
+    const { openChat } = useChat();
 
     const isTerminalStatus = useMemo(() => {
         return [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED, ReportStatus.DELETED].includes(report.status);
@@ -494,7 +495,9 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         </div>
                     </DetailField>
                     <DetailField label="Live Communication">
-                        <IncidentChat reportId={report.id} currentUserProfile={profile} allUsers={allUsers} disabled={isTerminalStatus} noInternalScroll={true} />
+                         <button onClick={() => openChat(report)} disabled={isTerminalStatus} className="w-full py-2 px-4 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition disabled:opacity-50">
+                            Open Live Chat
+                        </button>
                     </DetailField>
                 </div>
 

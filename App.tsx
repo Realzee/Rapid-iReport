@@ -20,6 +20,7 @@ import { ToastContainer } from './components/ToastContainer';
 import { checkDatabaseSchema } from './utils/schemaCheck';
 import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
 import { useSettings } from './contexts/SettingsContext';
+import { ChatProvider } from './contexts/ChatContext';
 
 type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller';
 
@@ -288,22 +289,24 @@ const App: React.FC = () => {
 
       <div className="relative z-10">
         {profile ? (
-          <div className="flex flex-col min-h-screen">
-            <Header 
-              currentView={isGlobalMapModalOpen ? 'map' : view}
-              setView={handleSetView} 
-              profile={profile}
-              onNotificationClick={handleNotificationClick}
-            />
-            <AnnouncementsBanner onVisibilityChange={setIsAnnouncementVisible} />
-            <main className={`${mainClasses} ${mainPaddingTopClass} flex-grow flex flex-col`}>
-              {renderView()}
-            </main>
-            <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">
-                <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto h-4" />
-                <span>Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)</span>
-            </footer>
-          </div>
+          <ChatProvider profile={profile}>
+            <div className="flex flex-col min-h-screen">
+              <Header 
+                currentView={isGlobalMapModalOpen ? 'map' : view}
+                setView={handleSetView} 
+                profile={profile}
+                onNotificationClick={handleNotificationClick}
+              />
+              <AnnouncementsBanner onVisibilityChange={setIsAnnouncementVisible} />
+              <main className={`${mainClasses} ${mainPaddingTopClass} flex-grow flex flex-col`}>
+                {renderView()}
+              </main>
+              <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">
+                  <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto h-4" />
+                  <span>Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)</span>
+              </footer>
+            </div>
+          </ChatProvider>
         ) : null}
       </div>
       {isGlobalMapModalOpen && <GlobalMapModal isOpen={isGlobalMapModalOpen} onClose={() => setIsGlobalMapModalOpen(false)} profile={profile} />}

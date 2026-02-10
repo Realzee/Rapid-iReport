@@ -6,10 +6,10 @@ import StatusBadge from '../components/StatusBadge';
 import { NavigationIcon, CameraIcon, ScanIcon, XIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
-import IncidentChat from '../components/IncidentChat';
 import ResponderMapView from '../components/ResponderMapView';
 import ANPRScanner from '../components/ANPRScanner';
 import UserReportDetail from '../components/UserReportDetail';
+import { useChat } from '../contexts/ChatContext';
 
 interface ResponderPageProps {
     profile: Profile;
@@ -337,7 +337,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                 
                 {isOnDuty && <ANPRScanner onReportHit={handleAnprHit} />}
 
-                <div className="space-y-3 lg:h-[calc(100vh-22rem)] lg:overflow-y-auto">
+                <div className="space-y-3 lg:h-[calc(100vh-22rem)] lg:overflow-y-auto pr-2">
                     <h2 className="text-xl font-bold px-1">Assigned Incidents ({assignedReports.length})</h2>
                      {loading ? <div className="flex justify-center items-center h-64"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
                     : assignedReports.length === 0 ? <p className="text-center py-10 text-gray-500 dark:text-gray-400">Stand by for assignments.</p> 
@@ -393,6 +393,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
     const [isActionLoading, setIsActionLoading] = useState<ReportStatus | 'stand_down' | null>(null);
     const { addToast } = useToast();
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, confirmText: string, confirmVariant: 'danger' | 'primary' } | null>(null);
+    const { openChat } = useChat();
 
     useEffect(() => {
         const fetchUpdates = async () => { 
@@ -567,7 +568,9 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                     </form>
                 </div>
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700/50">
-                    <IncidentChat reportId={report.id} currentUserProfile={profile} allUsers={allUsers} />
+                    <button onClick={() => openChat(report)} className="w-full py-2 px-4 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition">
+                        Open Live Chat
+                    </button>
                 </div>
             </div>
         </div>

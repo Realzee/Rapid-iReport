@@ -36,9 +36,16 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
         };
     }, [toast.id, onRemove]);
 
-    const handleRemove = () => {
+    const handleManualRemove = () => {
         setIsExiting(true);
         setTimeout(() => onRemove(toast.id), 300); // Wait for animation
+    };
+
+    const handleClick = () => {
+        if (toast.onClick) {
+            toast.onClick();
+            handleManualRemove(); // Also remove toast on click
+        }
     };
 
     const enterClass = 'animate-[toast-enter_0.3s_ease-out_forwards]';
@@ -46,12 +53,13 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
 
     return (
         <div 
-            className={`w-full max-w-sm bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 p-4 border-l-4 ${toastStyles[toast.type]} flex items-start gap-4 ${isExiting ? exitClass : enterClass}`}
+            className={`w-full max-w-sm bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 p-4 border-l-4 ${toastStyles[toast.type]} flex items-start gap-4 ${isExiting ? exitClass : enterClass} ${toast.onClick ? 'cursor-pointer' : ''}`}
             role="alert"
+            onClick={toast.onClick ? handleClick : undefined}
         >
             <div className="flex-shrink-0">{toastIcons[toast.type]}</div>
             <div className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-100">{toast.message}</div>
-            <button onClick={handleRemove} className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors">
+            <button onClick={(e) => { e.stopPropagation(); handleManualRemove(); }} className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors">
                 <XIcon className="w-5 h-5" />
             </button>
         </div>

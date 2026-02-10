@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, ReactNode, useCallback } fr
 import { Toast, ToastType } from '../types';
 
 interface ToastContextType {
-  addToast: (message: string, type: ToastType) => void;
+  addToast: (message: string, type: ToastType, onClick?: () => void) => void;
   toasts: Toast[];
   removeToast: (id: string) => void;
 }
@@ -16,9 +16,9 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setToasts(currentToasts => currentToasts.filter(toast => toast.id !== id));
   }, []);
 
-  const addToast = useCallback((message: string, type: ToastType) => {
+  const addToast = useCallback((message: string, type: ToastType, onClick?: () => void) => {
     const id = crypto.randomUUID();
-    setToasts(currentToasts => [...currentToasts, { id, message, type }]);
+    setToasts(currentToasts => [...currentToasts, { id, message, type, onClick }]);
   }, []);
 
   return (

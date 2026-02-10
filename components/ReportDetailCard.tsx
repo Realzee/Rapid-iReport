@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Report, Profile, VehicleReport, UserRole, ReportStatus } from '../types';
 import StatusBadge from './StatusBadge';
@@ -8,7 +6,7 @@ import { format } from 'date-fns';
 import { supabase } from '../utils/supabase';
 import { logoUrl } from '../assets/logo';
 import { useToast } from '../contexts/ToastContext';
-import IncidentChat from './IncidentChat';
+import { useChat } from '../contexts/ChatContext';
 
 interface ReportDetailCardProps {
     report: Report;
@@ -27,6 +25,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
     const { addToast } = useToast();
+    const { openChat } = useChat();
 
     const canManageReport = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role);
     const isAssignedResponder = profile.role === UserRole.RESPONDER && report.assigned_to === profile.id;
@@ -272,7 +271,9 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
             {[ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(report.status) && (
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
-                    <IncidentChat reportId={report.id} currentUserProfile={profile} allUsers={allUsers} />
+                     <button onClick={() => openChat(report)} className="w-full py-2 px-4 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition disabled:opacity-50">
+                        Open Live Chat
+                    </button>
                 </div>
             )}
 
