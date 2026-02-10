@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
-import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon } from './icons';
+import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon } from './icons';
 import PrintableReport from './PrintableReport';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from './ConfirmModal';
@@ -51,6 +51,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const [selectedResponder, setSelectedResponder] = useState<string>(report.assigned_to || '');
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
+    const [isTimelineVisible, setIsTimelineVisible] = useState(true);
     const { addToast } = useToast();
     const { openChat } = useChat();
 
@@ -474,26 +475,37 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         </DetailField>
                     )}
 
-                     <DetailField label="Incident Timeline">
-                        <div className="space-y-1">
-                            {timelineEvents.length === 0 ? (
-                                <div className="text-center py-8">
-                                   <p className="text-sm text-gray-500">No updates or assignments yet.</p>
-                                </div>
-                            ) : (
-                                timelineEvents.map(event => (
-                                    <TimelineItem
-                                        key={`${event.type}-${event.id}`}
-                                        time={formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
-                                        author={event.author}
-                                        icon={event.type === 'assignment' ? <AssignResponderIcon className="w-4 h-4 text-gray-500" /> : <ZapIcon className="w-4 h-4 text-gray-500" />}
-                                    >
-                                        <p>{event.content}</p>
-                                    </TimelineItem>
-                                ))
-                            )}
+                    <div>
+                        <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsTimelineVisible(!isTimelineVisible)}>
+                            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Incident Timeline</p>
+                            <span className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                                {isTimelineVisible ? <ChevronUpIcon className="w-5 h-5 text-gray-500" /> : <ChevronDownIcon className="w-5 h-5 text-gray-500" />}
+                            </span>
                         </div>
-                    </DetailField>
+                        <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isTimelineVisible ? 'max-h-[1000px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
+                            <div className="text-sm">
+                                <div className="space-y-1">
+                                    {timelineEvents.length === 0 ? (
+                                        <div className="text-center py-8">
+                                            <p className="text-sm text-gray-500">No updates or assignments yet.</p>
+                                        </div>
+                                    ) : (
+                                        timelineEvents.map(event => (
+                                            <TimelineItem
+                                                key={`${event.type}-${event.id}`}
+                                                time={formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+                                                author={event.author}
+                                                icon={event.type === 'assignment' ? <AssignResponderIcon className="w-4 h-4 text-gray-500" /> : <ZapIcon className="w-4 h-4 text-gray-500" />}
+                                            >
+                                                <p>{event.content}</p>
+                                            </TimelineItem>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <DetailField label="Live Communication">
                          <button onClick={() => openChat(report)} disabled={isTerminalStatus} className="w-full py-2 px-4 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition disabled:opacity-50">
                             Open Live Chat
