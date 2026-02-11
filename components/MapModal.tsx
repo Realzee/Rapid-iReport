@@ -97,10 +97,10 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
                     </button>
                 </header>
                 <div className="flex-grow h-full w-full relative">
-                    {/* FIX: Using @ts-ignore to suppress outdated react-leaflet type errors. */}
+                    {/* FIX: The 'center' prop is not recognized by the outdated react-leaflet types. */}
                     // @ts-ignore
                     <MapContainer center={position || [0,0]} zoom={position ? 16 : 10} scrollWheelZoom={true} style={{ height: '100%', width: '100%', borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
-                         {/* FIX: Using @ts-ignore to suppress outdated react-leaflet type errors. */}
+                         {/* FIX: The 'attribution' prop is not recognized by the outdated react-leaflet types. */}
                          // @ts-ignore
                          <TileLayer 
                             key={mapStyle}

@@ -7,7 +7,7 @@ import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
 import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
-import SoughtListManager from '../components/SoughtListManager';
+import SoughtListManager from '../components/BlacklistManager';
 
 interface ControllerPageProps {
     profile: Profile;
