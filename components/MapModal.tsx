@@ -97,10 +97,10 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
                     </button>
                 </header>
                 <div className="flex-grow h-full w-full relative">
-                    {/* FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                    {/* FIX: Using @ts-ignore to suppress outdated react-leaflet type errors. */}
                     // @ts-ignore
                     <MapContainer center={position || [0,0]} zoom={position ? 16 : 10} scrollWheelZoom={true} style={{ height: '100%', width: '100%', borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
-                         {/* FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                         {/* FIX: Using @ts-ignore to suppress outdated react-leaflet type errors. */}
                          // @ts-ignore
                          <TileLayer 
                             key={mapStyle}
@@ -110,13 +110,13 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
                         <MapFocusController report={report} />
                         
                         {report.location_boundary && (
-                            // FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                            // FIX: Using @ts-ignore to suppress outdated react-leaflet type errors.
                             // @ts-ignore
                             <GeoJSON data={report.location_boundary} style={areaStyle} />
                         )}
 
                         {position && (
-                            // FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                            // FIX: Using @ts-ignore to suppress outdated react-leaflet type errors.
                             // @ts-ignore
                             <Marker position={position} icon={reportIcon}>
                                 <Popup>

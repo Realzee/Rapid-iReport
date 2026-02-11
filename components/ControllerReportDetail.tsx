@@ -51,7 +51,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const [selectedResponder, setSelectedResponder] = useState<string>(report.assigned_to || '');
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
-    const [isTimelineVisible, setIsTimelineVisible] = useState(true);
+    const [isTimelineVisible, setIsTimelineVisible] = useState(false);
     const { addToast } = useToast();
     const { openChat } = useChat();
 

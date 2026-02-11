@@ -96,7 +96,7 @@ const PublicReportDetailModal: React.FC<PublicReportDetailModalProps> = ({ isOpe
 
                     {report.location_coords ? (
                         <div className="h-48 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700">
-                            {/* FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                            {/* FIX: Using @ts-ignore to suppress outdated react-leaflet type errors. */}
                             // @ts-ignore
                             <MapContainer 
                                 center={[report.location_coords.lat, report.location_coords.lng]} 
@@ -104,10 +104,10 @@ const PublicReportDetailModal: React.FC<PublicReportDetailModalProps> = ({ isOpe
                                 style={{ height: '100%', width: '100%' }}
                                 zoomControl={false} scrollWheelZoom={false} dragging={false} touchZoom={false} doubleClickZoom={false}
                             >
-                                {/* FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                                {/* FIX: Using @ts-ignore to suppress outdated react-leaflet type errors. */}
                                 // @ts-ignore
                                 <TileLayer key={theme} url={tileUrl} attribution={attribution} />
-                                {/* FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                                {/* FIX: Using @ts-ignore to suppress outdated react-leaflet type errors. */}
                                 // @ts-ignore
                                 <Marker position={[report.location_coords.lat, report.location_coords.lng]} icon={markerIcon} />
                             </MapContainer>

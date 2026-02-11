@@ -7,7 +7,7 @@ import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
 import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
-import SoughtListManager from '../components/BlacklistManager';
+import SoughtListManager from '../components/SoughtListManager';
 
 interface ControllerPageProps {
     profile: Profile;
@@ -289,7 +289,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                     </div>
                 </div>
 
-                <div className="lg:col-span-9">
+                <div className="lg:col-span-9 flex flex-col gap-4">
                     <div className="grid grid-cols-1 lg:grid-cols-9 gap-4">
                         <div className={`
                             lg:sticky lg:top-24 h-[60vh] lg:h-[calc(100vh-12rem)] print:hidden relative transition-all duration-300
@@ -313,10 +313,6 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                         </div>
                         {isDetailsVisible && (
                              <div className="lg:col-span-4 space-y-4">
-                                <SoughtListManager 
-                                    onSelectReport={setSelectedReportId}
-                                    onQuickAdd={handleOpenQuickAddModal}
-                                />
                                 {selectedReport ? (
                                     <ControllerReportDetail
                                         key={selectedReport.id}
@@ -333,6 +329,10 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                             </div>
                         )}
                     </div>
+                     <SoughtListManager 
+                        onSelectReport={setSelectedReportId}
+                        onQuickAdd={handleOpenQuickAddModal}
+                    />
                 </div>
             </div>
             <ReportModal
