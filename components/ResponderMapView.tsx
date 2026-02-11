@@ -148,24 +148,24 @@ const ResponderMapView: React.FC<ResponderMapViewProps> = ({ report, responderPr
     
     return (
         <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none relative">
-            {/* @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props. */}
+            {/* @ts-ignore */}
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
-                {/* @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props. */}
+                {/* @ts-ignore */}
                 <TileLayer key={mapStyle} url={currentTile.url} attribution={currentTile.attribution} />
                 <MapFocusController report={report} responderProfile={responderProfile} />
                 
                 {responderProfile.location_coords && (
-                    // @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props.
+                    // @ts-ignore
                     <Marker position={[responderProfile.location_coords.lat, responderProfile.location_coords.lng]} icon={responderIcon}>
-                        {/* @ts-ignore - FIX: The 'direction' prop is deprecated. Using 'position' instead, but types may still be outdated. */}
+                        {/* @ts-ignore */}
                         <Tooltip position="top">Your Location</Tooltip>
                     </Marker>
                 )}
 
                 {report?.location_coords && (
-                    // @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props.
+                    // @ts-ignore
                     <Marker position={[report.location_coords.lat, report.location_coords.lng]} icon={incidentIcon}>
-                        {/* @ts-ignore - FIX: The 'direction' prop is deprecated. Using 'position' instead, but types may still be outdated. */}
+                        {/* @ts-ignore */}
                         <Tooltip position="top">Incident Location</Tooltip>
                     </Marker>
                 )}

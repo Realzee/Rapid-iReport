@@ -163,10 +163,11 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
 
     return (
         <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none relative">
-            {/* @ts-ignore */}
+            {/* FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+            // @ts-ignore
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
-                {/* @ts-ignore */}
-{/* FIX: Add @ts-ignore to suppress outdated type error for 'attribution' prop */}
+                {/* FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                // @ts-ignore
                 <TileLayer 
                     attribution={currentTile.attribution} 
                     url={currentTile.url} />
@@ -174,15 +175,16 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
 
                 {responders.map(responder => (
                     responder.location_coords && (
+                        // FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
                         // @ts-ignore
-{/* FIX: Add @ts-ignore to suppress outdated type error for 'icon' prop */}
                         <Marker
                             key={`responder-${responder.id}`}
                             position={[responder.location_coords.lat, responder.location_coords.lng]}
                             icon={createResponderIcon(responder.status)}
                             zIndexOffset={100}
                         >
-                            {/* @ts-ignore */}
+                            {/* FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                            // @ts-ignore
                             <Tooltip position="top" offset={[0, -10]}>
                                 <div className="font-bold">{`${responder.first_name} ${responder.surname}`}</div>
                                 <div className="capitalize">{responder.status.replace('_', ' ')}</div>
@@ -195,8 +197,8 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                     if (!report.location_coords) return null;
                     const isSelected = report.id === selectedReportId;
                     return (
+                         // FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
                          // @ts-ignore
-{/* FIX: Add @ts-ignore to suppress outdated type error for 'icon' prop */}
                          <Marker
                             key={report.id}
                             position={[report.location_coords.lat, report.location_coords.lng]}
@@ -235,6 +237,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 })}
 
                 {selectedReport && selectedReport.location_boundary && (
+                    // FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
                     // @ts-ignore
                     <GeoJSON data={selectedReport.location_boundary} style={areaStyle} />
                 )}

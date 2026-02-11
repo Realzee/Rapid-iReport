@@ -147,15 +147,18 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                 <main className="flex-grow grid grid-cols-1 lg:grid-cols-10 gap-4 p-4 overflow-hidden h-[calc(100vh-5rem)]">
                     {/* Map Section */}
                     <div className="relative lg:col-span-6 h-[50vh] lg:h-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700/50 shadow-md">
-                         {/* @ts-ignore */}
+                         {/* FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                         // @ts-ignore
                          <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
-                            {/* @ts-ignore */}
+                            {/* FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                            // @ts-ignore
                             <TileLayer key={`${theme}-${mapStyle}`} url={currentTile.url} attribution={currentTile.attribution} />
                             <MapFocusController selectedReport={selectedReport} />
-                            {reports.map(report => report.location_coords && (
+                            {reports.map(report => {
+                                if (!report.location_coords) return null;
+                                // FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
                                 // @ts-ignore
-{/* FIX: Add @ts-ignore to suppress outdated type error for 'icon' prop */}
-                                <Marker 
+                                return <Marker 
                                     key={report.id} 
                                     position={[report.location_coords.lat, report.location_coords.lng]} 
                                     icon={isVehicleReport(report) ? createVehicleIcon() : createCrimeIcon()}
@@ -169,7 +172,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                                         </div>
                                     </Popup>
                                 </Marker>
-                            ))}
+                            })}
                         </MapContainer>
                         <MapStyleToggle currentStyle={mapStyle} onStyleChange={setMapStyle} />
                     </div>

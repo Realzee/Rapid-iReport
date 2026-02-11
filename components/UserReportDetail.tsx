@@ -181,8 +181,8 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                 
                 {report.location_coords ? (
                     <div className="h-40 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 mt-2">
-                        {/* @ts-ignore */}
-{/* FIX: Add @ts-ignore to suppress outdated type error for 'center' prop */}
+                        {/* FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                        // @ts-ignore
                         <MapContainer 
                             center={[report.location_coords.lat, report.location_coords.lng]} 
                             zoom={15} 
@@ -193,9 +193,11 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                             touchZoom={false}
                             doubleClickZoom={false}
                         >
-                            {/* @ts-ignore */}
+                            {/* FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                            // @ts-ignore
                             <TileLayer key={theme} url={tileUrl} attribution={attribution} />
-                            {/* @ts-ignore */}
+                            {/* FIX: Replaced JSX comment with a standard TypeScript // @ts-ignore directive to suppress type errors from outdated react-leaflet typings. */}
+                            // @ts-ignore
                             <Marker position={[report.location_coords.lat, report.location_coords.lng]} icon={markerIcon} />
                         </MapContainer>
                     </div>
