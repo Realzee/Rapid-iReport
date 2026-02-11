@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { UserIcon, MailIcon, LockIcon, UploadCloudIcon } from './icons';
+import { UserIcon, MailIcon, LockIcon, UploadCloudIcon, BuildingIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
+import { Company } from '../types';
 
 interface RegisterFormProps {
   onSwitchToLogin: () => void;
+  companies: Company[];
 }
 
-const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
+const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies }) => {
   const [firstName, setFirstName] = useState('');
   const [surname, setSurname] = useState('');
   const [cell, setCell] = useState('');
@@ -21,6 +23,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [companyId, setCompanyId] = useState('');
   
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
@@ -43,6 +46,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
         addToast('Please upload a selfie to complete registration.', 'error');
         return;
     }
+    if (!companyId) {
+        addToast('Please select the company you are registering for.', 'error');
+        return;
+    }
     setLoading(true);
 
     // @ts-ignore
@@ -59,6 +66,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
                 ice_no: iceNo,
                 medical_aid: medicalAid || null,
                 psira_number: psiraNumber || null,
+                company_id: companyId,
             }
         }
     });
@@ -152,6 +160,25 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
                 <input id="surname_reg" name="surname" type="text" required value={surname} onChange={(e) => setSurname(e.target.value)} className={`${inputClasses} pl-3`} placeholder="Doe" />
               </div>
             </div>
+        </div>
+         <div>
+          <label htmlFor="company_id_reg" className={labelClasses}>Company</label>
+          <div className={inputContainerClasses}>
+            <div className={iconClasses}><BuildingIcon className="w-5 h-5 text-gray-400" /></div>
+            <select
+                id="company_id_reg"
+                name="companyId"
+                required
+                value={companyId}
+                onChange={(e) => setCompanyId(e.target.value)}
+                className={inputClasses}
+            >
+                <option value="" disabled>Select your company...</option>
+                {companies.map(company => (
+                    <option key={company.id} value={company.id}>{company.name}</option>
+                ))}
+            </select>
+          </div>
         </div>
         <div>
           <label htmlFor="email_reg" className={labelClasses}>Email Address</label>

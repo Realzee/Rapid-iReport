@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LoginForm from '../components/LoginForm';
 import RegisterForm from '../components/RegisterForm';
 import { useSettings } from '../contexts/SettingsContext';
 import ThemeToggle from '../components/ThemeToggle';
+import { supabase } from '../utils/supabase';
+import { Company } from '../types';
 
 interface AuthPageProps {
     onViewPublicDashboard: () => void;
@@ -10,7 +12,20 @@ interface AuthPageProps {
 
 const AuthPage: React.FC<AuthPageProps> = ({ onViewPublicDashboard }) => {
     const [isLoginView, setIsLoginView] = useState(true);
+    const [companies, setCompanies] = useState<Company[]>([]);
     const { mainLogoUrl } = useSettings();
+
+    useEffect(() => {
+        const fetchCompanies = async () => {
+            const { data, error } = await supabase.from('companies').select('*').order('name');
+            if (error) {
+                console.error('Error fetching companies:', error);
+            } else {
+                setCompanies(data || []);
+            }
+        };
+        fetchCompanies();
+    }, []);
 
     return (
         <div className="min-h-screen flex flex-col relative">
@@ -31,6 +46,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewPublicDashboard }) => {
                     ) : (
                         <RegisterForm 
                             onSwitchToLogin={() => setIsLoginView(true)} 
+                            companies={companies}
                         />
                     )}
                 </div>

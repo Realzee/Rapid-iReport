@@ -21,6 +21,7 @@ const UsersPage: React.FC = () => {
     const { addToast } = useToast();
     const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
     const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
+    const [updatingCompanyId, setUpdatingCompanyId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchCurrentUserProfile = async () => {
@@ -149,6 +150,21 @@ const UsersPage: React.FC = () => {
             addToast(`User role updated successfully.`, 'success');
         }
         setUpdatingRoleId(null);
+    }, [addToast]);
+
+    const handleCompanyChange = useCallback(async (userId: string, newCompanyId: string | null) => {
+        setUpdatingCompanyId(userId);
+        const { error } = await supabase
+            .from('profiles')
+            .update({ company_id: newCompanyId })
+            .eq('id', userId);
+
+        if (error) {
+            addToast(`Error updating company: ${error.message}`, 'error');
+        } else {
+            addToast(`User company updated successfully.`, 'success');
+        }
+        setUpdatingCompanyId(null);
     }, [addToast]);
 
     const handleSaveUser = useCallback(async (userToSave: Profile, password?: string, avatarFile?: File | null) => {
@@ -308,6 +324,8 @@ const UsersPage: React.FC = () => {
                         currentUserProfile={currentUserProfile}
                         onRoleChange={handleRoleChange}
                         updatingRoleId={updatingRoleId}
+                        onCompanyChange={handleCompanyChange}
+                        updatingCompanyId={updatingCompanyId}
                     />
                  )}
             </div>

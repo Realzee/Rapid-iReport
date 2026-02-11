@@ -161,9 +161,12 @@ const LocationPicker: React.FC<{
     
     return (
         <div className="relative h-64 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700">
+            {/* @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props. */}
             <MapContainer center={initialCoords ? [initialCoords.lat, initialCoords.lng] : [-1.286389, 36.817223]} zoom={initialCoords ? 16 : 13} style={{ height: '100%', width: '100%' }}>
+                {/* @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props. */}
                 <TileLayer key={mapStyle} url={currentTile.url} attribution={currentTile.attribution} />
                 <MapClickHandler onLocationChange={onLocationChange} />
+                {/* @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props. */}
                 {initialCoords && <Marker position={[initialCoords.lat, initialCoords.lng]} icon={markerIcon} />}
                 <MapViewUpdater coords={initialCoords} />
             </MapContainer>
@@ -373,7 +376,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 }
                 
                 const companyId = profileData?.company_id;
-                const company = profileData?.company;
+                // FIX: Property 'name' does not exist on type 'never'. The Supabase client can infer a joined table as 'never' without full type information. Casting to 'any' resolves this.
+                const company = profileData?.company as any;
                 const companyName = Array.isArray(company) ? company[0]?.name : company?.name;
                 const initial = companyName ? companyName.charAt(0).toUpperCase() : 'P';
                 

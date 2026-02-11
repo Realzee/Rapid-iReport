@@ -34,6 +34,8 @@ interface UserManagementTableProps {
   currentUserProfile: Profile | null;
   onRoleChange: (userId: string, newRole: UserRole) => void;
   updatingRoleId: string | null;
+  onCompanyChange: (userId: string, newCompanyId: string | null) => void;
+  updatingCompanyId: string | null;
 }
 
 const isOnline = (lastSeen?: string): boolean => {
@@ -43,7 +45,7 @@ const isOnline = (lastSeen?: string): boolean => {
     return lastSeenDate > fiveMinutesAgo;
 };
 
-const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, companies, onEdit, onDelete, onView, currentUserProfile, onRoleChange, updatingRoleId }) => {
+const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, companies, onEdit, onDelete, onView, currentUserProfile, onRoleChange, updatingRoleId, onCompanyChange, updatingCompanyId }) => {
     const getCompanyName = (companyId?: string) => {
         return companies.find(c => c.id === companyId)?.name || 'N/A';
     };
@@ -59,7 +61,16 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
         <div>
             {/* Mobile Card View */}
             <div className="md:hidden space-y-4">
-                {users.map(user => (
+                {users.map(user => {
+                    if (!currentUserProfile) return null;
+                    const canEditUser = (
+                        user.id !== currentUserProfile.id &&
+                        (currentUserProfile.role === UserRole.ADMIN ||
+                        (currentUserProfile.role === UserRole.MODERATOR && user.company_id === currentUserProfile.company_id))
+                    );
+                    const isUpdatingCompany = updatingCompanyId === user.id;
+                    
+                    return (
                     <div key={user.id} className="bg-gray-50 dark:bg-gray-800/40 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700/50">
                         <div className="flex items-start justify-between">
                             <button onClick={() => onView(user)} className="flex items-center space-x-4 text-left hover:opacity-80 transition-opacity">
@@ -92,8 +103,26 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                 <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{user.cell || 'N/A'}</p>
                             </div>
                             <div className="col-span-1">
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Company</p>
-                                <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{getCompanyName(user.company_id)}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Company</p>
+                                {canEditUser ? (
+                                    <div className="flex items-center gap-2">
+                                        <select
+                                            value={user.company_id || ''}
+                                            onChange={(e) => onCompanyChange(user.id, e.target.value || null)}
+                                            disabled={isUpdatingCompany}
+                                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-1 px-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <option value="">None</option>
+                                            {companies.map(company => (
+                                                <option key={company.id} value={company.id}>{company.name}</option>
+                                            ))}
+                                        </select>
+                                        {isUpdatingCompany && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>}
+                                    </div>
+                                ) : (
+                                    <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{getCompanyName(user.company_id)}</p>
+                                )}
                             </div>
                             <div className="col-span-2">
                                 <p className="text-xs text-gray-500 dark:text-gray-400">Last Seen</p>
@@ -101,7 +130,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                             </div>
                         </div>
                     </div>
-                ))}
+                )})}
             </div>
 
             {/* Desktop Table View */}
@@ -128,7 +157,8 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                 (currentUserProfile.role === UserRole.MODERATOR && user.company_id === currentUserProfile.company_id))
                             );
 
-                            const isUpdating = updatingRoleId === user.id;
+                            const isUpdatingRole = updatingRoleId === user.id;
+                            const isUpdatingCompany = updatingCompanyId === user.id;
 
                             let roleOptions = Object.values(UserRole);
                             if (currentUserProfile.role === UserRole.MODERATOR) {
@@ -155,14 +185,34 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                         </button>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{user.cell || 'N/A'}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{getCompanyName(user.company_id)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                        {canEditUser ? (
+                                            <div className="flex items-center gap-2">
+                                                <select
+                                                    value={user.company_id || ''}
+                                                    onChange={(e) => onCompanyChange(user.id, e.target.value || null)}
+                                                    disabled={isUpdatingCompany}
+                                                    className="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-1 px-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <option value="">None</option>
+                                                    {companies.map(company => (
+                                                        <option key={company.id} value={company.id}>{company.name}</option>
+                                                    ))}
+                                                </select>
+                                                {isUpdatingCompany && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>}
+                                            </div>
+                                        ) : (
+                                            getCompanyName(user.company_id)
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         {canEditUser ? (
                                             <div className="flex items-center gap-2">
                                                 <select
                                                     value={user.role}
                                                     onChange={(e) => onRoleChange(user.id, e.target.value as UserRole)}
-                                                    disabled={isUpdating}
+                                                    disabled={isUpdatingRole}
                                                     className="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-1 px-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed capitalize"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
@@ -170,7 +220,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                                         <option key={role} value={role} className="capitalize">{role}</option>
                                                     ))}
                                                 </select>
-                                                {isUpdating && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>}
+                                                {isUpdatingRole && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>}
                                             </div>
                                         ) : (
                                             <RoleBadge role={user.role} />
