@@ -480,7 +480,13 @@ INSERT INTO public.app_settings (key, value) VALUES ('favicon_url', NULL) ON CON
 DROP TABLE IF EXISTS public.registration_requests;
 DROP TYPE IF EXISTS public.request_status;
 
--- 4. Create Helper Functions & Triggers
+-- 4. Create Helper Views, Functions & Triggers
+
+-- View for public read-only access to company names for registration
+CREATE OR REPLACE VIEW public.public_companies AS
+  SELECT id, name, logo_url
+  FROM public.companies;
+GRANT SELECT ON public.public_companies TO anon, authenticated;
 
 -- Function to get all values for a given ENUM type. Used for schema validation.
 CREATE OR REPLACE FUNCTION public.get_enum_values(enum_type_name text)
@@ -774,6 +780,7 @@ CREATE POLICY "Admins and moderators can delete profiles" ON public.profiles
 
 -- COMPANIES
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read access to companies" ON public.companies;
 DROP POLICY IF EXISTS "Allow authenticated users to view companies" ON public.companies;
 DROP POLICY IF EXISTS "Admins and moderators can manage companies" ON public.companies;
 CREATE POLICY "Allow authenticated users to view companies" ON public.companies

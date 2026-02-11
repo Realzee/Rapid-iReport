@@ -97,9 +97,9 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
                     </button>
                 </header>
                 <div className="flex-grow h-full w-full relative">
-                    {/* @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props. */}
+                    {/* @ts-ignore */}
                     <MapContainer center={position || [0,0]} zoom={position ? 16 : 10} scrollWheelZoom={true} style={{ height: '100%', width: '100%', borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
-                         {/* @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props. */}
+                         {/* @ts-ignore */}
                          <TileLayer 
                             key={mapStyle}
                             attribution={currentTile.attribution} 
@@ -108,12 +108,12 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
                         <MapFocusController report={report} />
                         
                         {report.location_boundary && (
-                            // @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props.
+                            // @ts-ignore
                             <GeoJSON data={report.location_boundary} style={areaStyle} />
                         )}
 
                         {position && (
-                            // @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props.
+                            // @ts-ignore
                             <Marker position={position} icon={reportIcon}>
                                 <Popup>
                                     <div className="w-56">
