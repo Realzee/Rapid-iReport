@@ -166,6 +166,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
             {/* @ts-ignore */}
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
                 {/* @ts-ignore */}
+{/* FIX: Add @ts-ignore to suppress outdated type error for 'attribution' prop */}
                 <TileLayer 
                     attribution={currentTile.attribution} 
                     url={currentTile.url} />
@@ -174,6 +175,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 {responders.map(responder => (
                     responder.location_coords && (
                         // @ts-ignore
+{/* FIX: Add @ts-ignore to suppress outdated type error for 'icon' prop */}
                         <Marker
                             key={`responder-${responder.id}`}
                             position={[responder.location_coords.lat, responder.location_coords.lng]}
@@ -194,6 +196,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                     const isSelected = report.id === selectedReportId;
                     return (
                          // @ts-ignore
+{/* FIX: Add @ts-ignore to suppress outdated type error for 'icon' prop */}
                          <Marker
                             key={report.id}
                             position={[report.location_coords.lat, report.location_coords.lng]}

@@ -21,7 +21,7 @@ import { checkDatabaseSchema } from './utils/schemaCheck';
 import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
 import { useSettings } from './contexts/SettingsContext';
 import { ChatProvider } from './contexts/ChatContext';
-import { AlertTriangleIcon } from './components/icons';
+import { AlertTriangleIcon, ClockIcon } from './components/icons';
 
 type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller';
 
@@ -267,6 +267,22 @@ const App: React.FC = () => {
         <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black">
             <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             <p className="mt-4 text-gray-500 dark:text-gray-400">Loading your workspace...</p>
+        </div>
+    );
+  }
+  
+  if (profile && profile.status === UserStatus.PENDING) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 p-4">
+            <div className="text-center bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg max-w-lg">
+                <ClockIcon className="w-12 h-12 mx-auto text-yellow-500 mb-4" />
+                <h2 className="text-2xl font-bold mb-2 text-yellow-700 dark:text-yellow-300">Account Pending Approval</h2>
+                <p className="mb-4 text-gray-600 dark:text-gray-300">Thank you for registering and verifying your email. Your account is currently awaiting review by an administrator. You will be notified once it has been approved.</p>
+                {/* @ts-ignore */}
+                <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition-colors">
+                    Logout
+                </button>
+            </div>
         </div>
     );
   }

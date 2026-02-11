@@ -627,7 +627,8 @@ BEGIN
   user_first_name := COALESCE(new.raw_user_meta_data->>'first_name', 'New');
   user_surname := COALESCE(new.raw_user_meta_data->>'surname', 'User');
   user_role_text := COALESCE(new.raw_user_meta_data->>'role', 'user');
-  user_status_text := COALESCE(new.raw_user_meta_data->>'status', 'active');
+  -- For self-registration, default to 'pending' for admin approval. Admins can override this via metadata when creating users.
+  user_status_text := COALESCE(new.raw_user_meta_data->>'status', 'pending');
   user_cell := new.raw_user_meta_data->>'cell';
   user_vehicle_reg := new.raw_user_meta_data->>'vehicle_reg';
   user_home_address := new.raw_user_meta_data->>'home_address';

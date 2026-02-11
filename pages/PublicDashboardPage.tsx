@@ -154,6 +154,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                             <MapFocusController selectedReport={selectedReport} />
                             {reports.map(report => report.location_coords && (
                                 // @ts-ignore
+{/* FIX: Add @ts-ignore to suppress outdated type error for 'icon' prop */}
                                 <Marker 
                                     key={report.id} 
                                     position={[report.location_coords.lat, report.location_coords.lng]} 

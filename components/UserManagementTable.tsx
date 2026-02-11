@@ -36,6 +36,8 @@ interface UserManagementTableProps {
   updatingRoleId: string | null;
   onCompanyChange: (userId: string, newCompanyId: string | null) => void;
   updatingCompanyId: string | null;
+  onStatusChange: (userId: string, newStatus: UserStatus) => void;
+  updatingStatusId: string | null;
 }
 
 const isOnline = (lastSeen?: string): boolean => {
@@ -45,7 +47,7 @@ const isOnline = (lastSeen?: string): boolean => {
     return lastSeenDate > fiveMinutesAgo;
 };
 
-const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, companies, onEdit, onDelete, onView, currentUserProfile, onRoleChange, updatingRoleId, onCompanyChange, updatingCompanyId }) => {
+const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, companies, onEdit, onDelete, onView, currentUserProfile, onRoleChange, updatingRoleId, onCompanyChange, updatingCompanyId, onStatusChange, updatingStatusId }) => {
     const getCompanyName = (companyId?: string) => {
         return companies.find(c => c.id === companyId)?.name || 'N/A';
     };
@@ -69,9 +71,11 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                         (currentUserProfile.role === UserRole.MODERATOR && user.company_id === currentUserProfile.company_id))
                     );
                     const isUpdatingCompany = updatingCompanyId === user.id;
+                    const isPending = user.status === UserStatus.PENDING;
+                    const isUpdatingStatus = updatingStatusId === user.id;
                     
                     return (
-                    <div key={user.id} className="bg-gray-50 dark:bg-gray-800/40 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700/50">
+                    <div key={user.id} className={`bg-gray-50 dark:bg-gray-800/40 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700/50 ${isPending ? 'ring-2 ring-yellow-500/50' : ''}`}>
                         <div className="flex items-start justify-between">
                             <button onClick={() => onView(user)} className="flex items-center space-x-4 text-left hover:opacity-80 transition-opacity">
                                 <div className="flex-shrink-0 h-10 w-10 relative">
@@ -83,28 +87,44 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                     <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                                 </div>
                             </button>
-                            <div className="flex space-x-2 flex-shrink-0">
-                                <button onClick={() => onView(user)} className="p-2 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"><EyeIcon className="w-5 h-5"/></button>
-                                <button onClick={() => onEdit(user)} className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"><EditIcon className="w-5 h-5"/></button>
-                                <button onClick={() => onDelete(user)} className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"><TrashIcon className="w-5 h-5"/></button>
-                            </div>
+                             {isPending ? null : (
+                                <div className="flex space-x-2 flex-shrink-0">
+                                    <button onClick={() => onEdit(user)} className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"><EditIcon className="w-5 h-5"/></button>
+                                    <button onClick={() => onDelete(user)} className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"><TrashIcon className="w-5 h-5"/></button>
+                                </div>
+                            )}
                         </div>
                         <div className="grid grid-cols-2 gap-4 text-sm pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-                            <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Role</p>
-                                <RoleBadge role={user.role} />
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Status</p>
-                                <UserStatusBadge status={user.status} />
-                            </div>
+                             {isPending && canEditUser ? (
+                                <div className="col-span-2">
+                                    {isUpdatingStatus ? (
+                                         <div className="flex justify-center items-center h-full"><div className="w-5 h-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div></div>
+                                    ) : (
+                                        <div className="flex gap-2">
+                                            <button onClick={() => onStatusChange(user.id, UserStatus.ACTIVE)} className="w-full px-2 py-2 text-sm font-semibold bg-green-600 text-white rounded-md hover:bg-green-700">Approve</button>
+                                            <button onClick={() => onStatusChange(user.id, UserStatus.SUSPENDED)} className="w-full px-2 py-2 text-sm font-semibold bg-red-600 text-white rounded-md hover:bg-red-700">Reject</button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <>
+                                    <div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Role</p>
+                                        <RoleBadge role={user.role} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Status</p>
+                                        <UserStatusBadge status={user.status} />
+                                    </div>
+                                </>
+                            )}
                              <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">Cell</p>
                                 <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{user.cell || 'N/A'}</p>
                             </div>
                             <div className="col-span-1">
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Company</p>
-                                {canEditUser ? (
+                                {canEditUser && !isPending ? (
                                     <div className="flex items-center gap-2">
                                         <select
                                             value={user.company_id || ''}
@@ -159,6 +179,8 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
 
                             const isUpdatingRole = updatingRoleId === user.id;
                             const isUpdatingCompany = updatingCompanyId === user.id;
+                            const isPending = user.status === UserStatus.PENDING;
+                            const isUpdatingStatus = updatingStatusId === user.id;
 
                             let roleOptions = Object.values(UserRole);
                             if (currentUserProfile.role === UserRole.MODERATOR) {
@@ -167,7 +189,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                             }
 
                             return (
-                                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors duration-200">
+                                <tr key={user.id} className={`hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors duration-200 ${isPending ? 'bg-yellow-500/10' : ''}`}>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <button onClick={() => onView(user)} className="flex items-center text-left hover:opacity-80 transition-opacity">
                                             <div className="flex-shrink-0 h-10 w-10 relative">
@@ -186,7 +208,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{user.cell || 'N/A'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                        {canEditUser ? (
+                                        {canEditUser && !isPending ? (
                                             <div className="flex items-center gap-2">
                                                 <select
                                                     value={user.company_id || ''}
@@ -207,7 +229,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                         )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        {canEditUser ? (
+                                        {canEditUser && !isPending ? (
                                             <div className="flex items-center gap-2">
                                                 <select
                                                     value={user.role}
@@ -233,17 +255,33 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                         {renderLastSeen(user.last_seen_at)}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <div className="flex items-center justify-end space-x-4">
-                                            <button onClick={() => onView(user)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors" title="View Details">
-                                                <EyeIcon className="w-5 h-5"/>
-                                            </button>
-                                            <button onClick={() => onEdit(user)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" title="Edit User">
-                                                <EditIcon className="w-5 h-5"/>
-                                            </button>
-                                            <button onClick={() => onDelete(user)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors" title="Delete User">
-                                                <TrashIcon className="w-5 h-5"/>
-                                            </button>
-                                        </div>
+                                        {isPending && canEditUser ? (
+                                            <div className="flex items-center justify-end space-x-2">
+                                                {isUpdatingStatus ? (
+                                                    <div className="w-5 h-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+                                                ) : (
+                                                    <>
+                                                        <button onClick={() => onStatusChange(user.id, UserStatus.ACTIVE)} className="px-2 py-1 text-xs font-semibold bg-green-600 text-white rounded-md hover:bg-green-700">Approve</button>
+                                                        <button onClick={() => onStatusChange(user.id, UserStatus.SUSPENDED)} className="px-2 py-1 text-xs font-semibold bg-red-600 text-white rounded-md hover:bg-red-700">Reject</button>
+                                                    </>
+                                                )}
+                                                <button onClick={() => onView(user)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" title="View Details">
+                                                    <EyeIcon className="w-5 h-5"/>
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-end space-x-4">
+                                                <button onClick={() => onView(user)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors" title="View Details">
+                                                    <EyeIcon className="w-5 h-5"/>
+                                                </button>
+                                                <button onClick={() => onEdit(user)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" title="Edit User">
+                                                    <EditIcon className="w-5 h-5"/>
+                                                </button>
+                                                <button onClick={() => onDelete(user)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors" title="Delete User">
+                                                    <TrashIcon className="w-5 h-5"/>
+                                                </button>
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             )

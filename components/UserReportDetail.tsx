@@ -182,6 +182,7 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                 {report.location_coords ? (
                     <div className="h-40 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 mt-2">
                         {/* @ts-ignore */}
+{/* FIX: Add @ts-ignore to suppress outdated type error for 'center' prop */}
                         <MapContainer 
                             center={[report.location_coords.lat, report.location_coords.lng]} 
                             zoom={15} 

@@ -109,7 +109,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
     if (profileUpdateError) {
         addToast('Account created and selfie uploaded, but could not link it to your profile. Please re-upload on your profile page.', 'warning');
     } else {
-        addToast('Success! Please check your email for a verification link to complete your registration.', 'success');
+        addToast('Success! Please verify your email. Your account is now pending administrator approval.', 'success');
     }
     
     setLoading(false);

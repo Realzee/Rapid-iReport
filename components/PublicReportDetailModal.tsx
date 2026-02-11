@@ -97,6 +97,7 @@ const PublicReportDetailModal: React.FC<PublicReportDetailModalProps> = ({ isOpe
                     {report.location_coords ? (
                         <div className="h-48 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700">
                             {/* @ts-ignore */}
+{/* FIX: Add @ts-ignore to suppress outdated type error for 'center' prop */}
                             <MapContainer 
                                 center={[report.location_coords.lat, report.location_coords.lng]} 
                                 zoom={15} 

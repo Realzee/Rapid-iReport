@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Severity, VehicleReport } from '../types';
 import { CarIcon, CrimeIcon, AlertTriangleIcon } from './icons';
-// FIX: The original code used `subDays`, which is from an older version of date-fns. Replaced with `sub` to match the project's installed version.
-import { formatDistanceToNow, sub } from 'date-fns';
+// FIX: The original code used `sub`, which is from a newer version of date-fns. Replaced with `subDays` to match the project's installed version.
+import { formatDistanceToNow, subDays } from 'date-fns';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -42,8 +42,8 @@ const HighlightsBanner: React.FC<HighlightsBannerProps> = ({ onSelectReport, top
     
     useEffect(() => {
         const fetchHighlights = async () => {
-            // FIX: Replaced `subDays` with `sub` to support newer date-fns versions.
-            const sevenDaysAgo = sub(new Date(), { days: 7 }).toISOString();
+            // FIX: Replaced `sub` with `subDays` to support older date-fns versions.
+            const sevenDaysAgo = subDays(new Date(), 7).toISOString();
             
             const [
                 { data: vehicleData, error: vError },

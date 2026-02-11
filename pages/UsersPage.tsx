@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { PlusIcon, UsersIcon } from '../components/icons';
-import { Profile, Company, UserRole } from '../types';
+import { Profile, Company, UserRole, UserStatus } from '../types';
 import UserManagementTable from '../components/UserManagementTable';
 import AddEditUserModal from '../components/AddEditUserModal';
 import DeleteUserModal from '../components/DeleteUserModal';
@@ -22,6 +22,7 @@ const UsersPage: React.FC = () => {
     const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
     const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
     const [updatingCompanyId, setUpdatingCompanyId] = useState<string | null>(null);
+    const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchCurrentUserProfile = async () => {
@@ -150,6 +151,21 @@ const UsersPage: React.FC = () => {
             addToast(`User role updated successfully.`, 'success');
         }
         setUpdatingRoleId(null);
+    }, [addToast]);
+    
+    const handleStatusChange = useCallback(async (userId: string, newStatus: UserStatus) => {
+        setUpdatingStatusId(userId);
+        const { error } = await supabase
+            .from('profiles')
+            .update({ status: newStatus })
+            .eq('id', userId);
+
+        if (error) {
+            addToast(`Error updating status: ${error.message}`, 'error');
+        } else {
+            addToast(`User status updated to ${newStatus}.`, 'success');
+        }
+        setUpdatingStatusId(null);
     }, [addToast]);
 
     const handleCompanyChange = useCallback(async (userId: string, newCompanyId: string | null) => {
@@ -326,6 +342,8 @@ const UsersPage: React.FC = () => {
                         updatingRoleId={updatingRoleId}
                         onCompanyChange={handleCompanyChange}
                         updatingCompanyId={updatingCompanyId}
+                        onStatusChange={handleStatusChange}
+                        updatingStatusId={updatingStatusId}
                     />
                  )}
             </div>
