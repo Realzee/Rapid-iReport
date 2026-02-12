@@ -181,8 +181,6 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                 
                 {report.location_coords ? (
                     <div className="h-40 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 mt-2">
-                        {/* FIX: The 'center' prop is not recognized by the outdated react-leaflet types. */}
-                        // @ts-ignore
                         <MapContainer 
                             center={[report.location_coords.lat, report.location_coords.lng]} 
                             zoom={15} 
@@ -193,11 +191,7 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                             touchZoom={false}
                             doubleClickZoom={false}
                         >
-                            {/* FIX: The 'attribution' prop is not recognized by the outdated react-leaflet types. */}
-                            // @ts-ignore
                             <TileLayer key={theme} url={tileUrl} attribution={attribution} />
-                            {/* FIX: The 'icon' prop is not recognized by the outdated react-leaflet types. */}
-                            // @ts-ignore
                             <Marker position={[report.location_coords.lat, report.location_coords.lng]} icon={markerIcon} />
                         </MapContainer>
                     </div>

@@ -96,19 +96,13 @@ const PublicReportDetailModal: React.FC<PublicReportDetailModalProps> = ({ isOpe
 
                     {report.location_coords ? (
                         <div className="h-48 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700">
-                            {/* FIX: The 'center' prop is not recognized by the outdated react-leaflet types. */}
-                            // @ts-ignore
                             <MapContainer 
                                 center={[report.location_coords.lat, report.location_coords.lng]} 
                                 zoom={15} 
                                 style={{ height: '100%', width: '100%' }}
                                 zoomControl={false} scrollWheelZoom={false} dragging={false} touchZoom={false} doubleClickZoom={false}
                             >
-                                {/* FIX: The 'attribution' prop is not recognized by the outdated react-leaflet types. */}
-                                // @ts-ignore
                                 <TileLayer key={theme} url={tileUrl} attribution={attribution} />
-                                {/* FIX: The 'icon' prop is not recognized by the outdated react-leaflet types. */}
-                                // @ts-ignore
                                 <Marker position={[report.location_coords.lat, report.location_coords.lng]} icon={markerIcon} />
                             </MapContainer>
                         </div>

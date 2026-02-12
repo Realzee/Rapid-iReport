@@ -163,11 +163,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
 
     return (
         <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none relative">
-            {/* FIX: The 'center' prop is not recognized by the outdated react-leaflet types. */}
-            // @ts-ignore
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
-                {/* FIX: The 'attribution' prop is not recognized by the outdated react-leaflet types. */}
-                // @ts-ignore
                 <TileLayer 
                     attribution={currentTile.attribution} 
                     url={currentTile.url} />
@@ -175,17 +171,13 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
 
                 {responders.map(responder => (
                     responder.location_coords && (
-                        // FIX: The 'icon' prop is not recognized by the outdated react-leaflet types.
-                        // @ts-ignore
                         <Marker
                             key={`responder-${responder.id}`}
                             position={[responder.location_coords.lat, responder.location_coords.lng]}
                             icon={createResponderIcon(responder.status)}
                             zIndexOffset={100}
                         >
-                            {/* FIX: The 'offset' prop is not recognized by the outdated react-leaflet types. */}
-                            // @ts-ignore
-                            <Tooltip position="top" offset={[0, -10]}>
+                            <Tooltip direction="top" offset={[0, -32]}>
                                 <div className="font-bold">{`${responder.first_name} ${responder.surname}`}</div>
                                 <div className="capitalize">{responder.status.replace('_', ' ')}</div>
                             </Tooltip>
@@ -197,8 +189,6 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                     if (!report.location_coords) return null;
                     const isSelected = report.id === selectedReportId;
                     return (
-                         // FIX: The 'icon' prop is not recognized by the outdated react-leaflet types.
-                         // @ts-ignore
                          <Marker
                             key={report.id}
                             position={[report.location_coords.lat, report.location_coords.lng]}
@@ -237,8 +227,6 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 })}
 
                 {selectedReport && selectedReport.location_boundary && (
-                    // FIX: Using @ts-ignore to suppress outdated react-leaflet type errors.
-                    // @ts-ignore
                     <GeoJSON data={selectedReport.location_boundary} style={areaStyle} />
                 )}
             </MapContainer>

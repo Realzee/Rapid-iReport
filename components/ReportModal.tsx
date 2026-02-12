@@ -161,12 +161,9 @@ const LocationPicker: React.FC<{
     
     return (
         <div className="relative h-64 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700">
-            {/* @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props. */}
             <MapContainer center={initialCoords ? [initialCoords.lat, initialCoords.lng] : [-1.286389, 36.817223]} zoom={initialCoords ? 16 : 13} style={{ height: '100%', width: '100%' }}>
-                {/* @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props. */}
                 <TileLayer key={mapStyle} url={currentTile.url} attribution={currentTile.attribution} />
                 <MapClickHandler onLocationChange={onLocationChange} />
-                {/* @ts-ignore - FIX: The installed TypeScript types for react-leaflet are outdated and don't recognize standard props. */}
                 {initialCoords && <Marker position={[initialCoords.lat, initialCoords.lng]} icon={markerIcon} />}
                 <MapViewUpdater coords={initialCoords} />
             </MapContainer>
