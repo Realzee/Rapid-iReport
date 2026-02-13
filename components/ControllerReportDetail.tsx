@@ -432,7 +432,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     <div>
                         <h3 className="text-lg font-bold">Report Details: {report.ob_number}</h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {isVehicleReport(report) ? 'Stolen Vehicle' : report.title} - {format(new Date(report.reported_at), 'MM/dd/yyyy, hh:mm a')}
+                            {isVehicleReport(report) ? 'Stolen Vehicle' : report.title} - {format(new Date(report.reported_at), 'MM/dd/yyyy, HH:mm')}
                         </p>
                     </div>
                 </div>
