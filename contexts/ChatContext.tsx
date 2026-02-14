@@ -1,11 +1,19 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback, useMemo } from 'react';
 import { Report, Profile, ChatMessage, UserRole, VehicleReport } from '../types';
 import { supabase } from '../utils/supabase';
 import { useToast } from './ToastContext';
-import ChatModal from '../components/ChatModal';
+import ChatManager from '../components/ChatManager';
 
 interface ChatContextType {
+  activeChats: Report[];
+  expandedChatId: string | null;
+  unreadCounts: Record<string, number>;
   openChat: (report: Report) => void;
+  closeChat: (reportId: string) => void;
+  minimizeChat: () => void;
+  expandChat: (reportId: string) => void;
+  profile: Profile | null;
+  allUsers: Profile[];
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -13,11 +21,13 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
 export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | null }> = ({ children, profile }) => {
-    const [chatReport, setChatReport] = useState<Report | null>(null);
+    const [activeChats, setActiveChats] = useState<Report[]>([]);
+    const [expandedChatId, setExpandedChatId] = useState<string | null>(null);
+    const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
     const { addToast } = useToast();
 
-    // Fetch and subscribe to allUsers list, as it's needed by the chat modal
+    // Fetch and subscribe to allUsers list, as it's needed by the chat components
     useEffect(() => {
         if (!profile) return;
 
@@ -47,8 +57,33 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
         };
     }, [profile]);
 
-    const openChat = useCallback((report: Report) => setChatReport(report), []);
-    const closeChat = useCallback(() => setChatReport(null), []);
+    const openChat = useCallback((report: Report) => {
+        setActiveChats(prev => {
+            if (prev.some(c => c.id === report.id)) return prev;
+            return [...prev, report];
+        });
+        setExpandedChatId(report.id);
+        setUnreadCounts(prev => ({ ...prev, [report.id]: 0 }));
+    }, []);
+
+    const closeChat = useCallback((reportId: string) => {
+        setActiveChats(prev => prev.filter(c => c.id !== reportId));
+        if (expandedChatId === reportId) setExpandedChatId(null);
+        setUnreadCounts(prev => {
+            const newCounts = { ...prev };
+            delete newCounts[reportId];
+            return newCounts;
+        });
+    }, [expandedChatId]);
+
+    const minimizeChat = useCallback(() => {
+        setExpandedChatId(null);
+    }, []);
+
+    const expandChat = useCallback((reportId: string) => {
+        setExpandedChatId(reportId);
+        setUnreadCounts(prev => ({ ...prev, [reportId]: 0 }));
+    }, []);
 
     useEffect(() => {
         if (!profile) return;
@@ -56,64 +91,63 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
         const handleNewMessage = (payload: any) => {
             const newMessage = payload.new as ChatMessage;
 
-            if (newMessage.user_id === profile.id || chatReport?.id === newMessage.report_id) {
+            // Ignore own messages
+            if (newMessage.user_id === profile.id) return;
+
+            // Check if this message is for a chat that's currently active in the tray
+            const activeChat = activeChats.find(c => c.id === newMessage.report_id);
+            if (!activeChat) {
+                // This is a message for a report the user doesn't have open in their tray.
+                // The global notification bell system handles this, so we do nothing here.
                 return;
             }
-            
-            const fetchReportInfoAndNotify = async () => {
-                let reportTitle = `report ${newMessage.report_id.substring(0, 8)}...`;
-                let foundReport: Report | null = null;
-                
-                const { data: vData } = await supabase.from('vehicle_reports').select('*').eq('id', newMessage.report_id).single();
-                if (vData) {
-                    foundReport = vData as Report;
-                    reportTitle = vData.license_plate || vData.ob_number;
-                } else {
-                    const { data: cData } = await supabase.from('crime_reports').select('*').eq('id', newMessage.report_id).single();
-                    if(cData) {
-                        foundReport = cData as Report;
-                        reportTitle = cData.title || cData.ob_number;
-                    }
-                }
 
-                if (foundReport) {
-                    addToast(
-                        `New chat message in: ${reportTitle}`,
-                        'info',
-                        () => openChat(foundReport!)
-                    );
-                }
+            // If the chat for this message is currently expanded, do nothing.
+            // The message will appear live, and IncidentChat component handles marking as read.
+            if (expandedChatId === newMessage.report_id) {
+                return;
             }
+
+            // The chat is active but minimized. Increment unread count and show a toast.
+            setUnreadCounts(prev => ({
+                ...prev,
+                [newMessage.report_id]: (prev[newMessage.report_id] || 0) + 1
+            }));
             
-            fetchReportInfoAndNotify();
+            const reportTitle = isVehicleReport(activeChat) ? activeChat.license_plate : activeChat.title;
+            addToast(
+                `New message in: ${reportTitle}`,
+                'info',
+                () => expandChat(activeChat.id)
+            );
         };
 
         const chatChannel = supabase
             .channel(`chat-notifications-listener-${profile.id}`)
-            .on(
-                'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-                handleNewMessage
-            )
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, handleNewMessage)
             .subscribe();
 
         return () => {
             supabase.removeChannel(chatChannel);
         };
-    }, [profile, chatReport, addToast, openChat]);
+    }, [profile, activeChats, expandedChatId, addToast, expandChat]);
+
+    const value = useMemo(() => ({
+        activeChats,
+        expandedChatId,
+        unreadCounts,
+        openChat,
+        closeChat,
+        minimizeChat,
+        expandChat,
+        profile,
+        allUsers,
+    }), [activeChats, expandedChatId, unreadCounts, openChat, closeChat, minimizeChat, expandChat, profile, allUsers]);
 
     return (
-        <ChatContext.Provider value={{ openChat }}>
+        <ChatContext.Provider value={value}>
             {children}
-            {profile && (
-                <ChatModal
-                    isOpen={!!chatReport}
-                    onClose={closeChat}
-                    report={chatReport}
-                    profile={profile}
-                    allUsers={allUsers}
-                />
-            )}
+            {profile && <ChatManager />}
         </ChatContext.Provider>
     );
 };
