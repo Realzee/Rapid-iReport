@@ -139,9 +139,12 @@ const ResponderMapView: React.FC<ResponderMapViewProps> = ({ report, responderPr
     };
     const satelliteTile = {
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        attribution: 'Tiles &copy; Esri'
     };
-    const currentTile = mapStyle === 'street' ? streetTile : satelliteTile;
+    const satelliteLabelsTile = {
+        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        attribution: ''
+    };
 
     const responderIcon = createResponderIcon(responderProfile.responder_status || ResponderStatus.OFF_DUTY);
     const incidentIcon = createIncidentIcon();
@@ -149,7 +152,23 @@ const ResponderMapView: React.FC<ResponderMapViewProps> = ({ report, responderPr
     return (
         <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none relative">
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
-                <TileLayer key={mapStyle} url={currentTile.url} attribution={currentTile.attribution} />
+                {mapStyle === 'street' ? (
+                    <TileLayer
+                        attribution={streetTile.attribution}
+                        url={streetTile.url}
+                    />
+                ) : (
+                    <>
+                        <TileLayer
+                            attribution={satelliteTile.attribution}
+                            url={satelliteTile.url}
+                        />
+                        <TileLayer
+                            url={satelliteLabelsTile.url}
+                            pane="overlayPane"
+                        />
+                    </>
+                )}
                 <MapFocusController report={report} responderProfile={responderProfile} />
                 
                 {responderProfile.location_coords && (

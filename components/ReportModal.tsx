@@ -126,7 +126,10 @@ const LocationPicker: React.FC<{
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         attribution: 'Tiles &copy; Esri'
     };
-    const currentTile = mapStyle === 'street' ? streetTile : satelliteTile;
+    const satelliteLabelsTile = {
+        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        attribution: ''
+    };
 
 
     const handleGetCurrentLocation = () => {
@@ -162,7 +165,26 @@ const LocationPicker: React.FC<{
     return (
         <div className="relative h-64 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700">
             <MapContainer center={initialCoords ? [initialCoords.lat, initialCoords.lng] : [-1.286389, 36.817223]} zoom={initialCoords ? 16 : 13} style={{ height: '100%', width: '100%' }}>
-                <TileLayer key={mapStyle} url={currentTile.url} attribution={currentTile.attribution} />
+                {mapStyle === 'street' ? (
+                    <TileLayer
+                        key="street-tile"
+                        url={streetTile.url}
+                        attribution={streetTile.attribution}
+                    />
+                ) : (
+                    <>
+                        <TileLayer
+                            key="satellite-base-tile"
+                            url={satelliteTile.url}
+                            attribution={satelliteTile.attribution}
+                        />
+                        <TileLayer
+                            key="satellite-labels-tile"
+                            url={satelliteLabelsTile.url}
+                            pane="overlayPane"
+                        />
+                    </>
+                )}
                 <MapClickHandler onLocationChange={onLocationChange} />
                 {initialCoords && <Marker position={[initialCoords.lat, initialCoords.lng]} icon={markerIcon} />}
                 <MapViewUpdater coords={initialCoords} />

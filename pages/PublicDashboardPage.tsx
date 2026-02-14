@@ -105,19 +105,9 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
     const streetLightUrl = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
     const streetDarkUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
     const satelliteUrl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+    const satelliteLabelsUrl = 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
     const streetAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-    const satelliteAttribution = 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community';
-
-    const currentTile = useMemo(() => {
-        if (mapStyle === 'satellite') {
-            return { url: satelliteUrl, attribution: satelliteAttribution };
-        }
-        // street style
-        return {
-            url: theme === 'dark' ? streetDarkUrl : streetLightUrl,
-            attribution: streetAttribution
-        };
-    }, [mapStyle, theme]);
+    const satelliteAttribution = 'Tiles &copy; Esri';
     
     const tabButtonClasses = (tabName: 'incidents' | 'legacy') => 
         `w-1/2 py-2.5 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${
@@ -148,7 +138,26 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                     {/* Map Section */}
                     <div className="relative lg:col-span-6 h-[50vh] lg:h-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700/50 shadow-md">
                          <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
-                            <TileLayer key={`${theme}-${mapStyle}`} url={currentTile.url} attribution={currentTile.attribution} />
+                            {mapStyle === 'street' ? (
+                                <TileLayer
+                                    key={`street-${theme}`}
+                                    url={theme === 'dark' ? streetDarkUrl : streetLightUrl}
+                                    attribution={streetAttribution}
+                                />
+                            ) : (
+                                <>
+                                    <TileLayer
+                                        key="satellite-base"
+                                        url={satelliteUrl}
+                                        attribution={satelliteAttribution}
+                                    />
+                                    <TileLayer
+                                        key="satellite-labels"
+                                        url={satelliteLabelsUrl}
+                                        pane="overlayPane"
+                                    />
+                                </>
+                            )}
                             <MapFocusController selectedReport={selectedReport} />
                             {reports.map(report => {
                                 if (!report.location_coords) return null;
@@ -156,10 +165,8 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                                     key={report.id} 
                                     position={[report.location_coords.lat, report.location_coords.lng]} 
                                     icon={isVehicleReport(report) ? createVehicleIcon() : createCrimeIcon()}
-                                    // FIX: The 'onClick' prop is not available on Marker. Use 'eventHandlers' instead.
-                                    eventHandlers={{
-                                        click: () => handleSelectReport(report.id),
-                                    }}
+                                    // FIX: Switched from 'eventHandlers' to 'onClick' to align with the installed react-leaflet types, which appear to be for an older version. The TypeScript error indicates 'eventHandlers' is not a valid prop.
+                                    onClick={() => handleSelectReport(report.id)}
                                 >
                                     <Popup>
                                         <div className="w-56">

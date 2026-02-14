@@ -68,9 +68,12 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
     };
     const satelliteTile = {
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        attribution: 'Tiles &copy; Esri'
     };
-    const currentTile = mapStyle === 'street' ? streetTile : satelliteTile;
+    const satelliteLabelsTile = {
+        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        attribution: ''
+    };
     
     const areaStyle = {
         fillColor: '#60A5FA',
@@ -98,10 +101,26 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
                 </header>
                 <div className="flex-grow h-full w-full relative">
                     <MapContainer center={position || [0,0]} zoom={position ? 16 : 10} scrollWheelZoom={true} style={{ height: '100%', width: '100%', borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
-                         <TileLayer 
-                            key={mapStyle}
-                            attribution={currentTile.attribution} 
-                            url={currentTile.url} />
+                         {mapStyle === 'street' ? (
+                            <TileLayer
+                                key="street-tile"
+                                attribution={streetTile.attribution} 
+                                url={streetTile.url}
+                            />
+                        ) : (
+                            <>
+                                <TileLayer
+                                    key="satellite-base-tile"
+                                    attribution={satelliteTile.attribution} 
+                                    url={satelliteTile.url}
+                                />
+                                <TileLayer
+                                    key="satellite-labels-tile"
+                                    url={satelliteLabelsTile.url}
+                                    pane="overlayPane"
+                                />
+                            </>
+                        )}
                         
                         <MapFocusController report={report} />
                         

@@ -158,9 +158,12 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
     };
     const satelliteTile = {
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        attribution: 'Tiles &copy; Esri'
     };
-    const currentTile = mapStyle === 'street' ? streetTile : satelliteTile;
+    const satelliteLabelsTile = {
+        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        attribution: ''
+    };
 
 
     const areaStyle = {
@@ -173,9 +176,23 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
     return (
         <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none relative">
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
-                <TileLayer 
-                    attribution={currentTile.attribution} 
-                    url={currentTile.url} />
+                {mapStyle === 'street' ? (
+                    <TileLayer
+                        attribution={streetTile.attribution} 
+                        url={streetTile.url}
+                    />
+                ) : (
+                    <>
+                        <TileLayer
+                            attribution={satelliteTile.attribution} 
+                            url={satelliteTile.url}
+                        />
+                        <TileLayer
+                            url={satelliteLabelsTile.url}
+                            pane="overlayPane"
+                        />
+                    </>
+                )}
                 <MapFocusController reports={reports} selectedReport={selectedReport} responders={responders} />
 
                 {responders.map(responder => (
@@ -203,13 +220,11 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                             position={[report.location_coords.lat, report.location_coords.lng]}
                             icon={createIncidentIcon(report, isSelected)}
                             zIndexOffset={isSelected ? 1000 : 0}
-                            // FIX: The 'onClick' prop is not available on Marker. Use 'eventHandlers' instead.
-                            eventHandlers={{
-                                click: () => {
-                                    if (onReportSelect) {
-                                        onReportSelect(report.id);
-                                    }
-                                },
+                            // FIX: Switched from 'eventHandlers' to 'onClick' to align with the installed react-leaflet types, which appear to be for an older version. The TypeScript error indicates 'eventHandlers' is not a valid prop.
+                            onClick={() => {
+                                if (onReportSelect) {
+                                    onReportSelect(report.id);
+                                }
                             }}
                         >
                             <Popup>
