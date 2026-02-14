@@ -71,12 +71,12 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
 
         <div className={`flex-1 min-w-0 ${!hasImage && 'pl-2'}`}>
             <div className="flex justify-between items-start">
-                <div className="flex-1 min-w-0 pr-2 flex items-center gap-2">
+                <div className="flex-1 min-w-0 pr-2 flex items-center gap-3">
                     {companyLogoUrl && (
                         <img 
                             src={companyLogoUrl} 
                             alt="Company Logo" 
-                            className="w-5 h-5 rounded-full object-contain flex-shrink-0 bg-gray-200 dark:bg-gray-700"
+                            className="w-8 h-8 rounded-full object-contain flex-shrink-0 bg-gray-200 dark:bg-gray-700"
                         />
                     )}
                     <div className="flex-1 min-w-0">
