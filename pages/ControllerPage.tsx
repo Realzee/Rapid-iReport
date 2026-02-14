@@ -5,7 +5,7 @@ import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
 import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
-import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon } from '../components/icons';
+import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, MapIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
 import SoughtListManager from '../components/BlacklistManager';
 
@@ -274,13 +274,22 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                         </div>
                         
                         {activeTab === 'events' ? (
-                            <LiveEventStack
-                                reports={sortedReports}
-                                responders={responders}
-                                onReportSelect={(id) => setSelectedReportId(id)}
-                                selectedReportId={selectedReportId}
-                                allUsers={allUsers}
-                            />
+                            <>
+                                <button 
+                                    onClick={() => setSelectedReportId(null)}
+                                    disabled={!selectedReportId}
+                                    className="w-full mb-4 px-3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700/60 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <MapIcon className="w-5 h-5" /> Show All Incidents
+                                </button>
+                                <LiveEventStack
+                                    reports={sortedReports}
+                                    responders={responders}
+                                    onReportSelect={(id) => setSelectedReportId(prevId => prevId === id ? null : id)}
+                                    selectedReportId={selectedReportId}
+                                    allUsers={allUsers}
+                                />
+                            </>
                         ) : (
                             <ResponderStack
                                 responders={responders}
@@ -301,7 +310,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 responders={responders}
                                 selectedReportId={selectedReportId}
                                 profile={profile}
-                                onReportSelect={(id) => setSelectedReportId(id)}
+                                onReportSelect={(id) => setSelectedReportId(prevId => prevId === id ? null : id)}
                                 allUsers={allUsers}
                             />
                             <button

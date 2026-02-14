@@ -98,17 +98,26 @@ const createResponderIcon = (status: ResponderStatus) => {
 };
 
 
-const MapFocusController: React.FC<{ selectedReport: Report | undefined, responders: Responder[] }> = ({ selectedReport, responders }) => {
+const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report | undefined, responders: Responder[] }> = ({ reports, selectedReport, responders }) => {
     const map = useMap();
     useEffect(() => {
         if (selectedReport?.location_coords) {
             const reportLocation: L.LatLngExpression = [selectedReport.location_coords.lat, selectedReport.location_coords.lng];
 
+            // Only fit responders if the report is in an active state (not resolved/closed etc.)
+            const isDispatchRelevant = ![
+                ReportStatus.RESOLVED, 
+                ReportStatus.RECOVERED, 
+                ReportStatus.CLOSED, 
+                ReportStatus.REJECTED,
+                ReportStatus.DELETED
+            ].includes(selectedReport.status);
+
             const availableResponders = responders.filter(
                 r => r.status === ResponderStatus.AVAILABLE && r.location_coords
             );
 
-            if (availableResponders.length > 0) {
+            if (isDispatchRelevant && availableResponders.length > 0) {
                 const responderLocations: L.LatLngExpression[] = availableResponders.map(
                     r => [r.location_coords!.lat, r.location_coords!.lng]
                 );
@@ -125,8 +134,20 @@ const MapFocusController: React.FC<{ selectedReport: Report | undefined, respond
             } else {
                 map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
             }
+        } else {
+            // "Show All" logic
+            const reportsWithCoords = reports.filter(r => r.location_coords);
+            if (reportsWithCoords.length > 0) {
+                const bounds = L.latLngBounds(reportsWithCoords.map(r => [r.location_coords!.lat, r.location_coords!.lng]));
+                if (bounds.isValid()) {
+                    map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0, maxZoom: 14 });
+                }
+            } else {
+                // Default view if no reports have coords
+                map.flyTo([-26.2041, 28.0473], 11, { animate: true, duration: 1.0 });
+            }
         }
-    }, [selectedReport, responders, map]);
+    }, [selectedReport, reports, responders, map]);
     return null;
 };
 
@@ -167,7 +188,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 <TileLayer 
                     attribution={currentTile.attribution} 
                     url={currentTile.url} />
-                <MapFocusController selectedReport={selectedReport} responders={responders} />
+                <MapFocusController reports={reports} selectedReport={selectedReport} responders={responders} />
 
                 {responders.map(responder => (
                     responder.location_coords && (
