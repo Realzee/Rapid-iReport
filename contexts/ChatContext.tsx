@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useContext, ReactNode, useCa
 import { Report, Profile, ChatMessage, UserRole, VehicleReport } from '../types';
 import { supabase } from '../utils/supabase';
 import { useToast } from './ToastContext';
-import ChatManager from '../components/ChatManager';
+import ChatManager from '../components/ChatModal';
 
 interface ChatContextType {
   activeChats: Report[];
