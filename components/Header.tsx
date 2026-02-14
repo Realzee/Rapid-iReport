@@ -172,7 +172,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       <div className={headerContainerClasses}>
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center space-x-2">
-            <img src={profile.company?.logo_url || mainLogoUrl} alt="Company Logo" className="w-auto h-14 object-contain" />
+            <img src={profile.company?.logo_url || mainLogoUrl} alt="Company Logo" className="w-auto h-16 object-contain" />
           </div>
 
           <div className="hidden md:flex flex-col items-center">
