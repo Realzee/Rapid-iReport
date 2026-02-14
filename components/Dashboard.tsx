@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport, ReportStatus } from '../types';
+import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport, ReportStatus, Company } from '../types';
 import StatCard from './StatCard';
 import ReportList from './ReportList';
 import MapView from './MapView';
@@ -23,6 +23,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const [reports, setReports] = useState<Report[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
+    const [companies, setCompanies] = useState<Company[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -51,18 +52,21 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             const [
                 { data: vehicleData, error: vError }, 
                 { data: crimeData, error: cError },
-                { data: usersData, error: uError }
+                { data: usersData, error: uError },
+                { data: companiesData, error: companiesError }
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 supabase.from('crime_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                profilesQuery
+                profilesQuery,
+                supabase.from('companies').select('*')
             ]);
-            if (vError || cError || uError) console.error('Data fetch error:', vError || cError || uError);
+            if (vError || cError || uError || companiesError) console.error('Data fetch error:', vError || cError || uError || companiesError);
 
             const combinedReports = [...(vehicleData || []).map(r => ({...r, type: 'vehicle'})), ...(crimeData || []).map(r => ({...r, type: 'crime'}))];
             
             setReports(combinedReports);
             setAllUsers(usersData || []);
+            setCompanies(companiesData || []);
             setLoading(false);
         };
         fetchData();
@@ -263,7 +267,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                     {selectedReport ? (
                         <ReportDetailCard report={selectedReport} onClose={() => setSelectedReportId(null)} profile={profile} onEdit={handleOpenEditReportModal} onDelete={handleOpenDeleteReportModal} onViewOnMap={() => setIsMapModalOpen(true)} allUsers={allUsers} />
                     ) : (
-                        <ReportList reports={sortedReports} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} onStatusUpdate={handleStatusUpdate} />
+                        <ReportList reports={sortedReports} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} onStatusUpdate={handleStatusUpdate} companies={companies} />
                     )}
                 </div>
                 <div className="flex-1 min-w-0">

@@ -1,7 +1,5 @@
-
-
 import React, { useState, useMemo } from 'react';
-import { Report, ReportStatus, Profile } from '../types';
+import { Report, ReportStatus, Profile, Company } from '../types';
 import ReportListItem from './ReportListItem';
 
 interface ReportListProps {
@@ -11,19 +9,27 @@ interface ReportListProps {
   profile: Profile;
   allUsers: Profile[];
   onStatusUpdate: (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => Promise<void>;
+  companies: Company[];
 }
 
 const statusFilters: (ReportStatus | 'all')[] = ['all', ReportStatus.ACTIVE, ReportStatus.IN_PROGRESS, ReportStatus.PENDING];
 
-const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onReportSelect, profile, allUsers, onStatusUpdate }) => {
+const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onReportSelect, profile, allUsers, onStatusUpdate, companies }) => {
     const [activeFilter, setActiveFilter] = useState<ReportStatus | 'all'>('all');
     
     const userMap = useMemo(() => {
         return allUsers.reduce((acc, user) => {
-            acc[user.id] = `${user.first_name} ${user.surname}`;
+            acc[user.id] = user;
             return acc;
-        }, {} as Record<string, string>);
+        }, {} as Record<string, Profile>);
     }, [allUsers]);
+
+    const companyMap = useMemo(() => {
+        return companies.reduce((acc, company) => {
+            acc[company.id] = company;
+            return acc;
+        }, {} as Record<string, Company>);
+    }, [companies]);
 
     const filteredReports = reports.filter(report => 
         activeFilter === 'all' ? true : report.status === activeFilter
@@ -53,17 +59,25 @@ const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onRe
         </div>
 
       <div className="space-y-3">
-        {filteredReports.map((report) => (
-            <ReportListItem 
-                key={report.id} 
-                report={report} 
-                isSelected={report.id === selectedReportId}
-                onClick={() => onReportSelect(report.id)}
-                profile={profile}
-                reporterName={userMap[report.reported_by] || 'Unknown User'}
-                onStatusUpdate={onStatusUpdate}
-            />
-        ))}
+        {filteredReports.map((report) => {
+            const reporter = userMap[report.reported_by];
+            const reporterName = reporter ? `${reporter.first_name} ${reporter.surname}` : 'Unknown User';
+            const company = reporter?.company_id ? companyMap[reporter.company_id] : undefined;
+            const companyLogoUrl = company?.logo_url;
+
+            return (
+                <ReportListItem 
+                    key={report.id} 
+                    report={report} 
+                    isSelected={report.id === selectedReportId}
+                    onClick={() => onReportSelect(report.id)}
+                    profile={profile}
+                    reporterName={reporterName}
+                    onStatusUpdate={onStatusUpdate}
+                    companyLogoUrl={companyLogoUrl}
+                />
+            )
+        })}
       </div>
     </div>
   );

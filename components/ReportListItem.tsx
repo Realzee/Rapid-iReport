@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useState, useMemo, memo } from 'react';
 import { Report, VehicleReport, Severity, Profile, UserRole, ReportStatus } from '../types';
 import StatusBadge from './StatusBadge';
@@ -14,6 +10,7 @@ interface ReportListItemProps {
   profile: Profile;
   reporterName: string;
   onStatusUpdate: (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => Promise<void>;
+  companyLogoUrl?: string;
 }
 
 const severityStyles: Record<Severity, string> = {
@@ -30,7 +27,7 @@ const severityBorderColors: Record<Severity, string> = {
     [Severity.LOW]: 'border-green-500'
 };
 
-const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onClick, profile, reporterName, onStatusUpdate }) => {
+const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onClick, profile, reporterName, onStatusUpdate, companyLogoUrl }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   
   const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
@@ -74,11 +71,20 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
 
         <div className={`flex-1 min-w-0 ${!hasImage && 'pl-2'}`}>
             <div className="flex justify-between items-start">
-                <div className="flex-1 min-w-0 pr-2">
-                    <p className="font-bold text-base text-gray-800 dark:text-white group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate">
-                        {isVehicleReport(report) ? report.license_plate : report.title}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</p>
+                <div className="flex-1 min-w-0 pr-2 flex items-center gap-2">
+                    {companyLogoUrl && (
+                        <img 
+                            src={companyLogoUrl} 
+                            alt="Company Logo" 
+                            className="w-5 h-5 rounded-full object-contain flex-shrink-0 bg-gray-200 dark:bg-gray-700"
+                        />
+                    )}
+                    <div className="flex-1 min-w-0">
+                        <p className="font-bold text-base text-gray-800 dark:text-white group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate">
+                            {isVehicleReport(report) ? report.license_plate : report.title}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</p>
+                    </div>
                 </div>
                 <div className="flex-shrink-0">
                     {canUpdateStatus ? (
