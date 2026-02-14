@@ -76,8 +76,8 @@ const SoughtListManager: React.FC<SoughtListManagerProps> = ({ onSelectReport, o
         if (!lowercasedTerm) return soughtListReports;
         return soughtListReports.filter(report =>
             report.license_plate.toLowerCase().includes(lowercasedTerm) ||
-            report.vehicle_make.toLowerCase().includes(lowercasedTerm) ||
-            report.vehicle_model.toLowerCase().includes(lowercasedTerm)
+            (report.vehicle_make && report.vehicle_make.toLowerCase().includes(lowercasedTerm)) ||
+            (report.vehicle_model && report.vehicle_model.toLowerCase().includes(lowercasedTerm))
         );
     }, [soughtListReports, searchTerm]);
     
@@ -99,39 +99,46 @@ const SoughtListManager: React.FC<SoughtListManagerProps> = ({ onSelectReport, o
 
     return (
         <>
-            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-2 backdrop-blur-lg shadow-lg flex items-center gap-4">
+            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-3 backdrop-blur-lg shadow-lg flex flex-col md:flex-row md:items-center gap-4">
                 {/* Header/Title Section */}
-                <div className="flex-shrink-0 flex items-center gap-2 border-r border-gray-200 dark:border-gray-700 pr-4">
-                    <div className="p-2 bg-yellow-500/10 rounded-lg">
-                        <AlertTriangleIcon className="w-6 h-6 text-yellow-500" />
+                <div className="w-full md:w-auto flex-shrink-0 flex items-center justify-between md:justify-start gap-2 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700 pb-3 md:pb-0 md:pr-4">
+                    <div className="flex items-center gap-2">
+                        <div className="p-2 bg-yellow-500/10 rounded-lg">
+                            <AlertTriangleIcon className="w-6 h-6 text-yellow-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-md font-bold leading-tight">Sought Vehicles</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{soughtListReports.length} Active</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-md font-bold leading-tight">Sought Vehicles</h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{soughtListReports.length} Active</p>
+                     <div className="flex md:hidden items-center gap-2">
+                        <button onClick={onQuickAdd} className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" title="Quick Add to List">
+                            <PlusIcon className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
 
                 {/* Main Content: Search and Scrollable List */}
-                <div className="flex-1 flex items-center gap-4 min-w-0">
+                <div className="flex-1 flex flex-col sm:flex-row items-center gap-4 min-w-0 w-full">
                     {/* Add & Search */}
-                    <div className="flex items-center gap-2">
-                        <button onClick={onQuickAdd} className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" title="Quick Add to List">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <button onClick={onQuickAdd} className="hidden md:flex flex-shrink-0 items-center gap-1.5 px-3 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" title="Quick Add to List">
                             <PlusIcon className="w-4 h-4" />
                         </button>
-                        <div className="relative flex-shrink-0">
+                        <div className="relative flex-grow sm:flex-grow-0">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon className="w-4 h-4 text-gray-400" /></div>
                             <input 
                                 type="text" 
-                                placeholder="Search..." 
+                                placeholder="Search list..." 
                                 value={searchTerm} 
                                 onChange={e => setSearchTerm(e.target.value)} 
-                                className="w-32 bg-gray-100 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg py-2 pl-9 pr-2 text-sm focus:w-48 transition-all duration-300" 
+                                className="w-full sm:w-32 bg-gray-100 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg py-2 pl-9 pr-2 text-sm focus:w-48 transition-all duration-300" 
                             />
                         </div>
                     </div>
                     
                     {/* Horizontal Scroll List */}
-                    <div className="flex-1 flex items-center gap-2 overflow-x-auto pb-2 -mb-2">
+                    <div className="flex-1 flex items-center gap-2 overflow-x-auto pb-2 -mb-2 w-full">
                         {loading ? (
                             <div className="text-sm text-gray-500">Loading...</div>
                         ) : filteredReports.length === 0 ? (

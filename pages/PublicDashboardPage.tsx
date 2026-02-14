@@ -165,8 +165,10 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                                     key={report.id} 
                                     position={[report.location_coords.lat, report.location_coords.lng]} 
                                     icon={isVehicleReport(report) ? createVehicleIcon() : createCrimeIcon()}
-                                    // FIX: Switched from 'eventHandlers' to 'onClick' to align with the installed react-leaflet types, which appear to be for an older version. The TypeScript error indicates 'eventHandlers' is not a valid prop.
-                                    onClick={() => handleSelectReport(report.id)}
+                                    // FIX: Switched from 'onClick' to 'eventHandlers' to align with the react-leaflet v3+ API. The 'onClick' prop is for older versions and was causing a TypeScript error.
+                                    eventHandlers={{
+                                        click: () => handleSelectReport(report.id),
+                                    }}
                                 >
                                     <Popup>
                                         <div className="w-56">
