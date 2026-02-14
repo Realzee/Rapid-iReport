@@ -156,7 +156,10 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                                     key={report.id} 
                                     position={[report.location_coords.lat, report.location_coords.lng]} 
                                     icon={isVehicleReport(report) ? createVehicleIcon() : createCrimeIcon()}
-                                    eventHandlers={{ click: () => handleSelectReport(report.id) }}
+                                    // FIX: The 'onClick' prop is not available on Marker. Use 'eventHandlers' instead.
+                                    eventHandlers={{
+                                        click: () => handleSelectReport(report.id),
+                                    }}
                                 >
                                     <Popup>
                                         <div className="w-56">

@@ -194,6 +194,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                             position={[report.location_coords.lat, report.location_coords.lng]}
                             icon={createIncidentIcon(report, isSelected)}
                             zIndexOffset={isSelected ? 1000 : 0}
+                            // FIX: The 'onClick' prop is not available on Marker. Use 'eventHandlers' instead.
                             eventHandlers={{
                                 click: () => {
                                     if (onReportSelect) {

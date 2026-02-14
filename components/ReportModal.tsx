@@ -2,7 +2,7 @@
  * @file ReportModal.tsx
  * @description Modal for creating and editing vehicle or crime reports.
  */
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport } from '../types';
 import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon } from '../components/icons';
@@ -203,6 +203,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     const [isMapVisible, setMapVisible] = useState(false);
     const { addToast } = useToast();
     
+    // Address suggestion state
+    const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+    const [isGeocoding, setIsGeocoding] = useState(false);
+    const debounceTimeoutRef = useRef<number | null>(null);
+    const suggestionsRef = useRef<HTMLDivElement>(null);
+
     const getInitialData = useCallback(() => {
         if (reportToEdit) {
             const isVehicle = isVehicleReport(reportToEdit);
@@ -250,6 +256,70 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         }
     };
 
+    // Address suggestion logic
+    useEffect(() => {
+        if (formData.location_coords || !formData.location || formData.location.length < 3) {
+            setAddressSuggestions([]);
+            return;
+        }
+
+        if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+
+        debounceTimeoutRef.current = window.setTimeout(async () => {
+            setIsGeocoding(true);
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(formData.location)}&format=json&polygon_geojson=1&limit=5`);
+                if (response.ok) setAddressSuggestions(await response.json());
+                else setAddressSuggestions([]);
+            } catch (error) {
+                console.error("Address suggestion fetch failed:", error);
+                setAddressSuggestions([]);
+            }
+            setIsGeocoding(false);
+        }, 400);
+
+        return () => { if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current) };
+    }, [formData.location, formData.location_coords]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+                setAddressSuggestions([]);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleSuggestionClick = (suggestion: any) => {
+        const lat = parseFloat(suggestion.lat);
+        const lng = parseFloat(suggestion.lon);
+        let coords: LocationCoords | null = !isNaN(lat) && !isNaN(lng) ? { lat, lng } : null;
+
+        let boundingbox: [number, number, number, number] | null = null;
+        if (suggestion.boundingbox?.length === 4) {
+            const [s, n, w, e] = suggestion.boundingbox.map(parseFloat);
+            if (![s, n, w, e].some(isNaN)) boundingbox = [s, n, w, e];
+        }
+        
+        const boundary = suggestion.geojson?.type !== 'Point' ? suggestion.geojson : null;
+
+        if (boundary && boundingbox) {
+            const centerLat = (boundingbox[0] + boundingbox[1]) / 2;
+            const centerLng = (boundingbox[2] + boundingbox[3]) / 2;
+            coords = !isNaN(centerLat) && !isNaN(centerLng) ? { lat: centerLat, lng: centerLng } : coords;
+        }
+        
+        setFormData(prev => ({
+            ...prev,
+            location: suggestion.display_name,
+            location_coords: coords,
+            location_boundary: boundary,
+            location_boundingbox: boundingbox,
+        }));
+        setAddressSuggestions([]);
+    };
+
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -272,7 +342,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        if (name === 'location') {
+            setFormData({ ...formData, location: value, location_coords: null, location_boundary: null, location_boundingbox: null });
+        } else {
+            setFormData({ ...formData, [name]: value });
+        }
     };
 
     const handleLocationChange = (coords: LocationCoords, address: string) => {
@@ -458,11 +533,26 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
                     <div>
                         <label htmlFor="location" className={labelClasses}>{reportType === 'vehicle' ? 'Last Seen Location' : 'Location'}</label>
-                        <div className="relative mt-1">
-                            <input type="text" name="location" id="location" value={formData.location || ''} onChange={handleChange} required className={`${inputClasses} !mt-0 pr-10`} placeholder="Type an address or drop a pin"/>
+                        <div className="relative mt-1" ref={suggestionsRef}>
+                            <input type="text" name="location" id="location" value={formData.location || ''} onChange={handleChange} required className={`${inputClasses} !mt-0 pr-10`} placeholder="Type an address to search..." autoComplete="off"/>
                             <button type="button" onClick={() => setMapVisible(!isMapVisible)} className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 transition-colors" title="Pin location on map">
                                 <MapPinIcon className="w-5 h-5" />
                             </button>
+                             {(addressSuggestions.length > 0 || isGeocoding) && (
+                                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                    {isGeocoding && <div className="p-3 text-sm text-center text-gray-500">Searching...</div>}
+                                    {!isGeocoding && addressSuggestions.map(suggestion => (
+                                        <button
+                                            type="button"
+                                            key={suggestion.place_id}
+                                            onClick={() => handleSuggestionClick(suggestion)}
+                                            className="w-full text-left p-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                        >
+                                            {suggestion.display_name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
