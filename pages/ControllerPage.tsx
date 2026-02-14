@@ -207,11 +207,6 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     // FIX: This effect now safely manages the selected report without mutating state, preventing an infinite loop.
     useEffect(() => {
         if (loading) return; // Don't run on initial load
-
-        // If no report is selected, but there are reports available, select the latest one.
-        if (!selectedReportId && sortedReports.length > 0) {
-            setSelectedReportId(sortedReports[0].id);
-        }
         
         // If a report is currently selected, but it has been removed from the list (e.g., resolved/deleted),
         // then select the new latest report, or null if the list is empty.

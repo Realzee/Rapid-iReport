@@ -101,53 +101,41 @@ const createResponderIcon = (status: ResponderStatus) => {
 const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report | undefined, responders: Responder[] }> = ({ reports, selectedReport, responders }) => {
     const map = useMap();
     useEffect(() => {
-        if (selectedReport?.location_coords) {
-            const reportLocation: L.LatLngExpression = [selectedReport.location_coords.lat, selectedReport.location_coords.lng];
+        // Use a timeout to allow CSS transitions on the container to finish before recalculating map size and position
+        const timer = setTimeout(() => {
+            map.invalidateSize();
 
-            // Only fit responders if the report is in an active state (not resolved/closed etc.)
-            const isDispatchRelevant = ![
-                ReportStatus.RESOLVED, 
-                ReportStatus.RECOVERED, 
-                ReportStatus.CLOSED, 
-                ReportStatus.REJECTED,
-                ReportStatus.DELETED
-            ].includes(selectedReport.status);
+            if (selectedReport?.location_coords) {
+                const reportLocation: L.LatLngExpression = [selectedReport.location_coords.lat, selectedReport.location_coords.lng];
 
-            const availableResponders = responders.filter(
-                r => r.status === ResponderStatus.AVAILABLE && r.location_coords
-            );
-
-            if (isDispatchRelevant && availableResponders.length > 0) {
-                const responderLocations: L.LatLngExpression[] = availableResponders.map(
-                    r => [r.location_coords!.lat, r.location_coords!.lng]
-                );
-                
-                const bounds = L.latLngBounds([reportLocation, ...responderLocations]);
-                map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0 });
-
-            } else if (selectedReport.location_boundingbox) {
-                const bounds: LatLngBoundsExpression = [
-                    [selectedReport.location_boundingbox[0], selectedReport.location_boundingbox[2]],
-                    [selectedReport.location_boundingbox[1], selectedReport.location_boundingbox[3]]
-                ];
-                map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0 });
-            } else {
-                map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
-            }
-        } else {
-            // "Show All" logic
-            const reportsWithCoords = reports.filter(r => r.location_coords);
-            if (reportsWithCoords.length > 0) {
-                const bounds = L.latLngBounds(reportsWithCoords.map(r => [r.location_coords!.lat, r.location_coords!.lng]));
-                if (bounds.isValid()) {
-                    map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0, maxZoom: 14 });
+                // If the report has a defined bounding box (e.g., a neighborhood), fit to that.
+                if (selectedReport.location_boundingbox) {
+                    const bounds: LatLngBoundsExpression = [
+                        [selectedReport.location_boundingbox[0], selectedReport.location_boundingbox[2]],
+                        [selectedReport.location_boundingbox[1], selectedReport.location_boundingbox[3]]
+                    ];
+                    map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0 });
+                } else {
+                    // Otherwise, just fly to the specific point.
+                    map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
                 }
             } else {
-                // Default view if no reports have coords
-                map.flyTo([-26.2041, 28.0473], 11, { animate: true, duration: 1.0 });
+                // "Show All" logic: No report is selected, so fit all reports on the map.
+                const reportsWithCoords = reports.filter(r => r.location_coords);
+                if (reportsWithCoords.length > 0) {
+                    const bounds = L.latLngBounds(reportsWithCoords.map(r => [r.location_coords!.lat, r.location_coords!.lng]));
+                    if (bounds.isValid()) {
+                        map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0, maxZoom: 14 });
+                    }
+                } else {
+                    // Default view if no reports have coordinates.
+                    map.flyTo([-26.2041, 28.0473], 11, { animate: true, duration: 1.0 });
+                }
             }
-        }
-    }, [selectedReport, reports, responders, map]);
+        }, 310); // A little longer than the 300ms transition of the side panel.
+
+        return () => clearTimeout(timer);
+    }, [selectedReport, reports, map]);
     return null;
 };
 
