@@ -442,6 +442,10 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         <DetailField label="Severity"><p className="font-semibold text-md capitalize">{report.severity}</p></DetailField>
                         <DetailField label="Status"><span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200">{report.status.replace(/_/g, ' ')}</span></DetailField>
                     </div>
+
+                    <DetailField label={isVehicleReport(report) ? 'Last Seen Location' : 'Location'}>
+                        <p className="whitespace-pre-wrap">{isVehicleReport(report) ? report.last_seen_location : report.location}</p>
+                    </DetailField>
                     
                     <DetailField label="Description"><p className="whitespace-pre-wrap">{report.description}</p></DetailField>
                     

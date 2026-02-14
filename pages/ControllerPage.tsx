@@ -279,6 +279,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 responders={responders}
                                 onReportSelect={(id) => setSelectedReportId(id)}
                                 selectedReportId={selectedReportId}
+                                allUsers={allUsers}
                             />
                         ) : (
                             <ResponderStack

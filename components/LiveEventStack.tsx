@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { Report, VehicleReport, Severity, Responder } from '../types';
+import { Report, VehicleReport, Severity, Responder, Profile } from '../types';
 import { format } from 'date-fns';
 import StatusBadge from './StatusBadge';
-import { CameraIcon, UserIcon, ClockIcon } from './icons';
+import { CameraIcon, UserIcon, ClockIcon, NavigationIcon } from './icons';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -18,7 +18,8 @@ const LiveEventItem: React.FC<{
     isSelected: boolean;
     onSelect: () => void;
     responderMap: Map<string, string>;
-}> = ({ report, isSelected, onSelect, responderMap }) => {
+    reporterName: string;
+}> = ({ report, isSelected, onSelect, responderMap, reporterName }) => {
     const title = isVehicleReport(report) ? report.license_plate : report.title;
     
     const borderClass = isSelected ? 'border-blue-500 ring-2 ring-blue-500/50' : 'border-gray-200 dark:border-gray-700/50';
@@ -56,9 +57,13 @@ const LiveEventItem: React.FC<{
                         <span>{report.evidence_images?.length}</span>
                     </div>
                 )}
+                <div className="flex items-center gap-1 truncate" title={`Reported by: ${reporterName}`}>
+                    <UserIcon className="w-3.5 h-3.5" />
+                    <span className="truncate">{reporterName}</span>
+                </div>
                 {assignedResponderName && (
-                    <div className="flex items-center gap-1 truncate">
-                        <UserIcon className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-1 truncate" title={`Assigned to: ${assignedResponderName}`}>
+                        <NavigationIcon className="w-3.5 h-3.5" />
                         <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{assignedResponderName}</span>
                     </div>
                 )}
@@ -75,15 +80,20 @@ const LiveEventItem: React.FC<{
 interface LiveEventStackProps {
     reports: Report[];
     responders: Responder[];
+    allUsers: Profile[];
     onReportSelect: (id: string) => void;
     selectedReportId: string | null;
 }
 
-const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, onReportSelect, selectedReportId }) => {
+const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, allUsers, onReportSelect, selectedReportId }) => {
     
     const responderMap = useMemo(() => {
         return new Map(responders.map(r => [r.id, `${r.first_name} ${r.surname}`]));
     }, [responders]);
+
+    const userMap = useMemo(() => {
+        return new Map(allUsers.map(u => [u.id, `${u.first_name} ${u.surname}`]));
+    }, [allUsers]);
 
     return (
         <>
@@ -103,6 +113,7 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, on
                         isSelected={report.id === selectedReportId}
                         onSelect={() => onReportSelect(report.id)}
                         responderMap={responderMap}
+                        reporterName={userMap.get(report.reported_by) || 'Unknown User'}
                     />
                 ))}
             </div>
