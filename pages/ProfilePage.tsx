@@ -44,7 +44,10 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
 
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        const { name, value } = e.target;
+        const fieldsToUppercase = ['vehicle_reg', 'psira_number'];
+        const processedValue = fieldsToUppercase.includes(name) ? value.toUpperCase() : value;
+        setFormData(prev => ({ ...prev, [name]: processedValue }));
     };
 
     const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {

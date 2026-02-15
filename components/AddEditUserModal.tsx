@@ -74,7 +74,9 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const fieldsToUppercase = ['vehicle_reg', 'psira_number'];
+        const processedValue = fieldsToUppercase.includes(name) ? value.toUpperCase() : value;
+        setFormData(prev => ({ ...prev, [name]: processedValue }));
     };
 
     const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {

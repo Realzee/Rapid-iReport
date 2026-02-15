@@ -204,7 +204,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label htmlFor="vehicle_reg_reg" className={labelClasses}>Vehicle Reg (Optional)</label>
-                <input id="vehicle_reg_reg" name="vehicleReg" type="text" value={vehicleReg} onChange={(e) => setVehicleReg(e.target.value)} className={`${inputClasses} pl-3`} placeholder="AB 12 CD GP" />
+                <input id="vehicle_reg_reg" name="vehicleReg" type="text" value={vehicleReg} onChange={(e) => setVehicleReg(e.target.value.toUpperCase())} className={`${inputClasses} pl-3`} placeholder="AB 12 CD GP" />
             </div>
              <div>
                 <label htmlFor="medical_aid_reg" className={labelClasses}>Medical Aid (Optional)</label>
@@ -213,7 +213,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
         </div>
         <div>
             <label htmlFor="psira_number_reg" className={labelClasses}>PSIRA Number (Optional)</label>
-            <input id="psira_number_reg" name="psiraNumber" type="text" value={psiraNumber} onChange={(e) => setPsiraNumber(e.target.value)} className={`${inputClasses} pl-3`} placeholder="1234567" />
+            <input id="psira_number_reg" name="psiraNumber" type="text" value={psiraNumber} onChange={(e) => setPsiraNumber(e.target.value.toUpperCase())} className={`${inputClasses} pl-3`} placeholder="1234567" />
         </div>
         <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>

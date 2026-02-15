@@ -365,12 +365,25 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
+
+        const fieldsToUppercase = [
+            'license_plate',
+            'vehicle_make',
+            'vehicle_model',
+            'vehicle_color',
+            'title',
+            'crime_type',
+        ];
+
+        const processedValue = fieldsToUppercase.includes(name) ? value.toUpperCase() : value;
+
         if (name === 'location') {
-            setFormData({ ...formData, location: value, location_coords: null, location_boundary: null, location_boundingbox: null });
+            setFormData({ ...formData, location: processedValue, location_coords: null, location_boundary: null, location_boundingbox: null });
         } else {
-            setFormData({ ...formData, [name]: value });
+            setFormData({ ...formData, [name]: processedValue });
         }
     };
+
 
     const handleLocationChange = (coords: LocationCoords, address: string) => {
         setFormData(prev => ({
