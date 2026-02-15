@@ -5,9 +5,11 @@ import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
 import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
-import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, MapIcon } from '../components/icons';
+import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, MapIcon, ChatAlt2Icon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
 import SoughtListManager from '../components/BlacklistManager';
+import { useChat } from '../contexts/ChatContext';
+import { CONTROLLER_CHANNEL_REPORT } from '../constants';
 
 interface ControllerPageProps {
     profile: Profile;
@@ -28,6 +30,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
     const [isDetailsVisible, setIsDetailsVisible] = useState(true);
+    const { openChat } = useChat();
 
     const isInitialLoad = useRef(true);
     const audioContextRef = useRef<AudioContext | null>(null);
@@ -250,13 +253,23 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                     <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Live Controller</h2>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">Real-time incident management and dispatch.</p>
                 </div>
-                <button
-                    onClick={handleOpenNewReportModal}
-                    className="mt-4 md:mt-0 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
-                >
-                    <PlusIcon className="w-5 h-5" />
-                    <span>New Report</span>
-                </button>
+                <div className="mt-4 md:mt-0 flex items-center gap-4">
+                    <button
+                        onClick={() => openChat(CONTROLLER_CHANNEL_REPORT)}
+                        className="px-5 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
+                        title="Open staff communication channel"
+                    >
+                        <ChatAlt2Icon className="w-5 h-5" />
+                        <span>Staff Channel</span>
+                    </button>
+                    <button
+                        onClick={handleOpenNewReportModal}
+                        className="px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
+                    >
+                        <PlusIcon className="w-5 h-5" />
+                        <span>New Report</span>
+                    </button>
+                </div>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
                 <div className="lg:col-span-3 print:hidden">

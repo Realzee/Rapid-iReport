@@ -3,13 +3,14 @@ import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, ReportUp
 import { supabase } from '../utils/supabase';
 import { format, formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
-import { NavigationIcon, CameraIcon, ScanIcon, XIcon } from '../components/icons';
+import { NavigationIcon, CameraIcon, ScanIcon, XIcon, ChatAlt2Icon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import ResponderMapView from '../components/ResponderMapView';
 import ANPRScanner from '../components/ANPRScanner';
 import UserReportDetail from '../components/UserReportDetail';
 import { useChat } from '../contexts/ChatContext';
+import { CONTROLLER_CHANNEL_REPORT } from '../constants';
 
 interface ResponderPageProps {
     profile: Profile;
@@ -48,6 +49,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     const isInitialLoad = useRef(true);
     const audioContextRef = useRef<AudioContext | null>(null);
     const { addToast } = useToast();
+    const { openChat } = useChat();
 
     const isOnDuty = profile.responder_status !== ResponderStatus.OFF_DUTY;
 
@@ -334,6 +336,15 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                 </div>
 
                 {locationError && <div className="bg-red-500/10 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-r-lg" role="alert"><p className="font-bold">System Error</p><p>{locationError}</p></div>}
+                
+                {isOnDuty && (
+                    <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg">
+                        <button onClick={() => openChat(CONTROLLER_CHANNEL_REPORT)} className="w-full flex items-center justify-center gap-2 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors">
+                            <ChatAlt2Icon className="w-5 h-5" />
+                            <span>Open Staff Channel</span>
+                        </button>
+                    </div>
+                )}
                 
                 {isOnDuty && <ANPRScanner onReportHit={handleAnprHit} />}
 

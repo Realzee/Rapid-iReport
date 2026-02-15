@@ -877,8 +877,14 @@ CREATE POLICY "Allow access based on parent report" ON public.assignment_logs FO
 ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow access based on parent report" ON public.chat_messages;
 CREATE POLICY "Allow access based on parent report" ON public.chat_messages FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.vehicle_reports vr WHERE vr.id = chat_messages.report_id) OR
-    EXISTS (SELECT 1 FROM public.crime_reports cr WHERE cr.id = chat_messages.report_id)
+    ( -- EITHER it's a message for a regular report the user can see
+        EXISTS (SELECT 1 FROM public.vehicle_reports vr WHERE vr.id = chat_messages.report_id) OR
+        EXISTS (SELECT 1 FROM public.crime_reports cr WHERE cr.id = chat_messages.report_id)
+    ) OR
+    ( -- OR it's a message for the global staff channel, and the user has a staff role
+        chat_messages.report_id = '00000000-0000-0000-0000-000000000001' AND
+        (select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller', 'responder')
+    )
 );
 
 -- NOTIFICATIONS
