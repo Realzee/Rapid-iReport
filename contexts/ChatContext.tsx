@@ -1,8 +1,9 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback, useMemo } from 'react';
+import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback, useMemo, useRef } from 'react';
 import { Report, Profile, ChatMessage, UserRole, VehicleReport } from '../types';
 import { supabase } from '../utils/supabase';
 import { useToast } from './ToastContext';
 import ChatManager from '../components/ChatModal';
+import { CONTROLLER_CHANNEL_ID, CONTROLLER_CHANNEL_REPORT } from '../constants';
 
 interface ChatContextType {
   activeChats: Report[];
@@ -26,6 +27,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
     const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
     const { addToast } = useToast();
+    const audioContextRef = useRef<AudioContext | null>(null);
 
     // Fetch and subscribe to allUsers list, as it's needed by the chat components
     useEffect(() => {
@@ -56,6 +58,33 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
             supabase.removeChannel(profilesChannel);
         };
     }, [profile]);
+    
+    useEffect(() => {
+        if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        return () => {
+            if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+                audioContextRef.current.close();
+            }
+        };
+    }, []);
+
+    const playNotificationSound = useCallback((freq = 1200, duration = 0.1, volume = 0.1) => {
+        const context = audioContextRef.current;
+        if (!context) return;
+        if (context.state === 'suspended') context.resume();
+        const oscillator = context.createOscillator();
+        const gainNode = context.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(freq, context.currentTime);
+        gainNode.gain.setValueAtTime(volume, context.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
+        oscillator.start(context.currentTime);
+        oscillator.stop(context.currentTime + duration);
+    }, []);
 
     const openChat = useCallback((report: Report) => {
         setActiveChats(prev => {
@@ -90,25 +119,39 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
 
         const handleNewMessage = (payload: any) => {
             const newMessage = payload.new as ChatMessage;
+            if (newMessage.user_id === profile.id) return; // Ignore own messages
 
-            // Ignore own messages
-            if (newMessage.user_id === profile.id) return;
+            // Special handling for the global Staff Channel
+            if (newMessage.report_id === CONTROLLER_CHANNEL_ID) {
+                if (expandedChatId !== CONTROLLER_CHANNEL_ID) {
+                    playNotificationSound(1500, 0.15, 0.2); // A slightly different sound for staff chat
+                    setUnreadCounts(prev => ({
+                        ...prev,
+                        [CONTROLLER_CHANNEL_ID]: (prev[CONTROLLER_CHANNEL_ID] || 0) + 1
+                    }));
+                    addToast(
+                        `New message in Staff Channel`,
+                        'info',
+                        () => openChat(CONTROLLER_CHANNEL_REPORT)
+                    );
+                }
+                return; // Stop further processing for staff channel messages
+            }
 
-            // Check if this message is for a chat that's currently active in the tray
+            // Standard handling for regular report chats
             const activeChat = activeChats.find(c => c.id === newMessage.report_id);
             if (!activeChat) {
-                // This is a message for a report the user doesn't have open in their tray.
-                // The global notification bell system handles this, so we do nothing here.
+                // Not an open chat tray item, so the global bell notification will handle it.
                 return;
             }
 
-            // If the chat for this message is currently expanded, do nothing.
-            // The message will appear live, and IncidentChat component handles marking as read.
             if (expandedChatId === newMessage.report_id) {
+                // Chat is already open and visible, so no extra notification needed.
                 return;
             }
 
-            // The chat is active but minimized. Increment unread count and show a toast.
+            // Chat is in the tray but minimized. Increment unread count and show a toast.
+            playNotificationSound();
             setUnreadCounts(prev => ({
                 ...prev,
                 [newMessage.report_id]: (prev[newMessage.report_id] || 0) + 1
@@ -130,7 +173,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
         return () => {
             supabase.removeChannel(chatChannel);
         };
-    }, [profile, activeChats, expandedChatId, addToast, expandChat]);
+    }, [profile, activeChats, expandedChatId, addToast, expandChat, openChat, playNotificationSound]);
 
     const value = useMemo(() => ({
         activeChats,
