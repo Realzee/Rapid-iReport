@@ -496,9 +496,10 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 
                 if (rpcError) throw new Error(`Failed to generate OB Number: ${rpcError.message}`);
 
+                const paddedSequence = String(sequence).padStart(4, '0');
                 const month = (now.getMonth() + 1).toString().padStart(2, '0');
                 const year = now.getFullYear();
-                const ob_number = `${initial}${sequence}/${month}/${year}`;
+                const ob_number = `${initial}${paddedSequence}/${month}/${year}`;
 
                 const insertData = {
                     ...reportData,
