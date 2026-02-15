@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
-import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon } from './icons';
+import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon } from './icons';
 import PrintableReport from './PrintableReport';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from './ConfirmModal';
 import { logoUrl } from '../assets/logo';
 import { useChat } from '../contexts/ChatContext';
+import ImagePreviewModal from './ImagePreviewModal';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -52,6 +53,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const [isTimelineVisible, setIsTimelineVisible] = useState(false);
+    const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
     const { addToast } = useToast();
     const { openChat } = useChat();
 
@@ -462,18 +464,16 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         <DetailField label="Evidence">
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 {report.evidence_images.map((img, index) => (
-                                    <a href={img} target="_blank" rel="noopener noreferrer" key={index} className="relative group block w-full h-24 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+                                    <button onClick={() => setPreviewImageUrl(img)} key={index} className="relative group block w-full h-24 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                                         <img 
                                             src={img} 
                                             alt={`Evidence ${index + 1}`} 
                                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                                         />
                                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-300 flex items-center justify-center">
-                                            <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V8m0 0h-4m4 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" />
-                                            </svg>
+                                            <EyeIcon className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </div>
-                                    </a>
+                                    </button>
                                 ))}
                             </div>
                         </DetailField>
@@ -591,6 +591,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     confirmVariant="danger"
                 />
             )}
+            <ImagePreviewModal isOpen={!!previewImageUrl} onClose={() => setPreviewImageUrl(null)} imageUrl={previewImageUrl} />
         </>
     );
 };
