@@ -145,35 +145,34 @@
     .led-clock-container {
       background: #0a0a0a;
       border-radius: 4px;
-      padding: 2px 6px;
+      padding: 4px 8px;
       box-shadow: inset 0 1px 1px rgba(255,255,255,0.1), 0 1px 2px rgba(0,0,0,0.5);
-      border: 1px solid #333;
     }
     .segment-char { position: relative; }
     .segment { position: absolute; transition: background-color 0.2s; }
     .segment.off { background: #1a0000; }
     .segment.lit {
       background: #ff0000;
-      box-shadow: 0 0 2px #ff0000, 0 0 4px #ff0000;
+      box-shadow: 0 0 3px #ff0000, 0 0 6px #ff0000;
     }
-    /* Compact Segments */
-    .seg-char-compact { width: 18px; height: 28px; }
-    .seg-char-compact .s-a { top: 0; left: 2px; width: 14px; height: 2px; }
-    .seg-char-compact .s-b { top: 2px; left: 16px; width: 2px; height: 12px; }
-    .seg-char-compact .s-c { top: 14px; left: 16px; width: 2px; height: 12px; }
-    .seg-char-compact .s-d { bottom: 0; left: 2px; width: 14px; height: 2px; }
-    .seg-char-compact .s-e { top: 14px; left: 0; width: 2px; height: 12px; }
-    .seg-char-compact .s-f { top: 2px; left: 0; width: 2px; height: 12px; }
-    .seg-char-compact .s-g { top: 13px; left: 2px; width: 14px; height: 2px; }
-    /* Colon */
-    .colon-compact .dot { width: 2px; height: 2px; }
-    .colon-compact .dot-top { top: 8px; }
-    .colon-compact .dot-bottom { bottom: 8px; }
-    /* Day of week */
-    .led-day { color: #550000; font-family: 'Arial', sans-serif; font-weight: bold; transition: color 0.2s, text-shadow 0.2s; font-size: 12px; line-height: 1; }
-    .led-day.lit { color: #ffffff; text-shadow: 0 0 3px #ff4d4d; }
-    /* Small Text */
-    .led-small-text { color: #ff0000; text-shadow: 0 0 2px #ff0000; font-family: 'Arial', sans-serif; font-weight: bold; font-size: 10px; }
+    /* Compact Segments - LARGER */
+    .seg-char-compact { width: 27px; height: 42px; }
+    .seg-char-compact .s-a { top: 0; left: 3px; width: 21px; height: 3px; }
+    .seg-char-compact .s-b { top: 3px; left: 24px; width: 3px; height: 18px; }
+    .seg-char-compact .s-c { top: 21px; left: 24px; width: 3px; height: 18px; }
+    .seg-char-compact .s-d { bottom: 0; left: 3px; width: 21px; height: 3px; }
+    .seg-char-compact .s-e { top: 21px; left: 0; width: 3px; height: 18px; }
+    .seg-char-compact .s-f { top: 3px; left: 0; width: 3px; height: 18px; }
+    .seg-char-compact .s-g { top: 19.5px; left: 3px; width: 21px; height: 3px; }
+    /* Colon - LARGER */
+    .colon-compact .dot { width: 3px; height: 3px; }
+    .colon-compact .dot-top { top: 12px; }
+    .colon-compact .dot-bottom { bottom: 12px; }
+    /* Day of week - LARGER */
+    .led-day { color: #550000; font-family: 'Arial', sans-serif; font-weight: bold; transition: color 0.2s, text-shadow 0.2s; font-size: 18px; line-height: 1; }
+    .led-day.lit { color: #ffffff; text-shadow: 0 0 4px #ff4d4d; }
+    /* Small Text - LARGER */
+    .led-small-text { color: #ff0000; text-shadow: 0 0 3px #ff0000; font-family: 'Arial', sans-serif; font-weight: bold; font-size: 14px; }
   </style>
 <script type="importmap">
 {
