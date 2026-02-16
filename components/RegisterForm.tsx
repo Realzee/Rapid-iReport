@@ -52,7 +52,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
     }
     setLoading(true);
 
-    // @ts-ignore
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,

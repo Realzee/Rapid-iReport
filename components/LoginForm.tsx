@@ -16,7 +16,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // @ts-ignore - FIX: Property 'signInWithPassword' does not exist on type 'SupabaseAuthClient'. Using older version 'signIn'.
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       addToast(error.message, 'error');

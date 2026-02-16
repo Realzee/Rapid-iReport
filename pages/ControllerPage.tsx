@@ -167,12 +167,24 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             });
         };
 
-        const reportsChannel = supabase.channel('controller-page-reports')
+        const reportsChannel = supabase.channel('controller-page-reports', {
+            config: {
+                broadcast: {
+                    self: true, // Receive updates from the same client
+                },
+            },
+        })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
             .subscribe();
             
-        const profilesChannel = supabase.channel('controller-page-profiles')
+        const profilesChannel = supabase.channel('controller-page-profiles', {
+            config: {
+                broadcast: {
+                    self: true, // Receive updates from the same client
+                },
+            },
+        })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleProfileChange)
             .subscribe();
 

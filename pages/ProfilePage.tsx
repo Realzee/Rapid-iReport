@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Profile } from '../types';
 import { supabase } from '../utils/supabase';
-import { UserIcon, LockIcon, UploadCloudIcon } from '../components/icons';
+import { UserIcon, LockIcon, UploadCloudIcon } from './icons';
 import { useToast } from '../contexts/ToastContext';
 import { useFormPersistence } from '../useFormPersistence';
 
@@ -117,7 +117,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         }
 
         setLoadingPassword(true);
-        // @ts-ignore
         const { error } = await supabase.auth.updateUser({ password });
         if (error) {
             addToast('Error updating password: ' + error.message, 'error');

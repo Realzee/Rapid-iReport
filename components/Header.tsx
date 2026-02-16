@@ -94,8 +94,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       }`;
 
   const handleLogout = async () => {
-    // @ts-ignore - FIX: The `signOut` method is not found on the type, using bracket notation to bypass the incorrect type.
-    await supabase.auth['signOut']();
+    // FIX: Use direct .signOut() method call instead of bracket notation workaround.
+    await supabase.auth.signOut();
     setMobileMenuOpen(false);
   };
 
@@ -116,8 +116,21 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   const handleMarkAllAsRead = async () => {
     const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
     if (unreadIds.length > 0) {
+        setNotifications(prev => prev.map(n => ({...n, is_read: true})));
         await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds);
     }
+  };
+
+  const handleNotificationItemClick = (notification: Notification) => {
+    // Optimistically update UI for instant feedback
+    if (!notification.is_read) {
+        setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, is_read: true } : n));
+    }
+    // Close the panel
+    setIsNotificationsOpen(false);
+    
+    // Trigger the actual DB update and navigation logic in App.tsx
+    onNotificationClick(notification);
   };
 
   const NavLinks: React.FC<{mobile?: boolean}> = ({ mobile = false}) => {
@@ -199,10 +212,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
                  {isNotificationsOpen && (
                     <NotificationsPanel 
                         notifications={notifications}
-                        onNotificationClick={(notification) => {
-                          onNotificationClick(notification);
-                          setIsNotificationsOpen(false);
-                        }}
+                        onNotificationClick={handleNotificationItemClick}
                         onMarkAllAsRead={handleMarkAllAsRead}
                         onClose={() => setIsNotificationsOpen(false)}
                     />

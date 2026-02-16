@@ -50,7 +50,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         type: 'all',
         severity: 'all'
     });
-    const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' } | null>({ key: 'deleted_at', direction: 'descending' });
+    const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' } | null>({ key: 'reported_at', direction: 'descending' });
 
     const [detailModalReport, setDetailModalReport] = useState<Report | null>(null);
     const [reportToRestore, setReportToRestore] = useState<Report | null>(null);
@@ -65,6 +65,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
 
             const usersQuery = supabase.from('profiles').select('*');
             const respondersQuery = supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER);
+            const terminalStatuses = [ReportStatus.RESOLVED, ReportStatus.REJECTED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.DELETED];
 
             if (profile.role !== UserRole.ADMIN && profile.company_id) {
                 usersQuery.eq('company_id', profile.company_id);
@@ -77,8 +78,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 { data: usersData, error: uError },
                 { data: respondersData, error: rError }
             ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*').eq('status', ReportStatus.DELETED),
-                supabase.from('crime_reports').select('*').eq('status', ReportStatus.DELETED),
+                supabase.from('vehicle_reports').select('*').in('status', terminalStatuses),
+                supabase.from('crime_reports').select('*').in('status', terminalStatuses),
                 usersQuery,
                 respondersQuery
             ]);
@@ -198,7 +199,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     return (
         <div className="container mx-auto">
              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Incident Archives</h2>
-             <p className="text-gray-500 dark:text-gray-400 mb-6">This section contains all deleted and archived incident reports for historical record-keeping.</p>
+             <p className="text-gray-500 dark:text-gray-400 mb-6">This section contains all resolved, recovered, closed, and deleted reports for historical record-keeping.</p>
              
              <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -232,8 +233,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                 <SortableHeader label="Severity" sortKey="severity" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Reported At" sortKey="reported_at" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Reported By" sortKey="reported_by_name" sortConfig={sortConfig} onSort={handleSort} />
-                                <SortableHeader label="Deleted At" sortKey="deleted_at" sortConfig={sortConfig} onSort={handleSort} />
-                                <SortableHeader label="Deleted By" sortKey="deleted_by_name" sortConfig={sortConfig} onSort={handleSort} />
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Final Status</th>
                                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -260,8 +260,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{format(new Date(report.reported_at), 'MMM d, yyyy HH:mm')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{report.reported_by_name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{report.deleted_at ? format(new Date(report.deleted_at), 'MMM d, yyyy HH:mm') : 'N/A'}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{report.deleted_by_name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize">{report.status.replace(/_/g, ' ')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex items-center justify-end space-x-4">
                                             <button onClick={() => setDetailModalReport(report)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">View</button>

@@ -55,7 +55,6 @@ const App: React.FC = () => {
       if (!isSchemaValid) return;
 
       // Fetch the initial session using the v2 API.
-      // @ts-ignore - FIX: Property 'getSession' does not exist on type 'SupabaseAuthClient'. Using older version syntax.
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setLoading(false);
@@ -64,7 +63,6 @@ const App: React.FC = () => {
     initializeApp();
   
     // Set up a listener for subsequent auth state changes (v2 syntax).
-    // @ts-ignore - FIX: Property 'onAuthStateChange' does not exist on type 'SupabaseAuthClient'. Using older version syntax.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setError(null); // Clear errors on auth state change
@@ -246,8 +244,8 @@ const App: React.FC = () => {
                   <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Application Error</h2>
                   <p className="mb-4">{error}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">This can happen due to network issues or incorrect database permissions (Row Level Security). Please check the console for more details.</p>
-                  {/* @ts-ignore - FIX: Property 'signOut' does not exist on type 'SupabaseAuthClient'. Bypassing with bracket notation. */}
-                  <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
+                  {/* FIX: Use direct .signOut() method call instead of bracket notation workaround. */}
+                  <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
                       Logout and Try Again
                   </button>
               </div>
@@ -278,8 +276,8 @@ const App: React.FC = () => {
                 <ClockIcon className="w-12 h-12 mx-auto text-yellow-500 mb-4" />
                 <h2 className="text-2xl font-bold mb-2 text-yellow-700 dark:text-yellow-300">Account Pending Approval</h2>
                 <p className="mb-4 text-gray-600 dark:text-gray-300">Thank you for registering and verifying your email. Your account is currently awaiting review by an administrator. You will be notified once it has been approved.</p>
-                {/* @ts-ignore */}
-                <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition-colors">
+                {/* FIX: Use direct .signOut() method call instead of bracket notation workaround. */}
+                <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition-colors">
                     Logout
                 </button>
             </div>
@@ -294,8 +292,8 @@ const App: React.FC = () => {
                 <AlertTriangleIcon className="w-12 h-12 mx-auto text-red-500 mb-4" />
                 <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Account Suspended</h2>
                 <p className="mb-4 text-gray-600 dark:text-gray-300">Your access to the system has been revoked. Please contact an administrator for assistance.</p>
-                {/* @ts-ignore */}
-                <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
+                {/* FIX: Use direct .signOut() method call instead of bracket notation workaround. */}
+                <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
                     Logout
                 </button>
             </div>

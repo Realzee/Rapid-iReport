@@ -130,7 +130,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             });
         };
 
-        const reportsChannel = supabase.channel('public:reports-dashboard')
+        const reportsChannel = supabase.channel('public:reports-dashboard', {
+            config: {
+                broadcast: {
+                    self: true, // Receive updates from the same client
+                },
+            },
+        })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
             .subscribe();
