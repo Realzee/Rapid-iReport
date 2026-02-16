@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Profile } from '../types';
 import { supabase } from '../utils/supabase';
-import { UserIcon, LockIcon, UploadCloudIcon } from './icons';
+import { UserIcon, LockIcon, UploadCloudIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
 import { useFormPersistence } from '../useFormPersistence';
 
