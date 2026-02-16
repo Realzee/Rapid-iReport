@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { Report, VehicleReport, Severity, Responder, Profile } from '../types';
 import { format } from 'date-fns';
 import StatusBadge from './StatusBadge';
-import { CameraIcon, UserIcon, ClockIcon, NavigationIcon } from './icons';
+import { CameraIcon, UserIcon, ClockIcon, NavigationIcon, ChevronUpIcon } from './icons';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -87,6 +87,40 @@ interface LiveEventStackProps {
 
 const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, allUsers, onReportSelect, selectedReportId }) => {
     
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [showUnreadIndicator, setShowUnreadIndicator] = useState(false);
+    const prevReportsLengthRef = useRef(reports.length);
+
+    useEffect(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        const isNewReportAdded = reports.length > prevReportsLengthRef.current;
+
+        if (isNewReportAdded) {
+            if (container.scrollTop > 50) {
+                setShowUnreadIndicator(true);
+            } else {
+                container.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+        
+        prevReportsLengthRef.current = reports.length;
+    }, [reports]);
+
+    const handleScroll = () => {
+        if (scrollContainerRef.current && scrollContainerRef.current.scrollTop < 50) {
+            setShowUnreadIndicator(false);
+        }
+    };
+
+    const scrollToTop = () => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+            setShowUnreadIndicator(false);
+        }
+    };
+    
     const responderMap = useMemo(() => {
         return new Map(responders.map(r => [r.id, `${r.first_name} ${r.surname}`]));
     }, [responders]);
@@ -96,7 +130,7 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, al
     }, [allUsers]);
 
     return (
-        <>
+        <div className="flex flex-col flex-grow min-h-0">
             <div className="flex-shrink-0 mb-4 flex justify-between items-center">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Live Event Stack</h2>
                 <div className="text-right">
@@ -105,19 +139,30 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, al
                 </div>
             </div>
 
-            <div className="space-y-2">
-                {reports.map(report => (
-                    <LiveEventItem
-                        key={report.id}
-                        report={report}
-                        isSelected={report.id === selectedReportId}
-                        onSelect={() => onReportSelect(report.id)}
-                        responderMap={responderMap}
-                        reporterName={userMap.get(report.reported_by) || 'Unknown User'}
-                    />
-                ))}
+            <div className="relative flex-grow min-h-0">
+                {showUnreadIndicator && (
+                    <button 
+                        onClick={scrollToTop}
+                        className="absolute top-2 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-blue-600 text-white font-semibold rounded-full shadow-lg text-sm flex items-center gap-1 animate-bounce"
+                    >
+                        <ChevronUpIcon className="w-4 h-4" />
+                        New Events
+                    </button>
+                )}
+                <div ref={scrollContainerRef} onScroll={handleScroll} className="space-y-2 overflow-y-auto h-full pr-2 -mr-2">
+                    {reports.map(report => (
+                        <LiveEventItem
+                            key={report.id}
+                            report={report}
+                            isSelected={report.id === selectedReportId}
+                            onSelect={() => onReportSelect(report.id)}
+                            responderMap={responderMap}
+                            reporterName={userMap.get(report.reported_by) || 'Unknown User'}
+                        />
+                    ))}
+                </div>
             </div>
-        </>
+        </div>
     );
 };
 
