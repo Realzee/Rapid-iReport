@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { Report, VehicleReport, Severity, Responder, Profile } from '../types';
+import { Report, VehicleReport, Severity, Responder, Profile, CrimeReport } from '../types';
 import { format } from 'date-fns';
 import StatusBadge from './StatusBadge';
 import { CameraIcon, UserIcon, ClockIcon, NavigationIcon, ChevronUpIcon } from './icons';
@@ -16,14 +16,22 @@ const severityTagStyles: Record<Severity, string> = {
 const LiveEventItem: React.FC<{
     report: Report;
     isSelected: boolean;
+    isPanic: boolean;
     onSelect: () => void;
     responderMap: Map<string, string>;
     reporterName: string;
-}> = ({ report, isSelected, onSelect, responderMap, reporterName }) => {
+}> = ({ report, isSelected, isPanic, onSelect, responderMap, reporterName }) => {
     const title = isVehicleReport(report) ? report.license_plate : report.title;
     
-    const borderClass = isSelected ? 'border-blue-500 ring-2 ring-blue-500/50' : 'border-gray-200 dark:border-gray-700/50';
-    const bgClass = isSelected ? 'bg-blue-500/10 dark:bg-gray-900/60' : 'bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60';
+    const borderClass = isSelected 
+        ? 'border-blue-500 ring-2 ring-blue-500/50' 
+        : (isPanic ? 'border-red-500' : 'border-gray-200 dark:border-gray-700/50');
+        
+    const bgClass = isSelected 
+        ? 'bg-blue-500/10 dark:bg-gray-900/60' 
+        : (isPanic ? 'bg-red-500/10' : 'bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60');
+        
+    const pulseClass = isPanic ? 'animate-pulse' : '';
 
     const hasImages = report.evidence_images && report.evidence_images.length > 0;
     const assignedResponderName = report.assigned_to ? responderMap.get(report.assigned_to) : null;
@@ -31,7 +39,7 @@ const LiveEventItem: React.FC<{
     return (
         <div
             onClick={onSelect}
-            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm ${borderClass} ${bgClass}`}
+            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm ${borderClass} ${bgClass} ${pulseClass}`}
         >
             <div className="flex justify-between items-center gap-2">
                 <div className="flex-1 min-w-0">
@@ -83,9 +91,10 @@ interface LiveEventStackProps {
     allUsers: Profile[];
     onReportSelect: (id: string) => void;
     selectedReportId: string | null;
+    newPanicReportId?: string | null;
 }
 
-const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, allUsers, onReportSelect, selectedReportId }) => {
+const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, allUsers, onReportSelect, selectedReportId, newPanicReportId }) => {
     
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [showUnreadIndicator, setShowUnreadIndicator] = useState(false);
@@ -155,6 +164,7 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, al
                             key={report.id}
                             report={report}
                             isSelected={report.id === selectedReportId}
+                            isPanic={report.id === newPanicReportId || (report as CrimeReport).crime_type === 'PUBLIC_PANIC_ASSIST'}
                             onSelect={() => onReportSelect(report.id)}
                             responderMap={responderMap}
                             reporterName={userMap.get(report.reported_by) || 'Unknown User'}

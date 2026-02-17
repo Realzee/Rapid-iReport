@@ -603,6 +603,57 @@ BEGIN
 END;
 $$;
 
+-- NEW: Function to create a public panic report. Callable by anonymous users.
+CREATE OR REPLACE FUNCTION public.create_public_panic_report(p_location text, p_coords jsonb)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+    public_user_id uuid := '00000000-0000-0000-0000-000000000001'; -- Fixed UUID for the "Public Reporter" system user
+    new_ob_number text;
+    report_company_id uuid;
+    company_initial char;
+    now_ts timestamptz := now();
+BEGIN
+    -- Get the company ID for the public user to generate the correct OB number sequence
+    SELECT company_id INTO report_company_id FROM public.profiles WHERE id = public_user_id;
+
+    -- Get company initial for OB number
+    IF report_company_id IS NOT NULL THEN
+        SELECT LEFT(name, 1) INTO company_initial FROM public.companies WHERE id = report_company_id;
+    ELSE
+        company_initial := 'P'; -- Default 'P' for Public/Unassigned
+    END IF;
+
+    -- Generate OB Number (e.g., P0001/01/2024)
+    new_ob_number := company_initial || 
+                     lpad((SELECT public.get_next_ob_sequence(report_company_id, now_ts::date))::text, 4, '0') ||
+                     '/' || to_char(now_ts, 'MM/YYYY');
+
+    -- Insert the new panic report into the crime_reports table
+    INSERT INTO public.crime_reports (
+        id, ob_number, title, crime_type, description, location, location_coords, 
+        severity, status, reported_by, reported_at
+    ) VALUES (
+        uuid_generate_v4(),
+        new_ob_number,
+        'PANIC ALERT',
+        'PUBLIC_PANIC_ASSIST',
+        'Public Panic Alert triggered via the community map at ' || to_char(now_ts, 'YYYY-MM-DD HH24:MI:SS') || '. User may be in distress.',
+        p_location,
+        p_coords,
+        'critical'::public.severity,
+        'active'::public.report_status,
+        public_user_id,
+        now_ts
+    );
+END;
+$$;
+-- Grant anonymous users permission to call the panic function
+GRANT EXECUTE ON FUNCTION public.create_public_panic_report(text, jsonb) TO anon;
+
+
 -- Trigger Function to create a profile and notification for new users (IDEMPOTENT & UPDATED for first_name/surname)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
@@ -911,6 +962,31 @@ CREATE POLICY "Allow public read access to announcements" ON public.announcement
 CREATE POLICY "Allow admins and moderators to manage announcements" ON public.announcements
   FOR ALL USING (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator')))
   WITH CHECK (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator')));
+
+-- NEW: Add the special "Public Reporter" user and profile to the database.
+-- This user is used as the `reported_by` for anonymous panic button alerts.
+INSERT INTO auth.users (id, aud, role, email, instance_id, raw_app_meta_data, raw_user_meta_data)
+SELECT
+    '00000000-0000-0000-0000-000000000001',
+    'authenticated',
+    'authenticated',
+    'public-reporter@rapid.ireport',
+    (SELECT id FROM auth.instances LIMIT 1),
+    '{"provider":"email","providers":["email"]}',
+    '{}'
+ON CONFLICT (id) DO NOTHING;
+
+-- The `handle_new_user` trigger does not run on direct inserts to auth.users, so we create the profile manually.
+INSERT INTO public.profiles (id, email, first_name, surname, role, status)
+SELECT
+    '00000000-0000-0000-0000-000000000001',
+    'public-reporter@rapid.ireport',
+    'Public',
+    'Reporter',
+    'user',
+    'active'
+ON CONFLICT (id) DO NOTHING;
+
 
 COMMIT;
 ```

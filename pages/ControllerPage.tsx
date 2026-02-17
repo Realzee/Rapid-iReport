@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Report, Profile, Responder, ResponderStatus, UserRole, Severity, ReportStatus } from '../types';
+import { Report, Profile, Responder, ResponderStatus, UserRole, Severity, ReportStatus, CrimeReport } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
 import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
@@ -31,36 +31,45 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
     const [isDetailsVisible, setIsDetailsVisible] = useState(true);
     const { openChat } = useChat();
+    const [newPanicReportId, setNewPanicReportId] = useState<string | null>(null);
 
     const isInitialLoad = useRef(true);
     const audioContextRef = useRef<AudioContext | null>(null);
+    const alertLoopRef = useRef<number | null>(null);
 
     useEffect(() => {
-        // Initialize AudioContext on mount. Browsers may require a user gesture to start it.
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }, []);
 
     const playAlertSound = () => {
         const context = audioContextRef.current;
         if (!context) return;
-        
-        // Resume context if it was suspended by browser policy
         if (context.state === 'suspended') {
             context.resume();
         }
 
         const oscillator = context.createOscillator();
         const gainNode = context.createGain();
-
         oscillator.connect(gainNode);
         gainNode.connect(context.destination);
-
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, context.currentTime); // A sharp A5 note
+        oscillator.frequency.setValueAtTime(880, context.currentTime);
         gainNode.gain.setValueAtTime(0.5, context.currentTime);
-
         oscillator.start(context.currentTime);
-        oscillator.stop(context.currentTime + 0.2); // Play for 200ms
+        oscillator.stop(context.currentTime + 0.2);
+    };
+
+    const startAlertLoop = () => {
+        if (alertLoopRef.current) return;
+        playAlertSound();
+        alertLoopRef.current = window.setInterval(playAlertSound, 1000);
+    };
+
+    const stopAlertLoop = () => {
+        if (alertLoopRef.current) {
+            clearInterval(alertLoopRef.current);
+            alertLoopRef.current = null;
+        }
     };
 
     useEffect(() => {
@@ -112,7 +121,11 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             const newReport = payload.new as Report;
 
             if (payload.eventType === 'INSERT' && !isInitialLoad.current) {
-                if (newReport.severity === Severity.CRITICAL || newReport.severity === Severity.HIGH) {
+                const crimeReport = newReport as CrimeReport;
+                if (crimeReport.crime_type === 'PUBLIC_PANIC_ASSIST') {
+                    setNewPanicReportId(crimeReport.id);
+                    startAlertLoop();
+                } else if (newReport.severity === Severity.CRITICAL || newReport.severity === Severity.HIGH) {
                     playAlertSound();
                 }
             }
@@ -170,7 +183,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         const reportsChannel = supabase.channel('controller-page-reports', {
             config: {
                 broadcast: {
-                    self: true, // Receive updates from the same client
+                    self: true, 
                 },
             },
         })
@@ -181,7 +194,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         const profilesChannel = supabase.channel('controller-page-profiles', {
             config: {
                 broadcast: {
-                    self: true, // Receive updates from the same client
+                    self: true, 
                 },
             },
         })
@@ -191,6 +204,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         return () => {
             supabase.removeChannel(reportsChannel);
             supabase.removeChannel(profilesChannel);
+            stopAlertLoop();
         };
     }, [profile]);
 
@@ -198,7 +212,6 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         const responderProfiles = allUsers.filter(p => p.role === UserRole.RESPONDER);
         const mappedResponders: Responder[] = responderProfiles.map(p => ({
             id: p.id,
-            // FIX: Property 'full_name' does not exist on type 'Profile'.
             first_name: p.first_name,
             surname: p.surname,
             status: p.responder_status || ResponderStatus.OFF_DUTY,
@@ -208,8 +221,13 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     }, [allUsers]);
     
     const sortedReports = useMemo(() => {
-        // FIX: Use spread operator `[...]` to create a new array for sorting, preventing state mutation.
-        return [...reports].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+        return [...reports].sort((a, b) => {
+            const aIsPanic = (a as CrimeReport).crime_type === 'PUBLIC_PANIC_ASSIST';
+            const bIsPanic = (b as CrimeReport).crime_type === 'PUBLIC_PANIC_ASSIST';
+            if (aIsPanic && !bIsPanic) return -1;
+            if (!aIsPanic && bIsPanic) return 1;
+            return new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime();
+        });
     }, [reports]);
 
     useEffect(() => {
@@ -219,16 +237,20 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         }
     }, [initialReportId, onInitialReportHandled, reports]);
     
-    // FIX: This effect now safely manages the selected report without mutating state, preventing an infinite loop.
     useEffect(() => {
-        if (loading) return; // Don't run on initial load
-        
-        // If a report is currently selected, but it has been removed from the list (e.g., resolved/deleted),
-        // then select the new latest report, or null if the list is empty.
+        if (loading) return;
         if (selectedReportId && !sortedReports.some(r => r.id === selectedReportId)) {
             setSelectedReportId(sortedReports.length > 0 ? sortedReports[0].id : null);
         }
     }, [sortedReports, selectedReportId, loading]);
+
+    const handleReportSelect = (id: string) => {
+        setSelectedReportId(prevId => prevId === id ? null : id);
+        if (id === newPanicReportId) {
+            setNewPanicReportId(null);
+            stopAlertLoop();
+        }
+    };
 
     const handleOpenNewReportModal = () => {
         setReportToEdit(null);
@@ -305,9 +327,10 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 <LiveEventStack
                                     reports={sortedReports}
                                     responders={responders}
-                                    onReportSelect={(id) => setSelectedReportId(prevId => prevId === id ? null : id)}
+                                    onReportSelect={handleReportSelect}
                                     selectedReportId={selectedReportId}
                                     allUsers={allUsers}
+                                    newPanicReportId={newPanicReportId}
                                 />
                             </>
                         ) : (
@@ -330,7 +353,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 responders={responders}
                                 selectedReportId={selectedReportId}
                                 profile={profile}
-                                onReportSelect={(id) => setSelectedReportId(prevId => prevId === id ? null : id)}
+                                onReportSelect={handleReportSelect}
                                 allUsers={allUsers}
                             />
                             <button

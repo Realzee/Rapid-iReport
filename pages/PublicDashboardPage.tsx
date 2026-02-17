@@ -187,7 +187,6 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
         if (cError) console.error("Public fetch error (crime):", cError.message);
         if (aError) console.error("Public fetch error (announcements):", aError.message);
 
-        // FIX: Replaced incorrect variable `cData` with `crimeData`.
         const combined = [...(vehicleData || []), ...(crimeData || [])]
             .sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
         
@@ -216,14 +215,30 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                 const { latitude, longitude } = position.coords;
                 const coords = { lat: latitude, lng: longitude };
                 
-                const { data: address, error: geocodeError } = await supabase.rpc('reverse_geocode', { lat: coords.lat, long: coords.lng });
+                let locationString = `Coordinates: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
+                let geocodeError = null;
 
-                if (geocodeError || !address) {
+                try {
+                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.display_name) {
+                            locationString = data.display_name;
+                        } else {
+                            geocodeError = "Could not find address for coordinates.";
+                        }
+                    } else {
+                        geocodeError = `Geocoding service returned status ${response.status}.`;
+                    }
+                } catch (e: any) {
+                    geocodeError = `Network error during geocoding: ${e.message}`;
+                }
+
+                if (geocodeError) {
                     console.error("Reverse geocode failed:", geocodeError);
                     alert("Could not determine your address. Alert will be sent with coordinates only.");
                 }
 
-                const locationString = address || `Coordinates: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
                 setUserLocation({ coords, address: locationString });
 
                 const { error: rpcError } = await supabase.rpc('create_public_panic_report', {
@@ -333,7 +348,10 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                                     key={report.id} 
                                     position={[report.location_coords.lat, report.location_coords.lng]} 
                                     icon={isVehicleReport(report) ? createVehicleIcon() : createCrimeIcon()}
-                                    onClick={() => handleSelectReport(report.id)}
+                                    // FIX: Changed 'onClick' to 'eventHandlers' to align with the react-leaflet API for event handling.
+                                    eventHandlers={{
+                                        click: () => handleSelectReport(report.id),
+                                    }}
                                 >
                                     <Popup>
                                         <div className="w-56">
