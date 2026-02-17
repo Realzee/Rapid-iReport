@@ -398,3 +398,12 @@ export const ChatAlt2Icon: React.FC<IconProps> = (props) => (
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
     </svg>
 );
+
+// FIX: Add missing ShieldAlertIcon for the panic button feature.
+export const ShieldAlertIcon: React.FC<IconProps> = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <path d="M12 8v4" />
+    <path d="M12 16h.01" />
+  </svg>
+);
