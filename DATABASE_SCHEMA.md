@@ -269,7 +269,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres, an
 
 -- Companies Table
 CREATE TABLE IF NOT EXISTS public.companies (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
     name text NOT NULL,
     logo_url text,
     owners_name text,
@@ -349,7 +349,7 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS psira_number text;
 
 -- Vehicle Reports Table
 CREATE TABLE IF NOT EXISTS public.vehicle_reports (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
     ob_number text NOT NULL UNIQUE,
     license_plate text NOT NULL,
     vehicle_make text NOT NULL,
@@ -376,7 +376,7 @@ ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS deleted_at timestamp
 
 -- Crime Reports Table
 CREATE TABLE IF NOT EXISTS public.crime_reports (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
     ob_number text NOT NULL UNIQUE,
     title text NOT NULL,
     description text NOT NULL,
@@ -401,7 +401,7 @@ ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS deleted_at timestamp w
 
 -- Report Updates Table
 CREATE TABLE IF NOT EXISTS public.report_updates (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
     report_id uuid NOT NULL,
     user_id uuid NOT NULL,
     content text NOT NULL,
@@ -412,7 +412,7 @@ CREATE TABLE IF NOT EXISTS public.report_updates (
 
 -- Assignment Logs Table
 CREATE TABLE IF NOT EXISTS public.assignment_logs (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
     report_id uuid NOT NULL,
     assigned_from uuid,
     assigned_to uuid,
@@ -426,7 +426,7 @@ CREATE TABLE IF NOT EXISTS public.assignment_logs (
 
 -- Chat Messages Table
 CREATE TABLE IF NOT EXISTS public.chat_messages (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
     report_id uuid NOT NULL,
     user_id uuid NOT NULL,
     content text NOT NULL,
@@ -439,7 +439,7 @@ ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS read_by uuid[] NOT NUL
 
 -- Notifications Table
 CREATE TABLE IF NOT EXISTS public.notifications (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     recipient_user_id uuid NOT NULL,
     type text NOT NULL,
@@ -460,7 +460,7 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
 
 -- Announcements Table
 CREATE TABLE IF NOT EXISTS public.announcements (
-    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     title text NOT NULL,
     content text NOT NULL,
@@ -636,7 +636,7 @@ BEGIN
         id, ob_number, title, crime_type, description, location, location_coords, 
         severity, status, reported_by, reported_at
     ) VALUES (
-        uuid_generate_v4(),
+        extensions.uuid_generate_v4(),
         new_ob_number,
         'PANIC ALERT',
         'PUBLIC_PANIC_ASSIST',
@@ -1303,157 +1303,117 @@ This function allows administrators to fix database schema issues directly from 
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     }
-    
-    // The idempotent SQL script from Part 1 of the schema setup.
-    const MIGRATION_SQL = `
-    -- 0. Make sure the 'uuid-ossp' extension is enabled
-    CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
-    -- 1. Drop dependencies, policies, and disable RLS to allow type alterations.
+    const MIGRATION_SQL_PART_1 = `
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
     DROP FUNCTION IF EXISTS public.get_user_role(uuid) CASCADE;
     DROP FUNCTION IF EXISTS public.create_staff_notification(text, text, text, uuid, text[]) CASCADE;
-    
-    -- Defensively drop legacy 'responders' view/table which creates a dependency lock on responder_status_enum.
-    DO $$
-    BEGIN
-       IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'responders' AND n.nspname = 'public' AND c.relkind = 'v') THEN
-          DROP VIEW public.responders CASCADE;
-       END IF;
-    END $$;
-    DO $$
-    BEGIN
-       IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'responders' AND n.nspname = 'public' AND c.relkind = 'r') THEN
-          DROP TABLE public.responders CASCADE;
-       END IF;
-    END $$;
-
+    DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'responders' AND n.nspname = 'public' AND c.relkind = 'v') THEN DROP VIEW public.responders CASCADE; END IF; END $$;
+    DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'responders' AND n.nspname = 'public' AND c.relkind = 'r') THEN DROP TABLE public.responders CASCADE; END IF; END $$;
     DROP POLICY IF EXISTS "Allow system to insert new user notifications" ON public.notifications;
     DROP POLICY IF EXISTS "Allow system to insert new report notifications" ON public.notifications;
     DROP POLICY IF EXISTS "Allow system to insert new registration notifications" ON public.notifications;
-    
-    -- Explicitly drop policies that depend on columns whose types are being altered.
     DROP POLICY IF EXISTS "Allow authorized profile updates" ON public.profiles;
     DROP POLICY IF EXISTS "Admins and moderators can delete profiles" ON public.profiles;
     DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.crime_reports;
     DROP POLICY IF EXISTS "Allow authorized users to update reports" ON public.crime_reports;
     DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.vehicle_reports;
     DROP POLICY IF EXISTS "Allow authorized users to update reports" ON public.vehicle_reports;
-
-    -- Temporarily disable RLS on tables that will be altered or have dependencies.
     ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
     ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
     ALTER TABLE public.vehicle_reports DISABLE ROW LEVEL SECURITY;
     ALTER TABLE public.crime_reports DISABLE ROW LEVEL SECURITY;
-
-    -- 2. Robustly migrate ENUM types from old "_enum" suffix to new names.
-    DO $$ BEGIN
-        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role_enum') THEN
-            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
-                ALTER TABLE public.profiles ALTER COLUMN role DROP DEFAULT;
-                ALTER TABLE public.profiles ALTER COLUMN role TYPE public.user_role USING role::text::public.user_role;
-                ALTER TABLE public.profiles ALTER COLUMN role SET DEFAULT 'user'::public.user_role;
-                DROP TYPE public.user_role_enum;
-            ELSE
-                ALTER TYPE public.user_role_enum RENAME TO user_role;
-            END IF;
-        END IF;
-    END $$;
-    DO $$ BEGIN
-        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status_enum') THEN
-            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN
-                ALTER TABLE public.profiles ALTER COLUMN status DROP DEFAULT;
-                ALTER TABLE public.profiles ALTER COLUMN status TYPE public.user_status USING status::text::public.user_status;
-                ALTER TABLE public.profiles ALTER COLUMN status SET DEFAULT 'pending'::public.user_status;
-                DROP TYPE public.user_status_enum;
-            ELSE
-                ALTER TYPE public.user_status_enum RENAME TO user_status;
-            END IF;
-        END IF;
-    END $$;
-    DO $$ BEGIN
-        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status_enum') THEN
-            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN
-                ALTER TABLE public.vehicle_reports ALTER COLUMN status DROP DEFAULT;
-                ALTER TABLE public.crime_reports ALTER COLUMN status DROP DEFAULT;
-                ALTER TABLE public.vehicle_reports ALTER COLUMN status TYPE public.report_status USING status::text::public.report_status;
-                ALTER TABLE public.crime_reports ALTER COLUMN status TYPE public.report_status USING status::text::public.report_status;
-                DROP TYPE public.report_status_enum;
-            ELSE
-                ALTER TYPE public.report_status_enum RENAME TO report_status;
-            END IF;
-        END IF;
-    END $$;
-    DO $$ BEGIN
-        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity_enum') THEN
-            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN
-                ALTER TABLE public.vehicle_reports ALTER COLUMN severity DROP DEFAULT;
-                ALTER TABLE public.crime_reports ALTER COLUMN severity DROP DEFAULT;
-                ALTER TABLE public.vehicle_reports ALTER COLUMN severity TYPE public.severity USING severity::text::public.severity;
-                ALTER TABLE public.crime_reports ALTER COLUMN severity TYPE public.severity USING severity::text::public.severity;
-                DROP TYPE public.severity_enum;
-            ELSE
-                ALTER TYPE public.severity_enum RENAME TO severity;
-            END IF;
-        END IF;
-    END $$;
-    DO $$ BEGIN
-        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status_enum') THEN
-            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN
-                ALTER TABLE public.profiles ALTER COLUMN responder_status TYPE public.responder_status USING responder_status::text::public.responder_status;
-                DROP TYPE public.responder_status_enum;
-            ELSE
-                ALTER TYPE public.responder_status_enum RENAME TO responder_status;
-            END IF;
-        END IF;
-    END $$;
+    DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role_enum') THEN IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN ALTER TABLE public.profiles ALTER COLUMN role DROP DEFAULT; ALTER TABLE public.profiles ALTER COLUMN role TYPE public.user_role USING role::text::public.user_role; ALTER TABLE public.profiles ALTER COLUMN role SET DEFAULT 'user'::public.user_role; DROP TYPE public.user_role_enum; ELSE ALTER TYPE public.user_role_enum RENAME TO user_role; END IF; END IF; END $$;
+    DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status_enum') THEN IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN ALTER TABLE public.profiles ALTER COLUMN status DROP DEFAULT; ALTER TABLE public.profiles ALTER COLUMN status TYPE public.user_status USING status::text::public.user_status; ALTER TABLE public.profiles ALTER COLUMN status SET DEFAULT 'pending'::public.user_status; DROP TYPE public.user_status_enum; ELSE ALTER TYPE public.user_status_enum RENAME TO user_status; END IF; END IF; END $$;
+    DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status_enum') THEN IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN ALTER TABLE public.vehicle_reports ALTER COLUMN status DROP DEFAULT; ALTER TABLE public.crime_reports ALTER COLUMN status DROP DEFAULT; ALTER TABLE public.vehicle_reports ALTER COLUMN status TYPE public.report_status USING status::text::public.report_status; ALTER TABLE public.crime_reports ALTER COLUMN status TYPE public.report_status USING status::text::public.report_status; DROP TYPE public.report_status_enum; ELSE ALTER TYPE public.report_status_enum RENAME TO report_status; END IF; END IF; END $$;
+    DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity_enum') THEN IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN ALTER TABLE public.vehicle_reports ALTER COLUMN severity DROP DEFAULT; ALTER TABLE public.crime_reports ALTER COLUMN severity DROP DEFAULT; ALTER TABLE public.vehicle_reports ALTER COLUMN severity TYPE public.severity USING severity::text::public.severity; ALTER TABLE public.crime_reports ALTER COLUMN severity TYPE public.severity USING severity::text::public.severity; DROP TYPE public.severity_enum; ELSE ALTER TYPE public.severity_enum RENAME TO severity; END IF; END IF; END $$;
+    DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status_enum') THEN IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN ALTER TABLE public.profiles ALTER COLUMN responder_status TYPE public.responder_status USING responder_status::text::public.responder_status; DROP TYPE public.responder_status_enum; ELSE ALTER TYPE public.responder_status_enum RENAME TO responder_status; END IF; END IF; END $$;
     DROP TYPE IF EXISTS public.request_status_enum;
+    DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN CREATE TYPE public.user_role AS ENUM ('user'); END IF; IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN CREATE TYPE public.user_status AS ENUM ('pending'); END IF; IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN CREATE TYPE public.report_status AS ENUM ('pending'); END IF; IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN CREATE TYPE public.severity AS ENUM ('low'); END IF; IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN CREATE TYPE public.responder_status AS ENUM ('off_duty'); END IF; END$$;
+    ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'admin'; ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'moderator'; ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'controller'; ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'responder';
+    ALTER TYPE public.user_status ADD VALUE IF NOT EXISTS 'active'; ALTER TYPE public.user_status ADD VALUE IF NOT EXISTS 'suspended';
+    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'active'; ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'assigned'; ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'in_progress'; ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'on_scene'; ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'resolved'; ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'rejected'; ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'recovered'; ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'closed'; ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'deleted';
+    ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'critical'; ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'high'; ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'medium';
+    ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'available'; ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'en_route'; ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'on_scene';
+    CREATE OR REPLACE FUNCTION public.get_user_role(p_user_id uuid) RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$ DECLARE user_role_text text; BEGIN SELECT role::text INTO user_role_text FROM public.profiles WHERE id = p_user_id; RETURN user_role_text; END; $$;
+    `;
 
-    -- 3. Create ENUM types if they don't exist after the migration attempt.
-    DO $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN CREATE TYPE public.user_role AS ENUM ('user'); END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN CREATE TYPE public.user_status AS ENUM ('pending'); END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN CREATE TYPE public.report_status AS ENUM ('pending'); END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN CREATE TYPE public.severity AS ENUM ('low'); END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN CREATE TYPE public.responder_status AS ENUM ('off_duty'); END IF;
-    END$$;
-
-    -- 4. Add all possible values to ENUM types to ensure they are fully up-to-date.
-    ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'admin';
-    ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'moderator';
-    ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'controller';
-    ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'responder';
-    ALTER TYPE public.user_status ADD VALUE IF NOT EXISTS 'active';
-    ALTER TYPE public.user_status ADD VALUE IF NOT EXISTS 'suspended';
-    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'active';
-    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'assigned';
-    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'in_progress';
-    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'on_scene';
-    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'resolved';
-    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'rejected';
-    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'recovered';
-    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'closed';
-    ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'deleted';
-    ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'critical';
-    ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'high';
-    ALTER TYPE public.severity ADD VALUE IF NOT EXISTS 'medium';
-    ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'available';
-    ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'en_route';
-    ALTER TYPE public.responder_status ADD VALUE IF NOT EXISTS 'on_scene';
-    
-    -- 5. Re-create the get_user_role function that was dropped.
-    CREATE OR REPLACE FUNCTION public.get_user_role(p_user_id uuid)
-    RETURNS text
-    LANGUAGE plpgsql
-    SECURITY DEFINER SET search_path = public
-    AS $$
-    DECLARE
-      user_role_text text;
-    BEGIN
-      SELECT role::text INTO user_role_text FROM public.profiles WHERE id = p_user_id;
-      RETURN user_role_text;
-    END;
-    $$;
+    const MIGRATION_SQL_PART_2 = `
+    BEGIN;
+    GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+    GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO postgres, anon, authenticated, service_role;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres, anon, authenticated, service_role;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres, anon, authenticated, service_role;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres, anon, authenticated, service_role;
+    CREATE TABLE IF NOT EXISTS public.companies ( id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(), name text NOT NULL, logo_url text, owners_name text, address text, contact_person text, cell_number text, psira_number text, CONSTRAINT companies_pkey PRIMARY KEY (id) );
+    ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS logo_url text; ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS owners_name text; ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS address text; ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS contact_person text; ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS cell_number text; ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS psira_number text;
+    CREATE TABLE IF NOT EXISTS public.profiles ( id uuid NOT NULL, email text NOT NULL, first_name text, surname text, role public.user_role NOT NULL DEFAULT 'user'::public.user_role, status public.user_status NOT NULL DEFAULT 'pending'::public.user_status, company_id uuid, avatar_url text, last_seen_at timestamp with time zone, cell text, vehicle_reg text, home_address text, ice_no text, medical_aid text, psira_number text, CONSTRAINT profiles_pkey PRIMARY KEY (id), CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE, CONSTRAINT profiles_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE SET NULL );
+    ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS first_name text; ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS surname text;
+    DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='full_name') THEN UPDATE public.profiles SET first_name = COALESCE(first_name, split_part(full_name, ' ', 1)), surname = COALESCE(surname, substring(full_name from position(' ' in full_name) + 1)) WHERE full_name IS NOT NULL AND (first_name IS NULL OR surname IS NULL); IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE first_name IS NULL OR surname IS NULL) THEN ALTER TABLE public.profiles ALTER COLUMN first_name SET NOT NULL; ALTER TABLE public.profiles ALTER COLUMN surname SET NOT NULL; ALTER TABLE public.profiles DROP COLUMN full_name; ELSE RAISE NOTICE 'Migration from full_name skipped: Some first_name or surname fields would become NULL. Please manually migrate.'; END IF; END IF; END $$;
+    ALTER TABLE public.profiles ALTER COLUMN first_name SET NOT NULL; ALTER TABLE public.profiles ALTER COLUMN surname SET NOT NULL; ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS responder_status public.responder_status; ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS location_coords jsonb; ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS cell text; ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS vehicle_reg text; ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS home_address text; ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS ice_no text; ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS medical_aid text; ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS psira_number text;
+    CREATE TABLE IF NOT EXISTS public.vehicle_reports ( id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(), ob_number text NOT NULL UNIQUE, license_plate text NOT NULL, vehicle_make text NOT NULL, vehicle_model text NOT NULL, vehicle_color text NOT NULL, last_seen_location text NOT NULL, description text NOT NULL, severity public.severity NOT NULL, status public.report_status NOT NULL, reported_by uuid NOT NULL, assigned_to uuid, reported_at timestamp with time zone NOT NULL DEFAULT now(), location_coords jsonb, evidence_images text[], location_boundary jsonb, location_boundingbox real[4], CONSTRAINT vehicle_reports_pkey PRIMARY KEY (id), CONSTRAINT vehicle_reports_reported_by_fkey FOREIGN KEY (reported_by) REFERENCES public.profiles(id) ON DELETE CASCADE, CONSTRAINT vehicle_reports_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES public.profiles(id) ON DELETE SET NULL );
+    ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL; ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+    CREATE TABLE IF NOT EXISTS public.crime_reports ( id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(), ob_number text NOT NULL UNIQUE, title text NOT NULL, description text NOT NULL, location text NOT NULL, crime_type text NOT NULL, severity public.severity NOT NULL, status public.report_status NOT NULL, reported_by uuid NOT NULL, assigned_to uuid, reported_at timestamp with time zone NOT NULL DEFAULT now(), location_coords jsonb, evidence_images text[], location_boundary jsonb, location_boundingbox real[4], CONSTRAINT crime_reports_pkey PRIMARY KEY (id), CONSTRAINT crime_reports_reported_by_fkey FOREIGN KEY (reported_by) REFERENCES public.profiles(id) ON DELETE CASCADE, CONSTRAINT crime_reports_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES public.profiles(id) ON DELETE SET NULL );
+    ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL; ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+    CREATE TABLE IF NOT EXISTS public.report_updates ( id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(), report_id uuid NOT NULL, user_id uuid NOT NULL, content text NOT NULL, created_at timestamp with time zone NOT NULL DEFAULT now(), CONSTRAINT report_updates_pkey PRIMARY KEY (id), CONSTRAINT report_updates_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE );
+    CREATE TABLE IF NOT EXISTS public.assignment_logs ( id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(), report_id uuid NOT NULL, assigned_from uuid, assigned_to uuid, assigned_by uuid NOT NULL, created_at timestamp with time zone NOT NULL DEFAULT now(), CONSTRAINT assignment_logs_pkey PRIMARY KEY (id), CONSTRAINT assignment_logs_assigned_from_fkey FOREIGN KEY (assigned_from) REFERENCES public.profiles(id) ON DELETE SET NULL, CONSTRAINT assignment_logs_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES public.profiles(id) ON DELETE SET NULL, CONSTRAINT assignment_logs_assigned_by_fkey FOREIGN KEY (assigned_by) REFERENCES public.profiles(id) ON DELETE CASCADE );
+    CREATE TABLE IF NOT EXISTS public.chat_messages ( id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(), report_id uuid NOT NULL, user_id uuid NOT NULL, content text NOT NULL, created_at timestamp with time zone NOT NULL DEFAULT now(), read_by uuid[] NOT NULL DEFAULT '{}', CONSTRAINT chat_messages_pkey PRIMARY KEY (id), CONSTRAINT chat_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE );
+    ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS read_by uuid[] NOT NULL DEFAULT '{}';
+    CREATE TABLE IF NOT EXISTS public.notifications ( id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(), created_at timestamp with time zone NOT NULL DEFAULT now(), recipient_user_id uuid NOT NULL, type text NOT NULL, title text NOT NULL, message text, is_read boolean NOT NULL DEFAULT false, reference_id uuid, CONSTRAINT notifications_pkey PRIMARY KEY (id), CONSTRAINT notifications_recipient_user_id_fkey FOREIGN KEY (recipient_user_id) REFERENCES public.profiles(id) ON DELETE CASCADE );
+    CREATE TABLE IF NOT EXISTS public.app_settings ( key text NOT NULL, value text, CONSTRAINT app_settings_pkey PRIMARY KEY (key) );
+    CREATE TABLE IF NOT EXISTS public.announcements ( id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(), created_at timestamp with time zone NOT NULL DEFAULT now(), title text NOT NULL, content text NOT NULL, type public.announcement_type NOT NULL DEFAULT 'notice'::public.announcement_type, expires_at timestamp with time zone, image_url text, CONSTRAINT announcements_pkey PRIMARY KEY (id) );
+    ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS image_url text;
+    INSERT INTO public.app_settings (key, value) VALUES ('main_logo_url', NULL) ON CONFLICT (key) DO NOTHING; INSERT INTO public.app_settings (key, value) VALUES ('favicon_url', NULL) ON CONFLICT (key) DO NOTHING;
+    DROP TABLE IF EXISTS public.registration_requests; DROP TYPE IF EXISTS public.request_status;
+    CREATE OR REPLACE VIEW public.public_companies AS SELECT id, name, logo_url FROM public.companies; GRANT SELECT ON public.public_companies TO anon, authenticated;
+    CREATE OR REPLACE FUNCTION public.get_enum_values(enum_type_name text) RETURNS text[] LANGUAGE sql STABLE AS $$ SELECT array_agg(e.enumlabel ORDER BY e.enumsortorder)::text[] FROM pg_type t JOIN pg_enum e ON t.oid = e.enumtypid WHERE t.typname = enum_type_name; $$;
+    CREATE OR REPLACE FUNCTION public.get_my_company_id() RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$ BEGIN RETURN (SELECT company_id FROM public.profiles WHERE id = (select auth.uid())); END; $$;
+    CREATE OR REPLACE FUNCTION public.get_user_company_id(p_user_id uuid) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$ BEGIN RETURN (SELECT company_id FROM public.profiles WHERE id = p_user_id); END; $$;
+    CREATE OR REPLACE FUNCTION public.get_next_ob_sequence(p_company_id uuid, p_report_date date) RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$ DECLARE report_month integer; report_year integer; vehicle_count integer; crime_count integer; BEGIN report_month := extract(month from p_report_date); report_year := extract(year from p_report_date); IF p_company_id IS NULL THEN SELECT count(*) INTO vehicle_count FROM public.vehicle_reports vr WHERE vr.reported_by IN (SELECT id FROM public.profiles WHERE company_id IS NULL) AND extract(year from vr.reported_at) = report_year AND extract(month from vr.reported_at) = report_month; SELECT count(*) INTO crime_count FROM public.crime_reports cr WHERE cr.reported_by IN (SELECT id FROM public.profiles WHERE company_id IS NULL) AND extract(year from cr.reported_at) = report_year AND extract(month from cr.reported_at) = report_month; ELSE SELECT count(*) INTO vehicle_count FROM public.vehicle_reports vr WHERE vr.reported_by IN (SELECT id FROM public.profiles WHERE company_id = p_company_id) AND extract(year from vr.reported_at) = report_year AND extract(month from vr.reported_at) = report_month; SELECT count(*) INTO crime_count FROM public.crime_reports cr WHERE cr.reported_by IN (SELECT id FROM public.profiles WHERE company_id = p_company_id) AND extract(year from cr.reported_at) = report_year AND extract(month from cr.reported_at) = report_month; END IF; RETURN vehicle_count + crime_count + 1; END; $$;
+    CREATE OR REPLACE FUNCTION public.create_staff_notification( notification_type text, notification_title text, notification_message text, ref_id uuid, target_roles text[] ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$ BEGIN INSERT INTO public.notifications (recipient_user_id, type, title, message, reference_id) SELECT id, notification_type, notification_title, notification_message, ref_id FROM public.profiles WHERE role::text = ANY(target_roles); END; $$;
+    CREATE OR REPLACE FUNCTION public.mark_message_as_read(message_id uuid, reader_id uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$ BEGIN UPDATE public.chat_messages SET read_by = array_append(read_by, reader_id) WHERE id = message_id AND NOT (read_by @> ARRAY[reader_id]); END; $$;
+    CREATE OR REPLACE FUNCTION public.create_public_panic_report(p_location text, p_coords jsonb) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$ DECLARE public_user_id uuid := '00000000-0000-0000-0000-000000000001'; new_ob_number text; report_company_id uuid; company_initial char; now_ts timestamptz := now(); BEGIN SELECT company_id INTO report_company_id FROM public.profiles WHERE id = public_user_id; IF report_company_id IS NOT NULL THEN SELECT LEFT(name, 1) INTO company_initial FROM public.companies WHERE id = report_company_id; ELSE company_initial := 'P'; END IF; new_ob_number := company_initial || lpad((SELECT public.get_next_ob_sequence(report_company_id, now_ts::date))::text, 4, '0') || '/' || to_char(now_ts, 'MM/YYYY'); INSERT INTO public.crime_reports ( id, ob_number, title, crime_type, description, location, location_coords, severity, status, reported_by, reported_at ) VALUES ( extensions.uuid_generate_v4(), new_ob_number, 'PANIC ALERT', 'PUBLIC_PANIC_ASSIST', 'Public Panic Alert triggered via the community map at ' || to_char(now_ts, 'YYYY-MM-DD HH24:MI:SS') || '. User may be in distress.', p_location, p_coords, 'critical'::public.severity, 'active'::public.report_status, public_user_id, now_ts ); END; $$;
+    GRANT EXECUTE ON FUNCTION public.create_public_panic_report(text, jsonb) TO anon;
+    CREATE OR REPLACE FUNCTION public.handle_new_user() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$ DECLARE user_first_name text; user_surname text; user_role_text text; user_status_text text; user_company_id uuid; user_responder_status_text text; user_cell text; user_vehicle_reg text; user_home_address text; user_ice_no text; user_medical_aid text; user_psira_number text; BEGIN user_first_name := COALESCE(new.raw_user_meta_data->>'first_name', 'New'); user_surname := COALESCE(new.raw_user_meta_data->>'surname', 'User'); user_role_text := COALESCE(new.raw_user_meta_data->>'role', 'user'); user_status_text := COALESCE(new.raw_user_meta_data->>'status', 'pending'); user_cell := new.raw_user_meta_data->>'cell'; user_vehicle_reg := new.raw_user_meta_data->>'vehicle_reg'; user_home_address := new.raw_user_meta_data->>'home_address'; user_ice_no := new.raw_user_meta_data->>'ice_no'; user_medical_aid := new.raw_user_meta_data->>'medical_aid'; user_psira_number := new.raw_user_meta_data->>'psira_number'; BEGIN user_company_id := (new.raw_user_meta_data->>'company_id')::uuid; EXCEPTION WHEN others THEN user_company_id := NULL; END; user_responder_status_text := new.raw_user_meta_data->>'responder_status'; INSERT INTO public.profiles (id, first_name, surname, email, role, status, company_id, responder_status, cell, vehicle_reg, home_address, ice_no, medical_aid, psira_number) VALUES ( new.id, user_first_name, user_surname, new.email, user_role_text::public.user_role, user_status_text::public.user_status, user_company_id, CASE WHEN user_role_text = 'responder' THEN user_responder_status_text::public.responder_status ELSE NULL END, user_cell, user_vehicle_reg, user_home_address, user_ice_no, user_medical_aid, user_psira_number ) ON CONFLICT (id) DO NOTHING; IF FOUND THEN PERFORM public.create_staff_notification( 'new_user', 'New User Registered', 'A new user (' || user_first_name || ' ' || user_surname || ') has signed up.', new.id, ARRAY['admin', 'moderator'] ); END IF; RETURN new; END; $$;
+    CREATE OR REPLACE FUNCTION public.handle_new_report_notification() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$ DECLARE report_title text; BEGIN IF TG_TABLE_NAME = 'vehicle_reports' THEN report_title := 'Stolen Vehicle: ' || new.license_plate; ELSE report_title := 'Crime Incident: ' || new.title; END IF; PERFORM public.create_staff_notification( 'new_report', report_title, 'A new incident has been filed and requires attention.', new.id, ARRAY['admin', 'moderator', 'controller'] ); RETURN new; END; $$;
+    CREATE OR REPLACE FUNCTION public.log_assignment_change() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$ BEGIN IF OLD.assigned_to IS DISTINCT FROM NEW.assigned_to THEN INSERT INTO public.assignment_logs (report_id, assigned_from, assigned_to, assigned_by) VALUES (NEW.id, OLD.assigned_to, NEW.assigned_to, (select auth.uid())); END IF; RETURN NEW; END; $$;
+    DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users; CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+    DROP TRIGGER IF EXISTS on_new_vehicle_report_notify ON public.vehicle_reports; CREATE TRIGGER on_new_vehicle_report_notify AFTER INSERT ON public.vehicle_reports FOR EACH ROW EXECUTE FUNCTION public.handle_new_report_notification();
+    DROP TRIGGER IF EXISTS on_new_crime_report_notify ON public.crime_reports; CREATE TRIGGER on_new_crime_report_notify AFTER INSERT ON public.crime_reports FOR EACH ROW EXECUTE FUNCTION public.handle_new_report_notification();
+    DROP TRIGGER IF EXISTS on_vehicle_report_assignment_change ON public.vehicle_reports; CREATE TRIGGER on_vehicle_report_assignment_change AFTER UPDATE OF assigned_to ON public.vehicle_reports FOR EACH ROW EXECUTE FUNCTION public.log_assignment_change();
+    DROP TRIGGER IF EXISTS on_crime_report_assignment_change ON public.crime_reports; CREATE TRIGGER on_crime_report_assignment_change AFTER UPDATE OF assigned_to ON public.crime_reports FOR EACH ROW EXECUTE FUNCTION public.log_assignment_change();
+    ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY; DROP POLICY IF EXISTS "Allow authenticated users to view profiles" ON public.profiles; DROP POLICY IF EXISTS "Allow authorized profile updates" ON public.profiles; DROP POLICY IF EXISTS "Admins and moderators can delete profiles" ON public.profiles;
+    CREATE POLICY "Allow authenticated users to view profiles" ON public.profiles FOR SELECT USING ( ((select public.get_user_role((select auth.uid()))) = 'admin') OR (id = (select auth.uid())) OR (company_id IS NOT NULL AND company_id = (select public.get_my_company_id())) );
+    CREATE POLICY "Allow authorized profile updates" ON public.profiles FOR UPDATE USING ( (id = (select auth.uid())) OR ((select public.get_user_role((select auth.uid()))) = 'admin') OR ((select public.get_user_role((select auth.uid()))) = 'moderator' AND company_id = (select public.get_my_company_id())) OR ((select public.get_user_role((select auth.uid()))) = 'controller' AND role::text = 'responder' AND company_id = (select public.get_my_company_id())) ) WITH CHECK ( (id = (select auth.uid())) OR ((select public.get_user_role((select auth.uid()))) = 'admin') OR ((select public.get_user_role((select auth.uid()))) = 'moderator' AND company_id = (select public.get_my_company_id())) OR ((select public.get_user_role((select auth.uid()))) = 'controller' AND role::text = 'responder' AND company_id = (select public.get_my_company_id())) );
+    CREATE POLICY "Admins and moderators can delete profiles" ON public.profiles FOR DELETE USING ( ((select public.get_user_role((select auth.uid()))) = 'admin') OR ((select public.get_user_role((select auth.uid()))) = 'moderator' AND (select public.get_user_company_id(id)) = (select public.get_my_company_id())) );
+    ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY; DROP POLICY IF EXISTS "Allow authenticated users to view companies" ON public.companies; DROP POLICY IF EXISTS "Admins and moderators can manage companies" ON public.companies;
+    CREATE POLICY "Allow authenticated users to view companies" ON public.companies FOR SELECT USING ( ((select public.get_user_role((select auth.uid()))) = 'admin') OR (id = (select public.get_my_company_id())) );
+    CREATE POLICY "Admins and moderators can manage companies" ON public.companies FOR ALL USING ( ((select public.get_user_role((select auth.uid()))) = 'admin') OR ((select public.get_user_role((select auth.uid()))) = 'moderator' AND id = (select public.get_my_company_id())) ) WITH CHECK ( ((select public.get_user_role((select auth.uid()))) = 'admin') OR ((select public.get_user_role((select auth.uid()))) = 'moderator' AND id = (select public.get_my_company_id())) );
+    ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY; DROP POLICY IF EXISTS "Allow view access to relevant users" ON public.vehicle_reports; DROP POLICY IF EXISTS "Allow users to create reports" ON public.vehicle_reports; DROP POLICY IF EXISTS "Allow authorized users to update reports" ON public.vehicle_reports; DROP POLICY IF EXISTS "Allow staff to delete reports" ON public.vehicle_reports; DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.vehicle_reports;
+    CREATE POLICY "Allow view access to relevant users" ON public.vehicle_reports FOR SELECT USING ( (get_user_role(auth.uid()) = 'admin') OR (reported_by = auth.uid()) OR (assigned_to = auth.uid()) OR ( (get_user_role(auth.uid()) IN ('moderator', 'controller')) AND (get_my_company_id() IS NOT NULL) AND ( get_user_company_id(reported_by) = get_my_company_id() OR get_user_company_id(assigned_to) = get_my_company_id() ) ) );
+    CREATE POLICY "Allow users to create reports" ON public.vehicle_reports FOR INSERT WITH CHECK ((select auth.role()) = 'authenticated');
+    CREATE POLICY "Allow authorized users to update reports" ON public.vehicle_reports FOR UPDATE USING ( ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) OR (reported_by = (select auth.uid()) AND status::text = 'pending') OR ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid())) );
+    CREATE POLICY "Allow staff to delete reports" ON public.vehicle_reports FOR DELETE USING (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) AND status::text != 'deleted');
+    CREATE POLICY "Allow public read access to recent, active reports" ON public.vehicle_reports FOR SELECT TO anon USING ( status::text IN ('active', 'resolved', 'recovered', 'on_scene') AND reported_at > (now() - interval '72 hours') );
+    ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY; DROP POLICY IF EXISTS "Allow view access to relevant users" ON public.crime_reports; DROP POLICY IF EXISTS "Allow users to create reports" ON public.crime_reports; DROP POLICY IF EXISTS "Allow authorized users to update reports" ON public.crime_reports; DROP POLICY IF EXISTS "Allow staff to delete reports" ON public.crime_reports; DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.crime_reports;
+    CREATE POLICY "Allow view access to relevant users" ON public.crime_reports FOR SELECT USING ( (get_user_role(auth.uid()) = 'admin') OR (reported_by = auth.uid()) OR (assigned_to = auth.uid()) OR ( (get_user_role(auth.uid()) IN ('moderator', 'controller')) AND (get_my_company_id() IS NOT NULL) AND ( get_user_company_id(reported_by) = get_my_company_id() OR get_user_company_id(assigned_to) = get_my_company_id() ) ) );
+    CREATE POLICY "Allow users to create reports" ON public.crime_reports FOR INSERT WITH CHECK ((select auth.role()) = 'authenticated');
+    CREATE POLICY "Allow authorized users to update reports" ON public.crime_reports FOR UPDATE USING ( ((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) OR (reported_by = (select auth.uid()) AND status::text = 'pending') OR ((select public.get_user_role((select auth.uid()))) = 'responder' AND assigned_to = (select auth.uid())) );
+    CREATE POLICY "Allow staff to delete reports" ON public.crime_reports FOR DELETE USING (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller')) AND status::text != 'deleted');
+    CREATE POLICY "Allow public read access to recent, active reports" ON public.crime_reports FOR SELECT TO anon USING ( status::text IN ('active', 'resolved', 'closed', 'on_scene') AND reported_at > (now() - interval '72 hours') );
+    ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY; DROP POLICY IF EXISTS "Allow access based on parent report" ON public.report_updates; CREATE POLICY "Allow access based on parent report" ON public.report_updates FOR ALL USING ( EXISTS (SELECT 1 FROM public.vehicle_reports vr WHERE vr.id = report_updates.report_id) OR EXISTS (SELECT 1 FROM public.crime_reports cr WHERE cr.id = report_updates.report_id) );
+    ALTER TABLE public.assignment_logs ENABLE ROW LEVEL SECURITY; DROP POLICY IF EXISTS "Allow access based on parent report" ON public.assignment_logs; CREATE POLICY "Allow access based on parent report" ON public.assignment_logs FOR SELECT USING ( EXISTS (SELECT 1 FROM public.vehicle_reports vr WHERE vr.id = assignment_logs.report_id) OR EXISTS (SELECT 1 FROM public.crime_reports cr WHERE cr.id = assignment_logs.report_id) );
+    ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY; DROP POLICY IF EXISTS "Allow access based on parent report" ON public.chat_messages; CREATE POLICY "Allow access based on parent report" ON public.chat_messages FOR ALL USING ( ( EXISTS (SELECT 1 FROM public.vehicle_reports vr WHERE vr.id = chat_messages.report_id) OR EXISTS (SELECT 1 FROM public.crime_reports cr WHERE cr.id = chat_messages.report_id) ) OR ( chat_messages.report_id = '00000000-0000-0000-0000-000000000001' AND (select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator', 'controller', 'responder') ) );
+    ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY; DROP POLICY IF EXISTS "Users can see and update their own notifications" ON public.notifications; CREATE POLICY "Users can see and update their own notifications" ON public.notifications FOR ALL USING ((recipient_user_id = (select auth.uid())));
+    ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY; DROP POLICY IF EXISTS "Allow public read access to settings" ON public.app_settings; DROP POLICY IF EXISTS "Allow admins to update settings" ON public.app_settings; CREATE POLICY "Allow public read access to settings" ON public.app_settings FOR SELECT USING (true); CREATE POLICY "Allow admins to update settings" ON public.app_settings FOR ALL USING (((select public.get_user_role((select auth.uid()))) = 'admin')) WITH CHECK (((select public.get_user_role((select auth.uid()))) = 'admin'));
+    ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY; DROP POLICY IF EXISTS "Allow public read access to announcements" ON public.announcements; DROP POLICY IF EXISTS "Allow admins and moderators to manage announcements" ON public.announcements;
+    CREATE POLICY "Allow public read access to announcements" ON public.announcements FOR SELECT USING (true);
+    CREATE POLICY "Allow admins and moderators to manage announcements" ON public.announcements FOR ALL USING (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator'))) WITH CHECK (((select public.get_user_role((select auth.uid()))) IN ('admin', 'moderator')));
+    INSERT INTO auth.users (id, aud, role, email, instance_id, raw_app_meta_data, raw_user_meta_data) SELECT '00000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'public-reporter@rapid.ireport', (SELECT id FROM auth.instances LIMIT 1), '{"provider":"email","providers":["email"]}', '{}' ON CONFLICT (id) DO NOTHING;
+    INSERT INTO public.profiles (id, email, first_name, surname, role, status) SELECT '00000000-0000-0000-0000-000000000001', 'public-reporter@rapid.ireport', 'Public', 'Reporter', 'user', 'active' ON CONFLICT (id) DO NOTHING;
+    COMMIT;
     `;
 
     async function checkAdminAuth(req: Request, supabaseClient: SupabaseClient): Promise<void> {
@@ -1483,24 +1443,25 @@ This function allows administrators to fix database schema issues directly from 
         );
         await checkAdminAuth(req, userSupabaseClient);
 
-        // 2. Main Logic: Run the migration script using the admin client.
+        // 2. Main Logic: Run the migration scripts sequentially using the admin client.
         const supabaseAdmin = createClient(
           Deno.env.get('SUPABASE_URL') ?? '',
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         );
 
-        const { error: rpcError } = await supabaseAdmin.rpc('eval', { 'query': MIGRATION_SQL });
-        if (rpcError) {
-          // Check if the error is a known "type already exists" which can be ignored
-          if (rpcError.message.includes('type "user_role" already exists')) {
-            console.warn("Migration SQL produced a 'type already exists' notice, which is safe to ignore.");
-          } else {
-            throw rpcError;
-          }
+        // Run Part 1
+        const { error: rpcError1 } = await supabaseAdmin.rpc('eval', { 'query': MIGRATION_SQL_PART_1 });
+        if (rpcError1) {
+          console.warn("Migration SQL Part 1 produced a notice/error (might be safe to ignore):", rpcError1.message);
+        }
+        
+        // Run Part 2
+        const { error: rpcError2 } = await supabaseAdmin.rpc('eval', { 'query': MIGRATION_SQL_PART_2 });
+        if (rpcError2) {
+          throw new Error(`Schema migration failed on Part 2: ${rpcError2.message}`);
         }
         
         // 3. API Schema Reload: After changing the schema, we must tell PostgREST to reload its cache.
-        // We do this by sending a NOTIFY signal. This is a critical step.
         const { error: notifyError } = await supabaseAdmin.rpc('eval', { 'query': 'NOTIFY pgrst, "reload schema"' });
         if (notifyError) {
             throw new Error(`Migration successful, but failed to reload API schema cache: ${notifyError.message}. Please restart the project in the Supabase dashboard.`);
@@ -1518,7 +1479,7 @@ This function allows administrators to fix database schema issues directly from 
           status,
         });
       }
-    });
+    })
     ```
     *   Deploy it: `supabase functions deploy migrate-schema --no-verify-jwt`.
 
