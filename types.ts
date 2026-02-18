@@ -1,3 +1,4 @@
+
 export enum UserRole {
   ADMIN = 'admin',
   MODERATOR = 'moderator',
@@ -107,6 +108,7 @@ export interface VehicleReport {
   location_boundingbox?: [number, number, number, number]; // south, north, west, east
   deleted_by?: string; // profile id
   deleted_at?: string; // ISO date string
+  completed_at?: string; // ISO date string
 }
 
 export interface CrimeReport {
@@ -127,6 +129,7 @@ export interface CrimeReport {
   location_boundingbox?: [number, number, number, number]; // south, north, west, east
   deleted_by?: string; // profile id
   deleted_at?: string; // ISO date string
+  completed_at?: string; // ISO date string
 }
 
 export type Report = VehicleReport | CrimeReport;

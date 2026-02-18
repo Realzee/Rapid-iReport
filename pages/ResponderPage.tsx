@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, ReportUpdate, Profile as UserProfile } from '../types';
 import { supabase } from '../utils/supabase';
@@ -427,9 +428,10 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
     
         const isResolving = status === ReportStatus.RESOLVED || status === ReportStatus.RECOVERED;
     
-        const reportUpdatePayload: { status: ReportStatus; assigned_to?: null } = { status };
+        const reportUpdatePayload: { status: ReportStatus; assigned_to?: null; completed_at?: string | null } = { status };
         if (isResolving) {
             reportUpdatePayload.assigned_to = null;
+            reportUpdatePayload.completed_at = new Date().toISOString();
         }
     
         updatePromises.push(supabase.from(tableName).update(reportUpdatePayload).eq('id', report.id));

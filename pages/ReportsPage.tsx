@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, ReportStatus, Severity, VehicleReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus } from '../types';
@@ -9,7 +10,6 @@ import ConfirmModal from '../components/ConfirmModal';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
-// FIX: Define severity styles for a custom badge, as StatusBadge is for ReportStatus.
 const severityStyles: Record<Severity, string> = {
     [Severity.CRITICAL]: 'bg-red-500/20 text-red-400 border-red-500/30',
     [Severity.HIGH]: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
@@ -17,7 +17,7 @@ const severityStyles: Record<Severity, string> = {
     [Severity.LOW]: 'bg-green-500/20 text-green-400 border-green-500/30',
 };
 
-type SortKey = keyof VehicleReport | keyof CrimeReport | 'type' | 'reported_by_name' | 'deleted_by_name';
+type SortKey = keyof VehicleReport | keyof CrimeReport | 'type' | 'reported_by_name' | 'deleted_by_name' | 'achieved_at';
 
 const SortableHeader: React.FC<{
     label: string;
@@ -110,7 +110,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const processedReports = useMemo(() => {
         let filtered = reports
             .map(r => ({ 
-                ...r, 
+                ...r,
+                achieved_at: r.status === ReportStatus.DELETED ? r.deleted_at : r.completed_at,
                 reported_by_name: userMap.get(r.reported_by) || 'Unknown',
                 deleted_by_name: userMap.get(r.deleted_by || '') || 'N/A'
             }))
@@ -128,9 +129,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
             });
         
         if (sortConfig !== null) {
-            filtered.sort((a, b) => {
-                const aValue = a[sortConfig.key as keyof typeof a];
-                const bValue = b[sortConfig.key as keyof typeof b];
+            filtered.sort((a: any, b: any) => {
+                const aValue = a[sortConfig.key];
+                const bValue = b[sortConfig.key];
                 if (aValue === null || aValue === undefined) return 1;
                 if (bValue === null || bValue === undefined) return -1;
                 if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
@@ -178,7 +179,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         const tableName = isVehicleReport(reportToRestore) ? 'vehicle_reports' : 'crime_reports';
         const { error } = await supabase
             .from(tableName)
-            .update({ status: ReportStatus.PENDING, deleted_at: null, deleted_by: null })
+            .update({ status: ReportStatus.PENDING, deleted_at: null, deleted_by: null, completed_at: null })
             .eq('id', reportToRestore.id);
 
         if (error) {
@@ -233,7 +234,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                 <SortableHeader label="Severity" sortKey="severity" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Reported At" sortKey="reported_at" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Reported By" sortKey="reported_by_name" sortConfig={sortConfig} onSort={handleSort} />
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Final Status</th>
+                                <SortableHeader label="Final Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} />
+                                <SortableHeader label="Date Achieved" sortKey="achieved_at" sortConfig={sortConfig} onSort={handleSort} />
                                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -253,14 +255,16 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                         <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        {/* FIX: The StatusBadge component expects a ReportStatus, but was passed a Severity. Replaced with a custom span that correctly displays the severity with appropriate styling. */}
                                         <span className={`inline-block px-3 py-1 text-xs font-bold rounded-full capitalize border ${severityStyles[report.severity]}`}>
                                             {report.severity}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{format(new Date(report.reported_at), 'MMM d, yyyy HH:mm')}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{report.reported_by_name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{(report as any).reported_by_name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize">{report.status.replace(/_/g, ' ')}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        {(report as any).achieved_at ? format(new Date((report as any).achieved_at), 'MMM d, yyyy HH:mm') : 'N/A'}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex items-center justify-end space-x-4">
                                             <button onClick={() => setDetailModalReport(report)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">View</button>

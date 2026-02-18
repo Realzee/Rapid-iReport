@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport, ReportStatus, Company } from '../types';
 import StatCard from './StatCard';
@@ -213,10 +214,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     
         const isTerminalStatus = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(newStatus);
         
-        const updatePayload: { status: ReportStatus; assigned_to?: string | null } = { status: newStatus };
+        const updatePayload: { status: ReportStatus; assigned_to?: string | null; completed_at?: string | null } = { status: newStatus };
     
-        if (isTerminalStatus && reportToUpdate.assigned_to) {
-            updatePayload.assigned_to = null;
+        if (isTerminalStatus) {
+            updatePayload.completed_at = new Date().toISOString();
+            if (reportToUpdate.assigned_to) {
+                updatePayload.assigned_to = null;
+            }
         }
     
         const { error: updateError } = await supabase.from(tableName).update(updatePayload).eq('id', reportId);

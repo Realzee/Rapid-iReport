@@ -97,9 +97,11 @@ DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'announcement_type') THEN CREATE TYPE public.announcement_type AS ENUM ('notice', 'alert', 'safety_tip'); END IF;
 END$$;
 
--- 3. Update tables with company_id for multi-tenancy
+-- 3. Update tables with company_id and completion timestamp for multi-tenancy and archiving
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL;
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS completed_at timestamp with time zone;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS completed_at timestamp with time zone;
 
 -- 4. Re-create helper functions
 CREATE OR REPLACE FUNCTION public.get_user_role(p_user_id uuid)
@@ -161,7 +163,7 @@ CREATE POLICY "Allow public read access" ON public.companies FOR SELECT USING (t
 CREATE POLICY "Allow admin full access" ON public.companies FOR ALL USING (get_user_role(auth.uid()) = 'admin') WITH CHECK (get_user_role(auth.uid()) = 'admin');
 
 -- Vehicle Reports Policies
-CREATE POLICY "Allow public read of active reports" ON public.vehicle_reports FOR SELECT USING (status = 'active'::public.report_status);
+CREATE POLICY "Allow public read of active reports" ON public.vehicle_reports FOR SELECT TO anon USING (status = 'active'::public.report_status);
 CREATE POLICY "Allow authenticated users to create reports" ON public.vehicle_reports FOR INSERT TO authenticated WITH CHECK (auth.uid() = reported_by);
 CREATE POLICY "Allow owners to update pending reports" ON public.vehicle_reports FOR UPDATE TO authenticated USING (auth.uid() = reported_by AND status = 'pending'::public.report_status) WITH CHECK (auth.uid() = reported_by);
 CREATE POLICY "Allow users to read their own and company reports" ON public.vehicle_reports FOR SELECT USING ((get_user_role(auth.uid()) = 'admin') OR (auth.uid() = reported_by) OR (company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())));
@@ -169,7 +171,7 @@ CREATE POLICY "Allow staff to update company reports" ON public.vehicle_reports 
 CREATE POLICY "Allow staff to delete company reports" ON public.vehicle_reports FOR DELETE USING ((get_user_role(auth.uid()) = 'admin') OR (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())) OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
 
 -- Crime Reports Policies
-CREATE POLICY "Allow public read of active reports" ON public.crime_reports FOR SELECT USING (status = 'active'::public.report_status);
+CREATE POLICY "Allow public read of active reports" ON public.crime_reports FOR SELECT TO anon USING (status = 'active'::public.report_status);
 CREATE POLICY "Allow authenticated users to create reports" ON public.crime_reports FOR INSERT TO authenticated WITH CHECK (auth.uid() = reported_by);
 CREATE POLICY "Allow owners to update pending reports" ON public.crime_reports FOR UPDATE TO authenticated USING (auth.uid() = reported_by AND status = 'pending'::public.report_status) WITH CHECK (auth.uid() = reported_by);
 CREATE POLICY "Allow users to read their own and company reports" ON public.crime_reports FOR SELECT USING ((get_user_role(auth.uid()) = 'admin') OR (auth.uid() = reported_by) OR (company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())));
