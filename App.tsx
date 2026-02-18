@@ -115,8 +115,49 @@ const App: React.FC = () => {
                 setError(null);
                 setupPresence(session.user.id);
             } else {
-                // Profile does not exist for this authenticated user.
-                setProfile(null); // This will trigger the new error screen.
+                // Profile does not exist. Attempt to create it from auth metadata (self-healing).
+                const { user } = session;
+                const { user_metadata } = user;
+                
+                if (user_metadata && user_metadata.first_name && user_metadata.surname && user_metadata.company_id) {
+                    console.log("Profile not found, attempting to auto-create from auth metadata...");
+                    const { data: newProfile, error: insertError } = await supabase
+                        .from('profiles')
+                        .insert({
+                            id: user.id,
+                            email: user.email,
+                            first_name: user_metadata.first_name,
+                            surname: user_metadata.surname,
+                            role: user_metadata.role || UserRole.USER,
+                            status: UserStatus.PENDING,
+                            company_id: user_metadata.company_id,
+                            cell: user_metadata.cell,
+                            vehicle_reg: user_metadata.vehicle_reg,
+                            home_address: user_metadata.home_address,
+                            ice_no: user_metadata.ice_no,
+                            medical_aid: user_metadata.medical_aid,
+                            psira_number: user_metadata.psira_number,
+                        })
+                        .select('*, company:companies(*)')
+                        .single();
+                    
+                    if (insertError) {
+                        console.error("Failed to auto-create profile:", insertError);
+                        setError(`Your profile is missing and could not be automatically created. This may be due to a temporary database issue. Please try logging out and in again. Error: ${insertError.message}`);
+                        setProfile(null);
+                    } else if (newProfile) {
+                        console.log("Profile created successfully. Reloading profile...");
+                        setProfile(newProfile);
+                        if (newProfile.role === UserRole.CONTROLLER) {
+                            setView('controller');
+                        }
+                        setError(null);
+                        setupPresence(user.id);
+                    }
+                } else {
+                    // Not enough metadata to create a profile, show the error screen.
+                    setProfile(null); 
+                }
             }
         };
 
