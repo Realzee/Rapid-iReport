@@ -22,19 +22,19 @@ You need to create four public buckets for storing images and assets.
 
 ---
 
-## Step 2: Run the Database Schema Script (Two Parts)
+## Step 2: Run the Database Schema Script (Three Parts)
 
 This script creates and updates all necessary types, tables, functions, and triggers.
 
 > [!DANGER]
-> **CRITICAL SETUP INSTRUCTION: RUN IN TWO SEPARATE STEPS**
+> **CRITICAL SETUP INSTRUCTION: RUN IN THREE SEPARATE STEPS**
 >
-> The SQL script is divided into **Part 1** and **Part 2**. You **MUST** run these in two separate steps:
+> The SQL script is divided into **Part 1**, **Part 2**, and **Part 3**. You **MUST** run these in three separate steps:
 >
 > 1.  Copy and run **Part 1** in the Supabase SQL Editor.
 > 2.  Wait for it to complete successfully.
-> 3.  Open a **NEW, SEPARATE** query window.
-> 4.  Copy and run **Part 2** in the new window.
+> 3.  Open a **NEW, SEPARATE** query window, copy and run **Part 2**.
+> 4.  Open a **NEW, SEPARATE** query window, copy and run **Part 3**.
 
 ### **Part 1: Update Data Types & Migrate Old Schema**
 *(Copy and run this entire code block first)*
@@ -44,7 +44,6 @@ This script creates and updates all necessary types, tables, functions, and trig
 -- Description: This script migrates old data types and ensures all ENUM types are correct.
 
 -- 0. Helper function for Edge Function migrations
--- This allows the app's internal "Attempt Automatic Fix" to work.
 CREATE OR REPLACE FUNCTION public.eval(query text)
 RETURNS void
 LANGUAGE plpgsql
@@ -142,9 +141,6 @@ $$;
 -- RAPID iREPORT - Database Setup Script - PART 2
 BEGIN;
 
--- 3. Create/Update Tables (Omitted full table definitions for brevity, see Part 2 block in existing file for full context)
--- Ensure 'crime_reports' is updated for public panic.
-
 -- NEW: Function to create a public panic report.
 CREATE OR REPLACE FUNCTION public.create_public_panic_report(p_location text, p_coords jsonb)
 RETURNS void
@@ -220,9 +216,61 @@ ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
--- Note: Ensure you include all specific RLS policies from the full DATABASE_SCHEMA.md file.
-
 COMMIT;
+```
+
+### **Part 3: Automatic Profile Creation Trigger**
+*(Copy and run this in a NEW query window to ensure all users get profiles automatically)*
+
+```sql
+-- RAPID iREPORT - Database Setup Script - PART 3
+-- This function automatically creates a profile for every user who signs up.
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (
+    id, 
+    email, 
+    first_name, 
+    surname, 
+    role, 
+    status, 
+    company_id,
+    cell,
+    vehicle_reg,
+    home_address,
+    ice_no,
+    medical_aid,
+    psira_number
+  )
+  VALUES (
+    new.id,
+    new.email,
+    COALESCE(new.raw_user_meta_data->>'first_name', ''),
+    COALESCE(new.raw_user_meta_data->>'surname', ''),
+    'user',
+    'pending',
+    (new.raw_user_meta_data->>'company_id')::uuid,
+    COALESCE(new.raw_user_meta_data->>'cell', ''),
+    new.raw_user_meta_data->>'vehicle_reg',
+    COALESCE(new.raw_user_meta_data->>'home_address', ''),
+    COALESCE(new.raw_user_meta_data->>'ice_no', ''),
+    new.raw_user_meta_data->>'medical_aid',
+    new.raw_user_meta_data->>'psira_number'
+  );
+  RETURN new;
+END;
+$$;
+
+-- Trigger to call the function on signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 ```
 
 ---
