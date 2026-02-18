@@ -102,18 +102,21 @@ const App: React.FC = () => {
                 .from('profiles')
                 .select('*, company:companies(*)')
                 .eq('id', session.user.id)
-                .single();
+                .maybeSingle();
 
             if (fetchError) {
                 setError(`Failed to load your profile. Please check your connection and Row Level Security policies. Error: ${fetchError.message}`);
                 setProfile(null);
-            } else {
+            } else if (data) {
                 setProfile(data);
                 if (data.role === UserRole.CONTROLLER) {
                     setView('controller');
                 }
                 setError(null);
                 setupPresence(session.user.id);
+            } else {
+                // Profile does not exist for this authenticated user.
+                setProfile(null); // This will trigger the new error screen.
             }
         };
 
@@ -263,13 +266,34 @@ const App: React.FC = () => {
       return <AuthPage onViewPublicDashboard={() => setShowPublicView(true)} />;
   }
   
-  if (session && !profile) {
+  if (session && !profile && !loading && !error) {
     return (
+        <div className="min-h-screen flex items-center justify-center bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 p-4">
+            <div className="text-center bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg max-w-lg">
+                <AlertTriangleIcon className="w-12 h-12 mx-auto text-yellow-500 mb-4" />
+                <h2 className="text-2xl font-bold mb-2 text-yellow-700 dark:text-yellow-300">Profile Not Found</h2>
+                <p className="mb-4 text-gray-600 dark:text-gray-300">
+                    Your user account exists, but your profile data is missing. This can happen if the initial setup was interrupted.
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                    To fix this, please log out and sign up again. If the issue persists, contact administrator support.
+                </p>
+                {/* FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors. */}
+                <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition-colors">
+                    Logout
+                </button>
+            </div>
+        </div>
+    );
+  }
+  
+  if (session && !profile && !loading) {
+      return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black">
             <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             <p className="mt-4 text-gray-500 dark:text-gray-400">Loading your workspace...</p>
         </div>
-    );
+      );
   }
   
   if (profile && profile.status === UserStatus.PENDING) {

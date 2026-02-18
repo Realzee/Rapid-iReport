@@ -219,6 +219,83 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 COMMIT;
 ```
 
+### **Part 3: Automatic Profile Creation Trigger**
+*(After Part 2 completes, copy and run this entire code block in a NEW query window)*
+```sql
+-- RAPID iREPORT - Database Setup Script - PART 3
+-- Description: This script creates a trigger to automatically create a user profile
+-- upon new user signup, preventing missing profile errors.
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  -- Insert a new profile record, pulling metadata from the new auth.users record.
+  INSERT INTO public.profiles (
+      id, 
+      email, 
+      first_name, 
+      surname, 
+      role, 
+      status, 
+      company_id, 
+      cell, 
+      vehicle_reg, 
+      home_address, 
+      ice_no, 
+      medical_aid, 
+      psira_number
+  )
+  VALUES (
+    new.id,
+    new.email,
+    new.raw_user_meta_data ->> 'first_name',
+    new.raw_user_meta_data ->> 'surname',
+    'user', -- Default role for all new signups
+    'pending', -- All new users must be approved by an admin
+    (new.raw_user_meta_data ->> 'company_id')::uuid,
+    new.raw_user_meta_data ->> 'cell',
+    new.raw_user_meta_data ->> 'vehicle_reg',
+    new.raw_user_meta_data ->> 'home_address',
+    new.raw_user_meta_data ->> 'ice_no',
+    new.raw_user_meta_data ->> 'medical_aid',
+    new.raw_user_meta_data ->> 'psira_number'
+  );
+  RETURN new;
+END;
+$$;
+
+-- Create the trigger that executes the function after a new user is inserted.
+-- We use CREATE OR REPLACE to ensure it can be run multiple times safely.
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- We also create a trigger to ensure email consistency on update
+CREATE OR REPLACE FUNCTION public.update_profile_email()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.profiles
+  SET email = new.email
+  WHERE id = new.id;
+  RETURN new;
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER on_auth_user_updated
+  AFTER UPDATE OF email ON auth.users
+  FOR EACH ROW
+  WHEN (old.email IS DISTINCT FROM new.email)
+  EXECUTE FUNCTION public.update_profile_email();
+
+```
+
+
 ---
 
 ## Step 3: Deploy Supabase Edge Functions
