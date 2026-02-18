@@ -71,6 +71,8 @@ DROP POLICY IF EXISTS "Allow owners to update pending reports" ON public.vehicle
 DROP POLICY IF EXISTS "Allow staff and responders to manage reports" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Allow users to read their own and company reports" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Allow staff to manage company reports" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Allow staff to update company reports" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Allow staff to delete company reports" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Allow public read of active reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow authenticated users to create reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow owners to read their reports" ON public.crime_reports;
@@ -78,6 +80,8 @@ DROP POLICY IF EXISTS "Allow owners to update pending reports" ON public.crime_r
 DROP POLICY IF EXISTS "Allow staff and responders to manage reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow users to read their own and company reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow staff to manage company reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow staff to update company reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow staff to delete company reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow users to manage their own notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Allow public read access" ON public.announcements;
 DROP POLICY IF EXISTS "Allow staff to manage announcements" ON public.announcements;
@@ -161,14 +165,16 @@ CREATE POLICY "Allow public read of active reports" ON public.vehicle_reports FO
 CREATE POLICY "Allow authenticated users to create reports" ON public.vehicle_reports FOR INSERT TO authenticated WITH CHECK (auth.uid() = reported_by);
 CREATE POLICY "Allow owners to update pending reports" ON public.vehicle_reports FOR UPDATE TO authenticated USING (auth.uid() = reported_by AND status = 'pending'::public.report_status) WITH CHECK (auth.uid() = reported_by);
 CREATE POLICY "Allow users to read their own and company reports" ON public.vehicle_reports FOR SELECT USING ((get_user_role(auth.uid()) = 'admin') OR (auth.uid() = reported_by) OR (company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())));
-CREATE POLICY "Allow staff to manage company reports" ON public.vehicle_reports FOR UPDATE, DELETE USING ((get_user_role(auth.uid()) = 'admin') OR (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())) OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
+CREATE POLICY "Allow staff to update company reports" ON public.vehicle_reports FOR UPDATE USING ((get_user_role(auth.uid()) = 'admin') OR (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())) OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
+CREATE POLICY "Allow staff to delete company reports" ON public.vehicle_reports FOR DELETE USING ((get_user_role(auth.uid()) = 'admin') OR (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())) OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
 
 -- Crime Reports Policies
 CREATE POLICY "Allow public read of active reports" ON public.crime_reports FOR SELECT USING (status = 'active'::public.report_status);
 CREATE POLICY "Allow authenticated users to create reports" ON public.crime_reports FOR INSERT TO authenticated WITH CHECK (auth.uid() = reported_by);
 CREATE POLICY "Allow owners to update pending reports" ON public.crime_reports FOR UPDATE TO authenticated USING (auth.uid() = reported_by AND status = 'pending'::public.report_status) WITH CHECK (auth.uid() = reported_by);
 CREATE POLICY "Allow users to read their own and company reports" ON public.crime_reports FOR SELECT USING ((get_user_role(auth.uid()) = 'admin') OR (auth.uid() = reported_by) OR (company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())));
-CREATE POLICY "Allow staff to manage company reports" ON public.crime_reports FOR UPDATE, DELETE USING ((get_user_role(auth.uid()) = 'admin') OR (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())) OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
+CREATE POLICY "Allow staff to update company reports" ON public.crime_reports FOR UPDATE USING ((get_user_role(auth.uid()) = 'admin') OR (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())) OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
+CREATE POLICY "Allow staff to delete company reports" ON public.crime_reports FOR DELETE USING ((get_user_role(auth.uid()) = 'admin') OR (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())) OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
 
 
 -- Notifications Policies
