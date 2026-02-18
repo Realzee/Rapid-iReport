@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { PlusIcon, UsersIcon } from '../components/icons';
 import { Profile, Company, UserRole, UserStatus } from '../types';
@@ -29,14 +30,22 @@ const UsersPage: React.FC = () => {
             // @ts-ignore
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
-                const { data: profileData } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-                setCurrentUserProfile(profileData);
+                const { data: profileData, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+                if (error) {
+                    addToast(`Error fetching your profile: ${error.message}`, 'error');
+                }
+                if (profileData) {
+                    setCurrentUserProfile(profileData);
+                } else {
+                    addToast("Could not load your user profile to access this page.", "error");
+                    setLoading(false);
+                }
             } else {
                 setLoading(false);
             }
         };
         fetchCurrentUserProfile();
-    }, []);
+    }, [addToast]);
 
     useEffect(() => {
         if (!currentUserProfile) return;

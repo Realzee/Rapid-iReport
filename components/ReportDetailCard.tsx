@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Report, Profile, VehicleReport, UserRole, ReportStatus } from '../types';
 import StatusBadge from './StatusBadge';
@@ -49,7 +50,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 .from('profiles')
                 .select('*')
                 .eq('id', report.reported_by)
-                .single();
+                .maybeSingle();
             if (error) console.error("Error fetching reporter:", error);
             else setReporter(data);
         };

@@ -1,3 +1,4 @@
+
 /**
  * @file ReportModal.tsx
  * @description Modal for creating and editing vehicle or crime reports.
@@ -476,7 +477,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     .from('profiles')
                     .select('company_id, company:companies(name)')
                     .eq('id', user.id)
-                    .single();
+                    .maybeSingle();
 
                 if (profileError) {
                     console.warn("Could not fetch user's company for OB number generation:", profileError.message);
