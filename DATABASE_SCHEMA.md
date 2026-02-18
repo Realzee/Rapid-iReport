@@ -5,7 +5,7 @@ This document provides all the necessary steps and SQL scripts to fully set up t
 
 > [!IMPORTANT]
 > **Common Error: "invalid input value for enum" or "schema cache" or "404 Not Found"**
-> If you are seeing errors like `404 Not Found` for the Panic button or `invalid input value for enum`, it means your database is out of sync. Following the steps below, especially **Step 2**, will fix this. The scripts are idempotent and safe to run on an existing project.
+> If you are seeing errors related to the database schema, it means your database is out of sync. Following the steps below will fix this. The scripts are idempotent and safe to run on an existing project.
 
 ---
 
@@ -22,26 +22,25 @@ You need to create four public buckets for storing images and assets.
 
 ---
 
-## Step 2: Run the Database Schema Script (Three Parts)
+## Step 2: Run the Database Schema Script (Two Parts)
 
 This script creates and updates all necessary types, tables, functions, and triggers.
 
 > [!DANGER]
-> **CRITICAL SETUP INSTRUCTION: RUN IN THREE SEPARATE STEPS**
+> **CRITICAL SETUP INSTRUCTION: RUN IN TWO SEPARATE STEPS**
 >
-> The SQL script is divided into **Part 1**, **Part 2**, and **Part 3**. You **MUST** run these in three separate steps:
+> The SQL script is divided into **Part 1** and **Part 2**. You **MUST** run these in two separate steps:
 >
 > 1.  Copy and run **Part 1** in the Supabase SQL Editor.
 > 2.  Wait for it to complete successfully.
 > 3.  Open a **NEW, SEPARATE** query window, copy and run **Part 2**.
-> 4.  Open a **NEW, SEPARATE** query window, copy and run **Part 3**.
 
-### **Part 1: Update Data Types & Migrate Old Schema**
+### **Part 1: Update Data Types, Policies & Migrate Old Schema**
 *(Copy and run this entire code block first)*
 
 ```sql
 -- RAPID iREPORT - Database Setup Script - PART 1
--- Description: This script migrates old data types and ensures all ENUM types are correct.
+-- Description: This script migrates old data types, ensures all ENUM types are correct, and re-enables RLS.
 
 -- 0. Helper function for Edge Function migrations
 CREATE OR REPLACE FUNCTION public.eval(query text)
@@ -57,6 +56,7 @@ $$;
 -- 1. Drop dependencies, policies, and disable RLS to allow type alterations.
 DROP FUNCTION IF EXISTS public.get_user_role(uuid) CASCADE;
 DROP FUNCTION IF EXISTS public.create_staff_notification(text, text, text, uuid, text[]) CASCADE;
+DROP FUNCTION IF EXISTS public.create_public_panic_report(text, jsonb) CASCADE;
 
 -- Defensively drop legacy 'responders' view/table
 DO $$
@@ -132,97 +132,19 @@ BEGIN
   RETURN COALESCE(user_role_text, 'user');
 END;
 $$;
-```
 
-### **Part 2: Setup Tables, Functions, and Policies**
-*(After Part 1 completes, copy and run this entire code block in a NEW query window)*
-
-```sql
--- RAPID iREPORT - Database Setup Script - PART 2
-BEGIN;
-
--- NEW: Function to create a public panic report.
-CREATE OR REPLACE FUNCTION public.create_public_panic_report(p_location text, p_coords jsonb)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE
-    public_user_id uuid := '00000000-0000-0000-0000-000000000001';
-    new_ob_number text;
-    report_company_id uuid;
-    company_initial char;
-    now_ts timestamptz := now();
-BEGIN
-    SELECT company_id INTO report_company_id FROM public.profiles WHERE id = public_user_id;
-    IF report_company_id IS NOT NULL THEN
-        SELECT LEFT(name, 1) INTO company_initial FROM public.companies WHERE id = report_company_id;
-    ELSE
-        company_initial := 'P';
-    END IF;
-
-    new_ob_number := company_initial || 
-                     lpad((SELECT public.get_next_ob_sequence(report_company_id, now_ts::date))::text, 4, '0') ||
-                     '/' || to_char(now_ts, 'MM/YYYY');
-
-    INSERT INTO public.crime_reports (
-        id, ob_number, title, crime_type, description, location, location_coords, 
-        severity, status, reported_by, reported_at
-    ) VALUES (
-        extensions.uuid_generate_v4(),
-        new_ob_number,
-        'PANIC ALERT',
-        'PUBLIC_PANIC_ASSIST',
-        'Public Panic Alert triggered via the community map at ' || to_char(now_ts, 'YYYY-MM-DD HH24:MI:SS') || '. User may be in distress.',
-        p_location,
-        p_coords,
-        'critical'::public.severity,
-        'active'::public.report_status,
-        public_user_id,
-        now_ts
-    );
-END;
-$$;
-
--- IMPORTANT: Grant permission for anonymous users to trigger panic alerts
-GRANT EXECUTE ON FUNCTION public.create_public_panic_report(text, jsonb) TO anon;
-GRANT EXECUTE ON FUNCTION public.create_public_panic_report(text, jsonb) TO authenticated;
-
--- Ensure the special Public Reporter user exists for the trigger system
-INSERT INTO auth.users (id, aud, role, email, instance_id, raw_app_meta_data, raw_user_meta_data)
-SELECT
-    '00000000-0000-0000-0000-000000000001',
-    'authenticated',
-    'authenticated',
-    'public-reporter@rapid.ireport',
-    (SELECT id FROM auth.instances LIMIT 1),
-    '{"provider":"email","providers":["email"]}',
-    '{}'
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO public.profiles (id, email, first_name, surname, role, status)
-SELECT
-    '00000000-0000-0000-0000-000000000001',
-    'public-reporter@rapid.ireport',
-    'Public',
-    'Reporter',
-    'user',
-    'active'
-ON CONFLICT (id) DO NOTHING;
-
--- RLS RE-ENABLE (Simplified)
+-- 5. Re-enable Row Level Security
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
-COMMIT;
 ```
 
-### **Part 3: Automatic Profile Creation Trigger**
-*(After Part 2 completes, copy and run this entire code block in a NEW query window)*
+### **Part 2: Automatic Profile Creation Trigger**
+*(After Part 1 completes, copy and run this entire code block in a NEW query window)*
 ```sql
--- RAPID iREPORT - Database Setup Script - PART 3
+-- RAPID iREPORT - Database Setup Script - PART 2
 -- Description: This script creates a trigger to automatically create a user profile
 -- upon new user signup, preventing missing profile errors.
 

@@ -32,6 +32,7 @@ const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>('dashboard');
   
@@ -98,75 +99,84 @@ const App: React.FC = () => {
 
     if (session?.user) {
         const loadProfile = async () => {
-            const { data, error: fetchError } = await supabase
-                .from('profiles')
-                .select('*, company:companies(*)')
-                .eq('id', session.user.id)
-                .maybeSingle();
-
-            if (fetchError) {
-                setError(`Failed to load your profile. Please check your connection and Row Level Security policies. Error: ${fetchError.message}`);
-                setProfile(null);
-            } else if (data) {
-                setProfile(data);
-                if (data.role === UserRole.CONTROLLER) {
-                    setView('controller');
-                }
-                setError(null);
-                setupPresence(session.user.id);
-            } else {
-                // Profile does not exist. Attempt to create it from auth metadata (self-healing).
-                const { user } = session;
-                const { user_metadata } = user;
-                
-                console.log("Profile not found, attempting to auto-create from auth metadata...");
-                const profileDataToInsert = {
-                    id: user.id,
-                    email: user.email,
-                    first_name: user_metadata?.first_name || 'New',
-                    surname: user_metadata?.surname || 'User (Please Update)',
-                    company_id: user_metadata?.company_id || null,
-                    cell: user_metadata?.cell || null,
-                    vehicle_reg: user_metadata?.vehicle_reg || null,
-                    home_address: user_metadata?.home_address || null,
-                    ice_no: user_metadata?.ice_no || null,
-                    medical_aid: user_metadata?.medical_aid || null,
-                    psira_number: user_metadata?.psira_number || null,
-                    role: UserRole.USER,
-                    status: UserStatus.PENDING,
-                };
-                
-                const { data: newProfile, error: insertError } = await supabase
+            setProfileLoading(true);
+            try {
+                const { data, error: fetchError } = await supabase
                     .from('profiles')
-                    .insert(profileDataToInsert)
                     .select('*, company:companies(*)')
-                    .single();
-                
-                if (insertError) {
-                    console.error("Failed to auto-create profile:", insertError);
-                     if (insertError.code === '23505') { // duplicate key violation
-                         console.log("Profile likely created by a race condition. Re-fetching profile.");
-                         loadProfile(); // Re-run the entire load process.
-                         return;
-                    }
-                    setError(`Your profile data is missing and could not be automatically repaired. Please contact support. Error: ${insertError.message}`);
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+
+                if (fetchError) {
+                    setError(`Failed to load your profile. Please check your connection and Row Level Security policies. Error: ${fetchError.message}`);
                     setProfile(null);
-                } else if (newProfile) {
-                    console.log("Profile self-healed successfully.");
-                    addToast("Your profile was incomplete and has been repaired. Please review your details.", "success");
-                    setProfile(newProfile);
-                    if (newProfile.role === UserRole.CONTROLLER) {
+                } else if (data) {
+                    setProfile(data);
+                    if (data.role === UserRole.CONTROLLER) {
                         setView('controller');
                     }
                     setError(null);
-                    setupPresence(user.id);
+                    setupPresence(session.user.id);
+                } else {
+                    const { user } = session;
+                    const { user_metadata } = user;
+                    
+                    console.log("Profile not found, attempting to auto-create from auth metadata...");
+                    const profileDataToInsert = {
+                        id: user.id,
+                        email: user.email,
+                        first_name: user_metadata?.first_name || 'New',
+                        surname: user_metadata?.surname || 'User (Please Update)',
+                        company_id: user_metadata?.company_id || null,
+                        cell: user_metadata?.cell || null,
+                        vehicle_reg: user_metadata?.vehicle_reg || null,
+                        home_address: user_metadata?.home_address || null,
+                        ice_no: user_metadata?.ice_no || null,
+                        medical_aid: user_metadata?.medical_aid || null,
+                        psira_number: user_metadata?.psira_number || null,
+                        role: UserRole.USER,
+                        status: UserStatus.PENDING,
+                    };
+                    
+                    const { data: newProfile, error: insertError } = await supabase
+                        .from('profiles')
+                        .insert(profileDataToInsert)
+                        .select('*, company:companies(*)')
+                        .single();
+                    
+                    if (insertError) {
+                        console.error("Failed to auto-create profile:", insertError);
+                        if (insertError.code === '23505') { // duplicate key violation
+                            console.log("Profile likely created by a race condition. Re-fetching profile.");
+                            loadProfile(); // Re-run the entire load process.
+                            return; // Important: exit here to avoid finally block setting loading to false too early
+                        }
+                        setError(`Your profile data is missing and could not be automatically repaired. Please contact support. Error: ${insertError.message}`);
+                        setProfile(null);
+                    } else if (newProfile) {
+                        console.log("Profile self-healed successfully.");
+                        addToast("Your profile was repaired. Please review your details.", "success");
+                        setProfile(newProfile);
+                        if (newProfile.role === UserRole.CONTROLLER) {
+                            setView('controller');
+                        }
+                        setError(null);
+                        setupPresence(user.id);
+                    }
                 }
+            } catch (e: any) {
+                console.error("Critical error in loadProfile", e);
+                setError("A critical error occurred while loading your profile.");
+                setProfile(null);
+            } finally {
+                 setProfileLoading(false);
             }
         };
 
         loadProfile();
     } else {
         setProfile(null);
+        setProfileLoading(false);
     }
 
     return () => {
@@ -278,11 +288,11 @@ const App: React.FC = () => {
     return <GlobalSchemaErrorModal checkError={schemaError} />;
   }
 
-  if (loading) {
+  if (loading || (session && profileLoading)) {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black">
              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-             <p className="mt-4 text-gray-500 dark:text-gray-400">Initializing Application...</p>
+             <p className="mt-4 text-gray-500 dark:text-gray-400">Loading your workspace...</p>
         </div>
     )
   }
@@ -309,13 +319,24 @@ const App: React.FC = () => {
       return <AuthPage onViewPublicDashboard={() => setShowPublicView(true)} />;
   }
   
-  if (session && !profile && !loading) {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black">
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="mt-4 text-gray-500 dark:text-gray-400">Loading your workspace...</p>
+  if (session && !profile && !profileLoading && !error) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 p-4">
+            <div className="text-center bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg max-w-lg">
+                <AlertTriangleIcon className="w-12 h-12 mx-auto text-yellow-500 mb-4" />
+                <h2 className="text-2xl font-bold mb-2 text-yellow-700 dark:text-yellow-300">Profile Not Found</h2>
+                <p className="mb-4 text-gray-600 dark:text-gray-300">
+                    Your user account exists, but your profile data is missing. This can happen if the initial setup was interrupted.
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                    To fix this, please log out and sign up again. If the issue persists, contact administrator support.
+                </p>
+                <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition-colors">
+                    Logout
+                </button>
+            </div>
         </div>
-      );
+    );
   }
   
   if (profile && profile.status === UserStatus.PENDING) {
@@ -324,7 +345,7 @@ const App: React.FC = () => {
             <div className="text-center bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg max-w-lg">
                 <ClockIcon className="w-12 h-12 mx-auto text-yellow-500 mb-4" />
                 <h2 className="text-2xl font-bold mb-2 text-yellow-700 dark:text-yellow-300">Account Pending Approval</h2>
-                <p className="mb-4 text-gray-600 dark:text-gray-300">Thank you for registering and verifying your email. Your account is currently awaiting review by an administrator. You will be notified once it has been approved.</p>
+                <p className="mb-4 text-gray-600 dark:text-gray-300">Thank you for registering. Your account is currently awaiting review by an administrator. You will be notified once it has been approved.</p>
                 <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition-colors">
                     Logout
                 </button>

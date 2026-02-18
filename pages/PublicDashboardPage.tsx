@@ -1,19 +1,18 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { supabase } from '../utils/supabase';
-import { Report, VehicleReport, Announcement, LegacyObEntry, LocationCoords, CrimeReport, Severity, ReportStatus } from '../types';
+import { Report, VehicleReport, Announcement, LocationCoords, CrimeReport } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSettings } from '../contexts/SettingsContext';
 import ThemeToggle from '../components/ThemeToggle';
-import { CarIcon, CrimeIcon, DatabaseIcon, ZapIcon, ShieldAlertIcon } from '../components/icons';
-import { formatDistanceToNow } from 'date-fns';
+import { CarIcon, CrimeIcon, ZapIcon } from '../components/icons';
 import StatusBadge from '../components/StatusBadge';
 import AnnouncementsPanel from '../components/AnnouncementsPanel';
 import PublicReportDetailModal from '../components/PublicReportDetailModal';
 import MapStyleToggle, { MapStyle } from '../components/MapStyleToggle';
-import { GoogleGenAI } from '@google/genai';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
@@ -41,120 +40,6 @@ const MapFocusController: React.FC<{ selectedReport: Report | undefined }> = ({ 
     return null;
 };
 
-// --- New Panic Feature Components ---
-
-const PanicButton: React.FC<{ onActivate: () => void, isActivating: boolean }> = ({ onActivate, isActivating }) => {
-    const [progress, setProgress] = useState(0);
-    const [isHolding, setIsHolding] = useState(false);
-    const timerRef = useRef<number | null>(null);
-    const progressRef = useRef(0);
-
-    const startHold = () => {
-        if (isActivating) return;
-        setIsHolding(true);
-        progressRef.current = 0;
-        
-        timerRef.current = window.setInterval(() => {
-            progressRef.current += 1;
-            setProgress(progressRef.current);
-            if (progressRef.current >= 100) {
-                clearInterval(timerRef.current!);
-                timerRef.current = null;
-                onActivate();
-            }
-        }, 20); // 100 steps over 2 seconds
-    };
-
-    const endHold = () => {
-        setIsHolding(false);
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-        }
-        setProgress(0);
-        progressRef.current = 0;
-    };
-
-    const conicGradient = `conic-gradient(#f87171 ${progress * 3.6}deg, rgba(255,255,255,0.3) 0deg)`;
-
-    return (
-        <div 
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1001] flex flex-col items-center"
-            onMouseDown={startHold}
-            onMouseUp={endHold}
-            onMouseLeave={endHold}
-            onTouchStart={(e) => { e.preventDefault(); startHold(); }}
-            onTouchEnd={endHold}
-        >
-            <div 
-                className="w-24 h-24 rounded-full flex items-center justify-center transition-all duration-200"
-                style={{ background: conicGradient }}
-            >
-                <div 
-                    className={`w-20 h-20 rounded-full bg-red-600 flex items-center justify-center text-white shadow-2xl transition-transform duration-150 ${isHolding ? 'scale-95' : 'scale-100'}`}
-                >
-                    {isActivating ? (
-                        <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                        <ShieldAlertIcon className="w-12 h-12" />
-                    )}
-                </div>
-            </div>
-            <p className="mt-2 text-white bg-black/50 px-3 py-1 rounded-full font-semibold text-sm">
-                {isActivating ? 'ACTIVATING...' : (isHolding ? 'HOLD TO ACTIVATE' : 'PANIC')}
-            </p>
-        </div>
-    );
-};
-
-const PanicActivationView: React.FC<{ location: LocationCoords, address: string, onReset: () => void }> = ({ location, address, onReset }) => {
-    const [safetyTips, setSafetyTips] = useState<string>('');
-    const [loadingTips, setLoadingTips] = useState(true);
-
-    useEffect(() => {
-        const fetchSafetyTips = async () => {
-            try {
-                const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-                const prompt = `Generate immediate, concise safety instructions for someone who has just used a panic button. They are located near: ${address} (lat: ${location.lat}, lng: ${location.lng}). The situation is unknown. Keep instructions short, clear, and actionable in bullet points. Start with a reassuring sentence.`;
-                
-                const response = await ai.models.generateContent({
-                    model: 'gemini-3-flash-preview',
-                    contents: prompt,
-                });
-                
-                setSafetyTips(response.text);
-            } catch (error) {
-                console.error("Error fetching Gemini safety tips:", error);
-                setSafetyTips("• Stay aware of your surroundings.\n• If possible, move to a well-lit, public area.\n• Keep your phone accessible but concealed.");
-            } finally {
-                setLoadingTips(false);
-            }
-        };
-
-        fetchSafetyTips();
-    }, [location, address]);
-
-    return (
-        <div className="fixed inset-0 bg-red-900/95 backdrop-blur-md z-[2000] flex flex-col items-center justify-center p-6 text-white text-center animate-[fade-in_0.5s_ease-out]">
-            <h1 className="text-4xl font-bold animate-pulse">ALERT SENT</h1>
-            <p className="mt-2 text-lg">Help is on the way to your location.</p>
-            <p className="mt-1 text-sm opacity-80 max-w-md">{address}</p>
-
-            <div className="mt-8 p-6 bg-white/10 rounded-lg max-w-md w-full text-left">
-                <h2 className="font-bold text-lg mb-3">IMMEDIATE SAFETY TIPS:</h2>
-                {loadingTips ? (
-                    <div className="flex items-center gap-2"><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Generating guidance...</span></div>
-                ) : (
-                    <div className="whitespace-pre-wrap font-mono text-sm space-y-2">{safetyTips}</div>
-                )}
-            </div>
-            
-            <p className="mt-6 text-xs opacity-60 max-w-md">This is an automated system. Please await contact from the response team. You can close this window if it is safe to do so.</p>
-            <button onClick={onReset} className="mt-6 px-6 py-3 bg-white/20 hover:bg-white/30 rounded-lg font-semibold transition-colors">Close</button>
-        </div>
-    );
-};
-
 // --- Main Page Component ---
 const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackToLogin }) => {
     const [reports, setReports] = useState<Report[]>([]);
@@ -163,8 +48,6 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [detailReport, setDetailReport] = useState<Report | null>(null);
     const [mapStyle, setMapStyle] = useState<MapStyle>('street');
-    const [panicState, setPanicState] = useState<'idle' | 'activating' | 'activated' | 'error'>('idle');
-    const [userLocation, setUserLocation] = useState<{ coords: LocationCoords, address: string } | null>(null);
     const { theme } = useTheme();
     const { mainLogoUrl } = useSettings();
 
@@ -202,53 +85,6 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
 
         return () => { supabase.removeChannel(channel); };
     }, []);
-    
-    const handlePanicActivate = () => {
-        setPanicState('activating');
-
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const { latitude, longitude } = position.coords;
-                const coords = { lat: latitude, lng: longitude };
-                
-                let locationString = `Coordinates: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
-
-                try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.display_name) {
-                            locationString = data.display_name;
-                        }
-                    }
-                } catch (e) {
-                    console.warn("Reverse geocode failed, using coordinates.");
-                }
-
-                setUserLocation({ coords, address: locationString });
-
-                const { error: rpcError } = await supabase.rpc('create_public_panic_report', {
-                    p_location: locationString,
-                    p_coords: coords
-                });
-
-                if (rpcError) {
-                    console.error("Panic report failed:", rpcError);
-                    alert(`Failed to send alert: ${rpcError.message}`);
-                    setPanicState('error');
-                    setTimeout(() => setPanicState('idle'), 3000);
-                } else {
-                    setPanicState('activated');
-                }
-            },
-            (error) => {
-                alert(`Location Error: ${error.message}. Please enable location services.`);
-                setPanicState('idle');
-            },
-            { enableHighAccuracy: true }
-        );
-    };
-
 
     const handleSelectReport = (reportId: string) => {
         const report = reports.find(r => r.id === reportId);
@@ -269,13 +105,6 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
 
     return (
         <>
-            {panicState === 'activated' && userLocation && (
-                <PanicActivationView 
-                    location={userLocation.coords} 
-                    address={userLocation.address} 
-                    onReset={() => setPanicState('idle')} 
-                />
-            )}
             <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
                 <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700/50 z-20">
                     <div className="px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -337,7 +166,6 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                             })}
                         </MapContainer>
                         <MapStyleToggle currentStyle={mapStyle} onStyleChange={setMapStyle} />
-                        <PanicButton onActivate={handlePanicActivate} isActivating={panicState === 'activating'} />
                     </div>
                     
                     {/* Content Section (Announcements Only) */}
@@ -356,8 +184,8 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                         
                         <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700/50 text-center">
                             <p className="text-xs text-gray-400">
-                                This map shows incidents reported in the last 72 hours.
-                                In case of emergency, use the Panic button or contact local authorities.
+                                This map shows recent public incidents.
+                                In case of emergency, please contact your local authorities.
                             </p>
                         </div>
                     </div>
