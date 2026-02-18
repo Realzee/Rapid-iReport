@@ -233,6 +233,7 @@ SECURITY DEFINER SET search_path = public
 AS $$
 BEGIN
   -- Insert a new profile record, pulling metadata from the new auth.users record.
+  -- Use COALESCE to provide default values for NOT NULL columns if metadata is missing.
   INSERT INTO public.profiles (
       id, 
       email, 
@@ -251,8 +252,8 @@ BEGIN
   VALUES (
     new.id,
     new.email,
-    new.raw_user_meta_data ->> 'first_name',
-    new.raw_user_meta_data ->> 'surname',
+    COALESCE(new.raw_user_meta_data ->> 'first_name', 'New'),
+    COALESCE(new.raw_user_meta_data ->> 'surname', 'User'),
     'user', -- Default role for all new signups
     'pending', -- All new users must be approved by an admin
     (new.raw_user_meta_data ->> 'company_id')::uuid,
