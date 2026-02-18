@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { Profile, Report, VehicleReport, ReportStatus } from '../types';
@@ -21,22 +22,21 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
         const fetchMyData = async () => {
             setLoading(true);
 
-            const promises: any[] = [
-                supabase.from('vehicle_reports').select('*').eq('reported_by', profile.id).neq('status', ReportStatus.DELETED),
-                supabase.from('crime_reports').select('*').eq('reported_by', profile.id).neq('status', ReportStatus.DELETED)
+            // RLS now handles company-level filtering, so we can fetch all reports the user has access to.
+            const reportPromises = [
+                supabase.from('vehicle_reports').select('*').neq('status', ReportStatus.DELETED),
+                supabase.from('crime_reports').select('*').neq('status', ReportStatus.DELETED)
             ];
 
-            if (profile.company_id) {
-                promises.push(supabase.from('profiles').select('*').eq('company_id', profile.company_id));
-            } else {
-                promises.push(Promise.resolve({ data: [profile], error: null }));
-            }
+            const usersPromise = profile.company_id 
+                ? supabase.from('profiles').select('*').eq('company_id', profile.company_id)
+                : Promise.resolve({ data: [profile], error: null });
             
             const [
                 { data: vData, error: vError }, 
                 { data: cData, error: cError },
                 { data: usersData, error: uError }
-            ] = await Promise.all(promises);
+            ] = await Promise.all([...reportPromises, usersPromise]);
             
             if (vError || cError) {
                 console.error("Error fetching user reports:", vError || cError);
@@ -58,12 +58,11 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
             setLoading(false);
         };
         fetchMyData();
-    }, [profile.id, profile.company_id]);
+    }, [profile.id, profile.company_id, selectedReportId]);
 
     useEffect(() => {
         const handleUpsert = (payload: any) => {
             const newReport = payload.new as Report;
-            if (newReport.reported_by !== profile.id) return;
 
             setMyReports(prev => {
                 if (newReport.status === ReportStatus.DELETED) {
@@ -84,14 +83,16 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 return sorted;
             });
         };
+        
+        if (!profile.company_id) return;
 
-        const channel = supabase.channel(`my-reports-${profile.id}`)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
+        const channel = supabase.channel(`company-reports-${profile.company_id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `company_id=eq.${profile.company_id}` }, handleUpsert)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `company_id=eq.${profile.company_id}` }, handleUpsert)
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
-    }, [profile.id, selectedReportId]);
+    }, [profile.id, profile.company_id, selectedReportId]);
     
     const selectedReport = useMemo(() => myReports.find(r => r.id === selectedReportId), [myReports, selectedReportId]);
 
@@ -118,8 +119,8 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
         <>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">My Reports</h2>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">Track the status of incidents you have submitted.</p>
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Community Reports</h2>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">View and track incidents reported by your community.</p>
                 </div>
                 <button onClick={handleOpenNewReport} className="mt-4 md:mt-0 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"><PlusIcon className="w-5 h-5" /><span>File a New Report</span></button>
             </div>
@@ -128,7 +129,7 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 <div className="text-center py-20 bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl">
                      <ZapIcon className="w-16 h-16 mx-auto text-gray-400"/>
                      <h3 className="mt-4 text-xl font-semibold text-gray-900 dark:text-white">No Reports Found</h3>
-                     <p className="mt-2 text-gray-500 dark:text-gray-400">You haven't filed any reports yet. Get started by filing a new one.</p>
+                     <p className="mt-2 text-gray-500 dark:text-gray-400">There are no active reports in your community network yet.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">

@@ -4,7 +4,7 @@
 This document provides all the necessary steps and SQL scripts to fully set up the Supabase backend for the RAPID iREPORT application. Follow these instructions carefully.
 
 > [!IMPORTANT]
-> **Common Error: "403 Forbidden" or "companies not showing"**
+> **Common Error: "403 Forbidden" or "data not showing"**
 > If you are seeing errors related to database permissions or data is not appearing, it means your database is out of sync. Following the steps below will fix this. The scripts are idempotent and safe to run on an existing project.
 
 ---
@@ -64,13 +64,24 @@ DROP POLICY IF EXISTS "Allow individual user update" ON public.profiles;
 DROP POLICY IF EXISTS "Allow admin and moderator full access" ON public.profiles;
 DROP POLICY IF EXISTS "Allow public read access" ON public.companies;
 DROP POLICY IF EXISTS "Allow admin full access" ON public.companies;
+DROP POLICY IF EXISTS "Allow public read of active reports" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Allow authenticated users to create reports" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Allow owners to read their reports" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Allow owners to update pending reports" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Allow staff and responders to manage reports" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Allow users to read their own and company reports" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Allow staff to manage company reports" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Allow public read of active reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow authenticated users to create reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow owners to read their reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow owners to update pending reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow staff and responders to manage reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow users to read their own and company reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow staff to manage company reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow users to manage their own notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Allow public read access" ON public.announcements;
+DROP POLICY IF EXISTS "Allow staff to manage announcements" ON public.announcements;
 
--- Temporarily disable RLS on tables to be modified
-ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.vehicle_reports DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.crime_reports DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.companies DISABLE ROW LEVEL SECURITY;
 
 -- 2. Migrate and create ENUM types if they don't exist
 DO $$ BEGIN
@@ -82,7 +93,11 @@ DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'announcement_type') THEN CREATE TYPE public.announcement_type AS ENUM ('notice', 'alert', 'safety_tip'); END IF;
 END$$;
 
--- 3. Re-create helper functions
+-- 3. Update tables with company_id for multi-tenancy
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL;
+
+-- 4. Re-create helper functions
 CREATE OR REPLACE FUNCTION public.get_user_role(p_user_id uuid)
 RETURNS text
 LANGUAGE plpgsql
@@ -96,13 +111,40 @@ BEGIN
 END;
 $$;
 
--- 4. Set up Row Level Security (RLS) policies
+-- 5. Trigger to auto-set company_id on new reports
+CREATE OR REPLACE FUNCTION public.set_report_company_id()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  NEW.company_id := (SELECT company_id FROM public.profiles WHERE id = NEW.reported_by);
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_vehicle_report_insert ON public.vehicle_reports;
+CREATE TRIGGER on_vehicle_report_insert
+  BEFORE INSERT ON public.vehicle_reports
+  FOR EACH ROW EXECUTE FUNCTION public.set_report_company_id();
+  
+DROP TRIGGER IF EXISTS on_crime_report_insert ON public.crime_reports;
+CREATE TRIGGER on_crime_report_insert
+  BEFORE INSERT ON public.crime_reports
+  FOR EACH ROW EXECUTE FUNCTION public.set_report_company_id();
+
+-- 6. Backfill company_id for existing reports
+UPDATE public.vehicle_reports v SET company_id = p.company_id FROM public.profiles p WHERE v.reported_by = p.id AND v.company_id IS NULL;
+UPDATE public.crime_reports c SET company_id = p.company_id FROM public.profiles p WHERE c.reported_by = p.id AND c.company_id IS NULL;
+
+-- 7. Set up Row Level Security (RLS) policies
 -- Enable RLS for all relevant tables first
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policies
 CREATE POLICY "Allow individual user insert" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
@@ -113,6 +155,28 @@ CREATE POLICY "Allow admin and moderator full access" ON public.profiles FOR ALL
 -- Companies Policies
 CREATE POLICY "Allow public read access" ON public.companies FOR SELECT USING (true);
 CREATE POLICY "Allow admin full access" ON public.companies FOR ALL USING (get_user_role(auth.uid()) = 'admin') WITH CHECK (get_user_role(auth.uid()) = 'admin');
+
+-- Vehicle Reports Policies
+CREATE POLICY "Allow public read of active reports" ON public.vehicle_reports FOR SELECT USING (status = 'active'::public.report_status);
+CREATE POLICY "Allow authenticated users to create reports" ON public.vehicle_reports FOR INSERT TO authenticated WITH CHECK (auth.uid() = reported_by);
+CREATE POLICY "Allow owners to update pending reports" ON public.vehicle_reports FOR UPDATE TO authenticated USING (auth.uid() = reported_by AND status = 'pending'::public.report_status) WITH CHECK (auth.uid() = reported_by);
+CREATE POLICY "Allow users to read their own and company reports" ON public.vehicle_reports FOR SELECT USING ((get_user_role(auth.uid()) = 'admin') OR (auth.uid() = reported_by) OR (company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())));
+CREATE POLICY "Allow staff to manage company reports" ON public.vehicle_reports FOR UPDATE, DELETE USING ((get_user_role(auth.uid()) = 'admin') OR (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())) OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
+
+-- Crime Reports Policies
+CREATE POLICY "Allow public read of active reports" ON public.crime_reports FOR SELECT USING (status = 'active'::public.report_status);
+CREATE POLICY "Allow authenticated users to create reports" ON public.crime_reports FOR INSERT TO authenticated WITH CHECK (auth.uid() = reported_by);
+CREATE POLICY "Allow owners to update pending reports" ON public.crime_reports FOR UPDATE TO authenticated USING (auth.uid() = reported_by AND status = 'pending'::public.report_status) WITH CHECK (auth.uid() = reported_by);
+CREATE POLICY "Allow users to read their own and company reports" ON public.crime_reports FOR SELECT USING ((get_user_role(auth.uid()) = 'admin') OR (auth.uid() = reported_by) OR (company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())));
+CREATE POLICY "Allow staff to manage company reports" ON public.crime_reports FOR UPDATE, DELETE USING ((get_user_role(auth.uid()) = 'admin') OR (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())) OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
+
+
+-- Notifications Policies
+CREATE POLICY "Allow users to manage their own notifications" ON public.notifications FOR ALL USING (auth.uid() = recipient_user_id) WITH CHECK (auth.uid() = recipient_user_id);
+
+-- Announcements Policies
+CREATE POLICY "Allow public read access" ON public.announcements FOR SELECT USING (true);
+CREATE POLICY "Allow staff to manage announcements" ON public.announcements FOR ALL USING (get_user_role(auth.uid()) IN ('admin', 'moderator')) WITH CHECK (get_user_role(auth.uid()) IN ('admin', 'moderator'));
 
 ```
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Report, Profile, Responder, ResponderStatus, UserRole, Severity, ReportStatus, CrimeReport } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
@@ -180,23 +181,24 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             });
         };
 
-        const reportsChannel = supabase.channel('controller-page-reports', {
-            config: {
-                broadcast: {
-                    self: true, 
-                },
-            },
-        })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
-            .subscribe();
+        const channelId = `controller-page-reports-${profile.role === UserRole.ADMIN ? 'global' : profile.company_id}`;
+        const reportsChannel = supabase.channel(channelId, {
+            config: { broadcast: { self: true } },
+        });
+
+        if (profile.role === UserRole.ADMIN) {
+            reportsChannel
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange);
+        } else if (profile.company_id) {
+            reportsChannel
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `company_id=eq.${profile.company_id}` }, handleReportChange)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `company_id=eq.${profile.company_id}` }, handleReportChange);
+        }
+        reportsChannel.subscribe();
             
         const profilesChannel = supabase.channel('controller-page-profiles', {
-            config: {
-                broadcast: {
-                    self: true, 
-                },
-            },
+            config: { broadcast: { self: true } },
         })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleProfileChange)
             .subscribe();

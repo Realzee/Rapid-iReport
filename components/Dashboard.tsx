@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport, ReportStatus, Company } from '../types';
 import StatCard from './StatCard';
@@ -130,16 +131,21 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             });
         };
 
-        const reportsChannel = supabase.channel('public:reports-dashboard', {
-            config: {
-                broadcast: {
-                    self: true, // Receive updates from the same client
-                },
-            },
-        })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
-            .subscribe();
+        const channelId = `dashboard-reports-${profile.role === UserRole.ADMIN ? 'global' : profile.company_id}`;
+        const reportsChannel = supabase.channel(channelId, {
+            config: { broadcast: { self: true } },
+        });
+
+        if (profile.role === UserRole.ADMIN) {
+            reportsChannel
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange);
+        } else if (profile.company_id) {
+            reportsChannel
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `company_id=eq.${profile.company_id}` }, handleReportChange)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `company_id=eq.${profile.company_id}` }, handleReportChange);
+        }
+        reportsChannel.subscribe();
             
         const profilesChannel = supabase.channel('public:profiles-dashboard')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleProfileChange)
