@@ -4,8 +4,8 @@
 This document provides all the necessary steps and SQL scripts to fully set up the Supabase backend for the RAPID iREPORT application. Follow these instructions carefully.
 
 > [!IMPORTANT]
-> **Common Error: "invalid input value for enum" or "schema cache" or "404 Not Found"**
-> If you are seeing errors related to the database schema, it means your database is out of sync. Following the steps below will fix this. The scripts are idempotent and safe to run on an existing project.
+> **Common Error: "403 Forbidden" or "companies not showing"**
+> If you are seeing errors related to database permissions or data is not appearing, it means your database is out of sync. Following the steps below will fix this. The scripts are idempotent and safe to run on an existing project.
 
 ---
 
@@ -40,7 +40,7 @@ This script creates and updates all necessary types, tables, functions, and trig
 
 ```sql
 -- RAPID iREPORT - Database Setup Script - PART 1
--- Description: This script migrates old data types, ensures all ENUM types are correct, and re-enables RLS.
+-- Description: This script migrates old data types, ensures all ENUM types are correct, and sets up RLS.
 
 -- 0. Helper function for Edge Function migrations
 CREATE OR REPLACE FUNCTION public.eval(query text)
@@ -53,64 +53,27 @@ BEGIN
 END;
 $$;
 
--- 1. Drop dependencies, policies, and disable RLS to allow type alterations.
+-- 1. Drop old functions and policies to allow type alterations.
 DROP FUNCTION IF EXISTS public.get_user_role(uuid) CASCADE;
 DROP FUNCTION IF EXISTS public.create_staff_notification(text, text, text, uuid, text[]) CASCADE;
 DROP FUNCTION IF EXISTS public.create_public_panic_report(text, jsonb) CASCADE;
+-- Drop policies to be idempotent
+DROP POLICY IF EXISTS "Allow individual user insert" ON public.profiles;
+DROP POLICY IF EXISTS "Allow individual user read access" ON public.profiles;
+DROP POLICY IF EXISTS "Allow individual user update" ON public.profiles;
+DROP POLICY IF EXISTS "Allow admin and moderator full access" ON public.profiles;
+DROP POLICY IF EXISTS "Allow public read access" ON public.companies;
+DROP POLICY IF EXISTS "Allow admin full access" ON public.companies;
 
--- Defensively drop legacy 'responders' view/table
-DO $$
-BEGIN
-   IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'responders' AND n.nspname = 'public' AND c.relkind = 'v') THEN
-      DROP VIEW public.responders CASCADE;
-   END IF;
-END $$;
-
--- Drop problematic policies
-DROP POLICY IF EXISTS "Allow authorized profile updates" ON public.profiles;
-DROP POLICY IF EXISTS "Admins and moderators can delete profiles" ON public.profiles;
-DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.crime_reports;
-DROP POLICY IF EXISTS "Allow authorized users to update reports" ON public.crime_reports;
-DROP POLICY IF EXISTS "Allow public read access to recent, active reports" ON public.vehicle_reports;
-DROP POLICY IF EXISTS "Allow authorized users to update reports" ON public.vehicle_reports;
-
--- Temporarily disable RLS
+-- Temporarily disable RLS on tables to be modified
 ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vehicle_reports DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crime_reports DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.companies DISABLE ROW LEVEL SECURITY;
 
--- 2. Migrate ENUM types
+-- 2. Migrate and create ENUM types if they don't exist
 DO $$ BEGIN
-    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role_enum') THEN
-        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
-            ALTER TABLE public.profiles ALTER COLUMN role DROP DEFAULT;
-            ALTER TABLE public.profiles ALTER COLUMN role TYPE public.user_role USING role::text::public.user_role;
-            ALTER TABLE public.profiles ALTER COLUMN role SET DEFAULT 'user'::public.user_role;
-            DROP TYPE public.user_role_enum;
-        ELSE
-            ALTER TYPE public.user_role_enum RENAME TO user_role;
-        END IF;
-    END IF;
-END $$;
-
-DO $$ BEGIN
-    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status_enum') THEN
-        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN
-            ALTER TABLE public.vehicle_reports ALTER COLUMN status DROP DEFAULT;
-            ALTER TABLE public.crime_reports ALTER COLUMN status DROP DEFAULT;
-            ALTER TABLE public.vehicle_reports ALTER COLUMN status TYPE public.report_status USING status::text::public.report_status;
-            ALTER TABLE public.crime_reports ALTER COLUMN status TYPE public.report_status USING status::text::public.report_status;
-            DROP TYPE public.report_status_enum;
-        ELSE
-            ALTER TYPE public.report_status_enum RENAME TO report_status;
-        END IF;
-    END IF;
-END $$;
-
--- 3. Create ENUM types if they don't exist
-DO $$
-BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN CREATE TYPE public.user_role AS ENUM ('user', 'admin', 'moderator', 'controller', 'responder'); END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN CREATE TYPE public.user_status AS ENUM ('pending', 'active', 'suspended'); END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN CREATE TYPE public.report_status AS ENUM ('pending', 'active', 'assigned', 'in_progress', 'on_scene', 'resolved', 'rejected', 'recovered', 'closed', 'deleted'); END IF;
@@ -119,7 +82,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'announcement_type') THEN CREATE TYPE public.announcement_type AS ENUM ('notice', 'alert', 'safety_tip'); END IF;
 END$$;
 
--- 4. Re-create the get_user_role function
+-- 3. Re-create helper functions
 CREATE OR REPLACE FUNCTION public.get_user_role(p_user_id uuid)
 RETURNS text
 LANGUAGE plpgsql
@@ -133,11 +96,23 @@ BEGIN
 END;
 $$;
 
--- 5. Re-enable Row Level Security
+-- 4. Set up Row Level Security (RLS) policies
+-- Enable RLS for all relevant tables first
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vehicle_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.crime_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
+
+-- Profiles Policies
+CREATE POLICY "Allow individual user insert" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Allow individual user read access" ON public.profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Allow individual user update" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Allow admin and moderator full access" ON public.profiles FOR ALL USING (get_user_role(auth.uid()) IN ('admin', 'moderator'));
+
+-- Companies Policies
+CREATE POLICY "Allow public read access" ON public.companies FOR SELECT USING (true);
+CREATE POLICY "Allow admin full access" ON public.companies FOR ALL USING (get_user_role(auth.uid()) = 'admin') WITH CHECK (get_user_role(auth.uid()) = 'admin');
 
 ```
 
