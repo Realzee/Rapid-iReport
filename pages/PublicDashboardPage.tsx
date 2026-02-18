@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -10,9 +11,7 @@ import { CarIcon, CrimeIcon, DatabaseIcon, ZapIcon, ShieldAlertIcon } from '../c
 import { formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
 import AnnouncementsPanel from '../components/AnnouncementsPanel';
-import LegacyObLog from '../components/LegacyObLog';
 import PublicReportDetailModal from '../components/PublicReportDetailModal';
-import LegacyObDetailModal from '../components/LegacyObDetailModal';
 import MapStyleToggle, { MapStyle } from '../components/MapStyleToggle';
 import { GoogleGenAI } from '@google/genai';
 
@@ -80,7 +79,7 @@ const PanicButton: React.FC<{ onActivate: () => void, isActivating: boolean }> =
 
     return (
         <div 
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1001] flex flex-col items-center"
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1001] flex flex-col items-center"
             onMouseDown={startHold}
             onMouseUp={endHold}
             onMouseLeave={endHold}
@@ -115,7 +114,6 @@ const PanicActivationView: React.FC<{ location: LocationCoords, address: string,
     useEffect(() => {
         const fetchSafetyTips = async () => {
             try {
-                // IMPORTANT: This key is managed by the execution environment. Do not hardcode.
                 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
                 const prompt = `Generate immediate, concise safety instructions for someone who has just used a panic button. They are located near: ${address} (lat: ${location.lat}, lng: ${location.lng}). The situation is unknown. Keep instructions short, clear, and actionable in bullet points. Start with a reassuring sentence.`;
                 
@@ -164,8 +162,6 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [detailReport, setDetailReport] = useState<Report | null>(null);
-    const [activeTab, setActiveTab] = useState<'incidents' | 'legacy'>('incidents');
-    const [selectedLegacyEntry, setSelectedLegacyEntry] = useState<LegacyObEntry | null>(null);
     const [mapStyle, setMapStyle] = useState<MapStyle>('street');
     const [panicState, setPanicState] = useState<'idle' | 'activating' | 'activated' | 'error'>('idle');
     const [userLocation, setUserLocation] = useState<{ coords: LocationCoords, address: string } | null>(null);
@@ -180,7 +176,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
         ] = await Promise.all([
             supabase.from('vehicle_reports').select('*'),
             supabase.from('crime_reports').select('*'),
-            supabase.from('announcements').select('*').or('expires_at.is.null,expires_at.gt.now()').order('created_at', { ascending: false }).limit(5)
+            supabase.from('announcements').select('*').or('expires_at.is.null,expires_at.gt.now()').order('created_at', { ascending: false }).limit(10)
         ]);
         
         if (vError) console.error("Public fetch error (vehicles):", vError.message);
@@ -216,7 +212,6 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                 const coords = { lat: latitude, lng: longitude };
                 
                 let locationString = `Coordinates: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
-                let geocodeError = null;
 
                 try {
                     const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
@@ -224,19 +219,10 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                         const data = await response.json();
                         if (data.display_name) {
                             locationString = data.display_name;
-                        } else {
-                            geocodeError = "Could not find address for coordinates.";
                         }
-                    } else {
-                        geocodeError = `Geocoding service returned status ${response.status}.`;
                     }
-                } catch (e: any) {
-                    geocodeError = `Network error during geocoding: ${e.message}`;
-                }
-
-                if (geocodeError) {
-                    console.error("Reverse geocode failed:", geocodeError);
-                    alert("Could not determine your address. Alert will be sent with coordinates only.");
+                } catch (e) {
+                    console.warn("Reverse geocode failed, using coordinates.");
                 }
 
                 setUserLocation({ coords, address: locationString });
@@ -248,7 +234,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
 
                 if (rpcError) {
                     console.error("Panic report failed:", rpcError);
-                    alert(`Failed to send alert: ${rpcError.message}. Please contact emergency services directly.`);
+                    alert(`Failed to send alert: ${rpcError.message}`);
                     setPanicState('error');
                     setTimeout(() => setPanicState('idle'), 3000);
                 } else {
@@ -256,7 +242,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                 }
             },
             (error) => {
-                alert(`Location Error: ${error.message}. Please enable location services to use the panic button.`);
+                alert(`Location Error: ${error.message}. Please enable location services.`);
                 setPanicState('idle');
             },
             { enableHighAccuracy: true }
@@ -272,10 +258,6 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
         }
     };
     
-    const handleLegacyRowClick = (entry: LegacyObEntry) => {
-        setSelectedLegacyEntry(entry);
-    };
-
     const selectedReport = useMemo(() => reports.find(r => r.id === selectedReportId), [reports, selectedReportId]);
     
     const streetLightUrl = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
@@ -284,14 +266,6 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
     const satelliteLabelsUrl = 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
     const streetAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
     const satelliteAttribution = 'Tiles &copy; Esri';
-    
-    const tabButtonClasses = (tabName: 'incidents' | 'legacy') => 
-        `w-1/2 py-2.5 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${
-            activeTab === tabName 
-            ? 'bg-blue-600 text-white shadow-md' 
-            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'
-        }`;
-
 
     return (
         <>
@@ -319,7 +293,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                 </header>
                 <main className="flex-grow grid grid-cols-1 lg:grid-cols-10 gap-4 p-4 overflow-hidden h-[calc(100vh-5rem)]">
                     {/* Map Section */}
-                    <div className="relative lg:col-span-6 h-[50vh] lg:h-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700/50 shadow-md">
+                    <div className="relative lg:col-span-7 h-[60vh] lg:h-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700/50 shadow-md">
                          <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
                             {mapStyle === 'street' ? (
                                 <TileLayer
@@ -348,7 +322,6 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                                     key={report.id} 
                                     position={[report.location_coords.lat, report.location_coords.lng]} 
                                     icon={isVehicleReport(report) ? createVehicleIcon() : createCrimeIcon()}
-                                    // FIX: Changed 'onClick' to 'eventHandlers' to align with the react-leaflet API for event handling.
                                     eventHandlers={{
                                         click: () => handleSelectReport(report.id),
                                     }}
@@ -367,58 +340,30 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                         <PanicButton onActivate={handlePanicActivate} isActivating={panicState === 'activating'} />
                     </div>
                     
-                    {/* Content Section */}
-                    <div className="lg:col-span-4 h-full flex flex-col bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border border-gray-200 dark:border-gray-700/50 rounded-2xl overflow-hidden shadow-md">
-                        {/* Tabs */}
-                        <div className="flex-shrink-0 p-2 border-b border-gray-200 dark:border-gray-700/50 bg-gray-100/50 dark:bg-gray-900/50">
-                             <div className="flex bg-gray-200 dark:bg-gray-800/70 border border-gray-300 dark:border-gray-700 rounded-lg p-1">
-                                <button onClick={() => setActiveTab('incidents')} className={tabButtonClasses('incidents')}>
-                                    <ZapIcon className="w-5 h-5"/> Live Incidents
-                                </button>
-                                <button onClick={() => setActiveTab('legacy')} className={tabButtonClasses('legacy')}>
-                                    <DatabaseIcon className="w-5 h-5"/> Legacy OB Log
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Tab Content */}
+                    {/* Content Section (Announcements Only) */}
+                    <div className="lg:col-span-3 h-full flex flex-col bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border border-gray-200 dark:border-gray-700/50 rounded-2xl overflow-hidden shadow-md">
                         <div className="flex-grow overflow-y-auto">
-                            {activeTab === 'incidents' ? (
-                                <>
-                                    <div className="p-2">
-                                        {loading ? (
-                                            <div className="flex justify-center items-center h-full py-10"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
-                                        ) : reports.length === 0 ? (
-                                            <p className="text-center p-8 text-gray-500 dark:text-gray-400">No active public incidents at this time.</p>
-                                        ) : (
-                                            <div className="space-y-2">
-                                            {reports.map(report => (
-                                                <div key={report.id} onClick={() => handleSelectReport(report.id)} className={`p-3 cursor-pointer rounded-lg border-2 transition-all ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-gray-100/50 dark:bg-gray-800/50 border-transparent hover:border-gray-300 dark:hover:border-gray-600'}`}>
-                                                    <div className="flex justify-between items-start gap-2">
-                                                        <h3 className="font-semibold text-md truncate">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
-                                                        <StatusBadge status={report.status} />
-                                                    </div>
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1">
-                                                        {isVehicleReport(report) ? <CarIcon className="w-4 h-4 text-yellow-500" /> : <CrimeIcon className="w-4 h-4 text-red-500" />}
-                                                        <span>{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : report.crime_type}</span>
-                                                    </p>
-                                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
-                                                </div>
-                                            ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <AnnouncementsPanel announcements={announcements} />
-                                </>
-                            ) : (
-                                <LegacyObLog onRowClick={handleLegacyRowClick} />
+                            <AnnouncementsPanel announcements={announcements} />
+                            
+                            {/* Empty state when no announcements exist */}
+                            {announcements.length === 0 && (
+                                <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                                    <ZapIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                                    <p>No active community notices. The community map is currently operational.</p>
+                                </div>
                             )}
+                        </div>
+                        
+                        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700/50 text-center">
+                            <p className="text-xs text-gray-400">
+                                This map shows incidents reported in the last 72 hours.
+                                In case of emergency, use the Panic button or contact local authorities.
+                            </p>
                         </div>
                     </div>
                 </main>
             </div>
             <PublicReportDetailModal isOpen={!!detailReport} onClose={() => setDetailReport(null)} report={detailReport} />
-            <LegacyObDetailModal isOpen={!!selectedLegacyEntry} onClose={() => setSelectedLegacyEntry(null)} entry={selectedLegacyEntry} />
         </>
     );
 };
