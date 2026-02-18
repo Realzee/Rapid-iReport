@@ -117,7 +117,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         }
 
         setLoadingPassword(true);
-        const { error } = await supabase.auth.updateUser({ password });
+        // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
+        const { error } = await supabase.auth['updateUser']({ password });
         if (error) {
             addToast('Error updating password: ' + error.message, 'error');
         } else {

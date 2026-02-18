@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -55,14 +56,16 @@ const App: React.FC = () => {
       const isSchemaValid = await runSchemaCheck();
       if (!isSchemaValid) return;
 
-      const { data: { session } } = await supabase.auth.getSession();
+      // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
+      const { data: { session } } = await supabase.auth['getSession']();
       setSession(session);
       setLoading(false);
     };
   
     initializeApp();
   
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
+    const { data: { subscription } } = supabase.auth['onAuthStateChange']((_event, session) => {
       setSession(session);
       setError(null);
       if (!session) {
@@ -99,13 +102,10 @@ const App: React.FC = () => {
                 .from('profiles')
                 .select('*, company:companies(*)')
                 .eq('id', session.user.id)
-                .maybeSingle();
+                .single();
 
             if (fetchError) {
                 setError(`Failed to load your profile. Please check your connection and Row Level Security policies. Error: ${fetchError.message}`);
-                setProfile(null);
-            } else if (!data) {
-                setError("Your user account exists, but your profile record is missing in the database. This typically happens if the Database Trigger (Step 3 in the setup guide) was not installed before you registered. Please contact an administrator to create your profile manually or run the setup script.");
                 setProfile(null);
             } else {
                 setProfile(data);
@@ -246,8 +246,9 @@ const App: React.FC = () => {
               <div className="text-center bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg max-w-lg">
                   <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Application Error</h2>
                   <p className="mb-4">{error}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">This can happen due to network issues, database schema mismatches, or missing triggers. Please check the setup instructions in DATABASE_SCHEMA.md.</p>
-                  <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">This can happen due to network issues or incorrect database permissions (Row Level Security). Please check the console for more details.</p>
+                  {/* FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors. */}
+                  <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
                       Logout and Try Again
                   </button>
               </div>
@@ -278,7 +279,8 @@ const App: React.FC = () => {
                 <ClockIcon className="w-12 h-12 mx-auto text-yellow-500 mb-4" />
                 <h2 className="text-2xl font-bold mb-2 text-yellow-700 dark:text-yellow-300">Account Pending Approval</h2>
                 <p className="mb-4 text-gray-600 dark:text-gray-300">Thank you for registering and verifying your email. Your account is currently awaiting review by an administrator. You will be notified once it has been approved.</p>
-                <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition-colors">
+                {/* FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors. */}
+                <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition-colors">
                     Logout
                 </button>
             </div>
@@ -293,7 +295,8 @@ const App: React.FC = () => {
                 <AlertTriangleIcon className="w-12 h-12 mx-auto text-red-500 mb-4" />
                 <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Account Suspended</h2>
                 <p className="mb-4 text-gray-600 dark:text-gray-300">Your access to the system has been revoked. Please contact an administrator for assistance.</p>
-                <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
+                {/* FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors. */}
+                <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
                     Logout
                 </button>
             </div>

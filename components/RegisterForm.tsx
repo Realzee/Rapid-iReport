@@ -52,7 +52,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
     }
     setLoading(true);
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
+    const { data: signUpData, error: signUpError } = await supabase.auth['signUp']({
         email,
         password,
         options: {

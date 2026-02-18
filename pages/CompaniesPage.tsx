@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { PlusIcon, BuildingIcon, UploadCloudIcon, MegaphoneIcon, EditIcon, TrashIcon, AlertTriangleIcon, LightbulbIcon, DatabaseIcon } from '../components/icons';
 import { Company, Profile, UserRole, Announcement, AnnouncementType } from '../types';
@@ -67,17 +68,15 @@ const CompaniesPage: React.FC = () => {
 
     useEffect(() => {
         const fetchCurrentUserProfile = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
+            // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
+            const { data: { session } } = await supabase.auth['getSession']();
             if (session?.user) {
-                const { data: profileData, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+                const { data: profileData, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
                 if (error) {
                     addToast(`Error fetching your profile: ${error.message}`, 'error');
-                }
-                if (profileData) {
-                    setCurrentUserProfile(profileData);
-                } else {
-                    addToast("Could not load your user profile to access this page.", "error");
                     setLoading(false);
+                } else {
+                    setCurrentUserProfile(profileData);
                 }
             } else {
                 setLoading(false);

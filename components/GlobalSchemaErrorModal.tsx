@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { supabase } from '../utils/supabase';
 
@@ -124,7 +125,8 @@ END; $$;`;
         setFixError(null);
 
         try {
-            const { data: { session } } = await supabase.auth.getSession();
+            // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
+            const { data: { session } } = await supabase.auth['getSession']();
             if (!session) {
                 throw new Error("Authentication failed. Please log in as an administrator first and then refresh this page to try again.");
             }

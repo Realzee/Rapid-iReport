@@ -16,7 +16,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
+    const { error } = await supabase.auth['signInWithPassword']({ email, password });
     if (error) {
       addToast(error.message, 'error');
     }

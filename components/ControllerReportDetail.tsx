@@ -76,7 +76,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             ] = await Promise.all([
                 supabase.from('report_updates').select('*, profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at', { ascending: true }),
                 supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(first_name, surname), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(first_name, surname), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(first_name, surname)`).eq('report_id', report.id).order('created_at', { ascending: false }),
-                supabase.from('profiles').select('first_name, surname').eq('id', report.reported_by).maybeSingle()
+                supabase.from('profiles').select('first_name, surname').eq('id', report.reported_by).single()
             ]);
 
             if (updatesError) console.error("Error fetching report updates:", updatesError);
@@ -111,7 +111,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             .channel(`report-updates-${report.id}`)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'report_updates', filter: `report_id=eq.${report.id}`}, 
             async (payload) => {
-                const { data: profileData } = await supabase.from('profiles').select('first_name, surname').eq('id', payload.new.user_id).maybeSingle();
+                const { data: profileData } = await supabase.from('profiles').select('first_name, surname').eq('id', payload.new.user_id).single();
                 const newUpdateWithUser = { ...payload.new, user_full_name: profileData ? `${profileData.first_name} ${profileData.surname}` : 'System' };
                 setUpdates(prev => [...prev, newUpdateWithUser as ReportUpdate]);
             })

@@ -477,7 +477,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     .from('profiles')
                     .select('company_id, company:companies(name)')
                     .eq('id', user.id)
-                    .maybeSingle();
+                    .single();
 
                 if (profileError) {
                     console.warn("Could not fetch user's company for OB number generation:", profileError.message);

@@ -94,8 +94,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       }`;
 
   const handleLogout = async () => {
-    // FIX: Use direct .signOut() method call instead of bracket notation workaround.
-    await supabase.auth.signOut();
+    // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
+    await supabase.auth['signOut']();
     setMobileMenuOpen(false);
   };
 

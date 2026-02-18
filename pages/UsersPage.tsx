@@ -30,15 +30,12 @@ const UsersPage: React.FC = () => {
             // @ts-ignore
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
-                const { data: profileData, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+                const { data: profileData, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
                 if (error) {
                     addToast(`Error fetching your profile: ${error.message}`, 'error');
-                }
-                if (profileData) {
-                    setCurrentUserProfile(profileData);
-                } else {
-                    addToast("Could not load your user profile to access this page.", "error");
                     setLoading(false);
+                } else {
+                    setCurrentUserProfile(profileData);
                 }
             } else {
                 setLoading(false);

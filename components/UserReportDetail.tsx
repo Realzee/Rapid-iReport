@@ -85,7 +85,7 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
         const updatesChannel = supabase.channel(`user-updates-${report.id}`)
             .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'report_updates', filter: `report_id=eq.${report.id}`}, 
             async (payload) => {
-                const { data: profileData } = await supabase.from('profiles').select('first_name, surname').eq('id', payload.new.user_id).maybeSingle();
+                const { data: profileData } = await supabase.from('profiles').select('first_name, surname').eq('id', payload.new.user_id).single();
                 const newUpdateWithUser = { ...payload.new, user_full_name: profileData ? `${profileData.first_name} ${profileData.surname}` : 'System' };
                 setUpdates(prev => [...prev, newUpdateWithUser as ReportUpdate]);
             })
@@ -94,7 +94,7 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
         const historyChannel = supabase.channel(`user-history-${report.id}`)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'assignment_logs', filter: `report_id=eq.${report.id}`},
             async (payload) => {
-                const { data: byData } = await supabase.from('profiles').select('first_name, surname').eq('id', payload.new.assigned_by).maybeSingle();
+                const { data: byData } = await supabase.from('profiles').select('first_name, surname').eq('id', payload.new.assigned_by).single();
                 const newLog = { 
                     ...payload.new,
                     assigned_by_name: byData ? `${byData.first_name} ${byData.surname}` : 'System',
