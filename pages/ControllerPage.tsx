@@ -10,6 +10,7 @@ import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, MapIco
 import ReportModal from '../components/ReportModal';
 import SoughtListManager from '../components/BlacklistManager';
 import { useChat } from '../contexts/ChatContext';
+import { useToast } from '../contexts/ToastContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
 
 interface ControllerPageProps {
@@ -32,6 +33,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
     const [isDetailsVisible, setIsDetailsVisible] = useState(true);
     const { openChat } = useChat();
+    const { addToast } = useToast();
     const [newPanicReportId, setNewPanicReportId] = useState<string | null>(null);
 
     const isInitialLoad = useRef(true);
@@ -267,6 +269,44 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         return reports.find(r => r.id === selectedReportId);
     }, [reports, selectedReportId]);
 
+    const handleAssignResponder = async (responderId: string) => {
+        if (!selectedReportId || !selectedReport) return;
+
+        const tableName = selectedReport.type === 'vehicle' ? 'vehicle_reports' : 'crime_reports';
+        const responder = responders.find(r => r.id === responderId);
+        
+        if (!responder) return;
+
+        const { error } = await supabase
+            .from(tableName)
+            .update({ 
+                assigned_to: responderId,
+                status: ReportStatus.ASSIGNED
+            })
+            .eq('id', selectedReportId);
+
+        if (error) {
+            addToast('Failed to assign responder: ' + error.message, 'error');
+        } else {
+            addToast(`Assigned ${responder.first_name} ${responder.surname} to incident ${selectedReport.ob_number}`, 'success');
+            // Log the assignment
+            await supabase.from('report_updates').insert({
+                report_id: selectedReportId,
+                user_id: profile.id,
+                content: `Assigned responder: ${responder.first_name} ${responder.surname}`
+            });
+
+            // Create notification for responder
+            await supabase.from('notifications').insert({
+                recipient_user_id: responderId,
+                type: 'new_report',
+                title: 'New Incident Assigned',
+                message: `You have been assigned to incident ${selectedReport.ob_number}: ${selectedReport.type === 'vehicle' ? (selectedReport as any).license_plate : (selectedReport as any).title}`,
+                reference_id: selectedReportId
+            });
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-full">
@@ -339,6 +379,8 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                             <ResponderStack
                                 responders={responders}
                                 reports={reports}
+                                selectedReportId={selectedReportId}
+                                onAssign={handleAssignResponder}
                             />
                         )}
                     </div>
@@ -356,6 +398,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 selectedReportId={selectedReportId}
                                 profile={profile}
                                 onReportSelect={handleReportSelect}
+                                onAssignResponder={handleAssignResponder}
                                 allUsers={allUsers}
                             />
                             <button

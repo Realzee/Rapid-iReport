@@ -13,6 +13,7 @@ interface MapViewProps {
   selectedReportId: string | null;
   profile?: Profile;
   onReportSelect?: (reportId: string) => void;
+  onAssignResponder?: (responderId: string) => void;
   allUsers: Profile[];
 }
 
@@ -139,7 +140,7 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
     return null;
 };
 
-const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, profile, onReportSelect, allUsers }) => {
+const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, profile, onReportSelect, onAssignResponder, allUsers }) => {
     const [copiedReportId, setCopiedReportId] = useState<string | null>(null);
     const [mapStyle, setMapStyle] = useState<MapStyle>('street');
 
@@ -207,6 +208,36 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                                 <div className="font-bold">{`${responder.first_name} ${responder.surname}`}</div>
                                 <div className="capitalize">{responder.status.replace('_', ' ')}</div>
                             </Tooltip>
+                            <Popup>
+                                <div className="p-2 min-w-[200px]">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <img src={`https://i.pravatar.cc/40?u=${responder.id}`} alt="avatar" className="w-10 h-10 rounded-full" />
+                                        <div>
+                                            <p className="font-bold text-gray-900 dark:text-white leading-tight">{responder.first_name} {responder.surname}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{responder.status.replace('_', ' ')}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    {selectedReportId && responder.status === ResponderStatus.AVAILABLE && (
+                                        <button 
+                                            onClick={() => {
+                                                onAssignResponder?.(responder.id);
+                                            }}
+                                            className="w-full py-2 px-3 bg-blue-600 text-white text-xs font-bold rounded-md hover:bg-blue-700 transition shadow-sm"
+                                        >
+                                            Assign to Incident {selectedReport?.ob_number}
+                                        </button>
+                                    )}
+                                    
+                                    {!selectedReportId && (
+                                        <p className="text-xs text-gray-500 italic">Select an incident to assign this responder.</p>
+                                    )}
+                                    
+                                    {responder.status !== ResponderStatus.AVAILABLE && (
+                                        <p className="text-xs text-yellow-600 dark:text-yellow-400 italic">Responder is currently {responder.status.replace('_', ' ')}.</p>
+                                    )}
+                                </div>
+                            </Popup>
                         </Marker>
                     )
                 ))}

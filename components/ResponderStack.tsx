@@ -21,15 +21,19 @@ const ResponderStatusBadge: React.FC<{ status: ResponderStatus }> = ({ status })
 interface ResponderCardProps {
     responder: Responder;
     assignedReport?: Report;
+    selectedReportId?: string | null;
+    onAssign?: (responderId: string) => void;
 }
-const ResponderCard: React.FC<ResponderCardProps> = ({ responder, assignedReport }) => {
+const ResponderCard: React.FC<ResponderCardProps> = ({ responder, assignedReport, selectedReportId, onAssign }) => {
+    const canAssign = selectedReportId && !assignedReport && responder.status === ResponderStatus.AVAILABLE;
+
     return (
-        <div className="p-4 rounded-lg bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60 border border-gray-200 dark:border-gray-700/50 shadow-sm transition-all">
+        <div className={`p-4 rounded-lg bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60 border shadow-sm transition-all ${canAssign ? 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-500/20' : 'border-gray-200 dark:border-gray-700/50'}`}>
             <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <img src={`https://i.pravatar.cc/40?u=${responder.id}`} alt="avatar" className="w-10 h-10 rounded-full" />
-                    <div className="flex items-baseline gap-2">
-                        <p className="font-bold text-gray-900 dark:text-white">{responder.first_name} {responder.surname}</p>
+                    <div className="flex flex-col">
+                        <p className="font-bold text-gray-900 dark:text-white leading-tight">{responder.first_name} {responder.surname}</p>
                         <ResponderStatusBadge status={responder.status} />
                     </div>
                 </div>
@@ -38,7 +42,7 @@ const ResponderCard: React.FC<ResponderCardProps> = ({ responder, assignedReport
             <div className="mt-4">
                 <p className="text-xs font-bold text-gray-400 uppercase">Assignment</p>
                 {assignedReport ? (
-                    <p className="font-mono text-sm text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-500/20 px-2 py-1 rounded-md mt-1">
+                    <p className="font-mono text-sm text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-500/20 px-2 py-1 rounded-md mt-1 truncate">
                         {assignedReport.ob_number}
                     </p>
                 ) : (
@@ -48,15 +52,24 @@ const ResponderCard: React.FC<ResponderCardProps> = ({ responder, assignedReport
                 )}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex items-center justify-end gap-2">
-                 <button className="px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700/50 rounded-md hover:bg-gray-300 dark:hover:bg-gray-700 transition flex items-center gap-1.5">
-                    <PhoneIcon className="w-3.5 h-3.5" />
-                    Contact
-                </button>
-                 <button disabled className="px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700/50 rounded-md transition flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <ClockIcon className="w-3.5 h-3.5" />
-                    View Log
-                </button>
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex items-center justify-between gap-2">
+                <div className="flex gap-2">
+                    <button className="p-1.5 text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700/50 rounded-md hover:bg-gray-300 dark:hover:bg-gray-700 transition" title="Contact Responder">
+                        <PhoneIcon className="w-4 h-4" />
+                    </button>
+                    <button disabled className="p-1.5 text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700/50 rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed" title="View Log">
+                        <ClockIcon className="w-4 h-4" />
+                    </button>
+                </div>
+                
+                {canAssign && (
+                    <button 
+                        onClick={() => onAssign?.(responder.id)}
+                        className="px-3 py-1.5 text-xs font-bold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition shadow-sm"
+                    >
+                        Assign to Incident
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -65,8 +78,10 @@ const ResponderCard: React.FC<ResponderCardProps> = ({ responder, assignedReport
 interface ResponderStackProps {
     responders: Responder[];
     reports: Report[];
+    selectedReportId?: string | null;
+    onAssign?: (responderId: string) => void;
 }
-const ResponderStack: React.FC<ResponderStackProps> = ({ responders, reports }) => {
+const ResponderStack: React.FC<ResponderStackProps> = ({ responders, reports, selectedReportId, onAssign }) => {
     const onDutyResponders = responders.filter(r => r.status !== ResponderStatus.OFF_DUTY);
     const availableResponders = onDutyResponders.filter(r => r.status === ResponderStatus.AVAILABLE).length;
 
@@ -106,6 +121,8 @@ const ResponderStack: React.FC<ResponderStackProps> = ({ responders, reports }) 
                         key={responder.id}
                         responder={responder}
                         assignedReport={assignmentMap.get(responder.id)}
+                        selectedReportId={selectedReportId}
+                        onAssign={onAssign}
                     />
                 ))}
             </div>

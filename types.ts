@@ -90,6 +90,7 @@ export interface LocationCoords {
 
 export interface VehicleReport {
   id: string;
+  type?: 'vehicle';
   ob_number: string;
   license_plate: string;
   vehicle_make: string;
@@ -113,6 +114,7 @@ export interface VehicleReport {
 
 export interface CrimeReport {
   id: string;
+  type?: 'crime';
   ob_number: string;
   title: string;
   description: string;

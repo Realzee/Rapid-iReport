@@ -245,8 +245,8 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
         }
     };
     
-    const sortedHits = useMemo(() => Array.from(plateHits.values()).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()), [plateHits]);
-    const sortedScans = useMemo(() => Array.from(scannedPlates.entries()).sort((a, b) => b[1].timestamp.getTime() - a[1].timestamp.getTime()), [scannedPlates]);
+    const sortedHits = useMemo(() => Array.from(plateHits.values()).sort((a: any, b: any) => b.timestamp.getTime() - a.timestamp.getTime()), [plateHits]);
+    const sortedScans = useMemo(() => Array.from(scannedPlates.entries()).sort((a: any, b: any) => b[1].timestamp.getTime() - a[1].timestamp.getTime()), [scannedPlates]);
     
     const scaleX = videoDimensions.width / (videoRef.current?.videoWidth || 1);
     const scaleY = videoDimensions.height / (videoRef.current?.videoHeight || 1);

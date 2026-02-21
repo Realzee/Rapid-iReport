@@ -195,7 +195,7 @@ const HotspotsReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
         }, {} as Record<string, number>);
         
         return Object.entries(locationCounts)
-            .sort((a, b) => b[1] - a[1])
+            .sort((a, b) => (b[1] as number) - (a[1] as number))
             .slice(0, 10);
     }, [reports]);
 
