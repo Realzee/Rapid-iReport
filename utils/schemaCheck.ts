@@ -66,6 +66,28 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             };
         }
 
+        // Check 3: Verify critical functions exist using eval (if available)
+        // We try to cast the function name to regproc. If it doesn't exist, this query throws an error.
+        try {
+            const { error: funcError } = await supabase.rpc('eval', { 
+                query: "DO $$ BEGIN PERFORM 'public.create_staff_notification'::regproc; END $$;" 
+            });
+            
+            if (funcError) {
+                // If the error is about the function not existing
+                if (funcError.message.includes("does not exist") || funcError.code === '42883') {
+                     return {
+                        status: 'invalid',
+                        error: `Database Schema Incomplete: The critical function 'create_staff_notification' is missing. Please run the full setup script from DATABASE_SCHEMA.md.`
+                    };
+                }
+                // If eval itself is missing or other errors, we might ignore or warn, but let's be safe and warn.
+                console.warn("Could not verify function existence:", funcError);
+            }
+        } catch (e) {
+            console.warn("Function verification failed:", e);
+        }
+
         return { status: 'valid' };
 
     } catch (e: any) {

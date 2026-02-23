@@ -40,6 +40,8 @@ const GlobalSchemaErrorModal: React.FC<GlobalSchemaErrorModalProps> = ({ checkEr
     const sqlPart1 = `-- RAPID iREPORT - Database Setup Script - PART 1
 -- Description: This script migrates old data types and ensures all ENUM types are correct.
 
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- 0. Helper function for Edge Function migrations
 CREATE OR REPLACE FUNCTION public.eval(query text)
 RETURNS void
@@ -110,6 +112,24 @@ DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'announcement_type') THEN CREATE TYPE public.announcement_type AS ENUM ('notice', 'alert', 'safety_tip'); END IF;
 END$$;
 
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS completed_at timestamp with time zone;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS completed_at timestamp with time zone;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
+
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id uuid NOT NULL DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+    recipient_user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    type text NOT NULL,
+    title text NOT NULL,
+    message text NOT NULL,
+    reference_id uuid,
+    is_read boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now()
+);
+
 CREATE OR REPLACE FUNCTION public.get_user_role(p_user_id uuid)
 RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
@@ -117,7 +137,84 @@ DECLARE user_role_text text;
 BEGIN
   SELECT role::text INTO user_role_text FROM public.profiles WHERE id = p_user_id;
   RETURN COALESCE(user_role_text, 'user');
-END; $$;`;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.create_staff_notification(
+    p_type text,
+    p_description text,
+    p_severity text,
+    p_report_id uuid,
+    p_evidence_images text[]
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_user_id uuid;
+    v_title text;
+BEGIN
+    -- Determine title based on table name/type
+    IF p_type = 'vehicle_reports' THEN
+        v_title := 'New Vehicle Report';
+    ELSIF p_type = 'crime_reports' THEN
+        v_title := 'New Crime Report';
+    ELSE
+        v_title := 'New Incident Report';
+    END IF;
+
+    -- Notify all staff (admin, moderator, controller)
+    FOR v_user_id IN 
+        SELECT id FROM public.profiles 
+        WHERE role IN ('admin', 'moderator', 'controller')
+    LOOP
+        INSERT INTO public.notifications (
+            recipient_user_id,
+            type,
+            title,
+            message,
+            reference_id,
+            is_read
+        ) VALUES (
+            v_user_id,
+            'new_report',
+            v_title || ' (' || p_severity || ')',
+            p_description,
+            p_report_id,
+            false
+        );
+    END LOOP;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.notify_staff_on_new_report()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  PERFORM public.create_staff_notification(
+    TG_TABLE_NAME::text,
+    NEW.description,
+    NEW.severity::text,
+    NEW.id,
+    NEW.evidence_images
+  );
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_vehicle_report_created ON public.vehicle_reports;
+CREATE TRIGGER on_vehicle_report_created
+  AFTER INSERT ON public.vehicle_reports
+  FOR EACH ROW EXECUTE FUNCTION public.notify_staff_on_new_report();
+
+DROP TRIGGER IF EXISTS on_crime_report_created ON public.crime_reports;
+CREATE TRIGGER on_crime_report_created
+  AFTER INSERT ON public.crime_reports
+  FOR EACH ROW EXECUTE FUNCTION public.notify_staff_on_new_report();`;
 
     const handleAttemptFix = async () => {
         setIsFixing(true);

@@ -520,8 +520,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
         } catch (error: any) {
             let detailedMessage = error.message;
-            if (detailedMessage && ((detailedMessage.includes("column") && detailedMessage.includes("does not exist")) || detailedMessage.includes("schema cache"))) {
-                detailedMessage += "\n\n[DEVELOPER HINT] This error indicates a database schema mismatch. Please go to your Supabase dashboard, open the SQL Editor, and run the complete script from the DATABASE_SETUP.md file to update your database tables.";
+            if (detailedMessage && ((detailedMessage.includes("column") && detailedMessage.includes("does not exist")) || detailedMessage.includes("schema cache") || (detailedMessage.includes("function") && detailedMessage.includes("does not exist")))) {
+                detailedMessage += "\n\n[DEVELOPER HINT] This error indicates a database schema mismatch (missing function or column). Please go to your Supabase dashboard, open the SQL Editor, and run the complete script from the DATABASE_SCHEMA.md file to update your database tables.";
             }
             addToast(`Error saving report: ${detailedMessage}`, 'error');
         } finally {

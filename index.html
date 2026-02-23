@@ -150,11 +150,21 @@
     }
     .segment-char { position: relative; }
     .segment { position: absolute; transition: background-color 0.2s; }
-    .segment.off { background: #1a0000; }
+    
+    /* Light Mode (LCD Style) */
+    .segment.off { background: #e5e7eb; } /* gray-200 */
     .segment.lit {
+      background: #1f2937; /* gray-800 */
+      box-shadow: none;
+    }
+    
+    /* Dark Mode (LED Style) */
+    .dark .segment.off { background: #1a0000; }
+    .dark .segment.lit {
       background: #ff0000;
       box-shadow: 0 0 3px #ff0000, 0 0 6px #ff0000;
     }
+
     /* Compact Segments - LARGER */
     .seg-char-compact { width: 27px; height: 42px; }
     .seg-char-compact .s-a { top: 0; left: 3px; width: 21px; height: 3px; }
@@ -168,11 +178,33 @@
     .colon-compact .dot { width: 3px; height: 3px; }
     .colon-compact .dot-top { top: 12px; }
     .colon-compact .dot-bottom { bottom: 12px; }
+    
     /* Day of week - LARGER */
-    .led-day { color: #550000; font-family: 'Arial', sans-serif; font-weight: bold; transition: color 0.2s, text-shadow 0.2s; font-size: 18px; line-height: 1; }
-    .led-day.lit { color: #ffffff; text-shadow: 0 0 4px #ff4d4d; }
+    .led-day { 
+        color: #9ca3af; /* Light mode: gray-400 */
+        font-family: 'Arial', sans-serif; 
+        font-weight: bold; 
+        transition: color 0.2s, text-shadow 0.2s; 
+        font-size: 18px; 
+        line-height: 1; 
+    }
+    .led-day.lit { 
+        color: #1f2937; /* Light mode: gray-800 */
+        text-shadow: none; 
+    }
+    
+    .dark .led-day { color: #550000; }
+    .dark .led-day.lit { color: #ffffff; text-shadow: 0 0 4px #ff4d4d; }
+
     /* Small Text - LARGER */
-    .led-small-text { color: #ff0000; text-shadow: 0 0 3px #ff0000; font-family: 'Arial', sans-serif; font-weight: bold; font-size: 14px; }
+    .led-small-text { 
+        color: #1f2937; /* Light mode: gray-800 */
+        text-shadow: none;
+        font-family: 'Arial', sans-serif; 
+        font-weight: bold; 
+        font-size: 14px; 
+    }
+    .dark .led-small-text { color: #ff0000; text-shadow: 0 0 3px #ff0000; }
   </style>
 <script type="importmap">
 {

@@ -63,7 +63,7 @@ const LedClock: React.FC = () => {
     return (
         <div className="led-clock-container hidden md:flex items-center justify-between gap-2 font-mono">
             {/* Day of Week & Date */}
-            <div className="flex flex-col pr-1 border-r border-red-900/50 justify-center">
+            <div className="flex flex-col pr-1 border-r border-gray-300 dark:border-red-900/50 justify-center">
                 <span className="led-day lit text-center">{dayOfWeek.toUpperCase()}</span>
                 <span className="led-small-text text-center">{dateStr.toUpperCase()}</span>
             </div>
