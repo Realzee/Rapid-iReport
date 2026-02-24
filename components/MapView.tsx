@@ -107,22 +107,35 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
             map.invalidateSize();
 
             if (selectedReport?.location_coords) {
-                const reportLocation: L.LatLngExpression = [selectedReport.location_coords.lat, selectedReport.location_coords.lng];
+                const { lat, lng } = selectedReport.location_coords;
+                if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) {
+                    const reportLocation: L.LatLngExpression = [lat, lng];
 
-                // If the report has a defined bounding box (e.g., a neighborhood), fit to that.
-                if (selectedReport.location_boundingbox) {
-                    const bounds: LatLngBoundsExpression = [
-                        [selectedReport.location_boundingbox[0], selectedReport.location_boundingbox[2]],
-                        [selectedReport.location_boundingbox[1], selectedReport.location_boundingbox[3]]
-                    ];
-                    map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0 });
-                } else {
-                    // Otherwise, just fly to the specific point.
-                    map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
+                    // If the report has a defined bounding box (e.g., a neighborhood), fit to that.
+                    if (selectedReport.location_boundingbox && selectedReport.location_boundingbox.length === 4) {
+                        const [s, n, w, e] = selectedReport.location_boundingbox;
+                        if (![s, n, w, e].some(isNaN)) {
+                            const bounds: LatLngBoundsExpression = [
+                                [s, w],
+                                [n, e]
+                            ];
+                            map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0 });
+                        } else {
+                             map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
+                        }
+                    } else {
+                        // Otherwise, just fly to the specific point.
+                        map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
+                    }
                 }
             } else {
                 // "Show All" logic: No report is selected, so fit all reports on the map.
-                const reportsWithCoords = reports.filter(r => r.location_coords);
+                const reportsWithCoords = reports.filter(r => 
+                    r.location_coords && 
+                    typeof r.location_coords.lat === 'number' && !isNaN(r.location_coords.lat) &&
+                    typeof r.location_coords.lng === 'number' && !isNaN(r.location_coords.lng)
+                );
+                
                 if (reportsWithCoords.length > 0) {
                     const bounds = L.latLngBounds(reportsWithCoords.map(r => [r.location_coords!.lat, r.location_coords!.lng]));
                     if (bounds.isValid()) {

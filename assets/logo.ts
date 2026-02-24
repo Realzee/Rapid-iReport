@@ -45,4 +45,4 @@ const svgLogo = `
 </svg>`;
 
 // Encode the SVG string into a Base64 data URL to be used in image tags
-export const logoUrl = `data:image/svg+xml;base64,${btoa(svgLogo)}`;
+export const logoUrl = `data:image/svg+xml;base64,${btoa(encodeURIComponent(svgLogo).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))))}`;
