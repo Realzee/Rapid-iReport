@@ -79,6 +79,7 @@ $$;
 -- 1. Drop old functions and policies to allow type alterations.
 DROP FUNCTION IF EXISTS public.get_user_role(uuid) CASCADE;
 DROP FUNCTION IF EXISTS public.create_staff_notification(text, text, text, uuid, text[]) CASCADE;
+DROP FUNCTION IF EXISTS public.create_staff_notification(text, text, text, uuid) CASCADE;
 DROP FUNCTION IF EXISTS public.create_public_panic_report(text, jsonb) CASCADE;
 -- Drop policies to be idempotent
 DROP POLICY IF EXISTS "Allow individual user insert" ON public.profiles;

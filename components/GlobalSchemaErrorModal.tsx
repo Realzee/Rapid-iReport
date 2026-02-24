@@ -77,6 +77,7 @@ $$;
 -- 1. Drop dependencies, policies, and disable RLS to allow type alterations.
 DROP FUNCTION IF EXISTS public.get_user_role(uuid) CASCADE;
 DROP FUNCTION IF EXISTS public.create_staff_notification(text, text, text, uuid, text[]) CASCADE;
+DROP FUNCTION IF EXISTS public.create_staff_notification(text, text, text, uuid) CASCADE;
 
 DO $$
 BEGIN

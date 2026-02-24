@@ -67,10 +67,10 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
         }
 
         // Check 3: Verify critical functions exist using eval (if available)
-        // We try to cast the function name to regproc. If it doesn't exist, this query throws an error.
+        // We use regprocedure with specific arguments to avoid "more than one function named" errors if overloads exist.
         try {
             const { error: funcError } = await supabase.rpc('eval', { 
-                query: "DO $$ BEGIN PERFORM 'public.create_staff_notification'::regproc; END $$;" 
+                query: "DO $$ BEGIN PERFORM 'public.create_staff_notification(text, text, text, uuid, text[])'::regprocedure; END $$;" 
             });
             
             if (funcError) {
