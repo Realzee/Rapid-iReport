@@ -43,7 +43,7 @@ const TimelineItem: React.FC<{
 );
 
 
-const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]; profile: Profile; allUsers: Profile[] }> = ({ report, responders, profile, allUsers }) => {
+const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]; profile: Profile; allUsers: Profile[]; onEdit: (report: Report) => void }> = ({ report, responders, profile, allUsers, onEdit }) => {
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
     const [assignmentHistory, setAssignmentHistory] = useState<AssignmentLog[]>([]);
     const [reporter, setReporter] = useState<Profile | null>(null);
@@ -330,7 +330,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     };
     
     return (
-        <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex flex-col h-full print:hidden">
+        <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex flex-col h-full print:hidden relative">
             <div className="flex-shrink-0">
                 <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
@@ -362,11 +362,11 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                  </div>
             </div>
 
-            <div className="space-y-4 overflow-y-auto flex-grow mt-4 pr-1">
+            <div className="space-y-4 overflow-y-auto flex-grow mt-4 pr-1 min-h-0">
                 {report.evidence_images && report.evidence_images.length > 0 && (
                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                         {report.evidence_images.map((img, index) => (
-                             <button key={index} onClick={() => setPreviewImageUrl(img)} className="block w-full h-24 bg-gray-200 dark:bg-gray-700 rounded-md overflow-hidden group">
+                             <button key={index} onClick={() => setPreviewImageUrl(img)} className="block w-full h-24 bg-gray-200 dark:bg-gray-700 rounded-md overflow-hidden group relative">
                                 <img src={img} alt={`Evidence ${index+1}`} className="w-full h-full object-cover"/>
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                     <EyeIcon className="w-6 h-6 text-white"/>
@@ -379,17 +379,22 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 {isVehicleReport(report) && <DetailField label="Vehicle">{`${report.vehicle_color} ${report.vehicle_make} ${report.vehicle_model}`}</DetailField>}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 space-y-3">
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 space-y-3 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm -mx-4 px-4 pb-2 sticky bottom-0">
                  <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => openChat(report)} className="w-full py-2 px-4 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition disabled:opacity-50">Open Live Chat</button>
-                    <button onClick={() => setAssignmentModalOpen(true)} disabled={!canManageReport || isTerminalStatus} className="w-full py-2 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed">Manage</button>
+                    <button onClick={() => setAssignmentModalOpen(true)} disabled={!canManageReport || isTerminalStatus} className="w-full py-2 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed">Manage Status</button>
                 </div>
                  <div className="grid grid-cols-3 gap-3">
                      <button onClick={() => window.print()} className="flex items-center justify-center gap-2 py-2 px-3 bg-gray-600/90 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-semibold"><PrintIcon className="w-5 h-5"/> Print</button>
                      <button onClick={() => { /* WhatsApp Share Logic */ }} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold"><WhatsappIcon className="w-5 h-5"/> Share</button>
                      <button onClick={generateBoloImage} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50"><DownloadIcon className="w-5 h-5"/> BOLO</button>
                  </div>
-                 {canManageReport && <button onClick={() => setDeleteModalOpen(true)} disabled={isTerminalStatus} className="w-full flex items-center justify-center gap-2 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-700 dark:text-red-400 font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-5 h-5"/> Delete</button>}
+                 {canManageReport && (
+                    <div className="grid grid-cols-2 gap-3">
+                        <button onClick={() => onEdit(report)} disabled={isTerminalStatus} className="w-full flex items-center justify-center gap-2 py-2 bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-700 dark:text-yellow-400 font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Edit Details</button>
+                        <button onClick={() => setDeleteModalOpen(true)} disabled={isTerminalStatus} className="w-full flex items-center justify-center gap-2 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-700 dark:text-red-400 font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-5 h-5"/> Delete</button>
+                    </div>
+                 )}
             </div>
 
             {assignmentModalOpen && (

@@ -265,6 +265,11 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         setIsQuickAddModalOpen(true);
     };
 
+    const handleEditReport = (report: Report) => {
+        setReportToEdit(report);
+        setIsReportModalOpen(true);
+    };
+
     const selectedReport = useMemo(() => {
         return reports.find(r => r.id === selectedReportId);
     }, [reports, selectedReportId]);
@@ -410,7 +415,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                             </button>
                         </div>
                         {isDetailsVisible && (
-                             <div className="lg:col-span-4 space-y-4">
+                             <div className="lg:col-span-4 space-y-4 lg:h-[calc(100vh-12rem)]">
                                 {selectedReport ? (
                                     <ControllerReportDetail
                                         key={selectedReport.id}
@@ -418,6 +423,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                         responders={responders}
                                         profile={profile}
                                         allUsers={allUsers}
+                                        onEdit={handleEditReport}
                                     />
                                 ) : (
                                     <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden min-h-[40vh]">
