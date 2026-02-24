@@ -74,18 +74,26 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             });
             
             if (funcError) {
-                // If the error is about the function not existing
-                if (funcError.message.includes("does not exist") || funcError.code === '42883') {
+                console.warn("Schema check failed on eval:", funcError);
+                // If the error is about the function not existing OR if eval itself is missing (404/400)
+                if (funcError.message.includes("does not exist") || funcError.code === '42883' || funcError.code === 'PGRST202' || funcError.message.includes("Could not find the function")) {
                      return {
                         status: 'invalid',
-                        error: `Database Schema Incomplete: The critical function 'create_staff_notification' is missing. Please run the full setup script from DATABASE_SCHEMA.md.`
+                        error: `Database Schema Incomplete: The critical function 'create_staff_notification' (or the helper 'eval') is missing. Please run the full setup script from DATABASE_SCHEMA.md.`
                     };
                 }
-                // If eval itself is missing or other errors, we might ignore or warn, but let's be safe and warn.
-                console.warn("Could not verify function existence:", funcError);
+                // For other errors (like 400 Bad Request which might mean eval is missing or invalid), treat as schema issue
+                return {
+                    status: 'invalid',
+                    error: `Database Schema Check Failed: The 'eval' function returned an error (${funcError.message || funcError.code}). This usually means the database schema is outdated. Please run the setup script.`
+                };
             }
-        } catch (e) {
-            console.warn("Function verification failed:", e);
+        } catch (e: any) {
+            console.warn("Function verification failed with exception:", e);
+             return {
+                status: 'invalid',
+                error: `Database Schema Check Failed: An unexpected error occurred (${e.message}). Please ensure your database is set up correctly.`
+            };
         }
 
         return { status: 'valid' };
