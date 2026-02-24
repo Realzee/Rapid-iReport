@@ -305,7 +305,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             </div>`;
 
         const svgString = `<svg width="400" height="600" xmlns="http://www.w3.org/2000/svg"><foreignObject width="400" height="600">${boloHtml}</foreignObject></svg>`;
-        const svgDataUrl = `data:image/svg+xml;base64,${btoa(svgString)}`;
+        const svgDataUrl = `data:image/svg+xml;base64,${btoa(encodeURIComponent(svgString).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))))}`;
 
         const image = new Image();
         image.onload = () => {
