@@ -55,6 +55,8 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.get_enum_values(text);
+
 CREATE OR REPLACE FUNCTION public.get_enum_values(enum_type_name text)
 RETURNS jsonb
 LANGUAGE plpgsql
