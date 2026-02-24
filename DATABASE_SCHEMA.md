@@ -55,6 +55,25 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.get_enum_values(enum_type_name text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  enum_vals jsonb;
+BEGIN
+  SELECT jsonb_agg(e.enumlabel ORDER BY e.enumsortorder)
+  INTO enum_vals
+  FROM pg_enum e
+  JOIN pg_type t ON e.enumtypid = t.oid
+  WHERE t.typname = enum_type_name;
+  
+  RETURN enum_vals;
+END;
+$$;
+
 -- 1. Drop old functions and policies to allow type alterations.
 DROP FUNCTION IF EXISTS public.get_user_role(uuid) CASCADE;
 DROP FUNCTION IF EXISTS public.create_staff_notification(text, text, text, uuid, text[]) CASCADE;
