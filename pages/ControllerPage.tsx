@@ -12,6 +12,7 @@ import SoughtListManager from '../components/BlacklistManager';
 import { useChat } from '../contexts/ChatContext';
 import { useToast } from '../contexts/ToastContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
+import { useWakeLock } from '../hooks/useWakeLock';
 
 interface ControllerPageProps {
     profile: Profile;
@@ -22,13 +23,28 @@ interface ControllerPageProps {
 type ControllerTab = 'events' | 'responders';
 
 const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportId, onInitialReportHandled }) => {
+    const { requestWakeLock, releaseWakeLock } = useWakeLock();
     const [reports, setReports] = useState<Report[]>([]);
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
+
+    useEffect(() => {
+        requestWakeLock();
+        return () => {
+            releaseWakeLock();
+        };
+    }, [requestWakeLock, releaseWakeLock]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<ControllerTab>('events');
-    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
+        return localStorage.getItem('controller_report_modal_open') === 'true';
+    });
+
+    useEffect(() => {
+        localStorage.setItem('controller_report_modal_open', String(isReportModalOpen));
+    }, [isReportModalOpen]);
+
     const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
     const [isDetailsVisible, setIsDetailsVisible] = useState(true);

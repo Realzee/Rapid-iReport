@@ -43,13 +43,15 @@ export const useFormPersistence = <T extends object>(
     try {
       const savedDraft = localStorage.getItem(formId);
       if (savedDraft) {
-        const parsedDraft = JSON.parse(savedDraft) as T;
+        const parsed = JSON.parse(savedDraft);
+        const parsedDraft = parsed.timestamp ? parsed.data : parsed;
+        const timestamp = parsed.timestamp || 0;
+        const isRecent = (Date.now() - timestamp) < 24 * 60 * 60 * 1000;
+
         if (parsedDraft && Object.keys(parsedDraft).length > 0 && !isDataEqual(parsedDraft, initialData)) {
-            if (window.confirm("You have an unsaved draft. Would you like to restore it?")) {
-                setFormData(parsedDraft);
-                addToast("Draft restored. Please re-select any files if applicable.", "info");
-            } else {
-                clearDraft();
+            if (isRecent) {
+                setFormData(parsedDraft as T);
+                addToast("Restored your previous draft.", "info");
             }
         }
       }
@@ -70,7 +72,11 @@ export const useFormPersistence = <T extends object>(
     debounceTimeoutRef.current = window.setTimeout(() => {
       if (isDirty) {
         try {
-          localStorage.setItem(formId, JSON.stringify(formData));
+          const payload = {
+              data: formData,
+              timestamp: Date.now()
+          };
+          localStorage.setItem(formId, JSON.stringify(payload));
         } catch (e) {
           console.warn(`Could not save draft for ${formId}:`, e);
         }

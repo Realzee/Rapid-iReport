@@ -12,6 +12,7 @@ import ANPRScanner from '../components/ANPRScanner';
 import UserReportDetail from '../components/UserReportDetail';
 import { useChat } from '../contexts/ChatContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
+import { useWakeLock } from '../hooks/useWakeLock';
 import ReportModal from '../components/ReportModal';
 
 interface ResponderPageProps {
@@ -37,11 +38,19 @@ const ResponderStatusBadge: React.FC<{ status: ResponderStatus }> = ({ status })
 
 // Main page component
 const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) => {
+    const { requestWakeLock, releaseWakeLock } = useWakeLock();
     const [assignedReports, setAssignedReports] = useState<Report[]>([]);
     const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
-    const [isReportModalOpen, setIsReportModalOpen] = useState(false); // New state
+    const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
+        return localStorage.getItem('responder_report_modal_open') === 'true';
+    });
+    
+    useEffect(() => {
+        localStorage.setItem('responder_report_modal_open', String(isReportModalOpen));
+    }, [isReportModalOpen]);
+
     const locationWatchId = useRef<number | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
     const [isSharingLocation, setIsSharingLocation] = useState(false);
@@ -55,6 +64,17 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     const { openChat } = useChat();
 
     const isOnDuty = profile.responder_status !== ResponderStatus.OFF_DUTY;
+
+    useEffect(() => {
+        if (isOnDuty) {
+            requestWakeLock();
+        } else {
+            releaseWakeLock();
+        }
+        return () => {
+            releaseWakeLock();
+        };
+    }, [isOnDuty, requestWakeLock, releaseWakeLock]);
 
     // A responder is "engaged" if they have any reports that are not in a terminal state.
     const isEngaged = useMemo(() => 
