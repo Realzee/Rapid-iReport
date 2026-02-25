@@ -294,6 +294,14 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                                         <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{report.description}</p>
                                         <hr className="border-gray-200 dark:border-gray-600 my-2" />
                                         <div className="space-y-2">
+                                            <div className="flex justify-between items-start">
+                                                <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase shrink-0 mr-2">
+                                                    {isVehicleReport(report) ? 'Last Known Loc' : 'Location'}
+                                                </span>
+                                                <span className="text-sm text-right text-gray-700 dark:text-gray-300">
+                                                    {isVehicleReport(report) ? report.last_seen_location : report.location}
+                                                </span>
+                                            </div>
                                             <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Status</span><StatusBadge status={report.status} /></div>
                                             <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Severity</span><span className={`capitalize px-2 py-1 text-xs font-semibold rounded-full ${report.severity === 'critical' ? 'bg-red-500/20 text-red-400' : report.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : report.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}`}>{report.severity}</span></div>
                                         </div>

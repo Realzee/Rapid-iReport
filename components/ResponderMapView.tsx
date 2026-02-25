@@ -195,7 +195,14 @@ const ResponderMapView: React.FC<ResponderMapViewProps> = ({ report, responderPr
                             />
                         )}
                         <Marker position={[report.location_coords.lat, report.location_coords.lng]} icon={incidentIcon}>
-                            <Tooltip direction="top">Incident Location</Tooltip>
+                            <Tooltip direction="top">
+                                <div className="text-center">
+                                    <div className="font-bold">Incident Location</div>
+                                    <div className="text-xs">
+                                        {'license_plate' in report ? report.last_seen_location : report.location}
+                                    </div>
+                                </div>
+                            </Tooltip>
                         </Marker>
                     </>
                 )}
