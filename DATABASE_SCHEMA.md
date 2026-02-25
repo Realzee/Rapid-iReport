@@ -94,6 +94,9 @@ DROP POLICY IF EXISTS "Allow owners to read their reports" ON public.vehicle_rep
 DROP POLICY IF EXISTS "Allow owners to update pending reports" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Allow staff and responders to manage reports" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Allow users to read their own and company reports" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Allow admin and staff to read company reports" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Allow responders to read assigned or own reports" ON public.vehicle_reports;
+DROP POLICY IF EXISTS "Allow users to read own reports" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Allow staff to manage company reports" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Allow staff to update company reports" ON public.vehicle_reports;
 DROP POLICY IF EXISTS "Allow staff to delete company reports" ON public.vehicle_reports;
@@ -103,6 +106,9 @@ DROP POLICY IF EXISTS "Allow owners to read their reports" ON public.crime_repor
 DROP POLICY IF EXISTS "Allow owners to update pending reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow staff and responders to manage reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow users to read their own and company reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow admin and staff to read company reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow responders to read assigned or own reports" ON public.crime_reports;
+DROP POLICY IF EXISTS "Allow users to read own reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow staff to manage company reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow staff to update company reports" ON public.crime_reports;
 DROP POLICY IF EXISTS "Allow staff to delete company reports" ON public.crime_reports;
@@ -286,7 +292,9 @@ CREATE POLICY "Allow admin full access" ON public.companies FOR ALL USING (get_u
 CREATE POLICY "Allow public read of active reports" ON public.vehicle_reports FOR SELECT TO anon USING (status = 'active'::public.report_status);
 CREATE POLICY "Allow authenticated users to create reports" ON public.vehicle_reports FOR INSERT TO authenticated WITH CHECK (auth.uid() = reported_by);
 CREATE POLICY "Allow owners to update pending reports" ON public.vehicle_reports FOR UPDATE TO authenticated USING (auth.uid() = reported_by AND status = 'pending'::public.report_status) WITH CHECK (auth.uid() = reported_by);
-CREATE POLICY "Allow users to read their own and company reports" ON public.vehicle_reports FOR SELECT USING ((get_user_role(auth.uid()) = 'admin') OR (auth.uid() = reported_by) OR (company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())));
+CREATE POLICY "Allow admin and staff to read company reports" ON public.vehicle_reports FOR SELECT USING ((get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())));
+CREATE POLICY "Allow responders to read assigned or own reports" ON public.vehicle_reports FOR SELECT USING ((get_user_role(auth.uid()) = 'responder' AND (auth.uid() = reported_by OR auth.uid() = assigned_to)));
+CREATE POLICY "Allow users to read own reports" ON public.vehicle_reports FOR SELECT USING ((get_user_role(auth.uid()) = 'user' AND auth.uid() = reported_by));
 CREATE POLICY "Allow staff to update company reports" ON public.vehicle_reports FOR UPDATE USING ((get_user_role(auth.uid()) = 'admin') OR (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())) OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
 CREATE POLICY "Allow staff to delete company reports" ON public.vehicle_reports FOR DELETE USING ((get_user_role(auth.uid()) = 'admin') OR (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())) OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
 
@@ -294,7 +302,9 @@ CREATE POLICY "Allow staff to delete company reports" ON public.vehicle_reports 
 CREATE POLICY "Allow public read of active reports" ON public.crime_reports FOR SELECT TO anon USING (status = 'active'::public.report_status);
 CREATE POLICY "Allow authenticated users to create reports" ON public.crime_reports FOR INSERT TO authenticated WITH CHECK (auth.uid() = reported_by);
 CREATE POLICY "Allow owners to update pending reports" ON public.crime_reports FOR UPDATE TO authenticated USING (auth.uid() = reported_by AND status = 'pending'::public.report_status) WITH CHECK (auth.uid() = reported_by);
-CREATE POLICY "Allow users to read their own and company reports" ON public.crime_reports FOR SELECT USING ((get_user_role(auth.uid()) = 'admin') OR (auth.uid() = reported_by) OR (company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())));
+CREATE POLICY "Allow admin and staff to read company reports" ON public.crime_reports FOR SELECT USING ((get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())));
+CREATE POLICY "Allow responders to read assigned or own reports" ON public.crime_reports FOR SELECT USING ((get_user_role(auth.uid()) = 'responder' AND (auth.uid() = reported_by OR auth.uid() = assigned_to)));
+CREATE POLICY "Allow users to read own reports" ON public.crime_reports FOR SELECT USING ((get_user_role(auth.uid()) = 'user' AND auth.uid() = reported_by));
 CREATE POLICY "Allow staff to update company reports" ON public.crime_reports FOR UPDATE USING ((get_user_role(auth.uid()) = 'admin') OR (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())) OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
 CREATE POLICY "Allow staff to delete company reports" ON public.crime_reports FOR DELETE USING ((get_user_role(auth.uid()) = 'admin') OR (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())) OR (get_user_role(auth.uid()) = 'responder' AND auth.uid() = assigned_to));
 
@@ -354,6 +364,31 @@ BEGIN
     new.raw_user_meta_data ->> 'psira_number'
   );
   RETURN new;
+END;
+$$;
+
+-- Company Sequences for OB Numbers
+CREATE TABLE IF NOT EXISTS public.company_sequences (
+  company_id UUID PRIMARY KEY REFERENCES public.companies(id) ON DELETE CASCADE,
+  last_sequence INTEGER DEFAULT 0
+);
+
+-- Function to get next OB sequence
+CREATE OR REPLACE FUNCTION public.get_next_ob_sequence(p_company_id UUID)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  next_seq INTEGER;
+BEGIN
+  INSERT INTO public.company_sequences (company_id, last_sequence)
+  VALUES (p_company_id, 1)
+  ON CONFLICT (company_id)
+  DO UPDATE SET last_sequence = public.company_sequences.last_sequence + 1
+  RETURNING last_sequence INTO next_seq;
+  
+  RETURN next_seq;
 END;
 $$;
 

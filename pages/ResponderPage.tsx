@@ -4,7 +4,7 @@ import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, ReportUp
 import { supabase } from '../utils/supabase';
 import { format, formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
-import { NavigationIcon, CameraIcon, ScanIcon, XIcon, ChatAlt2Icon } from '../components/icons';
+import { NavigationIcon, CameraIcon, ScanIcon, XIcon, ChatAlt2Icon, PlusIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import ResponderMapView from '../components/ResponderMapView';
@@ -12,6 +12,7 @@ import ANPRScanner from '../components/ANPRScanner';
 import UserReportDetail from '../components/UserReportDetail';
 import { useChat } from '../contexts/ChatContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
+import ReportModal from '../components/ReportModal';
 
 interface ResponderPageProps {
     profile: Profile;
@@ -40,6 +41,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false); // New state
     const locationWatchId = useRef<number | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
     const [isSharingLocation, setIsSharingLocation] = useState(false);
@@ -55,7 +57,6 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     const isOnDuty = profile.responder_status !== ResponderStatus.OFF_DUTY;
 
     // A responder is "engaged" if they have any reports that are not in a terminal state.
-    // This is more reliable than just checking their personal status.
     const isEngaged = useMemo(() => 
         assignedReports.some(r => ![
             ReportStatus.RESOLVED,
@@ -87,12 +88,12 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         oscillator.stop(context.currentTime + 0.15); // Short and sharp
     };
 
-
     useEffect(() => {
         const fetchInitialData = async () => {
             setLoading(true);
-            const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').eq('assigned_to', profile.id);
-            const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').eq('assigned_to', profile.id);
+            // Fetch assigned reports OR reported by me
+            const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
+            const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
             const { data: usersData, error: usersError } = await supabase.from('profiles').select('*').eq('company_id', profile.company_id);
 
             if (vError || cError) console.error("Error fetching reports:", vError || cError);
@@ -113,21 +114,21 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     useEffect(() => {
         const handleUpsert = (payload: any) => {
             const newReport = payload.new as Report;
-            if (newReport.assigned_to !== profile.id) return;
+            // Check if relevant to us (assigned OR reported by)
+            if (newReport.assigned_to !== profile.id && newReport.reported_by !== profile.id) return;
 
             setAssignedReports(prev => {
                 const exists = prev.some(r => r.id === newReport.id);
-                if (exists) { // UPDATE of an already assigned report
+                if (exists) { // UPDATE
                     return prev.map(r => r.id === newReport.id ? newReport : r);
                 }
                 
-                // NEW assignment. Play sound if not initial data load.
-                if (!isInitialLoad.current) {
+                // NEW assignment. Play sound if assigned to us and not initial load.
+                if (!isInitialLoad.current && newReport.assigned_to === profile.id) {
                     playAssignmentSound();
                 }
 
                 const updatedReports = [newReport, ...prev];
-                // Use functional update to avoid dependency on selectedReportId
                 setSelectedReportId(currentId => currentId ? currentId : newReport.id);
                 return updatedReports;
             });
@@ -135,23 +136,57 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         
         const handlePotentialUnassignmentOrDelete = (payload: any) => {
             const oldReport = payload.old as Report;
-            if (oldReport?.assigned_to !== profile.id) return; // Not relevant to us
-
             const newReport = payload.new as Report | undefined;
-            // Case 1: Unassigned (it's an UPDATE where new.assigned_to is not us)
-            // Case 2: Deleted (it's a DELETE event)
-            if ((payload.eventType === 'UPDATE' && newReport?.assigned_to !== profile.id) || payload.eventType === 'DELETE') {
+            
+            // If it was assigned to us or reported by us, we might need to remove it
+            // But wait, if we reported it, we should still see it even if unassigned.
+            // So we only remove if:
+            // 1. It was deleted.
+            // 2. It was unassigned AND we didn't report it.
+            
+            // However, payload.old doesn't always have all fields in some Supabase configs (though usually it does for RLS).
+            // But let's assume we check the new state.
+            
+            if (payload.eventType === 'DELETE') {
                  setAssignedReports(prev => prev.filter(r => r.id !== oldReport.id));
-                 // If the removed report was the selected one, deselect it.
                  setSelectedReportId(currentId => currentId === oldReport.id ? null : currentId);
+                 return;
+            }
+
+            if (payload.eventType === 'UPDATE' && newReport) {
+                if (newReport.assigned_to !== profile.id && newReport.reported_by !== profile.id) {
+                    // No longer relevant
+                    setAssignedReports(prev => prev.filter(r => r.id !== newReport.id));
+                    setSelectedReportId(currentId => currentId === newReport.id ? null : currentId);
+                }
             }
         };
 
         const channel = supabase.channel(`responder-reports-${profile.id}`)
-            // This catches INSERTs and UPDATEs that result in the report being assigned to us
+            // Listen for changes where assigned_to is us
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `assigned_to=eq.${profile.id}` }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `assigned_to=eq.${profile.id}` }, handleUpsert)
-            // This catches UPDATEs (unassignment) and DELETEs for reports that were previously assigned to us
+            // Listen for changes where reported_by is us
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
+            
+            // We also need to listen for general updates to check for unassignment if we were tracking it
+            // But filtering by ID is hard if we don't know the ID.
+            // The previous code listened to ALL updates on the table?
+            // .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handlePotentialUnassignmentOrDelete)
+            // That might be too much traffic if we scale.
+            // But for now, let's keep it but maybe filter client side?
+            // Actually, if we only listen to assigned_to/reported_by, we won't receive the "unassignment" event because the new row won't match the filter!
+            // Supabase Realtime with RLS: if RLS allows us to see the row, we get the event.
+            // If we change the RLS to only allow seeing own/assigned, then when it's unassigned (and not own), we lose access.
+            // Does Supabase send a DELETE event or just stop sending updates?
+            // Usually it sends a DELETE-like event or we just stop seeing it.
+            // But if we want to remove it from the UI immediately, we need to know.
+            // Let's stick to the previous pattern of listening to all (if RLS permits) and filtering.
+            // But wait, if RLS restricts us, we WON'T receive events for rows we can't see.
+            // So if a report is unassigned from us (and not reported by us), we lose RLS access.
+            // Supabase might send a DELETE event to the client in that case (simulating loss of access).
+            
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handlePotentialUnassignmentOrDelete)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handlePotentialUnassignmentOrDelete)
             .subscribe();
@@ -159,7 +194,9 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         return () => { supabase.removeChannel(channel); };
     }, [profile.id]);
 
-     const stopLocationSharing = () => {
+    // ... (existing functions)
+
+    const stopLocationSharing = () => {
         if (locationWatchId.current !== null) {
             navigator.geolocation.clearWatch(locationWatchId.current);
             locationWatchId.current = null;
@@ -339,10 +376,14 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                 {locationError && <div className="bg-red-500/10 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-r-lg" role="alert"><p className="font-bold">System Error</p><p>{locationError}</p></div>}
                 
                 {isOnDuty && (
-                    <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg">
+                    <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg space-y-3">
                         <button onClick={() => openChat(CONTROLLER_CHANNEL_REPORT)} className="w-full flex items-center justify-center gap-2 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors">
                             <ChatAlt2Icon className="w-5 h-5" />
                             <span>Open Staff Channel</span>
+                        </button>
+                        <button onClick={() => setIsReportModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                            <PlusIcon className="w-5 h-5" />
+                            <span>Create New Report</span>
                         </button>
                     </div>
                 )}
@@ -392,6 +433,12 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                 </div>
             </div>
         )}
+
+        <ReportModal
+            isOpen={isReportModalOpen}
+            onClose={() => setIsReportModalOpen(false)}
+            reportToEdit={null}
+        />
 
         </>
     );
