@@ -255,8 +255,69 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
         <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg">
             <h3 className="text-lg font-bold mb-2">Live ANPR Scanner</h3>
             <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center mb-4">
+                <style>{`
+                    @keyframes scan {
+                        0% { top: 0%; opacity: 0; }
+                        15% { opacity: 1; }
+                        85% { opacity: 1; }
+                        100% { top: 100%; opacity: 0; }
+                    }
+                    .animate-scan {
+                        position: absolute;
+                        left: 0;
+                        width: 100%;
+                        height: 2px;
+                        background: rgba(34, 197, 94, 0.8);
+                        box-shadow: 0 0 10px rgba(34, 197, 94, 0.8), 0 0 20px rgba(34, 197, 94, 0.4);
+                        animation: scan 2.5s linear infinite;
+                    }
+                    .tech-grid {
+                        background-image: 
+                            linear-gradient(rgba(34, 197, 94, 0.1) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(34, 197, 94, 0.1) 1px, transparent 1px);
+                        background-size: 40px 40px;
+                    }
+                `}</style>
+                
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                 <canvas ref={canvasRef} className="hidden" />
+
+                {isScanning && (
+                    <>
+                        {/* Tech Grid Overlay */}
+                        <div className="absolute inset-0 pointer-events-none tech-grid opacity-30"></div>
+                        
+                        {/* Scanning Line */}
+                        <div className="animate-scan pointer-events-none"></div>
+
+                        {/* Viewfinder Corners */}
+                        <div className="absolute inset-0 pointer-events-none p-6">
+                            <div className="w-full h-full relative">
+                                <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-green-500/60 rounded-tl-lg"></div>
+                                <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-green-500/60 rounded-tr-lg"></div>
+                                <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-green-500/60 rounded-bl-lg"></div>
+                                <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-green-500/60 rounded-br-lg"></div>
+                                
+                                {/* Center Crosshair */}
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 opacity-50">
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-full bg-green-500/40"></div>
+                                    <div className="absolute top-1/2 left-0 -translate-y-1/2 w-full h-0.5 bg-green-500/40"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Status Text Overlay */}
+                        <div className="absolute top-4 left-4 pointer-events-none">
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                                <span className="text-xs font-mono text-green-400 font-bold tracking-widest">REC • LIVE FEED</span>
+                            </div>
+                            <div className="text-[10px] font-mono text-green-500/70 mt-1">
+                                ANPR SYSTEM ACTIVE
+                            </div>
+                        </div>
+                    </>
+                )}
 
                 <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" viewBox={`0 0 ${videoDimensions.width} ${videoDimensions.height}`}>
                     {detections.map((d, i) => {
