@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip, GeoJSON } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip, GeoJSON, Circle } from 'react-leaflet';
 import L, { LatLngBoundsExpression } from 'leaflet';
 import { Report, Responder, VehicleReport, ReportStatus, Severity, ResponderStatus, Profile } from '../types';
 import StatusBadge from './StatusBadge';
@@ -187,6 +187,14 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
         weight: 2,
     };
 
+    const approximateLocationStyle = {
+        fillColor: '#F87171', // Red-400
+        fillOpacity: 0.15,
+        color: '#EF4444', // Red-500
+        weight: 1,
+        dashArray: '5, 5'
+    };
+
     return (
         <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none relative">
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
@@ -259,41 +267,48 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                     if (!report.location_coords) return null;
                     const isSelected = report.id === selectedReportId;
                     return (
-                         <Marker
-                            key={report.id}
-                            position={[report.location_coords.lat, report.location_coords.lng]}
-                            icon={createIncidentIcon(report, isSelected)}
-                            zIndexOffset={isSelected ? 1000 : 0}
-                            // FIX: Switched from 'onClick' to 'eventHandlers' to align with the correct react-leaflet API for event handling.
-                            eventHandlers={{
-                                click: () => {
-                                    if (onReportSelect) {
-                                        onReportSelect(report.id);
-                                    }
-                                },
-                            }}
-                        >
-                            <Popup>
-                                <div className="w-72">
-                                    <h3 className="font-bold text-lg mb-1">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mb-2">{report.ob_number}</p>
-                                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{report.description}</p>
-                                    <hr className="border-gray-200 dark:border-gray-600 my-2" />
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Status</span><StatusBadge status={report.status} /></div>
-                                        <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Severity</span><span className={`capitalize px-2 py-1 text-xs font-semibold rounded-full ${report.severity === 'critical' ? 'bg-red-500/20 text-red-400' : report.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : report.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}`}>{report.severity}</span></div>
+                        <React.Fragment key={report.id}>
+                            {!report.location_boundary && (
+                                <Circle 
+                                    center={[report.location_coords.lat, report.location_coords.lng]}
+                                    radius={500} // 500 meters radius for approximate location
+                                    pathOptions={approximateLocationStyle}
+                                />
+                            )}
+                            <Marker
+                                position={[report.location_coords.lat, report.location_coords.lng]}
+                                icon={createIncidentIcon(report, isSelected)}
+                                zIndexOffset={isSelected ? 1000 : 0}
+                                eventHandlers={{
+                                    click: () => {
+                                        if (onReportSelect) {
+                                            onReportSelect(report.id);
+                                        }
+                                    },
+                                }}
+                            >
+                                <Popup>
+                                    <div className="w-72">
+                                        <h3 className="font-bold text-lg mb-1">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mb-2">{report.ob_number}</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{report.description}</p>
+                                        <hr className="border-gray-200 dark:border-gray-600 my-2" />
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Status</span><StatusBadge status={report.status} /></div>
+                                            <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Severity</span><span className={`capitalize px-2 py-1 text-xs font-semibold rounded-full ${report.severity === 'critical' ? 'bg-red-500/20 text-red-400' : report.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : report.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}`}>{report.severity}</span></div>
+                                        </div>
+                                        
+                                        <hr className="border-gray-200 dark:border-gray-600 my-2" />
+                                        <div className="flex justify-between items-center">
+                                            <p className="text-xs text-gray-400 dark:text-gray-500">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
+                                            <button onClick={() => handleShareReport(report.id)} className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors disabled:opacity-50" disabled={copiedReportId === report.id}>
+                                                {copiedReportId === report.id ? <><CheckCircleIcon className="w-4 h-4 text-green-400" /><span className="text-green-400">Copied!</span></> : <><ShareIcon className="w-4 h-4" /><span>Share</span></>}
+                                            </button>
+                                        </div>
                                     </div>
-                                    
-                                    <hr className="border-gray-200 dark:border-gray-600 my-2" />
-                                    <div className="flex justify-between items-center">
-                                        <p className="text-xs text-gray-400 dark:text-gray-500">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
-                                        <button onClick={() => handleShareReport(report.id)} className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors disabled:opacity-50" disabled={copiedReportId === report.id}>
-                                            {copiedReportId === report.id ? <><CheckCircleIcon className="w-4 h-4 text-green-400" /><span className="text-green-400">Copied!</span></> : <><ShareIcon className="w-4 h-4" /><span>Share</span></>}
-                                        </button>
-                                    </div>
-                                </div>
-                            </Popup>
-                        </Marker>
+                                </Popup>
+                            </Marker>
+                        </React.Fragment>
                     )
                 })}
 

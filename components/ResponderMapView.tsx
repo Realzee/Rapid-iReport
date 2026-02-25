@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Tooltip, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import { Report, Profile, ResponderStatus } from '../types';
 import MapStyleToggle, { MapStyle } from './MapStyleToggle';
@@ -146,6 +146,14 @@ const ResponderMapView: React.FC<ResponderMapViewProps> = ({ report, responderPr
         attribution: ''
     };
 
+    const approximateLocationStyle = {
+        fillColor: '#F87171', // Red-400
+        fillOpacity: 0.15,
+        color: '#EF4444', // Red-500
+        weight: 1,
+        dashArray: '5, 5'
+    };
+
     const responderIcon = createResponderIcon(responderProfile.responder_status || ResponderStatus.OFF_DUTY);
     const incidentIcon = createIncidentIcon();
     
@@ -178,9 +186,18 @@ const ResponderMapView: React.FC<ResponderMapViewProps> = ({ report, responderPr
                 )}
 
                 {report?.location_coords && (
-                    <Marker position={[report.location_coords.lat, report.location_coords.lng]} icon={incidentIcon}>
-                        <Tooltip direction="top">Incident Location</Tooltip>
-                    </Marker>
+                    <>
+                        {!report.location_boundary && (
+                            <Circle 
+                                center={[report.location_coords.lat, report.location_coords.lng]}
+                                radius={500} // 500 meters radius for approximate location
+                                pathOptions={approximateLocationStyle}
+                            />
+                        )}
+                        <Marker position={[report.location_coords.lat, report.location_coords.lng]} icon={incidentIcon}>
+                            <Tooltip direction="top">Incident Location</Tooltip>
+                        </Marker>
+                    </>
                 )}
                 <NavigateToReportControl report={report} />
             </MapContainer>
