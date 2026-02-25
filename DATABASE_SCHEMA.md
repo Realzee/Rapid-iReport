@@ -128,6 +128,12 @@ ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS completed_at timesta
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS completed_at timestamp with time zone;
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS evidence_images text[];
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS cas_number text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS station_name text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS vin_number text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS engine_number text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS cas_number text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS station_name text;
 
 CREATE TABLE IF NOT EXISTS public.notifications (
     id uuid NOT NULL DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,

@@ -377,6 +377,10 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 )}
                 <DetailField label="Description"><p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{report.description}</p></DetailField>
                 {isVehicleReport(report) && <DetailField label="Vehicle">{`${report.vehicle_color} ${report.vehicle_make} ${report.vehicle_model}`}</DetailField>}
+                {report.cas_number && <DetailField label="CAS Number"><p className="text-gray-800 dark:text-gray-200">{report.cas_number}</p></DetailField>}
+                {report.station_name && <DetailField label="Station"><p className="text-gray-800 dark:text-gray-200">{report.station_name}</p></DetailField>}
+                {isVehicleReport(report) && report.vin_number && <DetailField label="VIN"><p className="text-gray-800 dark:text-gray-200">{report.vin_number}</p></DetailField>}
+                {isVehicleReport(report) && report.engine_number && <DetailField label="Engine"><p className="text-gray-800 dark:text-gray-200">{report.engine_number}</p></DetailField>}
             </div>
 
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 space-y-3 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm -mx-4 px-4 pb-2 sticky bottom-0">

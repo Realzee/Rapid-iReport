@@ -243,6 +243,30 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported</p>
                         <p className="text-gray-900 dark:text-white">{format(new Date(report.reported_at), 'MMM d, yyyy HH:mm')}</p>
                     </div>
+                    {report.cas_number && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">CAS Number</p>
+                            <p className="text-gray-900 dark:text-white">{report.cas_number}</p>
+                        </div>
+                    )}
+                    {report.station_name && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Station</p>
+                            <p className="text-gray-900 dark:text-white">{report.station_name}</p>
+                        </div>
+                    )}
+                    {isVehicleReport(report) && report.vin_number && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">VIN</p>
+                            <p className="text-gray-900 dark:text-white">{report.vin_number}</p>
+                        </div>
+                    )}
+                    {isVehicleReport(report) && report.engine_number && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Engine</p>
+                            <p className="text-gray-900 dark:text-white">{report.engine_number}</p>
+                        </div>
+                    )}
                 </div>
 
                 <div>
