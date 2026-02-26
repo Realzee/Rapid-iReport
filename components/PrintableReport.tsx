@@ -82,6 +82,20 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
         </div>
       </section>
 
+      {/* Evidence Images */}
+      {report.evidence_images && report.evidence_images.length > 0 && (
+        <section className="mt-6 border-t border-gray-300 pt-6" style={{ pageBreakInside: 'avoid' }}>
+          <h2 className="text-xl font-bold mb-4">Evidence Images</h2>
+          <div className="grid grid-cols-2 gap-4">
+            {report.evidence_images.map((img, index) => (
+              <div key={index} className="border border-gray-200 rounded-md overflow-hidden aspect-video bg-gray-50 flex items-center justify-center">
+                <img src={img} alt={`Evidence ${index + 1}`} className="max-w-full max-h-full object-contain" />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Timeline */}
       <section className="mt-6 border-t border-gray-300 pt-6" style={{ pageBreakInside: 'avoid' }}>
         <h2 className="text-xl font-bold mb-4">Incident Log</h2>

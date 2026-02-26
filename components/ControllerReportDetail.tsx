@@ -330,7 +330,14 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     };
     
     return (
-        <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex flex-col h-full print:hidden relative">
+        <>
+            <PrintableReport 
+                report={report} 
+                timelineEvents={timelineEvents} 
+                reporterName={reporter ? `${reporter.first_name} ${reporter.surname}` : 'Unknown'}
+                company={profile.company}
+            />
+            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex flex-col h-full print:hidden relative">
             <div className="flex-shrink-0">
                 <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
@@ -438,6 +445,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             />
             <ImagePreviewModal isOpen={!!previewImageUrl} onClose={() => setPreviewImageUrl(null)} imageUrl={previewImageUrl} />
         </div>
+        </>
     );
 };
 
