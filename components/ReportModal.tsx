@@ -37,12 +37,12 @@ const geocodeLocation = async (location: string): Promise<{coords: LocationCoord
             
             const lat = parseFloat(result.lat);
             const lon = parseFloat(result.lon);
-            const coords = !isNaN(lat) && !isNaN(lon) ? { lat, lng: lon } : null;
+            const coords = (typeof lat === 'number' && !isNaN(lat) && typeof lon === 'number' && !isNaN(lon)) ? { lat, lng: lon } : null;
 
             let boundingbox: [number, number, number, number] | null = null;
             if (result.boundingbox && Array.isArray(result.boundingbox) && result.boundingbox.length === 4) {
                 const [s, n, w, e] = result.boundingbox.map(parseFloat);
-                if (![s, n, w, e].some(isNaN)) {
+                if (![s, n, w, e].some(val => typeof val !== 'number' || isNaN(val))) {
                     boundingbox = [s, n, w, e];
                 }
             }
@@ -54,7 +54,7 @@ const geocodeLocation = async (location: string): Promise<{coords: LocationCoord
             if (boundary && boundingbox) {
                 const centerLat = (boundingbox[0] + boundingbox[1]) / 2;
                 const centerLng = (boundingbox[2] + boundingbox[3]) / 2;
-                const finalCoords = !isNaN(centerLat) && !isNaN(centerLng) ? { lat: centerLat, lng: centerLng } : coords;
+                const finalCoords = (typeof centerLat === 'number' && !isNaN(centerLat) && typeof centerLng === 'number' && !isNaN(centerLng)) ? { lat: centerLat, lng: centerLng } : coords;
                 return { coords: finalCoords, boundary, boundingbox };
             }
 
@@ -138,9 +138,13 @@ const LocationPicker: React.FC<{
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 const { latitude, longitude } = position.coords;
-                const coords = { lat: latitude, lng: longitude };
-                const address = await reverseGeocode(coords);
-                onLocationChange(coords, address);
+                if (typeof latitude === 'number' && !isNaN(latitude) && typeof longitude === 'number' && !isNaN(longitude)) {
+                    const coords = { lat: latitude, lng: longitude };
+                    const address = await reverseGeocode(coords);
+                    onLocationChange(coords, address);
+                } else {
+                    addToast("Received invalid coordinates from your device.", 'error');
+                }
                 setIsLocating(false);
             },
             (error) => {
@@ -317,12 +321,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     const handleSuggestionClick = (suggestion: any) => {
         const lat = parseFloat(suggestion.lat);
         const lng = parseFloat(suggestion.lon);
-        let coords: LocationCoords | null = !isNaN(lat) && !isNaN(lng) ? { lat, lng } : null;
+        let coords: LocationCoords | null = (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) ? { lat, lng } : null;
 
         let boundingbox: [number, number, number, number] | null = null;
         if (suggestion.boundingbox?.length === 4) {
             const [s, n, w, e] = suggestion.boundingbox.map(parseFloat);
-            if (![s, n, w, e].some(isNaN)) boundingbox = [s, n, w, e];
+            if (![s, n, w, e].some(val => typeof val !== 'number' || isNaN(val))) boundingbox = [s, n, w, e];
         }
         
         const boundary = suggestion.geojson?.type !== 'Point' ? suggestion.geojson : null;
@@ -330,7 +334,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         if (boundary && boundingbox) {
             const centerLat = (boundingbox[0] + boundingbox[1]) / 2;
             const centerLng = (boundingbox[2] + boundingbox[3]) / 2;
-            coords = !isNaN(centerLat) && !isNaN(centerLng) ? { lat: centerLat, lng: centerLng } : coords;
+            coords = (typeof centerLat === 'number' && !isNaN(centerLat) && typeof centerLng === 'number' && !isNaN(centerLng)) ? { lat: centerLat, lng: centerLng } : coords;
         }
         
         setFormData(prev => ({

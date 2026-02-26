@@ -180,7 +180,7 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                      <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {isVehicleReport(report) ? report.last_seen_location : report.location}</p>
                 </div>
                 
-                {report.location_coords ? (
+                {report.location_coords && typeof report.location_coords.lat === 'number' && !isNaN(report.location_coords.lat) && typeof report.location_coords.lng === 'number' && !isNaN(report.location_coords.lng) ? (
                     <div className="h-40 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 mt-2">
                         <MapContainer 
                             center={[report.location_coords.lat, report.location_coords.lng]} 

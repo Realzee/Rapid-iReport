@@ -236,14 +236,19 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                     setIsSyncing(true);
                     setLocationError(null);
                     const { latitude, longitude } = position.coords;
-                    const { error } = await supabase.from('profiles').update({ location_coords: { lat: latitude, lng: longitude } }).eq('id', profile.id);
+                    
+                    if (typeof latitude === 'number' && !isNaN(latitude) && typeof longitude === 'number' && !isNaN(longitude)) {
+                        const { error } = await supabase.from('profiles').update({ location_coords: { lat: latitude, lng: longitude } }).eq('id', profile.id);
 
-                    if (error) {
-                        console.error("Failed to update location:", error);
-                        setLocationError(`Failed to sync location: ${error.message}`);
-                        stopLocationSharing();
+                        if (error) {
+                            console.error("Failed to update location:", error);
+                            setLocationError(`Failed to sync location: ${error.message}`);
+                            stopLocationSharing();
+                        } else {
+                            setLastSyncTimestamp(new Date());
+                        }
                     } else {
-                        setLastSyncTimestamp(new Date());
+                        console.warn("Invalid coordinates received:", latitude, longitude);
                     }
                     setIsSyncing(false);
                 },

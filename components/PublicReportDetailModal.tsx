@@ -97,7 +97,7 @@ const PublicReportDetailModal: React.FC<PublicReportDetailModalProps> = ({ isOpe
                             } />
                         </div>
 
-                        {report.location_coords ? (
+                        {report.location_coords && typeof report.location_coords.lat === 'number' && !isNaN(report.location_coords.lat) && typeof report.location_coords.lng === 'number' && !isNaN(report.location_coords.lng) ? (
                             <div className="h-48 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700">
                                 <MapContainer 
                                     center={[report.location_coords.lat, report.location_coords.lng]} 

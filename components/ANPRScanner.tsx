@@ -248,19 +248,23 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
     const sortedHits = useMemo(() => Array.from(plateHits.values()).sort((a: any, b: any) => b.timestamp.getTime() - a.timestamp.getTime()), [plateHits]);
     const sortedScans = useMemo(() => Array.from(scannedPlates.entries()).sort((a: any, b: any) => b[1].timestamp.getTime() - a[1].timestamp.getTime()), [scannedPlates]);
     
-    const scaleX = videoDimensions.width / (videoRef.current?.videoWidth || 1);
-    const scaleY = videoDimensions.height / (videoRef.current?.videoHeight || 1);
+    const scaleX = (videoRef.current?.videoWidth || 0) > 0 ? videoDimensions.width / videoRef.current!.videoWidth : 0;
+    const scaleY = (videoRef.current?.videoHeight || 0) > 0 ? videoDimensions.height / videoRef.current!.videoHeight : 0;
 
     return (
         <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg">
             <h3 className="text-lg font-bold mb-2">Live ANPR Scanner</h3>
-            <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center mb-4">
+            <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center mb-4 border border-gray-800 relative group">
                 <style>{`
                     @keyframes scan {
                         0% { top: 0%; opacity: 0; }
                         15% { opacity: 1; }
                         85% { opacity: 1; }
                         100% { top: 100%; opacity: 0; }
+                    }
+                    @keyframes radar-spin {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(360deg); }
                     }
                     .animate-scan {
                         position: absolute;
@@ -270,6 +274,9 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
                         background: rgba(34, 197, 94, 0.8);
                         box-shadow: 0 0 10px rgba(34, 197, 94, 0.8), 0 0 20px rgba(34, 197, 94, 0.4);
                         animation: scan 2.5s linear infinite;
+                    }
+                    .animate-radar {
+                        animation: radar-spin 2s linear infinite;
                     }
                     .tech-grid {
                         background-image: 
@@ -285,18 +292,18 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
                 {isScanning && (
                     <>
                         {/* Tech Grid Overlay */}
-                        <div className="absolute inset-0 pointer-events-none tech-grid opacity-30"></div>
+                        <div className="absolute inset-0 pointer-events-none tech-grid opacity-20"></div>
                         
                         {/* Scanning Line */}
                         <div className="animate-scan pointer-events-none"></div>
 
                         {/* Viewfinder Corners */}
-                        <div className="absolute inset-0 pointer-events-none p-6">
-                            <div className="w-full h-full relative">
-                                <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-green-500/60 rounded-tl-lg"></div>
-                                <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-green-500/60 rounded-tr-lg"></div>
-                                <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-green-500/60 rounded-bl-lg"></div>
-                                <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-green-500/60 rounded-br-lg"></div>
+                        <div className="absolute inset-0 pointer-events-none p-4 sm:p-6">
+                            <div className="w-full h-full relative border border-green-500/10">
+                                <div className="absolute top-0 left-0 w-8 h-8 sm:w-12 sm:h-12 border-t-2 border-l-2 border-green-500/60 rounded-tl-lg"></div>
+                                <div className="absolute top-0 right-0 w-8 h-8 sm:w-12 sm:h-12 border-t-2 border-r-2 border-green-500/60 rounded-tr-lg"></div>
+                                <div className="absolute bottom-0 left-0 w-8 h-8 sm:w-12 sm:h-12 border-b-2 border-l-2 border-green-500/60 rounded-bl-lg"></div>
+                                <div className="absolute bottom-0 right-0 w-8 h-8 sm:w-12 sm:h-12 border-b-2 border-r-2 border-green-500/60 rounded-br-lg"></div>
                                 
                                 {/* Center Crosshair */}
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 opacity-50">
@@ -309,12 +316,27 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
                         {/* Status Text Overlay */}
                         <div className="absolute top-4 left-4 pointer-events-none">
                             <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                                <span className="text-xs font-mono text-green-400 font-bold tracking-widest">REC • LIVE FEED</span>
+                                <div className="w-2 h-2 sm:w-3 sm:h-3 bg-red-500 rounded-full animate-pulse"></div>
+                                <span className="text-[10px] sm:text-xs font-mono text-green-400 font-bold tracking-widest">REC • LIVE FEED</span>
                             </div>
                             <div className="text-[10px] font-mono text-green-500/70 mt-1">
-                                ANPR SYSTEM ACTIVE
+                                SYSTEM ACTIVE
                             </div>
+                            {detections.length > 0 && (
+                                <div className="mt-2 text-xs font-mono text-red-500 font-bold animate-pulse bg-black/50 px-2 py-1 rounded border border-red-500/50">
+                                    TARGET DETECTED
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Radar Animation */}
+                        <div className="absolute top-4 right-4 pointer-events-none hidden sm:block">
+                            <div className="relative w-16 h-16 border border-green-500/30 rounded-full flex items-center justify-center overflow-hidden bg-green-900/10 backdrop-blur-sm">
+                                <div className="absolute w-full h-full bg-gradient-to-t from-green-500/20 to-transparent animate-radar origin-bottom-right"></div>
+                                <div className="absolute inset-0 border border-green-500/10 rounded-full scale-50"></div>
+                                <div className="w-1 h-1 bg-green-500 rounded-full shadow-[0_0_5px_#22c55e]"></div>
+                            </div>
+                            <p className="text-[8px] text-green-500/70 text-center mt-1 font-mono tracking-wider">RADAR</p>
                         </div>
                     </>
                 )}
@@ -325,18 +347,26 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
                         const y = d.bbox.y0 * scaleY;
                         const width = (d.bbox.x1 - d.bbox.x0) * scaleX;
                         const height = (d.bbox.y1 - d.bbox.y0) * scaleY;
+                        const isHit = plateHits.has(d.text) || blacklist.has(d.text);
+                        const color = isHit ? '#ef4444' : '#22c55e'; // Red for hit, Green for normal
 
                         return (
                             <g key={i}>
-                                <rect
-                                    x={x} y={y} width={width} height={height}
-                                    style={{ fill: 'rgba(74, 222, 128, 0.2)', stroke: 'rgb(34, 197, 94)', strokeWidth: 2 }}
-                                />
-                                <rect x={x} y={y - 20} width={width} height={20} style={{ fill: 'rgb(34, 197, 94)' }} />
+                                {/* Target Lock Corners */}
+                                <path d={`M${x},${y} L${x + 10},${y} M${x},${y} L${x},${y + 10}`} stroke={color} strokeWidth="2" fill="none" />
+                                <path d={`M${x + width},${y} L${x + width - 10},${y} M${x + width},${y} L${x + width},${y + 10}`} stroke={color} strokeWidth="2" fill="none" />
+                                <path d={`M${x},${y + height} L${x + 10},${y + height} M${x},${y + height} L${x},${y + height - 10}`} stroke={color} strokeWidth="2" fill="none" />
+                                <path d={`M${x + width},${y + height} L${x + width - 10},${y + height} M${x + width},${y + height} L${x + width},${y + height - 10}`} stroke={color} strokeWidth="2" fill="none" />
+                                
+                                {/* Pulsing Background */}
+                                <rect x={x} y={y} width={width} height={height} fill={isHit ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.1)'} className="animate-pulse" />
+                                
+                                {/* Label */}
+                                <rect x={x} y={y - 20} width={width} height={20} fill={isHit ? 'rgba(239, 68, 68, 0.9)' : 'rgba(34, 197, 94, 0.9)'} />
                                 <text
                                     x={x + width / 2} y={y - 6}
                                     textAnchor="middle"
-                                    style={{ fill: 'white', fontSize: '14px', fontWeight: 'bold', fontFamily: 'monospace' }}
+                                    style={{ fill: 'white', fontSize: '12px', fontWeight: 'bold', fontFamily: 'monospace' }}
                                 >
                                     {d.text}
                                 </text>
@@ -346,8 +376,10 @@ const ANPRScanner: React.FC<ANPRScannerProps> = ({ onReportHit }) => {
                 </svg>
 
                 {!isScanning && (
-                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white">
-                        <p className="font-semibold">{status}</p>
+                    <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white">
+                        <ScanIcon className="w-12 h-12 text-gray-500 mb-2" />
+                        <p className="font-semibold text-gray-400">{status === 'Initializing' ? 'Initializing System...' : 'System Offline'}</p>
+                        {status === 'Error' && <p className="text-red-500 text-sm mt-2">Camera/Engine Error</p>}
                     </div>
                 )}
             </div>

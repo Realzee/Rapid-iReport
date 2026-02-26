@@ -218,7 +218,9 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 <MapFocusController reports={reports} selectedReport={selectedReport} responders={responders} />
 
                 {responders.map(responder => (
-                    responder.location_coords && (
+                    responder.location_coords && 
+                    typeof responder.location_coords.lat === 'number' && !isNaN(responder.location_coords.lat) &&
+                    typeof responder.location_coords.lng === 'number' && !isNaN(responder.location_coords.lng) && (
                         <Marker
                             key={`responder-${responder.id}`}
                             position={[responder.location_coords.lat, responder.location_coords.lng]}
@@ -264,7 +266,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 ))}
 
                 {reports.map(report => {
-                    if (!report.location_coords) return null;
+                    if (!report.location_coords || typeof report.location_coords.lat !== 'number' || typeof report.location_coords.lng !== 'number' || isNaN(report.location_coords.lat) || isNaN(report.location_coords.lng)) return null;
                     const isSelected = report.id === selectedReportId;
                     return (
                         <React.Fragment key={report.id}>

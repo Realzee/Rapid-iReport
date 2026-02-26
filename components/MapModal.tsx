@@ -42,13 +42,13 @@ const MapFocusController: React.FC<{ report: Report }> = ({ report }) => {
     const map = useMap();
     useEffect(() => {
         // This effect runs once when the map is ready
-        if (report.location_boundingbox) {
+        if (report.location_boundingbox && report.location_boundingbox.length === 4 && !report.location_boundingbox.some(isNaN)) {
              const bounds: LatLngBoundsExpression = [
                 [report.location_boundingbox[0], report.location_boundingbox[2]],
                 [report.location_boundingbox[1], report.location_boundingbox[3]]
             ];
             map.fitBounds(bounds, { padding: [20, 20] });
-        } else if (report.location_coords) {
+        } else if (report.location_coords && typeof report.location_coords.lat === 'number' && !isNaN(report.location_coords.lat) && typeof report.location_coords.lng === 'number' && !isNaN(report.location_coords.lng)) {
             map.setView([report.location_coords.lat, report.location_coords.lng], 16);
         }
     }, [map, report]); // Depend on map and report to re-run if they change
@@ -86,7 +86,8 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
         ? createVehicleIcon(report.severity, report.status)
         : createCrimeIcon(report.status);
 
-    const position: [number, number] | undefined = report.location_coords ? [report.location_coords.lat, report.location_coords.lng] : undefined;
+    const isValidCoords = report.location_coords && typeof report.location_coords.lat === 'number' && !isNaN(report.location_coords.lat) && typeof report.location_coords.lng === 'number' && !isNaN(report.location_coords.lng);
+    const position: [number, number] | undefined = isValidCoords ? [report.location_coords!.lat, report.location_coords!.lng] : undefined;
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" aria-labelledby="map-modal-title" role="dialog" aria-modal="true">

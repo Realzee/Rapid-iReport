@@ -33,7 +33,7 @@ const createCrimeIcon = () => {
 const MapFocusController: React.FC<{ selectedReport: Report | undefined }> = ({ selectedReport }) => {
     const map = useMap();
     useEffect(() => {
-        if (selectedReport?.location_coords) {
+        if (selectedReport?.location_coords && typeof selectedReport.location_coords.lat === 'number' && !isNaN(selectedReport.location_coords.lat) && typeof selectedReport.location_coords.lng === 'number' && !isNaN(selectedReport.location_coords.lng)) {
             map.flyTo([selectedReport.location_coords.lat, selectedReport.location_coords.lng], 15, { animate: true, duration: 1.0 });
         }
     }, [selectedReport, map]);
@@ -146,7 +146,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                             )}
                             <MapFocusController selectedReport={selectedReport} />
                             {reports.map(report => {
-                                if (!report.location_coords) return null;
+                                if (!report.location_coords || typeof report.location_coords.lat !== 'number' || isNaN(report.location_coords.lat) || typeof report.location_coords.lng !== 'number' || isNaN(report.location_coords.lng)) return null;
                                 return <Marker 
                                     key={report.id} 
                                     position={[report.location_coords.lat, report.location_coords.lng]} 

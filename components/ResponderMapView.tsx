@@ -41,12 +41,14 @@ const NavigateToReportControl: React.FC<{ report: Report | null }> = ({ report }
     const handleNavigate = () => {
         if (report?.location_coords) {
             const { lat, lng } = report.location_coords;
-            const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-            window.open(url, '_blank');
+            if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+                window.open(url, '_blank');
+            }
         }
     };
     
-    if (!controlContainerRef.current || !report?.location_coords) {
+    if (!controlContainerRef.current || !report?.location_coords || typeof report.location_coords.lat !== 'number' || isNaN(report.location_coords.lat) || typeof report.location_coords.lng !== 'number' || isNaN(report.location_coords.lng)) {
         return null;
     }
 
@@ -114,15 +116,18 @@ const MapFocusController: React.FC<{ report: Report | null, responderProfile: Pr
         const responderCoords = responderProfile.location_coords;
         const reportCoords = report?.location_coords;
 
-        if (reportCoords && responderCoords) {
+        const isValid = (coords: { lat: number, lng: number } | undefined | null) => 
+            coords && typeof coords.lat === 'number' && !isNaN(coords.lat) && typeof coords.lng === 'number' && !isNaN(coords.lng);
+
+        if (isValid(reportCoords) && isValid(responderCoords)) {
             map.flyToBounds([
-                [responderCoords.lat, responderCoords.lng],
-                [reportCoords.lat, reportCoords.lng]
+                [responderCoords!.lat, responderCoords!.lng],
+                [reportCoords!.lat, reportCoords!.lng]
             ], { padding: [50, 50], maxZoom: 14 });
-        } else if (reportCoords) {
-            map.flyTo([reportCoords.lat, reportCoords.lng], 14);
-        } else if (responderCoords) {
-            map.flyTo([responderCoords.lat, responderCoords.lng], 14);
+        } else if (isValid(reportCoords)) {
+            map.flyTo([reportCoords!.lat, reportCoords!.lng], 14);
+        } else if (isValid(responderCoords)) {
+            map.flyTo([responderCoords!.lat, responderCoords!.lng], 14);
         }
 
     }, [report, responderProfile, map]);
@@ -179,13 +184,17 @@ const ResponderMapView: React.FC<ResponderMapViewProps> = ({ report, responderPr
                 )}
                 <MapFocusController report={report} responderProfile={responderProfile} />
                 
-                {responderProfile.location_coords && (
+                {responderProfile.location_coords && 
+                 typeof responderProfile.location_coords.lat === 'number' && !isNaN(responderProfile.location_coords.lat) &&
+                 typeof responderProfile.location_coords.lng === 'number' && !isNaN(responderProfile.location_coords.lng) && (
                     <Marker position={[responderProfile.location_coords.lat, responderProfile.location_coords.lng]} icon={responderIcon}>
                         <Tooltip direction="top">Your Location</Tooltip>
                     </Marker>
                 )}
 
-                {report?.location_coords && (
+                {report?.location_coords && 
+                 typeof report.location_coords.lat === 'number' && !isNaN(report.location_coords.lat) &&
+                 typeof report.location_coords.lng === 'number' && !isNaN(report.location_coords.lng) && (
                     <>
                         {!report.location_boundary && (
                             <Circle 
