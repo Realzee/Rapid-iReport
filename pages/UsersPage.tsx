@@ -222,7 +222,7 @@ const UsersPage: React.FC = () => {
             }
 
             if (password) {
-                const response = await fetch('/api/users/reset-password', {
+                const response = await fetch('/api/reset-password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: userToSave.id, password: password })
@@ -258,7 +258,7 @@ const UsersPage: React.FC = () => {
             delete user_metadata.id;
             delete user_metadata.email;
             
-            const response = await fetch('/api/users/create', {
+            const response = await fetch('/api/create-user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: userToSave.email, password: password, user_metadata: user_metadata })
@@ -311,7 +311,7 @@ const UsersPage: React.FC = () => {
 
     const confirmDeleteUser = useCallback(async () => {
         if (selectedUser) {
-            const response = await fetch('/api/users/delete', {
+            const response = await fetch('/api/delete-user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: selectedUser.id })

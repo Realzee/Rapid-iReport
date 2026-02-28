@@ -40,7 +40,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // API Routes for User Management
-app.post('/api/users/create', async (req, res) => {
+app.post('/api/create-user', async (req, res) => {
     const { email, password, user_metadata } = req.body;
     
     try {
@@ -59,7 +59,7 @@ app.post('/api/users/create', async (req, res) => {
     }
 });
 
-app.post('/api/users/reset-password', async (req, res) => {
+app.post('/api/reset-password', async (req, res) => {
     const { userId, password } = req.body;
     
     try {
@@ -75,7 +75,7 @@ app.post('/api/users/reset-password', async (req, res) => {
     }
 });
 
-app.post('/api/users/delete', async (req, res) => {
+app.post('/api/delete-user', async (req, res) => {
     const { userId } = req.body;
     
     try {
