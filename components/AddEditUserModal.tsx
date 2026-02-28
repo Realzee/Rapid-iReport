@@ -106,7 +106,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-8 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-                <button onClick={handleClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
+                <button type="button" onClick={handleClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
                     <XIcon className="w-6 h-6" />
                 </button>
                 <h3 id="modal-title" className="text-2xl font-bold text-gray-900 dark:text-white mb-6">{user ? 'Edit User' : 'Add New User'}</h3>
@@ -122,7 +122,11 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                                     <UserIcon className="h-12 w-12 text-gray-400" />
                                 )}
                             </span>
-                            <label htmlFor="user-avatar-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                            <label 
+                                htmlFor="user-avatar-upload" 
+                                className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                                onClick={(e) => e.stopPropagation()}
+                            >
                                 <UploadCloudIcon className="w-5 h-5"/>
                                 <span>Upload Selfie</span>
                             </label>
