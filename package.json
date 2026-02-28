@@ -4,23 +4,26 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
     "@google/genai": "latest",
-    "date-fns": "^3.0.0",
-    "leaflet": "1.9.4",
-    "react-leaflet": "4.2.1",
+    "@kurkle/color": "0.3.2",
     "@supabase/supabase-js": "2.44.4",
-    "tesseract.js": "5.1.0",
     "chart.js": "4.4.3",
+    "date-fns": "^3.0.0",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "leaflet": "1.9.4",
+    "react": "^18.2.0",
     "react-chartjs-2": "5.2.0",
-    "@kurkle/color": "0.3.2"
+    "react-dom": "^18.2.0",
+    "react-leaflet": "4.2.1",
+    "tesseract.js": "5.1.0",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

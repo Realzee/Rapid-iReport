@@ -222,12 +222,15 @@ const UsersPage: React.FC = () => {
             }
 
             if (password) {
-                const { error: functionError } = await supabase.functions.invoke('reset-password', {
-                    body: { userId: userToSave.id, password: password }
+                const response = await fetch('/api/users/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: userToSave.id, password: password })
                 });
 
-                if (functionError) {
-                    addToast(`Profile saved, but password update failed: ${functionError.message}.`, 'warning');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    addToast(`Profile saved, but password update failed: ${errorData.error || 'Unknown error'}.`, 'warning');
                 } else {
                     addToast('User password was also updated successfully.', 'success');
                 }
@@ -248,15 +251,19 @@ const UsersPage: React.FC = () => {
             delete user_metadata.id;
             delete user_metadata.email;
             
-            const { data: functionData, error: functionError } = await supabase.functions.invoke('create-user', {
-                body: { email: userToSave.email, password: password, user_metadata: user_metadata }
+            const response = await fetch('/api/users/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: userToSave.email, password: password, user_metadata: user_metadata })
             });
             
-            if (functionError) {
-                addToast(`Error creating user: ${functionError.message}`, 'error');
+            if (!response.ok) {
+                const errorData = await response.json();
+                addToast(`Error creating user: ${errorData.error || 'Unknown error'}`, 'error');
                 return;
             }
 
+            const functionData = await response.json();
             const newAuthUser = functionData.user;
             if (!newAuthUser) {
                 addToast('User creation failed to return a user object.', 'error');
@@ -290,12 +297,15 @@ const UsersPage: React.FC = () => {
 
     const confirmDeleteUser = useCallback(async () => {
         if (selectedUser) {
-            const { error } = await supabase.functions.invoke('delete-user', {
-                body: { userId: selectedUser.id }
+            const response = await fetch('/api/users/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: selectedUser.id })
             });
 
-            if (error) {
-                 addToast('Error deleting user: ' + error.message, 'error');
+            if (!response.ok) {
+                const errorData = await response.json();
+                addToast('Error deleting user: ' + (errorData.error || 'Unknown error'), 'error');
             } else {
                 addToast('User deleted successfully.', 'success');
             }
