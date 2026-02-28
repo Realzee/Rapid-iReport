@@ -229,8 +229,15 @@ const UsersPage: React.FC = () => {
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    addToast(`Profile saved, but password update failed: ${errorData.error || 'Unknown error'}.`, 'warning');
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        const errorData = await response.json();
+                        addToast(`Profile saved, but password update failed: ${errorData.error || 'Unknown error'}.`, 'warning');
+                    } else {
+                        const errorText = await response.text();
+                        console.error("Non-JSON error response:", errorText);
+                        addToast(`Server error: ${response.status} ${response.statusText}. Check console for details.`, 'warning');
+                    }
                 } else {
                     addToast('User password was also updated successfully.', 'success');
                 }
@@ -258,8 +265,15 @@ const UsersPage: React.FC = () => {
             });
             
             if (!response.ok) {
-                const errorData = await response.json();
-                addToast(`Error creating user: ${errorData.error || 'Unknown error'}`, 'error');
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const errorData = await response.json();
+                    addToast(`Error creating user: ${errorData.error || 'Unknown error'}`, 'error');
+                } else {
+                    const errorText = await response.text();
+                    console.error("Non-JSON error response:", errorText);
+                    addToast(`Server error: ${response.status} ${response.statusText}. Check console for details.`, 'error');
+                }
                 return;
             }
 
@@ -304,8 +318,15 @@ const UsersPage: React.FC = () => {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                addToast('Error deleting user: ' + (errorData.error || 'Unknown error'), 'error');
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const errorData = await response.json();
+                    addToast('Error deleting user: ' + (errorData.error || 'Unknown error'), 'error');
+                } else {
+                    const errorText = await response.text();
+                    console.error("Non-JSON error response:", errorText);
+                    addToast(`Server error: ${response.status} ${response.statusText}. Check console for details.`, 'error');
+                }
             } else {
                 addToast('User deleted successfully.', 'success');
             }

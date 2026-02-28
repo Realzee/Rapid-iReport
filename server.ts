@@ -1,9 +1,13 @@
 import express from 'express';
-import { createServer as createViteServer } from 'vite';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 3000;
@@ -24,6 +28,17 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || '', {
 
 app.use(express.json());
 
+// Request logging
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
+
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', message: 'Backend is running', timestamp: new Date().toISOString() });
+});
+
 // API Routes for User Management
 app.post('/api/users/create', async (req, res) => {
     const { email, password, user_metadata } = req.body;
@@ -39,6 +54,7 @@ app.post('/api/users/create', async (req, res) => {
         if (error) throw error;
         res.status(200).json(data);
     } catch (error: any) {
+        console.error('Error creating user:', error);
         res.status(400).json({ error: error.message });
     }
 });
@@ -54,6 +70,7 @@ app.post('/api/users/reset-password', async (req, res) => {
         if (error) throw error;
         res.status(200).json(data);
     } catch (error: any) {
+        console.error('Error resetting password:', error);
         res.status(400).json({ error: error.message });
     }
 });
@@ -67,28 +84,36 @@ app.post('/api/users/delete', async (req, res) => {
         if (error) throw error;
         res.status(200).json(data);
     } catch (error: any) {
+        console.error('Error deleting user:', error);
         res.status(400).json({ error: error.message });
     }
 });
 
-// Vite middleware for development
-async function setupVite() {
+// Catch-all for /api that doesn't match
+app.all('/api/*', (req, res) => {
+    res.status(404).json({ error: `API route ${req.method} ${req.url} not found` });
+});
+
+// Vite middleware for development or static serving for production
+async function setupFrontend() {
     if (process.env.NODE_ENV !== 'production') {
+        const { createServer: createViteServer } = await import('vite');
         const vite = await createViteServer({
             server: { middlewareMode: true },
             appType: 'spa',
         });
         app.use(vite.middlewares);
     } else {
-        app.use(express.static('dist'));
+        const distPath = path.resolve(__dirname, 'dist');
+        app.use(express.static(distPath));
         app.get('*', (req, res) => {
-            res.sendFile('dist/index.html', { root: '.' });
+            res.sendFile(path.join(distPath, 'index.html'));
         });
     }
 }
 
-setupVite().then(() => {
+setupFrontend().then(() => {
     app.listen(PORT, '0.0.0.0', () => {
-        console.log(`Server running on http://localhost:${PORT}`);
+        console.log(`Server running on http://localhost:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
     });
 });
