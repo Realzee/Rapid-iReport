@@ -101,7 +101,10 @@ app.post('/api/save-company', async (req, res) => {
             ({ data, error } = await supabaseAdmin.from('companies').insert(dbPayload).select().single());
         }
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase Error saving company:', error);
+            throw new Error(error.message || 'Database error occurred');
+        }
         res.status(200).json(data);
     } catch (error: any) {
         console.error('Error saving company:', error);
@@ -115,7 +118,10 @@ app.post('/api/delete-company', async (req, res) => {
     try {
         const { error } = await supabaseAdmin.from('companies').delete().eq('id', id);
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase Error deleting company:', error);
+            throw new Error(error.message || 'Database error occurred');
+        }
         res.status(200).json({ success: true });
     } catch (error: any) {
         console.error('Error deleting company:', error);
@@ -135,7 +141,10 @@ app.post('/api/save-announcement', async (req, res) => {
             ({ data, error } = await supabaseAdmin.from('announcements').insert(dbPayload).select().single());
         }
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase Error saving announcement:', error);
+            throw new Error(error.message || 'Database error occurred');
+        }
         res.status(200).json(data);
     } catch (error: any) {
         console.error('Error saving announcement:', error);

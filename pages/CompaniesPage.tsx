@@ -207,7 +207,8 @@ const CompaniesPage: React.FC = () => {
             }
         } catch (error: any) {
             console.error('Error saving company:', error);
-            addToast('Error saving company: ' + error.message, 'error');
+            const errorMessage = error.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+            addToast('Error saving company: ' + errorMessage, 'error');
         } finally {
             setIsSavingCompany(false);
         }

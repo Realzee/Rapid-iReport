@@ -23,9 +23,13 @@ export default async function handler(req: any, res: any) {
             ({ data, error } = await supabaseAdmin.from('companies').insert(dbPayload).select().single());
         }
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase Error saving company:', error);
+            throw new Error(error.message || 'Database error occurred');
+        }
         return res.status(200).json(data);
     } catch (error: any) {
+        console.error('Error saving company:', error);
         return res.status(400).json({ error: error.message });
     }
 }
