@@ -89,6 +89,89 @@ app.post('/api/delete-user', async (req, res) => {
     }
 });
 
+// API Routes for Company Management
+app.post('/api/save-company', async (req, res) => {
+    const { id, ...dbPayload } = req.body;
+    
+    try {
+        let data, error;
+        if (id) {
+            ({ data, error } = await supabaseAdmin.from('companies').update(dbPayload).eq('id', id).select().single());
+        } else {
+            ({ data, error } = await supabaseAdmin.from('companies').insert(dbPayload).select().single());
+        }
+
+        if (error) throw error;
+        res.status(200).json(data);
+    } catch (error: any) {
+        console.error('Error saving company:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.post('/api/delete-company', async (req, res) => {
+    const { id } = req.body;
+    
+    try {
+        const { error } = await supabaseAdmin.from('companies').delete().eq('id', id);
+
+        if (error) throw error;
+        res.status(200).json({ success: true });
+    } catch (error: any) {
+        console.error('Error deleting company:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// API Routes for Announcements Management
+app.post('/api/save-announcement', async (req, res) => {
+    const { id, ...dbPayload } = req.body;
+    
+    try {
+        let data, error;
+        if (id) {
+            ({ data, error } = await supabaseAdmin.from('announcements').update(dbPayload).eq('id', id).select().single());
+        } else {
+            ({ data, error } = await supabaseAdmin.from('announcements').insert(dbPayload).select().single());
+        }
+
+        if (error) throw error;
+        res.status(200).json(data);
+    } catch (error: any) {
+        console.error('Error saving announcement:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.post('/api/delete-announcement', async (req, res) => {
+    const { id } = req.body;
+    
+    try {
+        const { error } = await supabaseAdmin.from('announcements').delete().eq('id', id);
+
+        if (error) throw error;
+        res.status(200).json({ success: true });
+    } catch (error: any) {
+        console.error('Error deleting announcement:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// API Routes for App Settings
+app.post('/api/update-setting', async (req, res) => {
+    const { key, value } = req.body;
+    
+    try {
+        const { data, error } = await supabaseAdmin.from('app_settings').upsert({ key, value }).select().single();
+
+        if (error) throw error;
+        res.status(200).json(data);
+    } catch (error: any) {
+        console.error('Error updating setting:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
 // Catch-all for /api that doesn't match
 app.all('/api/*', (req, res) => {
     res.status(404).json({ error: `API route ${req.method} ${req.url} not found` });

@@ -173,21 +173,26 @@ const CompaniesPage: React.FC = () => {
             }
 
             let savedCompany: Company | null = null;
-            let error;
+            
+            const response = await fetch('/api/save-company', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...companyData, logo_url: finalLogoUrl })
+            });
 
-            const { id, ...dbPayload } = { ...companyData, logo_url: finalLogoUrl };
-
-            if (companyData.id) {
-                const { data, error: updateError } = await supabase.from('companies').update(dbPayload).eq('id', companyData.id).select().single();
-                savedCompany = data;
-                error = updateError;
-            } else {
-                const { data, error: insertError } = await supabase.from('companies').insert(dbPayload).select().single();
-                savedCompany = data;
-                error = insertError;
+            if (!response.ok) {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Unknown error');
+                } else {
+                    const errorText = await response.text();
+                    console.error("Non-JSON error response:", errorText);
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
             }
 
-            if (error) throw error;
+            savedCompany = await response.json();
             
             if (savedCompany) {
                 if (companyData.id) {
@@ -216,8 +221,23 @@ const CompaniesPage: React.FC = () => {
                     }
                 }
 
-                const { error } = await supabase.from('companies').delete().eq('id', selectedCompany.id);
-                if (error) throw error;
+                const response = await fetch('/api/delete-company', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: selectedCompany.id })
+                });
+
+                if (!response.ok) {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Unknown error');
+                    } else {
+                        const errorText = await response.text();
+                        console.error("Non-JSON error response:", errorText);
+                        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                    }
+                }
                 
                 addToast(`Company '${selectedCompany.name}' deleted successfully.`, 'success');
                 setCompanies(companies.filter(c => c.id !== selectedCompany.id));
@@ -254,12 +274,23 @@ const CompaniesPage: React.FC = () => {
             const { data: urlData } = supabase.storage.from('app-assets').getPublicUrl(filePath);
             const newUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
 
-            const { error: dbError } = await supabase
-                .from('app_settings')
-                .update({ value: newUrl })
-                .eq('key', 'main_logo_url');
+            const response = await fetch('/api/update-setting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'main_logo_url', value: newUrl })
+            });
             
-            if (dbError) throw dbError;
+            if (!response.ok) {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Unknown error');
+                } else {
+                    const errorText = await response.text();
+                    console.error("Non-JSON error response:", errorText);
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+            }
 
             setMainLogoUrl(newUrl);
             setNewLogoFile(null);
@@ -275,12 +306,23 @@ const CompaniesPage: React.FC = () => {
     const handleResetGlobalLogo = async () => {
         setIsUploadingGlobalLogo(true);
         try {
-            const { error } = await supabase
-                .from('app_settings')
-                .update({ value: null })
-                .eq('key', 'main_logo_url');
+            const response = await fetch('/api/update-setting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'main_logo_url', value: null })
+            });
             
-            if (error) throw error;
+            if (!response.ok) {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Unknown error');
+                } else {
+                    const errorText = await response.text();
+                    console.error("Non-JSON error response:", errorText);
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+            }
 
             setMainLogoUrl(defaultLogoUrl);
             setLogoPreview(defaultLogoUrl);
@@ -321,11 +363,23 @@ const CompaniesPage: React.FC = () => {
             const { data: urlData } = supabase.storage.from('app-assets').getPublicUrl(filePath);
             const newUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
 
-            const { error: dbError } = await supabase
-                .from('app_settings')
-                .upsert({ key: 'favicon_url', value: newUrl });
+            const response = await fetch('/api/update-setting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'favicon_url', value: newUrl })
+            });
             
-            if (dbError) throw dbError;
+            if (!response.ok) {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Unknown error');
+                } else {
+                    const errorText = await response.text();
+                    console.error("Non-JSON error response:", errorText);
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+            }
 
             setFaviconUrl(newUrl);
             setNewFaviconFile(null);
@@ -340,12 +394,23 @@ const CompaniesPage: React.FC = () => {
     const handleResetFavicon = async () => {
         setIsUploadingFavicon(true);
         try {
-            const { error } = await supabase
-                .from('app_settings')
-                .update({ value: null })
-                .eq('key', 'favicon_url');
+            const response = await fetch('/api/update-setting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'favicon_url', value: null })
+            });
             
-            if (error) throw error;
+            if (!response.ok) {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Unknown error');
+                } else {
+                    const errorText = await response.text();
+                    console.error("Non-JSON error response:", errorText);
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+            }
 
             setFaviconUrl(defaultFaviconUrl);
             setFaviconPreview(defaultFaviconUrl);
@@ -417,11 +482,25 @@ const CompaniesPage: React.FC = () => {
                 image_url: finalImageUrl,
             };
 
-            const { data: savedAnnouncement, error } = announcementData.id
-                ? await supabase.from('announcements').update(dbPayload).eq('id', announcementData.id).select().single()
-                : await supabase.from('announcements').insert(dbPayload).select().single();
+            const response = await fetch('/api/save-announcement', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...dbPayload, id: announcementData.id })
+            });
 
-            if (error) throw error;
+            if (!response.ok) {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Unknown error');
+                } else {
+                    const errorText = await response.text();
+                    console.error("Non-JSON error response:", errorText);
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+            }
+
+            const savedAnnouncement = await response.json();
             
             if (savedAnnouncement) {
                 setAnnouncements(prev => announcementData.id
@@ -448,8 +527,24 @@ const CompaniesPage: React.FC = () => {
                         await supabase.storage.from('app-assets').remove([filePath]);
                     }
                 }
-                const { error } = await supabase.from('announcements').delete().eq('id', announcementToDelete.id);
-                if (error) throw error;
+                const response = await fetch('/api/delete-announcement', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: announcementToDelete.id })
+                });
+
+                if (!response.ok) {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Unknown error');
+                    } else {
+                        const errorText = await response.text();
+                        console.error("Non-JSON error response:", errorText);
+                        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                    }
+                }
+
                 addToast(`Announcement '${announcementToDelete.title}' deleted successfully.`, 'success');
                 setAnnouncements(announcements.filter(a => a.id !== announcementToDelete.id));
             } catch (error: any) {
