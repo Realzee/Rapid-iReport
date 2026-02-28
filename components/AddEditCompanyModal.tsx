@@ -8,9 +8,10 @@ interface AddEditCompanyModalProps {
     onClose: () => void;
     onSave: (company: Partial<Company>, logoFile: File | null) => void;
     company: Company | null;
+    isSaving?: boolean;
 }
 
-const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClose, onSave, company }) => {
+const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClose, onSave, company, isSaving = false }) => {
     
     const getInitialData = () => {
         return company ? company : {
@@ -156,8 +157,17 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
                     </div>
 
                     <div className="pt-6 flex justify-end space-x-4">
-                        <button type="button" onClick={handleClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
-                        <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-md hover:scale-105 transition-transform duration-300">Save Company</button>
+                        <button type="button" onClick={handleClose} disabled={isSaving} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50">Cancel</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-md hover:scale-105 transition-transform duration-300 disabled:opacity-50 flex items-center gap-2">
+                            {isSaving ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    <span>Saving...</span>
+                                </>
+                            ) : (
+                                <span>Save Company</span>
+                            )}
+                        </button>
                     </div>
                 </form>
             </div>

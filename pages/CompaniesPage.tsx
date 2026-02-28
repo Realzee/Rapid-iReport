@@ -53,6 +53,7 @@ const CompaniesPage: React.FC = () => {
     
     // Backup Modal State
     const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+    const [isSavingCompany, setIsSavingCompany] = useState(false);
 
     const dbHost = useMemo(() => {
         const supabaseUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co';
@@ -154,6 +155,7 @@ const CompaniesPage: React.FC = () => {
     };
 
     const handleSaveCompany = async (companyData: Partial<Company>, logoFile: File | null) => {
+        setIsSavingCompany(true);
         let finalLogoUrl = companyData.logo_url;
 
         try {
@@ -201,11 +203,13 @@ const CompaniesPage: React.FC = () => {
                     setCompanies([...companies, savedCompany]);
                 }
                 addToast(`Company '${savedCompany.name}' saved successfully.`, 'success');
+                setIsAddEditModalOpen(false);
             }
         } catch (error: any) {
+            console.error('Error saving company:', error);
             addToast('Error saving company: ' + error.message, 'error');
         } finally {
-            setIsAddEditModalOpen(false);
+            setIsSavingCompany(false);
         }
     };
 
@@ -760,6 +764,7 @@ const CompaniesPage: React.FC = () => {
                 onClose={() => setIsAddEditModalOpen(false)}
                 onSave={handleSaveCompany}
                 company={selectedCompany}
+                isSaving={isSavingCompany}
             />
 
             <DeleteCompanyModal
