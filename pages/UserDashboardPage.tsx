@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { Profile, Report, VehicleReport, ReportStatus } from '../types';
+import { Profile, Report, VehicleReport, AccidentReport, ReportStatus } from '../types';
 import { PlusIcon, ZapIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
 import UserReportDetail from '../components/UserReportDetail';
@@ -9,6 +9,7 @@ import StatusBadge from '../components/StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
+const isAccidentReport = (report: Report): report is AccidentReport => 'accident_type' in report;
 
 const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
     const [myReports, setMyReports] = useState<Report[]>([]);
@@ -25,7 +26,8 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
             // RLS now handles company-level filtering, so we can fetch all reports the user has access to.
             const reportPromises = [
                 supabase.from('vehicle_reports').select('*').neq('status', ReportStatus.DELETED),
-                supabase.from('crime_reports').select('*').neq('status', ReportStatus.DELETED)
+                supabase.from('crime_reports').select('*').neq('status', ReportStatus.DELETED),
+                supabase.from('accident_reports').select('*').neq('status', ReportStatus.DELETED)
             ];
 
             const usersPromise = profile.company_id 
@@ -35,13 +37,14 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
             const [
                 { data: vData, error: vError }, 
                 { data: cData, error: cError },
+                { data: aData, error: aError },
                 { data: usersData, error: uError }
             ] = await Promise.all([...reportPromises, usersPromise]);
             
-            if (vError || cError) {
-                console.error("Error fetching user reports:", vError || cError);
+            if (vError || cError || aError) {
+                console.error("Error fetching user reports:", vError || cError || aError);
             } else {
-                const combined = [...(vData || []), ...(cData || [])]
+                const combined = [...(vData || []), ...(cData || []), ...(aData || [])]
                     .sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
                 setMyReports(combined);
                 if (combined.length > 0 && !selectedReportId) {
@@ -89,6 +92,7 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
         const channel = supabase.channel(`company-reports-${profile.company_id}`)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `company_id=eq.${profile.company_id}` }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `company_id=eq.${profile.company_id}` }, handleUpsert)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports', filter: `company_id=eq.${profile.company_id}` }, handleUpsert)
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
@@ -141,7 +145,7 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                                     <h3 className="font-bold text-md truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
                                     <StatusBadge status={report.status} />
                                 </div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : report.crime_type}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isAccidentReport(report) ? report.accident_type : report.crime_type)}</p>
                                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
                             </div>
                         ))}

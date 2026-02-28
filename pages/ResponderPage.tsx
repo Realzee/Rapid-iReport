@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, ReportUpdate, Profile as UserProfile } from '../types';
+import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, AccidentReport, ReportUpdate, Profile as UserProfile } from '../types';
 import { supabase } from '../utils/supabase';
 import { format, formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
@@ -21,6 +21,7 @@ interface ResponderPageProps {
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
+const isAccidentReport = (report: Report): report is AccidentReport => 'accident_type' in report;
 
 const ResponderStatusBadge: React.FC<{ status: ResponderStatus }> = ({ status }) => {
     const styles: Record<ResponderStatus, string> = {
@@ -114,11 +115,12 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             // Fetch assigned reports OR reported by me
             const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
             const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
+            const { data: aData, error: aError } = await supabase.from('accident_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
             const { data: usersData, error: usersError } = await supabase.from('profiles').select('*').eq('company_id', profile.company_id);
 
-            if (vError || cError) console.error("Error fetching reports:", vError || cError);
+            if (vError || cError || aError) console.error("Error fetching reports:", vError || cError || aError);
             else {
-                const combined = [...(vData || []), ...(cData || [])].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+                const combined = [...(vData || []), ...(cData || []), ...(aData || [])].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
                 setAssignedReports(combined);
                 if (combined.length > 0 && !selectedReportId) setSelectedReportId(combined[0].id);
             }
@@ -186,29 +188,15 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             // Listen for changes where assigned_to is us
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `assigned_to=eq.${profile.id}` }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `assigned_to=eq.${profile.id}` }, handleUpsert)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports', filter: `assigned_to=eq.${profile.id}` }, handleUpsert)
             // Listen for changes where reported_by is us
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
-            
-            // We also need to listen for general updates to check for unassignment if we were tracking it
-            // But filtering by ID is hard if we don't know the ID.
-            // The previous code listened to ALL updates on the table?
-            // .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handlePotentialUnassignmentOrDelete)
-            // That might be too much traffic if we scale.
-            // But for now, let's keep it but maybe filter client side?
-            // Actually, if we only listen to assigned_to/reported_by, we won't receive the "unassignment" event because the new row won't match the filter!
-            // Supabase Realtime with RLS: if RLS allows us to see the row, we get the event.
-            // If we change the RLS to only allow seeing own/assigned, then when it's unassigned (and not own), we lose access.
-            // Does Supabase send a DELETE event or just stop sending updates?
-            // Usually it sends a DELETE-like event or we just stop seeing it.
-            // But if we want to remove it from the UI immediately, we need to know.
-            // Let's stick to the previous pattern of listening to all (if RLS permits) and filtering.
-            // But wait, if RLS restricts us, we WON'T receive events for rows we can't see.
-            // So if a report is unassigned from us (and not reported by us), we lose RLS access.
-            // Supabase might send a DELETE event to the client in that case (simulating loss of access).
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
             
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handlePotentialUnassignmentOrDelete)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handlePotentialUnassignmentOrDelete)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports' }, handlePotentialUnassignmentOrDelete)
             .subscribe();
         
         return () => { supabase.removeChannel(channel); };
@@ -426,7 +414,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                                 <h3 className="font-bold text-md truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
                                 <StatusBadge status={report.status} />
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : report.crime_type}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isAccidentReport(report) ? report.accident_type : report.crime_type)}</p>
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
                         </div>
                     ))}
@@ -494,7 +482,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
 
     const handleStatusUpdate = async (status: ReportStatus) => {
         setIsActionLoading(status);
-        const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
+        const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isAccidentReport(report) ? 'accident_reports' : 'crime_reports');
     
         const updatePromises: PromiseLike<any>[] = [];
     
@@ -548,7 +536,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                 setConfirmModalState(null);
                 setIsActionLoading('stand_down');
                 try {
-                    const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
+                    const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isAccidentReport(report) ? 'accident_reports' : 'crime_reports');
                     const updatePromises: PromiseLike<any>[] = [];
                     updatePromises.push(supabase.from(tableName).update({ assigned_to: null, status: ReportStatus.ACTIVE }).eq('id', report.id));
                     updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Responder ${profile.first_name} ${profile.surname} has stood down.` }));
@@ -596,7 +584,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
 
         const { data: { publicUrl } } = supabase.storage.from('evidence').getPublicUrl(filePath);
         const updatedImages = [...(report.evidence_images || []), publicUrl];
-        const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
+        const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isAccidentReport(report) ? 'accident_reports' : 'crime_reports');
         await supabase.from(tableName).update({ evidence_images: updatedImages }).eq('id', report.id);
         addToast("Evidence uploaded successfully.", 'success');
         setIsUploading(false);
@@ -630,6 +618,27 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                 <div><h4 className="font-bold">Location</h4><p>{isVehicleReport(report) ? report.last_seen_location : report.location}</p></div>
                 <div><h4 className="font-bold">Description</h4><p className="whitespace-pre-wrap">{report.description}</p></div>
                 {isVehicleReport(report) && <div><h4 className="font-bold">Vehicle</h4><p>{report.vehicle_color} {report.vehicle_make} {report.vehicle_model}</p></div>}
+                
+                {isAccidentReport(report) && (
+                    <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                        <div>
+                            <h4 className="text-xs font-bold text-gray-500 uppercase">Accident Type</h4>
+                            <p className="text-sm">{report.accident_type}</p>
+                        </div>
+                        <div>
+                            <h4 className="text-xs font-bold text-gray-500 uppercase">Vehicles</h4>
+                            <p className="text-sm">{report.vehicles_involved}</p>
+                        </div>
+                        <div>
+                            <h4 className="text-xs font-bold text-gray-500 uppercase">Injuries</h4>
+                            <p className="text-sm">{report.injuries_reported ? 'Yes' : 'No'}</p>
+                        </div>
+                        <div>
+                            <h4 className="text-xs font-bold text-gray-500 uppercase">Fatalities</h4>
+                            <p className="text-sm">{report.fatalities_reported ? 'Yes' : 'No'}</p>
+                        </div>
+                    </div>
+                )}
                 
                 <div>
                     <h4 className="font-bold mb-2">Evidence</h4>

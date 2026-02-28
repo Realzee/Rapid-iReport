@@ -140,7 +140,34 @@ export interface CrimeReport {
   station_name?: string;
 }
 
-export type Report = VehicleReport | CrimeReport;
+export interface AccidentReport {
+  id: string;
+  type?: 'accident';
+  ob_number: string;
+  title: string;
+  description: string;
+  location: string;
+  accident_type: string;
+  severity: Severity;
+  status: ReportStatus;
+  reported_by: string; // profile id
+  assigned_to?: string; // profile id of responder
+  reported_at: string; // ISO date string
+  location_coords?: LocationCoords;
+  evidence_images?: string[];
+  location_boundary?: any; // GeoJSON
+  location_boundingbox?: [number, number, number, number]; // south, north, west, east
+  deleted_by?: string; // profile id
+  deleted_at?: string; // ISO date string
+  completed_at?: string; // ISO date string
+  cas_number?: string;
+  station_name?: string;
+  vehicles_involved?: number;
+  injuries_reported?: boolean;
+  fatalities_reported?: boolean;
+}
+
+export type Report = VehicleReport | CrimeReport | AccidentReport;
 
 export interface Responder {
     id: string;

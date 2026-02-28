@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, Profile, VehicleReport, ReportUpdate, ReportStatus, AssignmentLog } from '../types';
+import { Report, Profile, VehicleReport, AccidentReport, ReportUpdate, ReportStatus, AssignmentLog } from '../types';
 import StatusBadge from './StatusBadge';
 import { MapPinIcon, EditIcon, AssignResponderIcon, ZapIcon } from './icons';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -11,6 +11,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useChat } from '../contexts/ChatContext';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
+const isAccidentReport = (report: Report): report is AccidentReport => 'accident_type' in report;
 
 const markerIcon = new L.Icon({
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -179,6 +180,27 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{isVehicleReport(report) ? 'Last Seen Location' : 'Location'}</p>
                      <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {isVehicleReport(report) ? report.last_seen_location : report.location}</p>
                 </div>
+
+                {isAccidentReport(report) && (
+                    <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Accident Type</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{report.accident_type}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicles</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{report.vehicles_involved}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Injuries</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{report.injuries_reported ? 'Yes' : 'No'}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Fatalities</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{report.fatalities_reported ? 'Yes' : 'No'}</p>
+                        </div>
+                    </div>
+                )}
                 
                 {report.location_coords && typeof report.location_coords.lat === 'number' && !isNaN(report.location_coords.lat) && typeof report.location_coords.lng === 'number' && !isNaN(report.location_coords.lng) ? (
                     <div className="h-40 w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 mt-2">

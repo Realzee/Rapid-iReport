@@ -111,20 +111,24 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
+                { data: accidentData, error: aError },
                 { data: usersData, error: uError }
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 supabase.from('crime_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
+                supabase.from('accident_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 usersQuery
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
             if (cError) console.error('Error fetching crime reports:', cError);
+            if (aError) console.error('Error fetching accident reports:', aError);
             if (uError) console.error('Error fetching users:', uError);
 
             const combinedReports = [
                 ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
                 ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
+                ...(accidentData || []).map(r => ({ ...r, type: 'accident' })),
             ];
 
             setReports(combinedReports);
@@ -136,7 +140,11 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         fetchData();
 
         const handleReportChange = (payload: any) => {
-            const reportType = payload.table === 'vehicle_reports' ? 'vehicle' : 'crime';
+            let reportType: 'vehicle' | 'crime' | 'accident';
+            if (payload.table === 'vehicle_reports') reportType = 'vehicle';
+            else if (payload.table === 'accident_reports') reportType = 'accident';
+            else reportType = 'crime';
+            
             const newReport = payload.new as Report;
 
             if (payload.eventType === 'INSERT' && !isInitialLoad.current) {
@@ -207,11 +215,13 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         if (profile.role === UserRole.ADMIN) {
             reportsChannel
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange);
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports' }, handleReportChange);
         } else if (profile.company_id) {
             reportsChannel
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `company_id=eq.${profile.company_id}` }, handleReportChange)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `company_id=eq.${profile.company_id}` }, handleReportChange);
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `company_id=eq.${profile.company_id}` }, handleReportChange)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports', filter: `company_id=eq.${profile.company_id}` }, handleReportChange);
         }
         reportsChannel.subscribe();
             
@@ -293,7 +303,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const handleAssignResponder = async (responderId: string) => {
         if (!selectedReportId || !selectedReport) return;
 
-        const tableName = selectedReport.type === 'vehicle' ? 'vehicle_reports' : 'crime_reports';
+        const tableName = selectedReport.type === 'vehicle' ? 'vehicle_reports' : (selectedReport.type === 'accident' ? 'accident_reports' : 'crime_reports');
         const responder = responders.find(r => r.id === responderId);
         
         if (!responder) return;

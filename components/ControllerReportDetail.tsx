@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Report, Profile, VehicleReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole } from '../types';
+import { Report, Profile, VehicleReport, AccidentReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
 import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon } from './icons';
@@ -12,6 +12,7 @@ import { useChat } from '../contexts/ChatContext';
 import ImagePreviewModal from './ImagePreviewModal';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
+const isAccidentReport = (report: Report): report is AccidentReport => 'accident_type' in report;
 
 const DetailField: React.FC<{ label: string, children: React.ReactNode, className?: string }> = ({ label, children, className }) => (
     <div className={className}>
@@ -192,7 +193,11 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const handleAssignmentUpdate = async () => {
         setIsActionLoading(true);
 
-        const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
+        let tableName = '';
+        if (isVehicleReport(report)) tableName = 'vehicle_reports';
+        else if (isAccidentReport(report)) tableName = 'accident_reports';
+        else tableName = 'crime_reports';
+
         const updatePayload: { status?: ReportStatus; assigned_to?: string | null; completed_at?: string | null } = {};
         let updateContent = '';
         
@@ -225,7 +230,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
     const confirmDeleteReport = async () => {
         setDeleteModalOpen(false);
-        const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
+        const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isAccidentReport(report) ? 'accident_reports' : 'crime_reports');
         const { error } = await supabase.from(tableName).update({ 
             status: ReportStatus.DELETED,
             deleted_by: profile.id,
@@ -288,7 +293,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     ${reportImageHtml}
                 </div>
                 <div style="background-color: #F3F4F6; padding: 12px; border-radius: 8px; margin-bottom: 16px; text-align: center; border: 1px solid #E5E7EB;">
-                    <p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">${isVehicleReport(report) ? 'License Plate' : 'Incident'}</p>
+                    <p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">${isVehicleReport(report) ? 'License Plate' : (isAccidentReport(report) ? 'Accident' : 'Incident')}</p>
                     <p style="margin: 4px 0 0 0; font-size: 28px; font-weight: 700; letter-spacing: 2px; color: #1E40AF;">${isVehicleReport(report) ? report.license_plate : report.title}</p>
                 </div>
                 ${vehicleDetailsHtml}
@@ -384,6 +389,15 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 )}
                 <DetailField label="Description"><p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{report.description}</p></DetailField>
                 {isVehicleReport(report) && <DetailField label="Vehicle">{`${report.vehicle_color} ${report.vehicle_make} ${report.vehicle_model}`}</DetailField>}
+                
+                {isAccidentReport(report) && (
+                    <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                        <DetailField label="Accident Type">{report.accident_type}</DetailField>
+                        <DetailField label="Vehicles Involved">{report.vehicles_involved}</DetailField>
+                        <DetailField label="Injuries">{report.injuries_reported ? 'Yes' : 'No'}</DetailField>
+                        <DetailField label="Fatalities">{report.fatalities_reported ? 'Yes' : 'No'}</DetailField>
+                    </div>
+                )}
                 {report.cas_number && <DetailField label="CAS Number"><p className="text-gray-800 dark:text-gray-200">{report.cas_number}</p></DetailField>}
                 {report.station_name && <DetailField label="Station"><p className="text-gray-800 dark:text-gray-200">{report.station_name}</p></DetailField>}
                 {isVehicleReport(report) && report.vin_number && <DetailField label="VIN"><p className="text-gray-800 dark:text-gray-200">{report.vin_number}</p></DetailField>}

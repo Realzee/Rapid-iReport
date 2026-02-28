@@ -4,8 +4,8 @@
  */
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport } from '../types';
-import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon } from '../components/icons';
+import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport, AccidentReport } from '../types';
+import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon } from '../components/icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -20,9 +20,10 @@ interface ReportModalProps {
     isQuickAdd?: boolean;
 }
 
-type ReportType = 'vehicle' | 'crime';
+type ReportType = 'vehicle' | 'crime' | 'accident';
 
 const isVehicleReport = (report: Report | null): report is VehicleReport => report !== null && 'license_plate' in report;
+const isAccidentReport = (report: Report | null): report is AccidentReport => report !== null && 'accident_type' in report;
 
 const geocodeLocation = async (location: string): Promise<{coords: LocationCoords | null, boundary: any | null, boundingbox: [number, number, number, number] | null}> => {
     try {
@@ -211,11 +212,15 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             setMapVisible(false); // Hide map on modal open/re-open
             if (reportToEdit) {
                 const isVehicle = isVehicleReport(reportToEdit);
-                setReportType(isVehicle ? 'vehicle' : 'crime');
+                const isAccident = isAccidentReport(reportToEdit);
+                
+                if (isVehicle) setReportType('vehicle');
+                else if (isAccident) setReportType('accident');
+                else setReportType('crime');
                 
                 const location = isVehicle 
                     ? (reportToEdit as VehicleReport).last_seen_location 
-                    : (reportToEdit as CrimeReport).location;
+                    : (isAccident ? (reportToEdit as AccidentReport).location : (reportToEdit as CrimeReport).location);
 
                 setFormData({ ...reportToEdit, location });
                 setImagePreviews(reportToEdit.evidence_images || []);
@@ -306,9 +311,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 geocodedData = await geocodeLocation(locationInput);
             }
             
-            let reportData;
-            const tableName = reportType === 'vehicle' ? 'vehicle_reports' : 'crime_reports';
+            let tableName: 'vehicle_reports' | 'crime_reports' | 'accident_reports';
+            if (reportType === 'vehicle') tableName = 'vehicle_reports';
+            else if (reportType === 'accident') tableName = 'accident_reports';
+            else tableName = 'crime_reports';
             
+            let reportData: any;
             const commonData = {
                 description: formData.description,
                 severity: formData.severity,
@@ -326,6 +334,16 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     vehicle_model: formData.vehicle_model,
                     vehicle_color: formData.vehicle_color,
                     last_seen_location: formData.location,
+                };
+            } else if (reportType === 'accident') {
+                reportData = {
+                    ...commonData,
+                    title: formData.title,
+                    accident_type: formData.accident_type,
+                    location: formData.location,
+                    vehicles_involved: parseInt(formData.vehicles_involved || '1'),
+                    injuries_reported: formData.injuries_reported === 'true',
+                    fatalities_reported: formData.fatalities_reported === 'true',
                 };
             } else {
                  reportData = {
@@ -412,8 +430,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 {(!reportToEdit && !isQuickAdd) && (
                     <div className="mb-6">
                         <div className="flex bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
-                            <button onClick={() => setReportType('vehicle')} className={`w-1/2 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'vehicle' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-5 h-5" /> Vehicle</button>
-                            <button onClick={() => setReportType('crime')} className={`w-1/2 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'crime' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CrimeIcon className="w-5 h-5" /> Crime</button>
+                            <button type="button" onClick={() => setReportType('vehicle')} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'vehicle' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-5 h-5" /> Vehicle</button>
+                            <button type="button" onClick={() => setReportType('accident')} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'accident' ? 'bg-orange-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><AlertTriangleIcon className="w-5 h-5" /> Accident</button>
+                            <button type="button" onClick={() => setReportType('crime')} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'crime' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CrimeIcon className="w-5 h-5" /> Crime</button>
                         </div>
                     </div>
                 )}
@@ -425,6 +444,30 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             <div><label htmlFor="vehicle_make" className={labelClasses}>Vehicle Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} required className={inputClasses} list="makes-list" /></div>
                             <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} required className={inputClasses} list="models-list" /></div>
                             <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} required className={inputClasses} list="colors-list" /></div>
+                        </div>
+                    ) : reportType === 'accident' ? (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label htmlFor="title" className={labelClasses}>Accident Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g. Multi-vehicle collision" /></div>
+                                <div><label htmlFor="accident_type" className={labelClasses}>Type of Accident</label><input type="text" name="accident_type" id="accident_type" value={formData.accident_type || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g. Head-on, Rear-end" /></div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div><label htmlFor="vehicles_involved" className={labelClasses}>Vehicles Involved</label><input type="number" name="vehicles_involved" id="vehicles_involved" value={formData.vehicles_involved || '1'} onChange={handleChange} min="1" className={inputClasses} /></div>
+                                <div>
+                                    <label htmlFor="injuries_reported" className={labelClasses}>Injuries?</label>
+                                    <select name="injuries_reported" id="injuries_reported" value={formData.injuries_reported || 'false'} onChange={handleChange} className={inputClasses}>
+                                        <option value="false">No</option>
+                                        <option value="true">Yes</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="fatalities_reported" className={labelClasses}>Fatalities?</label>
+                                    <select name="fatalities_reported" id="fatalities_reported" value={formData.fatalities_reported || 'false'} onChange={handleChange} className={inputClasses}>
+                                        <option value="false">No</option>
+                                        <option value="true">Yes</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     ) : (
                          <>

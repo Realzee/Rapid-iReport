@@ -1,14 +1,15 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, ReportStatus, Severity, VehicleReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus } from '../types';
+import { Report, ReportStatus, Severity, VehicleReport, AccidentReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus } from '../types';
 import { format } from 'date-fns';
-import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon } from '../components/icons';
+import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, AlertTriangleIcon } from '../components/icons';
 import ReportDetailModal from '../components/ReportDetailModal';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
+const isAccidentReport = (report: Report): report is AccidentReport => 'accident_type' in report;
 
 const severityStyles: Record<Severity, string> = {
     [Severity.CRITICAL]: 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -17,7 +18,7 @@ const severityStyles: Record<Severity, string> = {
     [Severity.LOW]: 'bg-green-500/20 text-green-400 border-green-500/30',
 };
 
-type SortKey = keyof VehicleReport | keyof CrimeReport | 'type' | 'reported_by_name' | 'deleted_by_name' | 'achieved_at';
+type SortKey = keyof VehicleReport | keyof CrimeReport | keyof AccidentReport | 'type' | 'reported_by_name' | 'deleted_by_name' | 'achieved_at';
 
 const SortableHeader: React.FC<{
     label: string;
@@ -40,13 +41,13 @@ interface ReportsPageProps {
 }
 
 const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
-    const [reports, setReports] = useState<(Report & {type: 'vehicle' | 'crime'})[]>([]);
+    const [reports, setReports] = useState<(Report & {type: 'vehicle' | 'crime' | 'accident'})[]>([]);
     const [users, setUsers] = useState<Profile[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [loading, setLoading] = useState(true);
     
     const [searchTerm, setSearchTerm] = useState('');
-    const [filters, setFilters] = useState<{ type: 'all' | 'vehicle' | 'crime', severity: Severity | 'all' }>({
+    const [filters, setFilters] = useState<{ type: 'all' | 'vehicle' | 'crime' | 'accident', severity: Severity | 'all' }>({
         type: 'all',
         severity: 'all'
     });
@@ -75,21 +76,24 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
+                { data: accidentData, error: aError },
                 { data: usersData, error: uError },
                 { data: respondersData, error: rError }
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*').in('status', terminalStatuses),
                 supabase.from('crime_reports').select('*').in('status', terminalStatuses),
+                supabase.from('accident_reports').select('*').in('status', terminalStatuses),
                 usersQuery,
                 respondersQuery
             ]);
 
-            if (vError || cError || uError || rError) console.error("Error fetching data:", vError || cError || uError || rError);
+            if (vError || cError || aError || uError || rError) console.error("Error fetching data:", vError || cError || aError || uError || rError);
             else {
                 const combined = [
                     ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
-                    ...(crimeData || []).map(r => ({ ...r, type: 'crime' }))
-                ] as (Report & {type: 'vehicle' | 'crime'})[];
+                    ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
+                    ...(accidentData || []).map(r => ({ ...r, type: 'accident' }))
+                ] as (Report & {type: 'vehicle' | 'crime' | 'accident'})[];
                 setReports(combined);
                 setUsers(usersData || []);
                 setResponders((respondersData || []).map(p => ({
@@ -119,7 +123,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 const searchMatch = searchTerm === '' ||
                     report.ob_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     (isVehicleReport(report) && report.license_plate.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                    (!isVehicleReport(report) && report.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                    (isAccidentReport(report) && report.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                    (!isVehicleReport(report) && !isAccidentReport(report) && report.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
                     report.description.toLowerCase().includes(searchTerm.toLowerCase());
                 
                 const typeMatch = filters.type === 'all' || report.type === filters.type;
@@ -176,7 +181,11 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const handleConfirmRestore = async () => {
         if (!reportToRestore) return;
 
-        const tableName = isVehicleReport(reportToRestore) ? 'vehicle_reports' : 'crime_reports';
+        let tableName = '';
+        if (isVehicleReport(reportToRestore)) tableName = 'vehicle_reports';
+        else if (isAccidentReport(reportToRestore)) tableName = 'accident_reports';
+        else tableName = 'crime_reports';
+
         const { error } = await supabase
             .from(tableName)
             .update({ status: ReportStatus.PENDING, deleted_at: null, deleted_by: null, completed_at: null })
@@ -213,6 +222,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                             <option value="all">All Types</option>
                             <option value="vehicle">Vehicle</option>
                             <option value="crime">Crime</option>
+                            <option value="accident">Accident</option>
                         </select>
                      </div>
                       <div>
@@ -244,8 +254,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                 <tr key={report.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
-                                            <div className={`p-1.5 rounded-full ${report.type === 'vehicle' ? 'bg-yellow-500/20' : 'bg-red-500/20'}`}>
-                                                {report.type === 'vehicle' ? <CarIcon className="w-4 h-4 text-yellow-600" /> : <CrimeIcon className="w-4 h-4 text-red-600" />}
+                                            <div className={`p-1.5 rounded-full ${report.type === 'vehicle' ? 'bg-yellow-500/20' : (report.type === 'accident' ? 'bg-orange-500/20' : 'bg-red-500/20')}`}>
+                                                {report.type === 'vehicle' ? <CarIcon className="w-4 h-4 text-yellow-600" /> : (report.type === 'accident' ? <AlertTriangleIcon className="w-4 h-4 text-orange-600" /> : <CrimeIcon className="w-4 h-4 text-red-600" />)}
                                             </div>
                                             <span className="text-sm capitalize">{report.type}</span>
                                         </div>
