@@ -469,8 +469,10 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     engine_number: formData.engine_number,
                 };
             } else if (reportType === 'accident') {
+                // Exclude location_boundary and location_boundingbox for accident reports as the table might not support them yet
+                const { location_boundary, location_boundingbox, ...accidentCommonData } = commonData;
                 reportData = {
-                    ...commonData,
+                    ...accidentCommonData,
                     title: formData.title,
                     accident_type: formData.accident_type,
                     location: formData.location,
