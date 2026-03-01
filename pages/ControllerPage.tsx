@@ -91,6 +91,8 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         }
     };
 
+    const [unviewedReportIds, setUnviewedReportIds] = useState<Set<string>>(new Set());
+
     useEffect(() => {
         const activeStatuses = [
             ReportStatus.PENDING,
@@ -166,6 +168,9 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 } else if (newReport.severity === Severity.CRITICAL || newReport.severity === Severity.HIGH) {
                     playAlertSound();
                 }
+                
+                // Mark as unviewed
+                setUnviewedReportIds(prev => new Set(prev).add(newReport.id));
             }
 
             setReports(currentReports => {
@@ -186,6 +191,8 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                         if (wasInList) {
                             return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
                         } else {
+                            // If it wasn't in list but now is active (e.g. status change), treat as new? 
+                            // Maybe not strictly "new" but "re-surfaced". Let's not mark unviewed for updates to avoid annoyance.
                             return [updatedReport, ...currentReports];
                         }
                     } else {
@@ -320,6 +327,13 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             setNewPanicReportId(null);
             stopAlertLoop();
         }
+        if (unviewedReportIds.has(id)) {
+            setUnviewedReportIds(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(id);
+                return newSet;
+            });
+        }
     };
 
     const handleOpenNewReportModal = () => {
@@ -444,6 +458,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                     selectedReportId={selectedReportId}
                                     allUsers={allUsers}
                                     newPanicReportId={newPanicReportId}
+                                    unviewedReportIds={unviewedReportIds}
                                 />
                             </>
                         ) : (

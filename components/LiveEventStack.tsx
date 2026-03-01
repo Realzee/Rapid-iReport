@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { Report, VehicleReport, Severity, Responder, Profile, CrimeReport } from '../types';
-import { format } from 'date-fns';
+import { format, differenceInMinutes } from 'date-fns';
 import StatusBadge from './StatusBadge';
 import ReportTypeBadge from './ReportTypeBadge';
 import { CameraIcon, UserIcon, ClockIcon, NavigationIcon, ChevronUpIcon, CarIcon, AlertTriangleIcon, CrimeIcon } from './icons';
@@ -12,16 +12,37 @@ const severityTagStyles: Record<Severity, string> = {
     [Severity.LOW]: 'bg-green-500/10 text-green-600 dark:text-green-400',
 };
 
+const getAgeColorClass = (date: string) => {
+    const minutes = differenceInMinutes(new Date(), new Date(date));
+    if (minutes < 10) return 'border-l-green-500';
+    if (minutes < 30) return 'border-l-blue-500';
+    if (minutes < 60) return 'border-l-yellow-500';
+    return 'border-l-orange-500';
+};
+
+const getAgeTextClass = (date: string) => {
+    const minutes = differenceInMinutes(new Date(), new Date(date));
+    if (minutes < 10) return 'text-green-600 dark:text-green-400 font-bold';
+    if (minutes < 30) return 'text-blue-600 dark:text-blue-400 font-medium';
+    if (minutes < 60) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-orange-600 dark:text-orange-400';
+};
+
 const LiveEventItem: React.FC<{
     report: Report;
     isSelected: boolean;
     isPanic: boolean;
+    isUnviewed: boolean;
     onSelect: () => void;
     responderMap: Map<string, string>;
     reporterName: string;
-}> = ({ report, isSelected, isPanic, onSelect, responderMap, reporterName }) => {
+}> = ({ report, isSelected, isPanic, isUnviewed, onSelect, responderMap, reporterName }) => {
     const title = report.type === 'vehicle' ? (report as any).license_plate : report.title;
     
+    // Age-based coloring
+    const ageBorderClass = getAgeColorClass(report.reported_at);
+    const ageTextClass = getAgeTextClass(report.reported_at);
+
     const borderClass = isSelected 
         ? 'border-blue-500 ring-2 ring-blue-500/50' 
         : (isPanic ? 'border-red-500' : 'border-gray-200 dark:border-gray-700/50');
@@ -30,7 +51,8 @@ const LiveEventItem: React.FC<{
         ? 'bg-blue-500/10 dark:bg-gray-900/60' 
         : (isPanic ? 'bg-red-500/10' : 'bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60');
         
-    const pulseClass = isPanic ? 'animate-pulse' : '';
+    // Flash animation for unviewed reports
+    const pulseClass = isPanic ? 'animate-pulse' : (isUnviewed ? 'animate-pulse ring-2 ring-yellow-400/50' : '');
 
     const hasImages = report.evidence_images && report.evidence_images.length > 0;
     const assignedResponderName = report.assigned_to ? responderMap.get(report.assigned_to) : null;
@@ -38,7 +60,7 @@ const LiveEventItem: React.FC<{
     return (
         <div
             onClick={onSelect}
-            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm ${borderClass} ${bgClass} ${pulseClass}`}
+            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm border-l-4 ${ageBorderClass} ${isSelected ? 'border-blue-500' : ''} ${bgClass} ${pulseClass}`}
         >
             <div className="flex gap-3">
                 {hasImages && (
@@ -55,7 +77,14 @@ const LiveEventItem: React.FC<{
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                             <ReportTypeBadge type={report.type as any} showText={false} className="p-1.5" />
                             <div className="min-w-0">
-                                <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight truncate">{title}</p>
+                                <div className="flex items-center gap-2">
+                                    <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight truncate">{title}</p>
+                                    {isUnviewed && (
+                                        <span className="px-1.5 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded-full animate-bounce">
+                                            NEW
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="font-mono text-xs text-gray-500 dark:text-gray-400">{report.ob_number}</p>
                             </div>
                         </div>
@@ -88,7 +117,7 @@ const LiveEventItem: React.FC<{
                                 <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{assignedResponderName}</span>
                             </div>
                         )}
-                        <div className="flex items-center gap-1 ml-auto">
+                        <div className={`flex items-center gap-1 ml-auto ${ageTextClass}`}>
                             <ClockIcon className="w-3.5 h-3.5" />
                             <span>{format(new Date(report.reported_at), 'HH:mm')}</span>
                         </div>
@@ -107,13 +136,21 @@ interface LiveEventStackProps {
     onReportSelect: (id: string) => void;
     selectedReportId: string | null;
     newPanicReportId?: string | null;
+    unviewedReportIds?: Set<string>;
 }
 
-const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, allUsers, onReportSelect, selectedReportId, newPanicReportId }) => {
+const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, allUsers, onReportSelect, selectedReportId, newPanicReportId, unviewedReportIds }) => {
     
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [showUnreadIndicator, setShowUnreadIndicator] = useState(false);
     const prevReportsLengthRef = useRef(reports.length);
+
+    // Force re-render every minute to update age colors
+    const [, setTick] = useState(0);
+    useEffect(() => {
+        const timer = setInterval(() => setTick(t => t + 1), 60000);
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         const container = scrollContainerRef.current;
@@ -180,6 +217,7 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, al
                             report={report}
                             isSelected={report.id === selectedReportId}
                             isPanic={report.id === newPanicReportId || (report as CrimeReport).crime_type === 'PUBLIC_PANIC_ASSIST'}
+                            isUnviewed={unviewedReportIds?.has(report.id) || false}
                             onSelect={() => onReportSelect(report.id)}
                             responderMap={responderMap}
                             reporterName={userMap.get(report.reported_by) || 'Unknown User'}
