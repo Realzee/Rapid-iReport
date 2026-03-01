@@ -298,18 +298,18 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
             // 9. Draw QR Codes
             const qrY = detailsY - 5;
-            const qrX = width - 30 - 120; // Right margin 30, width 120
+            const qrX = width - 30 - 100; // Right margin 30, width 100
             
             const drawQr = (img: HTMLImageElement | null, y: number) => {
                 ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(qrX - 5, y - 5, 130, 130); // White padding
+                ctx.fillRect(qrX - 5, y - 5, 110, 110); // White padding
                 if (img) {
-                    ctx.drawImage(img, qrX, y, 120, 120);
+                    ctx.drawImage(img, qrX, y, 100, 100);
                 }
             };
 
             drawQr(qrWww, qrY);
-            drawQr(qrFb, qrY + 140);
+            drawQr(qrFb, qrY + 120);
 
             // 10. Draw Footer
             const footerY = height - 160;
@@ -321,7 +321,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             ctx.fillText('10111 or your nearest SAPS Station', width / 2, footerY + 22);
 
             ctx.font = 'bold 22px serif';
-            ctx.fillText('"Working TOGETHER we are STRONGER"', width / 2, footerY + 60);
+            ctx.fillText('"Smarter Choice"', width / 2, footerY + 60);
 
             // Logos and Contact
             const bottomY = height - 80;
@@ -357,11 +357,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 }
             };
 
-            // Left Logo
+            // Left Logo Only
             drawLogo(companyLogo, 20);
-
-            // Right Logo
-            drawLogo(companyLogo, width - 20 - logoWidth);
 
             // Center Contact
             if (whatsappIcon) {
@@ -369,7 +366,13 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             }
             ctx.font = 'bold 28px Arial, sans-serif';
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillText('062 031 3134', width / 2, bottomY + 30);
+            const contactNumber = profile.company?.cell_number || '062 031 3134';
+            ctx.fillText(contactNumber, width / 2, bottomY + 30);
+
+            // Copyright
+            ctx.font = '12px Arial, sans-serif';
+            ctx.fillStyle = '#AAAAAA';
+            ctx.fillText('© 2025 Rapid 911. All Rights Reserved.', width / 2, height - 10);
 
             // 11. Export
             const pngUrl = canvas.toDataURL('image/png');
