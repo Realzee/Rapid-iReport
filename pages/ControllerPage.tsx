@@ -26,6 +26,11 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const { requestWakeLock, releaseWakeLock } = useWakeLock();
     const [reports, setReports] = useState<Report[]>([]);
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
+    const allUsersRef = useRef<Profile[]>([]);
+
+    useEffect(() => {
+        allUsersRef.current = allUsers;
+    }, [allUsers]);
 
     useEffect(() => {
         requestWakeLock();
@@ -102,12 +107,38 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             ReportStatus.ON_SCENE,
         ];
 
+        const isGlobalAdmin = profile.role === UserRole.ADMIN && 
+            (profile.company?.name?.toLowerCase().includes('rapid911') || false);
+
         const fetchData = async () => {
             setLoading(true);
 
+            let allowedReporterIds: string[] | null = null;
+
+            if (!isGlobalAdmin && profile.company_id) {
+                const { data: companyUsers } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('company_id', profile.company_id);
+                
+                if (companyUsers) {
+                    allowedReporterIds = companyUsers.map(u => u.id);
+                }
+            }
+
             const usersQuery = supabase.from('profiles').select('*');
-            if (profile.role !== UserRole.ADMIN && profile.company_id) {
+            if (!isGlobalAdmin && profile.company_id) {
                 usersQuery.eq('company_id', profile.company_id);
+            }
+
+            let vehicleQuery = supabase.from('vehicle_reports').select('*');
+            let crimeQuery = supabase.from('crime_reports').select('*');
+            let accidentQuery = supabase.from('accident_reports').select('*');
+
+            if (allowedReporterIds) {
+                vehicleQuery = vehicleQuery.in('reported_by', allowedReporterIds);
+                crimeQuery = crimeQuery.in('reported_by', allowedReporterIds);
+                accidentQuery = accidentQuery.in('reported_by', allowedReporterIds);
             }
 
             const [
@@ -116,9 +147,9 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 { data: accidentData, error: aError },
                 { data: usersData, error: uError }
             ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                supabase.from('crime_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                supabase.from('accident_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
+                vehicleQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
+                crimeQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
+                accidentQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 usersQuery
             ]);
 
@@ -152,13 +183,33 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
 
         fetchData();
 
-        const handleReportChange = (payload: any) => {
+        const handleReportChange = async (payload: any) => {
             let reportType: 'vehicle' | 'crime' | 'accident';
             if (payload.table === 'vehicle_reports') reportType = 'vehicle';
             else if (payload.table === 'accident_reports') reportType = 'accident';
             else reportType = 'crime';
             
             const newReport = payload.new as Report;
+
+            // Filter incoming reports for non-global admins
+            if (!isGlobalAdmin && profile.company_id) {
+                // Check if reporter is in our loaded users list
+                let reporter = allUsersRef.current.find(u => u.id === newReport.reported_by);
+                
+                if (!reporter) {
+                    // Fetch reporter if not found locally
+                    const { data } = await supabase.from('profiles').select('*').eq('id', newReport.reported_by).single();
+                    if (data) {
+                        reporter = data;
+                        // Optimistically add to allUsers to avoid re-fetching
+                        setAllUsers(prev => [...prev, data]);
+                    }
+                }
+
+                if (!reporter || reporter.company_id !== profile.company_id) {
+                    return; // Ignore report from other company
+                }
+            }
 
             if (payload.eventType === 'INSERT' && !isInitialLoad.current) {
                 const crimeReport = newReport as CrimeReport;
@@ -225,12 +276,12 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             });
         };
 
-        const channelId = `controller-page-reports-${profile.role === UserRole.ADMIN ? 'global' : profile.company_id}`;
+        const channelId = `controller-page-reports-${isGlobalAdmin ? 'global' : profile.company_id}`;
         const reportsChannel = supabase.channel(channelId, {
             config: { broadcast: { self: true } },
         });
 
-        if (profile.role === UserRole.ADMIN) {
+        if (isGlobalAdmin) {
             reportsChannel
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)

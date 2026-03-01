@@ -1,6 +1,6 @@
 
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport, ReportStatus, Company } from '../types';
 import StatCard from './StatCard';
 import ReportList from './ReportList';
@@ -23,6 +23,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const [reports, setReports] = useState<Report[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
+    const allUsersRef = useRef<Profile[]>([]);
     const [companies, setCompanies] = useState<Company[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
@@ -31,6 +32,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
     const { addToast } = useToast();
+
+    useEffect(() => {
+        allUsersRef.current = allUsers;
+    }, [allUsers]);
+
+    const isGlobalAdmin = profile.role === UserRole.ADMIN && 
+        (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 
     useEffect(() => {
         const activeStatuses = [
@@ -44,9 +52,32 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         const fetchData = async () => {
             setLoading(true);
 
+            let allowedReporterIds: string[] | null = null;
+
+            if (!isGlobalAdmin && profile.company_id) {
+                const { data: companyUsers } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('company_id', profile.company_id);
+                
+                if (companyUsers) {
+                    allowedReporterIds = companyUsers.map(u => u.id);
+                }
+            }
+
             const profilesQuery = supabase.from('profiles').select('*');
-            if (profile.role !== UserRole.ADMIN && profile.company_id) {
+            if (!isGlobalAdmin && profile.company_id) {
                 profilesQuery.eq('company_id', profile.company_id);
+            }
+
+            let vehicleQuery = supabase.from('vehicle_reports').select('*');
+            let crimeQuery = supabase.from('crime_reports').select('*');
+            let accidentQuery = supabase.from('accident_reports').select('*');
+
+            if (allowedReporterIds) {
+                vehicleQuery = vehicleQuery.in('reported_by', allowedReporterIds);
+                crimeQuery = crimeQuery.in('reported_by', allowedReporterIds);
+                accidentQuery = accidentQuery.in('reported_by', allowedReporterIds);
             }
 
             const [
@@ -56,9 +87,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 { data: usersData, error: uError },
                 { data: companiesData, error: companiesError }
             ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                supabase.from('crime_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                supabase.from('accident_reports').select('*').in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
+                vehicleQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
+                crimeQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
+                accidentQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 profilesQuery,
                 supabase.from('companies').select('*')
             ]);
@@ -88,12 +119,32 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         };
         fetchData();
 
-        const handleReportChange = (payload: any) => {
+        const handleReportChange = async (payload: any) => {
             const reportType = payload.table === 'vehicle_reports' ? 'vehicle' : (payload.table === 'accident_reports' ? 'accident' : 'crime');
+            const newReport = { ...payload.new, type: reportType };
+
+            // Filter incoming reports for non-global admins
+            if (!isGlobalAdmin && profile.company_id) {
+                // Check if reporter is in our loaded users list
+                let reporter = allUsersRef.current.find(u => u.id === newReport.reported_by);
+                
+                if (!reporter) {
+                    // Fetch reporter if not found locally
+                    const { data } = await supabase.from('profiles').select('*').eq('id', newReport.reported_by).single();
+                    if (data) {
+                        reporter = data;
+                        // Optimistically add to allUsers to avoid re-fetching
+                        setAllUsers(prev => [...prev, data]);
+                    }
+                }
+
+                if (!reporter || reporter.company_id !== profile.company_id) {
+                    return; // Ignore report from other company
+                }
+            }
 
             setReports(currentReports => {
                 if (payload.eventType === 'INSERT') {
-                    const newReport = { ...payload.new, type: reportType };
                     if (activeStatuses.includes(newReport.status)) {
                         if (currentReports.some(r => r.id === newReport.id)) {
                             return currentReports;
@@ -147,12 +198,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             });
         };
 
-        const channelId = `dashboard-reports-${profile.role === UserRole.ADMIN ? 'global' : profile.company_id}`;
+        const channelId = `dashboard-reports-${isGlobalAdmin ? 'global' : profile.company_id}`;
         const reportsChannel = supabase.channel(channelId, {
             config: { broadcast: { self: true } },
         });
 
-        if (profile.role === UserRole.ADMIN) {
+        if (isGlobalAdmin) {
             reportsChannel
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
