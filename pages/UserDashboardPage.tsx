@@ -94,9 +94,9 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
         if (!profile.company_id) return;
 
         const channel = supabase.channel(`company-reports-${profile.company_id}`)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `company_id=eq.${profile.company_id}` }, handleUpsert)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `company_id=eq.${profile.company_id}` }, handleUpsert)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports', filter: `company_id=eq.${profile.company_id}` }, handleUpsert)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleUpsert)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleUpsert)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports' }, handleUpsert)
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };

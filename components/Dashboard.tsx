@@ -159,9 +159,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports' }, handleReportChange);
         } else if (profile.company_id) {
             reportsChannel
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `company_id=eq.${profile.company_id}` }, handleReportChange)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `company_id=eq.${profile.company_id}` }, handleReportChange)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports', filter: `company_id=eq.${profile.company_id}` }, handleReportChange);
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports' }, handleReportChange);
         }
         reportsChannel.subscribe();
             
