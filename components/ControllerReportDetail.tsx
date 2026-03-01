@@ -339,7 +339,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
             // 7. Draw Main Image Area
             const imgY = 110;
-            const imgHeight = 400;
+            const imgHeight = 300;
             ctx.fillStyle = '#333333';
             ctx.fillRect(0, imgY, width, imgHeight);
 
@@ -411,8 +411,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             
             ctx.textAlign = 'left';
             ctx.fillStyle = '#FFFFFF';
-            ctx.font = '28px Arial, sans-serif';
-            const lineHeight = 40;
+            ctx.font = '24px Arial, sans-serif';
+            const lineHeight = 35;
 
             const statusText = isRecovered ? 'RECOVERED' : (report.status === 'active' || report.status === 'assigned' || report.status === 'in_progress' || report.status === 'on_scene' ? 'HIJACKED' : report.status.toUpperCase());
             const reg = report.type === 'vehicle' ? (report as any).license_plate : 'N/A';
@@ -422,11 +422,11 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             const caseNumber = report.cas_number ? `${report.station_name || ''} ${report.cas_number}` : 'N/A';
 
             const drawField = (label: string, value: string, y: number) => {
-                ctx.font = 'normal 28px Arial, sans-serif';
+                ctx.font = 'normal 24px Arial, sans-serif';
                 const labelWidth = ctx.measureText(label).width;
                 ctx.fillText(label, leftMargin, y);
                 
-                ctx.font = 'bold 28px Arial, sans-serif';
+                ctx.font = 'bold 24px Arial, sans-serif';
                 ctx.fillText(value, leftMargin + labelWidth + 10, y);
             };
 
