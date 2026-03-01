@@ -1,7 +1,9 @@
 import React, { useState, useMemo, memo } from 'react';
 import { Report, VehicleReport, Severity, Profile, UserRole, ReportStatus } from '../types';
 import StatusBadge from './StatusBadge';
+import ReportTypeBadge from './ReportTypeBadge';
 import { formatDistanceToNow } from 'date-fns';
+import { CarIcon, AlertTriangleIcon, CrimeIcon } from './icons';
 
 interface ReportListItemProps {
   report: Report;
@@ -9,7 +11,7 @@ interface ReportListItemProps {
   onClick: () => void;
   profile: Profile;
   reporterName: string;
-  onStatusUpdate: (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => Promise<void>;
+  onStatusUpdate: (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime' | 'accident') => Promise<void>;
   companyLogoUrl?: string;
 }
 
@@ -30,8 +32,6 @@ const severityBorderColors: Record<Severity, string> = {
 const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onClick, profile, reporterName, onStatusUpdate, companyLogoUrl }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   
-  const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
-
   const canUpdateStatus = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role) || 
                           (profile.role === UserRole.RESPONDER && report.assigned_to === profile.id);
 
@@ -42,12 +42,12 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value as ReportStatus;
     setIsUpdating(true);
-    await onStatusUpdate(report.id, newStatus, isVehicleReport(report) ? 'vehicle' : 'crime');
+    await onStatusUpdate(report.id, newStatus, report.type as 'vehicle' | 'crime' | 'accident');
     setIsUpdating(false);
   };
   
   const statusOptions = Object.values(ReportStatus).filter(
-    status => !(!isVehicleReport(report) && status === ReportStatus.RECOVERED)
+    status => !(report.type !== 'vehicle' && status === ReportStatus.RECOVERED)
   );
 
   const borderColor = isSelected ? 'border-blue-500' : severityBorderColors[report.severity];
@@ -79,11 +79,14 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                             className="w-8 h-8 rounded-full object-contain flex-shrink-0 bg-gray-200 dark:bg-gray-700"
                         />
                     )}
-                    <div className="flex-1 min-w-0">
-                        <p className="font-bold text-base text-gray-800 dark:text-white group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate">
-                            {isVehicleReport(report) ? report.license_plate : report.title}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</p>
+                    <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <ReportTypeBadge type={report.type as any} showText={false} className="p-1.5" />
+                        <div className="min-w-0">
+                            <p className="font-bold text-base text-gray-800 dark:text-white group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate">
+                                {report.type === 'vehicle' ? (report as any).license_plate : report.title}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</p>
+                        </div>
                     </div>
                 </div>
                 <div className="flex-shrink-0">
@@ -112,25 +115,32 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                 </div>
             </div>
 
-            <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-                {isVehicleReport(report) ? (
-                    <p>
+            <div className="mt-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <ReportTypeBadge type={report.type as any} />
+                {report.type === 'vehicle' ? (
+                    <p className="truncate">
                         <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
                         {' · '}
-                        {report.vehicle_make} {report.vehicle_model} ({report.vehicle_color})
+                        {(report as any).vehicle_make} {(report as any).vehicle_model} ({(report as any).vehicle_color})
+                    </p>
+                ) : report.type === 'accident' ? (
+                     <p className="truncate">
+                        <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
+                        {' · '}
+                        {(report as any).accident_type}
                     </p>
                 ) : (
-                     <p>
+                     <p className="truncate">
                         <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
                         {' · '}
-                        {report.crime_type}
+                        {(report as any).crime_type}
                     </p>
                 )}
             </div>
             
             <div className="flex justify-between items-end mt-2">
                <div className="text-xs text-gray-400 dark:text-gray-500 truncate pr-2">
-                    <p className="truncate">{isVehicleReport(report) ? report.last_seen_location : report.location}</p>
+                    <p className="truncate">{report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</p>
                     <p className="mt-1">By: <span className="font-medium text-gray-500 dark:text-gray-400">{reporterName}</span></p>
                 </div>
               <p className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">

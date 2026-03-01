@@ -1,5 +1,5 @@
 import React from 'react';
-import { Report, VehicleReport, Company } from '../types';
+import { Report, VehicleReport, AccidentReport, Company } from '../types';
 import { logoUrl } from '../assets/logo';
 import { format } from 'date-fns';
 import { AssignResponderIcon, ZapIcon } from './icons';
@@ -13,8 +13,6 @@ interface PrintableReportProps {
   reporterName?: string | null;
   company?: Company | null;
 }
-
-const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
 const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvents, reporterName, company }) => {
   return (
@@ -50,7 +48,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
         <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <div>
             <p className="font-bold text-gray-500">Type</p>
-            <p>{isVehicleReport(report) ? 'Vehicle Incident' : 'Crime Incident'}</p>
+            <p>{report.type === 'vehicle' ? 'Vehicle Incident' : (report.type === 'accident' ? 'Accident Report' : 'Crime Incident')}</p>
           </div>
           <div>
             <p className="font-bold text-gray-500">Reported At</p>
@@ -60,19 +58,25 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
             <p className="font-bold text-gray-500">Reported By</p>
             <p>{reporterName || 'Unknown'}</p>
           </div>
-          {isVehicleReport(report) ? (
+          {report.type === 'vehicle' ? (
             <>
-              <div><p className="font-bold text-gray-500">License Plate</p><p className="font-mono">{report.license_plate}</p></div>
-              <div><p className="font-bold text-gray-500">Make</p><p>{report.vehicle_make}</p></div>
-              <div><p className="font-bold text-gray-500">Model</p><p>{report.vehicle_model}</p></div>
-              <div><p className="font-bold text-gray-500">Color</p><p>{report.vehicle_color}</p></div>
-              <div className="col-span-2"><p className="font-bold text-gray-500">Last Seen Location</p><p>{report.last_seen_location}</p></div>
+              <div><p className="font-bold text-gray-500">License Plate</p><p className="font-mono">{(report as any).license_plate}</p></div>
+              <div><p className="font-bold text-gray-500">Make</p><p>{(report as any).vehicle_make}</p></div>
+              <div><p className="font-bold text-gray-500">Model</p><p>{(report as any).vehicle_model}</p></div>
+              <div><p className="font-bold text-gray-500">Color</p><p>{(report as any).vehicle_color}</p></div>
+              <div className="col-span-2"><p className="font-bold text-gray-500">Last Seen Location</p><p>{(report as any).last_seen_location}</p></div>
+            </>
+          ) : report.type === 'accident' ? (
+            <>
+              <div><p className="font-bold text-gray-500">Title</p><p>{report.title}</p></div>
+              <div><p className="font-bold text-gray-500">Accident Type</p><p>{(report as any).accident_type}</p></div>
+              <div className="col-span-2"><p className="font-bold text-gray-500">Location</p><p>{(report as any).location}</p></div>
             </>
           ) : (
             <>
               <div><p className="font-bold text-gray-500">Title</p><p>{report.title}</p></div>
-              <div><p className="font-bold text-gray-500">Crime Type</p><p>{report.crime_type}</p></div>
-              <div className="col-span-2"><p className="font-bold text-gray-500">Location</p><p>{report.location}</p></div>
+              <div><p className="font-bold text-gray-500">Crime Type</p><p>{(report as any).crime_type}</p></div>
+              <div className="col-span-2"><p className="font-bold text-gray-500">Location</p><p>{(report as any).location}</p></div>
             </>
           )}
            <div className="col-span-2">

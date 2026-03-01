@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, Severity, VehicleReport } from '../types';
+import { Report, Severity, VehicleReport, AccidentReport } from '../types';
 import { CarIcon, CrimeIcon, AlertTriangleIcon } from './icons';
+import ReportTypeBadge from './ReportTypeBadge';
 // FIX: Reverted `sub` to `subDays` to resolve compatibility issues with the current date-fns version.
 import { formatDistanceToNow, subDays } from 'date-fns';
-
-const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
 interface HighlightsBannerProps {
     onSelectReport: (reportId: string) => void;
@@ -13,17 +12,14 @@ interface HighlightsBannerProps {
 }
 
 const HighlightCard: React.FC<{ report: Report, onSelect: (id: string) => void }> = ({ report, onSelect }) => {
-    const isVehicle = isVehicleReport(report);
-    const title = isVehicle ? report.license_plate : report.title;
+    const title = report.type === 'vehicle' ? (report as any).license_plate : report.title;
     
     return (
         <div 
             onClick={() => onSelect(report.id)}
             className="flex items-center gap-1.5 bg-white/10 dark:bg-black/20 hover:bg-white/20 dark:hover:bg-black/30 backdrop-blur-sm rounded-md px-2 py-1 cursor-pointer border border-white/10 dark:border-black/20 transition-colors duration-300 flex-shrink-0 w-64"
         >
-            <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${report.severity === Severity.CRITICAL ? 'bg-red-500/20' : 'bg-orange-500/20'}`}>
-                {isVehicle ? <CarIcon className="w-3.5 h-3.5 text-yellow-400" /> : <CrimeIcon className="w-3.5 h-3.5 text-red-400" />}
-            </div>
+            <ReportTypeBadge type={report.type as any} showText={false} className="p-1" />
             <div className="flex-1 min-w-0">
                 <p className="font-bold text-xs truncate">{title}</p>
                 <div className="flex items-center gap-1.5 text-xs opacity-80">
@@ -47,28 +43,34 @@ const HighlightsBanner: React.FC<HighlightsBannerProps> = ({ onSelectReport, top
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
+                { data: accidentData, error: aError },
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo),
-                supabase.from('crime_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo)
+                supabase.from('crime_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo),
+                supabase.from('accident_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo)
             ]);
 
             if (vError) console.error("Error fetching vehicle highlights:", vError);
             if (cError) console.error("Error fetching crime highlights:", cError);
+            if (aError) console.error("Error fetching accident highlights:", aError);
 
-            const combined = [...(vehicleData || []), ...(crimeData || [])]
+            const combined = [...(vehicleData || []).map(r => ({...r, type: 'vehicle'})), ...(crimeData || []).map(r => ({...r, type: 'crime'})), ...(accidentData || []).map(r => ({...r, type: 'accident'}))]
                 .sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
             
-            setReports(combined);
+            setReports(combined as Report[]);
         };
 
         fetchHighlights();
 
         const channel = supabase.channel('highlights-banner')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'vehicle_reports', filter: `severity=in.("${Severity.CRITICAL}","${Severity.HIGH}")` }, payload => {
-                setReports(prev => [payload.new as Report, ...prev].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()));
+                setReports(prev => [{...payload.new, type: 'vehicle'} as Report, ...prev].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()));
             })
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'crime_reports', filter: `severity=in.("${Severity.CRITICAL}","${Severity.HIGH}")` }, payload => {
-                setReports(prev => [payload.new as Report, ...prev].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()));
+                setReports(prev => [{...payload.new, type: 'crime'} as Report, ...prev].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()));
+            })
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'accident_reports', filter: `severity=in.("${Severity.CRITICAL}","${Severity.HIGH}")` }, payload => {
+                setReports(prev => [{...payload.new, type: 'accident'} as Report, ...prev].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()));
             })
             .subscribe();
 

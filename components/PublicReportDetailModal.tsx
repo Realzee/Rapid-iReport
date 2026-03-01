@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Report, VehicleReport } from '../types';
+import { Report, VehicleReport, AccidentReport } from '../types';
 import { XIcon, MapPinIcon } from './icons';
 import StatusBadge from './StatusBadge';
 import { format } from 'date-fns';
@@ -7,8 +7,6 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import { useTheme } from '../contexts/ThemeContext';
 import ImagePreviewModal from './ImagePreviewModal';
-
-const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
 const markerIcon = new L.Icon({
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -54,7 +52,7 @@ const PublicReportDetailModal: React.FC<PublicReportDetailModalProps> = ({ isOpe
                     <div className="flex-grow overflow-y-auto pr-4 -mr-4 space-y-4">
                         <div className="flex justify-between items-start gap-4">
                             <div className="flex-grow">
-                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
                                 <p className="font-mono text-sm text-gray-500 dark:text-gray-400">{report.ob_number}</p>
                             </div>
                             <div className="flex-shrink-0">
@@ -81,18 +79,20 @@ const PublicReportDetailModal: React.FC<PublicReportDetailModalProps> = ({ isOpe
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                             <DetailItem label="Severity" value={<span className="font-semibold capitalize">{report.severity}</span>} />
                             <DetailItem label="Reported At" value={format(new Date(report.reported_at), 'MMM d, yyyy HH:mm')} />
-                            {isVehicleReport(report) ? (
-                                <DetailItem label="Vehicle" value={`${report.vehicle_color} ${report.vehicle_make} ${report.vehicle_model}`} />
+                            {report.type === 'vehicle' ? (
+                                <DetailItem label="Vehicle" value={`${(report as any).vehicle_color} ${(report as any).vehicle_make} ${(report as any).vehicle_model}`} />
+                            ) : report.type === 'accident' ? (
+                                <DetailItem label="Accident Type" value={(report as any).accident_type} />
                             ) : (
-                                <DetailItem label="Crime Type" value={report.crime_type} />
+                                <DetailItem label="Crime Type" value={(report as any).crime_type} />
                             )}
                         </div>
 
                         <div>
-                            <DetailItem label={isVehicleReport(report) ? 'Last Seen Location' : 'Location'} value={
+                            <DetailItem label={report.type === 'vehicle' ? 'Last Seen Location' : 'Location'} value={
                                 <div className="flex items-start gap-2">
                                     <MapPinIcon className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                                    <span>{isVehicleReport(report) ? report.last_seen_location : report.location}</span>
+                                    <span>{report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</span>
                                 </div>
                             } />
                         </div>

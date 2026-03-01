@@ -24,9 +24,6 @@ interface ReportModalProps {
 
 type ReportType = 'vehicle' | 'crime' | 'accident';
 
-const isVehicleReport = (report: Report | null): report is VehicleReport => report !== null && 'license_plate' in report;
-const isAccidentReport = (report: Report | null): report is AccidentReport => report !== null && 'accident_type' in report;
-
 const geocodeLocation = async (location: string): Promise<{coords: LocationCoords | null, boundary: any | null, boundingbox: [number, number, number, number] | null}> => {
     try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&polygon_geojson=1&limit=1`);
@@ -239,8 +236,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
     const getInitialData = useCallback(() => {
         if (reportToEdit) {
-            const isVehicle = isVehicleReport(reportToEdit);
-            const location = isVehicle ? (reportToEdit as VehicleReport).last_seen_location : (reportToEdit as CrimeReport).location;
+            const location = reportToEdit.type === 'vehicle' ? (reportToEdit as any).last_seen_location : (reportToEdit as any).location;
             return { ...reportToEdit, location };
         }
         return { severity: isQuickAdd ? Severity.HIGH : '' };
@@ -255,7 +251,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             setInitialData(data);
             setFormData(data);
 
-            setReportType(reportToEdit ? (isVehicleReport(reportToEdit) ? 'vehicle' : (isAccidentReport(reportToEdit) ? 'accident' : 'crime')) : (isQuickAdd ? 'vehicle' : 'vehicle'));
+            setReportType(reportToEdit ? (reportToEdit.type as ReportType) : (isQuickAdd ? 'vehicle' : 'vehicle'));
             setMapVisible(false);
             setImagePreviews(reportToEdit?.evidence_images || []);
             setImageFiles([]);
@@ -437,7 +433,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             
             const locationInput = formData.location || '';
             const existingCoordsAreStale = formData.location_coords && (
-                isVehicleReport(reportToEdit) ? reportToEdit.last_seen_location !== locationInput : (isAccidentReport(reportToEdit) ? (reportToEdit as AccidentReport).location !== locationInput : (reportToEdit as CrimeReport)?.location !== locationInput)
+                reportToEdit?.type === 'vehicle' ? (reportToEdit as any).last_seen_location !== locationInput : (reportToEdit as any)?.location !== locationInput
             );
 
             if (!formData.location_coords || existingCoordsAreStale) {

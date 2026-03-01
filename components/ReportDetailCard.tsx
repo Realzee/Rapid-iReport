@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Report, Profile, VehicleReport, UserRole, ReportStatus } from '../types';
+import { Report, Profile, VehicleReport, AccidentReport, UserRole, ReportStatus } from '../types';
 import StatusBadge from './StatusBadge';
+import ReportTypeBadge from './ReportTypeBadge';
 import { MapPinIcon, WhatsappIcon, DownloadIcon, XIcon, EditIcon, TrashIcon } from './icons';
 import { format } from 'date-fns';
 import { supabase } from '../utils/supabase';
@@ -18,8 +19,6 @@ interface ReportDetailCardProps {
     onViewOnMap: () => void;
     allUsers: Profile[];
 }
-
-const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
 const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, profile, onEdit, onDelete, onViewOnMap, allUsers }) => {
     const [reporter, setReporter] = useState<Profile | null>(null);
@@ -40,7 +39,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         ReportStatus.IN_PROGRESS,
         ReportStatus.RESOLVED,
     ];
-    if (isVehicleReport(report)) {
+    if (report.type === 'vehicle') {
         responderStatusOptions.push(ReportStatus.RECOVERED);
     }
 
@@ -61,7 +60,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         const newStatus = e.target.value as ReportStatus;
         setStatusUpdateLoading(true);
 
-        const tableName = isVehicleReport(report) ? 'vehicle_reports' : 'crime_reports';
+        const tableName = report.type === 'vehicle' ? 'vehicle_reports' : (report.type === 'accident' ? 'accident_reports' : 'crime_reports');
         const { error } = await supabase
             .from(tableName)
             .update({ status: newStatus })
@@ -75,16 +74,21 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
     const handleShareWhatsApp = () => {
         let text = `*RAPID iREPORT ALERT*\n\n`;
-        if (isVehicleReport(report)) {
+        if (report.type === 'vehicle') {
             text += `*Type:* Vehicle Theft\n`;
-            text += `*License Plate:* ${report.license_plate}\n`;
-            text += `*Vehicle:* ${report.vehicle_make} ${report.vehicle_model} (${report.vehicle_color})\n`;
-            text += `*Last Seen:* ${report.last_seen_location}\n`;
+            text += `*License Plate:* ${(report as any).license_plate}\n`;
+            text += `*Vehicle:* ${(report as any).vehicle_make} ${(report as any).vehicle_model} (${(report as any).vehicle_color})\n`;
+            text += `*Last Seen:* ${(report as any).last_seen_location}\n`;
+        } else if (report.type === 'accident') {
+            text += `*Type:* Accident Incident\n`;
+            text += `*Title:* ${report.title}\n`;
+            text += `*Accident Type:* ${(report as any).accident_type}\n`;
+            text += `*Location:* ${(report as any).location}\n`;
         } else {
             text += `*Type:* Crime Incident\n`;
             text += `*Title:* ${report.title}\n`;
-            text += `*Crime Type:* ${report.crime_type}\n`;
-            text += `*Location:* ${report.location}\n`;
+            text += `*Crime Type:* ${(report as any).crime_type}\n`;
+            text += `*Location:* ${(report as any).location}\n`;
         }
         text += `*OB Number:* ${report.ob_number}\n`;
         text += `*Severity:* ${report.severity.charAt(0).toUpperCase() + report.severity.slice(1)}\n\n`;
@@ -126,11 +130,11 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             ? `<img src="${imageAsDataUrl}" alt="Evidence" style="width: 100%; height: 100%; object-fit: cover;" />`
             : `<span style="color: #9CA3AF; font-size: 16px;">No Image Available</span>`;
         
-        const vehicleDetailsHtml = isVehicleReport(report) ? `
+        const vehicleDetailsHtml = report.type === 'vehicle' ? `
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Make</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${report.vehicle_make}</p></div>
-                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Model</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${report.vehicle_model}</p></div>
-                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Color</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${report.vehicle_color}</p></div>
+                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Make</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${(report as any).vehicle_make}</p></div>
+                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Model</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${(report as any).vehicle_model}</p></div>
+                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Color</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${(report as any).vehicle_color}</p></div>
             </div>
         ` : '';
 
@@ -147,8 +151,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     ${reportImageHtml}
                 </div>
                 <div style="background-color: #F3F4F6; padding: 12px; border-radius: 8px; margin-bottom: 16px; text-align: center; border: 1px solid #E5E7EB;">
-                    <p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">${isVehicleReport(report) ? 'License Plate' : 'Incident'}</p>
-                    <p style="margin: 4px 0 0 0; font-size: 28px; font-weight: 700; letter-spacing: 2px; color: #1E40AF;">${isVehicleReport(report) ? report.license_plate : report.title}</p>
+                    <p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">${report.type === 'vehicle' ? 'License Plate' : (report.type === 'accident' ? 'Accident' : 'Incident')}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 28px; font-weight: 700; letter-spacing: 2px; color: #1E40AF;">${report.type === 'vehicle' ? (report as any).license_plate : report.title}</p>
                 </div>
                 ${vehicleDetailsHtml}
                 <div style="flex-grow: 1; min-height: 50px;">
@@ -195,7 +199,10 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     return (
         <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-full">
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                <div className="flex items-center gap-2 min-w-0">
+                    <ReportTypeBadge type={report.type as any} className="p-1.5" />
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
+                </div>
                 <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
                     <XIcon className="w-6 h-6" />
                 </button>
@@ -225,7 +232,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                                 <option value={ReportStatus.IN_PROGRESS}>In Progress</option>
                                 <option value={ReportStatus.RESOLVED}>Resolved</option>
                                 <option value={ReportStatus.REJECTED}>Rejected</option>
-                                {isVehicleReport(report) && <option value={ReportStatus.RECOVERED}>Recovered</option>}
+                                {report.type === 'vehicle' && <option value={ReportStatus.RECOVERED}>Recovered</option>}
                             </select>
                         ) : (
                             <StatusBadge status={report.status} />
@@ -255,23 +262,23 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                             <p className="text-gray-900 dark:text-white">{report.station_name}</p>
                         </div>
                     )}
-                    {isVehicleReport(report) && report.vin_number && (
+                    {report.type === 'vehicle' && (report as any).vin_number && (
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">VIN</p>
-                            <p className="text-gray-900 dark:text-white">{report.vin_number}</p>
+                            <p className="text-gray-900 dark:text-white">{(report as any).vin_number}</p>
                         </div>
                     )}
-                    {isVehicleReport(report) && report.engine_number && (
+                    {report.type === 'vehicle' && (report as any).engine_number && (
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Engine</p>
-                            <p className="text-gray-900 dark:text-white">{report.engine_number}</p>
+                            <p className="text-gray-900 dark:text-white">{(report as any).engine_number}</p>
                         </div>
                     )}
                 </div>
 
                 <div>
-                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{isVehicleReport(report) ? 'Last Seen Location' : 'Location'}</p>
-                     <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {isVehicleReport(report) ? report.last_seen_location : report.location}</p>
+                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{report.type === 'vehicle' ? 'Last Seen Location' : 'Location'}</p>
+                     <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</p>
                 </div>
                  <button 
                     onClick={onViewOnMap} 

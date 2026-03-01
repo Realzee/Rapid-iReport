@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { Profile, Report, VehicleReport, AccidentReport, ReportStatus } from '../types';
-import { PlusIcon, ZapIcon } from '../components/icons';
+import { PlusIcon, ZapIcon, CarIcon, CrimeIcon, AlertTriangleIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
 import UserReportDetail from '../components/UserReportDetail';
 import StatusBadge from '../components/StatusBadge';
@@ -44,8 +44,11 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
             if (vError || cError || aError) {
                 console.error("Error fetching user reports:", vError || cError || aError);
             } else {
-                const combined = [...(vData || []), ...(cData || []), ...(aData || [])]
-                    .sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+                const combined = [
+                    ...(vData || []).map(r => ({ ...r, type: 'vehicle' as const })),
+                    ...(cData || []).map(r => ({ ...r, type: 'crime' as const })),
+                    ...(aData || []).map(r => ({ ...r, type: 'accident' as const }))
+                ].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
                 setMyReports(combined);
                 if (combined.length > 0 && !selectedReportId) {
                     setSelectedReportId(combined[0].id);
@@ -65,7 +68,8 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
 
     useEffect(() => {
         const handleUpsert = (payload: any) => {
-            const newReport = payload.new as Report;
+            const reportType = payload.table === 'vehicle_reports' ? 'vehicle' : (payload.table === 'accident_reports' ? 'accident' : 'crime');
+            const newReport = { ...payload.new, type: reportType } as Report;
 
             setMyReports(prev => {
                 if (newReport.status === ReportStatus.DELETED) {
@@ -142,7 +146,12 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                             <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
                                 className={`p-3 cursor-pointer rounded-lg border-2 transition-all ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-white/70 dark:bg-gray-900/60 border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600'}`}>
                                 <div className="flex justify-between items-start">
-                                    <h3 className="font-bold text-md truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                                    <div className="flex items-center gap-2 truncate pr-2">
+                                        <div className={`p-1.5 rounded-full flex-shrink-0 ${report.type === 'vehicle' ? 'bg-yellow-500/20 text-yellow-600' : (report.type === 'accident' ? 'bg-orange-500/20 text-orange-600' : 'bg-red-500/20 text-red-600')}`}>
+                                            {report.type === 'vehicle' ? <CarIcon className="w-4 h-4" /> : (report.type === 'accident' ? <AlertTriangleIcon className="w-4 h-4" /> : <CrimeIcon className="w-4 h-4" />)}
+                                        </div>
+                                        <h3 className="font-bold text-md truncate">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                                    </div>
                                     <StatusBadge status={report.status} />
                                 </div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isAccidentReport(report) ? report.accident_type : report.crime_type)}</p>

@@ -2,9 +2,8 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { Report, VehicleReport, Severity, Responder, Profile, CrimeReport } from '../types';
 import { format } from 'date-fns';
 import StatusBadge from './StatusBadge';
-import { CameraIcon, UserIcon, ClockIcon, NavigationIcon, ChevronUpIcon } from './icons';
-
-const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
+import ReportTypeBadge from './ReportTypeBadge';
+import { CameraIcon, UserIcon, ClockIcon, NavigationIcon, ChevronUpIcon, CarIcon, AlertTriangleIcon, CrimeIcon } from './icons';
 
 const severityTagStyles: Record<Severity, string> = {
     [Severity.CRITICAL]: 'bg-red-500/10 text-red-600 dark:text-red-400',
@@ -21,7 +20,7 @@ const LiveEventItem: React.FC<{
     responderMap: Map<string, string>;
     reporterName: string;
 }> = ({ report, isSelected, isPanic, onSelect, responderMap, reporterName }) => {
-    const title = isVehicleReport(report) ? report.license_plate : report.title;
+    const title = report.type === 'vehicle' ? (report as any).license_plate : report.title;
     
     const borderClass = isSelected 
         ? 'border-blue-500 ring-2 ring-blue-500/50' 
@@ -41,10 +40,13 @@ const LiveEventItem: React.FC<{
             onClick={onSelect}
             className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm ${borderClass} ${bgClass} ${pulseClass}`}
         >
-            <div className="flex justify-between items-center gap-2">
-                <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight truncate">{title}</p>
-                    <p className="font-mono text-xs text-gray-500 dark:text-gray-400">{report.ob_number}</p>
+            <div className="flex justify-between items-start gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <ReportTypeBadge type={report.type as any} showText={false} className="p-1.5" />
+                    <div className="min-w-0">
+                        <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight truncate">{title}</p>
+                        <p className="font-mono text-xs text-gray-500 dark:text-gray-400">{report.ob_number}</p>
+                    </div>
                 </div>
                 <div className="flex-shrink-0">
                     <StatusBadge status={report.status} />

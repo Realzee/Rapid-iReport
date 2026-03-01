@@ -3,15 +3,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Profile, VehicleReport, AccidentReport, ReportUpdate, ReportStatus, AssignmentLog } from '../types';
 import StatusBadge from './StatusBadge';
-import { MapPinIcon, EditIcon, AssignResponderIcon, ZapIcon } from './icons';
+import { MapPinIcon, EditIcon, AssignResponderIcon, ZapIcon, CarIcon, AlertTriangleIcon, CrimeIcon } from './icons';
 import { format, formatDistanceToNow } from 'date-fns';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import { useTheme } from '../contexts/ThemeContext';
 import { useChat } from '../contexts/ChatContext';
-
-const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
-const isAccidentReport = (report: Report): report is AccidentReport => 'accident_type' in report;
 
 const markerIcon = new L.Icon({
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -138,8 +135,13 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
     return (
         <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-full max-h-[calc(100vh-12rem)]">
             <div className="flex justify-between items-start mb-4 flex-shrink-0 gap-4">
-                <div className="flex-grow">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                <div className="flex-grow min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className={`p-1.5 rounded-full flex-shrink-0 ${report.type === 'vehicle' ? 'bg-yellow-500/20 text-yellow-600' : (report.type === 'accident' ? 'bg-orange-500/20 text-orange-600' : 'bg-red-500/20 text-red-600')}`}>
+                            {report.type === 'vehicle' ? <CarIcon className="w-5 h-5" /> : (report.type === 'accident' ? <AlertTriangleIcon className="w-5 h-5" /> : <CrimeIcon className="w-5 h-5" />)}
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
+                    </div>
                     <p className="font-mono text-sm text-gray-500 dark:text-gray-400">{report.ob_number}</p>
                 </div>
                 <div className="flex-shrink-0 flex items-center gap-2">
@@ -177,27 +179,27 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                 </div>
 
                 <div>
-                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{isVehicleReport(report) ? 'Last Seen Location' : 'Location'}</p>
-                     <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {isVehicleReport(report) ? report.last_seen_location : report.location}</p>
+                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{report.type === 'vehicle' ? 'Last Seen Location' : 'Location'}</p>
+                     <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</p>
                 </div>
 
-                {isAccidentReport(report) && (
+                {report.type === 'accident' && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Accident Type</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">{report.accident_type}</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{(report as any).accident_type}</p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicles</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">{report.vehicles_involved}</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{(report as any).vehicles_involved}</p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Injuries</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">{report.injuries_reported ? 'Yes' : 'No'}</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{(report as any).injuries_reported ? 'Yes' : 'No'}</p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Fatalities</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">{report.fatalities_reported ? 'Yes' : 'No'}</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{(report as any).fatalities_reported ? 'Yes' : 'No'}</p>
                         </div>
                     </div>
                 )}

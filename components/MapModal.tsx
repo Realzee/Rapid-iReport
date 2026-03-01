@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } from 'react-leaflet';
 import L, { LatLngBoundsExpression } from 'leaflet';
-import { Report, VehicleReport, Severity, ReportStatus } from '../types';
+import { Report, VehicleReport, AccidentReport, Severity, ReportStatus } from '../types';
 import { XIcon } from './icons';
 import StatusBadge from './StatusBadge';
 import MapStyleToggle, { MapStyle } from './MapStyleToggle';
@@ -11,8 +11,6 @@ interface MapModalProps {
     onClose: () => void;
     report: Report | null;
 }
-
-const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
 const createVehicleIcon = (severity: Severity, status: ReportStatus) => {
     let bgColorClass = 'bg-blue-600';
@@ -34,6 +32,18 @@ const createCrimeIcon = (status: ReportStatus) => {
     
     const iconHtml = `<div class="relative w-8 h-8 ${bgColorClass} border-2 border-white/80 rounded-full shadow-lg flex items-center justify-center">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9.5 14.5 5-5"/><path d="m9.5 9.5 5 5"/></svg>
+    </div>`;
+    return new L.DivIcon({ html: iconHtml, className: '', iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -16] });
+};
+
+const createAccidentIcon = (status: ReportStatus) => {
+    let bgColorClass = 'bg-orange-600';
+    if (status === ReportStatus.RESOLVED) {
+        bgColorClass = 'bg-green-600';
+    }
+    
+    const iconHtml = `<div class="relative w-8 h-8 ${bgColorClass} border-2 border-white/80 rounded-full shadow-lg flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
     </div>`;
     return new L.DivIcon({ html: iconHtml, className: '', iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -16] });
 };
@@ -82,9 +92,9 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
         weight: 2,
     };
 
-    const reportIcon = isVehicleReport(report)
+    const reportIcon = report.type === 'vehicle'
         ? createVehicleIcon(report.severity, report.status)
-        : createCrimeIcon(report.status);
+        : (report.type === 'accident' ? createAccidentIcon(report.status) : createCrimeIcon(report.status));
 
     const isValidCoords = report.location_coords && typeof report.location_coords.lat === 'number' && !isNaN(report.location_coords.lat) && typeof report.location_coords.lng === 'number' && !isNaN(report.location_coords.lng);
     const position: [number, number] | undefined = isValidCoords ? [report.location_coords!.lat, report.location_coords!.lng] : undefined;
@@ -94,7 +104,7 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
             <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl w-full h-full sm:rounded-2xl sm:w-11/12 sm:max-w-4xl sm:h-auto sm:max-h-[90vh] flex flex-col">
                 <header className="flex-shrink-0 p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
                     <h3 id="map-modal-title" className="text-lg font-bold text-gray-900 dark:text-white truncate">
-                        Map Location for: {isVehicleReport(report) ? report.license_plate : report.title}
+                        Map Location for: {report.type === 'vehicle' ? (report as any).license_plate : report.title}
                     </h3>
                     <button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-colors">
                         <XIcon className="w-6 h-6" />
@@ -133,8 +143,8 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
                             <Marker position={position} icon={reportIcon}>
                                 <Popup>
                                     <div className="w-56">
-                                        <h4 className="font-bold mb-1">{isVehicleReport(report) ? report.license_plate : report.title}</h4>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{isVehicleReport(report) ? report.last_seen_location : report.location}</p>
+                                        <h4 className="font-bold mb-1">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h4>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</p>
                                         <StatusBadge status={report.status} />
                                     </div>
                                 </Popup>

@@ -3,16 +3,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Report, Profile, VehicleReport, AccidentReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
-import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon } from './icons';
+import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon, CarIcon, AlertTriangleIcon, CrimeIcon } from './icons';
 import PrintableReport from './PrintableReport';
+import ReportTypeBadge from './ReportTypeBadge';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from './ConfirmModal';
 import { logoUrl } from '../assets/logo';
 import { useChat } from '../contexts/ChatContext';
 import ImagePreviewModal from './ImagePreviewModal';
-
-const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
-const isAccidentReport = (report: Report): report is AccidentReport => 'accident_type' in report;
 
 const DetailField: React.FC<{ label: string, children: React.ReactNode, className?: string }> = ({ label, children, className }) => (
     <div className={className}>
@@ -194,8 +192,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         setIsActionLoading(true);
 
         let tableName = '';
-        if (isVehicleReport(report)) tableName = 'vehicle_reports';
-        else if (isAccidentReport(report)) tableName = 'accident_reports';
+        if (report.type === 'vehicle') tableName = 'vehicle_reports';
+        else if (report.type === 'accident') tableName = 'accident_reports';
         else tableName = 'crime_reports';
 
         const updatePayload: { status?: ReportStatus; assigned_to?: string | null; completed_at?: string | null } = {};
@@ -230,7 +228,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
     const confirmDeleteReport = async () => {
         setDeleteModalOpen(false);
-        const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isAccidentReport(report) ? 'accident_reports' : 'crime_reports');
+        const tableName = report.type === 'vehicle' ? 'vehicle_reports' : (report.type === 'accident' ? 'accident_reports' : 'crime_reports');
         const { error } = await supabase.from(tableName).update({ 
             status: ReportStatus.DELETED,
             deleted_by: profile.id,
@@ -272,11 +270,11 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             ? `<img src="${imageAsDataUrl}" alt="Evidence" style="width: 100%; height: 100%; object-fit: cover;" />`
             : `<span style="color: #9CA3AF; font-size: 16px;">No Image Available</span>`;
         
-        const vehicleDetailsHtml = isVehicleReport(report) ? `
+        const vehicleDetailsHtml = report.type === 'vehicle' ? `
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Make</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${report.vehicle_make}</p></div>
-                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Model</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${report.vehicle_model}</p></div>
-                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Color</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${report.vehicle_color}</p></div>
+                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Make</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${(report as any).vehicle_make}</p></div>
+                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Model</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${(report as any).vehicle_model}</p></div>
+                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Color</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${(report as any).vehicle_color}</p></div>
             </div>
         ` : '';
 
@@ -293,8 +291,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     ${reportImageHtml}
                 </div>
                 <div style="background-color: #F3F4F6; padding: 12px; border-radius: 8px; margin-bottom: 16px; text-align: center; border: 1px solid #E5E7EB;">
-                    <p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">${isVehicleReport(report) ? 'License Plate' : (isAccidentReport(report) ? 'Accident' : 'Incident')}</p>
-                    <p style="margin: 4px 0 0 0; font-size: 28px; font-weight: 700; letter-spacing: 2px; color: #1E40AF;">${isVehicleReport(report) ? report.license_plate : report.title}</p>
+                    <p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">${report.type === 'vehicle' ? 'License Plate' : (report.type === 'accident' ? 'Accident' : 'Incident')}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 28px; font-weight: 700; letter-spacing: 2px; color: #1E40AF;">${report.type === 'vehicle' ? (report as any).license_plate : report.title}</p>
                 </div>
                 ${vehicleDetailsHtml}
                 <div style="flex-grow: 1; min-height: 50px;">
@@ -346,7 +344,10 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             <div className="flex-shrink-0">
                 <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                        <div className="flex items-center gap-2 mb-1">
+                            <ReportTypeBadge type={report.type as any} className="p-1.5" />
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
+                        </div>
                         <p className="font-mono text-sm text-gray-500 dark:text-gray-400">{report.ob_number}</p>
                     </div>
                      <button onClick={() => setIsTimelineVisible(!isTimelineVisible)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition">
@@ -388,20 +389,20 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     </div>
                 )}
                 <DetailField label="Description"><p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{report.description}</p></DetailField>
-                {isVehicleReport(report) && <DetailField label="Vehicle">{`${report.vehicle_color} ${report.vehicle_make} ${report.vehicle_model}`}</DetailField>}
+                {report.type === 'vehicle' && <DetailField label="Vehicle">{`${(report as any).vehicle_color} ${(report as any).vehicle_make} ${(report as any).vehicle_model}`}</DetailField>}
                 
-                {isAccidentReport(report) && (
+                {report.type === 'accident' && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                        <DetailField label="Accident Type">{report.accident_type}</DetailField>
-                        <DetailField label="Vehicles Involved">{report.vehicles_involved}</DetailField>
-                        <DetailField label="Injuries">{report.injuries_reported ? 'Yes' : 'No'}</DetailField>
-                        <DetailField label="Fatalities">{report.fatalities_reported ? 'Yes' : 'No'}</DetailField>
+                        <DetailField label="Accident Type">{(report as any).accident_type}</DetailField>
+                        <DetailField label="Vehicles Involved">{(report as any).vehicles_involved}</DetailField>
+                        <DetailField label="Injuries">{(report as any).injuries_reported ? 'Yes' : 'No'}</DetailField>
+                        <DetailField label="Fatalities">{(report as any).fatalities_reported ? 'Yes' : 'No'}</DetailField>
                     </div>
                 )}
                 {report.cas_number && <DetailField label="CAS Number"><p className="text-gray-800 dark:text-gray-200">{report.cas_number}</p></DetailField>}
                 {report.station_name && <DetailField label="Station"><p className="text-gray-800 dark:text-gray-200">{report.station_name}</p></DetailField>}
-                {isVehicleReport(report) && report.vin_number && <DetailField label="VIN"><p className="text-gray-800 dark:text-gray-200">{report.vin_number}</p></DetailField>}
-                {isVehicleReport(report) && report.engine_number && <DetailField label="Engine"><p className="text-gray-800 dark:text-gray-200">{report.engine_number}</p></DetailField>}
+                {report.type === 'vehicle' && (report as any).vin_number && <DetailField label="VIN"><p className="text-gray-800 dark:text-gray-200">{(report as any).vin_number}</p></DetailField>}
+                {report.type === 'vehicle' && (report as any).engine_number && <DetailField label="Engine"><p className="text-gray-800 dark:text-gray-200">{(report as any).engine_number}</p></DetailField>}
             </div>
 
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 space-y-3 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm -mx-4 px-4 pb-2 sticky bottom-0">

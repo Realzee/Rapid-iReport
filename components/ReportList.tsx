@@ -9,7 +9,7 @@ interface ReportListProps {
   onReportSelect: (id: string) => void;
   profile: Profile;
   allUsers: Profile[];
-  onStatusUpdate: (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime') => Promise<void>;
+  onStatusUpdate: (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime' | 'accident') => Promise<void>;
   companies: Company[];
 }
 

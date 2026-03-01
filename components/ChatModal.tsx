@@ -1,10 +1,8 @@
 import React, { useMemo } from 'react';
-import { Report, Profile, VehicleReport } from '../types';
+import { Report, Profile } from '../types';
 import { XIcon, ChevronDownIcon } from './icons';
 import IncidentChat from './IncidentChat';
 import { useChat } from '../contexts/ChatContext';
-
-const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 
 const ChatWidget: React.FC<{
     report: Report;
@@ -13,7 +11,7 @@ const ChatWidget: React.FC<{
     onClose: () => void;
     onMinimize: () => void;
 }> = ({ report, profile, allUsers, onClose, onMinimize }) => {
-    const reportTitle = isVehicleReport(report) ? report.license_plate : report.title;
+    const reportTitle = report.type === 'vehicle' ? (report as any).license_plate : report.title;
 
     return (
         <div className="bg-white dark:bg-gray-900 border-t-2 border-blue-500 rounded-t-2xl shadow-2xl w-full max-w-md h-[70vh] flex flex-col transform transition-transform duration-300 ease-out">
@@ -47,7 +45,7 @@ const ChatHead: React.FC<{
     unreadCount: number;
     onClick: () => void;
 }> = ({ report, unreadCount, onClick }) => {
-    const reportTitle = isVehicleReport(report) ? report.license_plate : report.title;
+    const reportTitle = report.type === 'vehicle' ? (report as any).license_plate : report.title;
     return (
         <button 
             onClick={onClick}

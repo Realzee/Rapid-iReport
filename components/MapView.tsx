@@ -17,8 +17,6 @@ interface MapViewProps {
   allUsers: Profile[];
 }
 
-const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
-
 const createIncidentIcon = (report: Report, isSelected: boolean) => {
     const severityColors: Record<Severity, string> = {
         [Severity.CRITICAL]: '#ef4444', // red-500
@@ -36,8 +34,9 @@ const createIncidentIcon = (report: Report, isSelected: boolean) => {
         <path d="M5 17h.01"></path>
         <path d="M2 10l3.5-3.5A2 2 0 0 1 7 6h10a2 2 0 0 1 1.5.5L22 10"></path>`;
     const crimeSvgPath = `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>`;
+    const accidentSvgPath = `<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path>`;
     
-    const iconSvgPath = isVehicleReport(report) ? carSvgPath : crimeSvgPath;
+    const iconSvgPath = report.type === 'vehicle' ? carSvgPath : (report.type === 'accident' ? accidentSvgPath : crimeSvgPath);
 
     const size = isSelected ? 48 : 36;
     const scale = isSelected ? 1.1 : 1;
@@ -291,17 +290,17 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                             >
                                 <Popup>
                                     <div className="w-72">
-                                        <h3 className="font-bold text-lg mb-1">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                                        <h3 className="font-bold text-lg mb-1">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
                                         <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mb-2">{report.ob_number}</p>
                                         <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{report.description}</p>
                                         <hr className="border-gray-200 dark:border-gray-600 my-2" />
                                         <div className="space-y-2">
                                             <div className="flex justify-between items-start">
                                                 <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase shrink-0 mr-2">
-                                                    {isVehicleReport(report) ? 'Last Known Loc' : 'Location'}
+                                                    {report.type === 'vehicle' ? 'Last Known Loc' : 'Location'}
                                                 </span>
                                                 <span className="text-sm text-right text-gray-700 dark:text-gray-300">
-                                                    {isVehicleReport(report) ? report.last_seen_location : report.location}
+                                                    {report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between items-center"><span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase">Status</span><StatusBadge status={report.status} /></div>
