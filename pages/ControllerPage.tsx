@@ -131,8 +131,19 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 ...(accidentData || []).map(r => ({ ...r, type: 'accident' })),
             ];
 
+            // Ensure we have profiles for all reporters
+            const reporterIds = Array.from(new Set(combinedReports.map(r => r.reported_by)));
+            const loadedUserIds = new Set((usersData || []).map(u => u.id));
+            const missingReporterIds = reporterIds.filter(id => !loadedUserIds.has(id));
+            
+            let additionalProfiles: Profile[] = [];
+            if (missingReporterIds.length > 0) {
+                 const { data: missingProfiles } = await supabase.from('profiles').select('*').in('id', missingReporterIds);
+                 if (missingProfiles) additionalProfiles = missingProfiles;
+            }
+
             setReports(combinedReports);
-            setAllUsers(usersData || []);
+            setAllUsers([...(usersData || []), ...additionalProfiles]);
             setLoading(false);
             isInitialLoad.current = false;
         };
@@ -237,6 +248,35 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             stopAlertLoop();
         };
     }, [profile]);
+
+    // Effect to fetch missing reporters for real-time updates
+    useEffect(() => {
+        const fetchMissingReporters = async () => {
+             const reporterIds = new Set(reports.map(r => r.reported_by));
+             const loadedUserIds = new Set(allUsers.map(u => u.id));
+             const missingReporterIds = Array.from(reporterIds).filter(id => !loadedUserIds.has(id));
+             
+             if (missingReporterIds.length > 0) {
+                 const { data: missingProfiles } = await supabase.from('profiles').select('*').in('id', missingReporterIds);
+                 if (missingProfiles && missingProfiles.length > 0) {
+                     setAllUsers(prev => {
+                         const existingIds = new Set(prev.map(u => u.id));
+                         const newProfiles = missingProfiles.filter(p => !existingIds.has(p.id));
+                         if (newProfiles.length === 0) return prev;
+                         return [...prev, ...newProfiles];
+                     });
+                 }
+             }
+        };
+        
+        const timeoutId = setTimeout(() => {
+            if (reports.length > 0) {
+                fetchMissingReporters();
+            }
+        }, 1000);
+        
+        return () => clearTimeout(timeoutId);
+    }, [reports, allUsers]);
 
     useEffect(() => {
         const responderProfiles = allUsers.filter(p => p.role === UserRole.RESPONDER);
