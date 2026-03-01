@@ -101,6 +101,19 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     const generateBoloImage = async () => {
         setIsGeneratingBolo(true);
 
+        const escapeXml = (unsafe: string | null | undefined) => {
+            return (unsafe || '').replace(/[<>&'"]/g, (c) => {
+                switch (c) {
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '&': return '&amp;';
+                    case '\'': return '&apos;';
+                    case '"': return '&quot;';
+                    default: return c;
+                }
+            });
+        };
+
         const fetchImageAsDataURL = async (url: string) => {
             try {
                 // Use Supabase proxy to avoid CORS issues with external images
@@ -135,7 +148,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         ]);
 
         // WhatsApp Icon SVG Data URL
-        const whatsappIconSvg = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzI1ZDM2NiI+PHBhdGggZD0iTTE3LjQ3MiAzLjQ3OGMtMi42Ny0yLjY3MS02LjIyOC00LjEzMS0xMC4wOC00LjEzMWMtNy44NTMgMC0xNC4yNDEgNi4zODgtMTQuMjQxIDE0LjI0MmMwIDIuNTA4LjY1NSA0Ljk1NCAxLjg5OSA3LjEyM2wtMi4wMTkgNy4zNzIgNy41NDMtMS45NzhjMi4wNzcuMTEzMyA0LjQxNSAxLjczOCA2LjgxNiAxLjczOHYtLjAwMWg1LjQ1OGU3Ljg1NSAwIDE0LjI0NS02LjM5IDE0LjI0NS0xNC4yNDVjMC0zLjgwNC0xLjQ4LTYuMzc2LTQuMTQ0LTkuMDU2em0tMTAuMDggMjEuMjc1Yy0yLjExNSAwLTQuMTg4LS41Ny01Ljk5Ny0xLjYzM2wtLjQyOS0uMjUxLTQuNDU3IDEuMTY5IDEuMTg5LTQuMzQ1LS4yNzgtLjQ0MmMtMS4xNzQtMS44NjUtMS43OTMtNC4wMzEtMS43OTMtNi4yNDcgMC02LjQ5MyA1LjI4My0xMS43NzYgMTEuNzc4LTExLjc3NiA2LjQ5MSAwIDExLjc3NCA1LjI4MyAxMS43NzQgMTEuNzc2IDAgNi40OTUtNS4yODMgMTEuNzc4LTExLjc3OCAxMS43Nzh6bTYuNDQxLTguODI2Yy0uMzUzLS4xNzctMi4wODgtMS4wMjgtMi40MTEtMS4xNDctLjMyMy0uMTE4LS41NTktLjE3Ni0uNzk0LjE3Ni0uMjM1LjM1My0uOTEyIDEuMTQ3LTEuMTE4IDEuMzc5LS4yMDYuMjM1LS40MTIuMjY1LS43NjUuMDg4LS4zNTMtLjE3Ni0xLjQ5MS0uNTUtMi44MzktMS43NTItMS4wNDUtLjkzMi0xLjc1MS0yLjA4My0xLjk1Ni0yLjQzNS0uMjA2LS4zNTMtLjAyMi0uNTQ0LjE1NC0uNzIyLjE1OC0uMTU5LjM1My0uNDEyLjUyOS0uNjE4LjE3Ni0uMjA2LjIzNS0uMzUzLjM1My0uNTg4LjExOC0uMjM1LjA1OS0uNDQxLS4wMjktLjYxOC0uMDg4LS4xNzYtLjc5NC0xLjkxMi0xLjA4OC0yLjYxOC0uMjg3LS42ODUtLjU4MS0uNTkzLS43OTQtLjYwM2wtLjY3Ni0uMDE1Yy0uMjM1IDAtLjYxOC4wODgtLjk0MS40NDEtLjMyMy4zNTMtMS4yMzUgMS4yMDYtMS4yMzUgMi45NDFzMS4yNjUgMi45NDEgMS40NDEgMy4xNzZjLjE3Ni4yMzUgMi40ODggMy43OTYgNi4wMjkgNS4zMjIuODQxLjM2MiAxLjQ5OC41NzggMi4wMDcuNzQxLjg1My4yNzIgMS42My4yMzQgMi4yNDQuMTQyLjY4NS0uMTAzIDIuMDg4LS44NTMgMi4zODItMS42NzYuMjk0LS44MjMuMjk0LTEuNTI9LjIwNi0xLjY3Ni0uMDg4LS4xNDctLjMyMy0uMjM1LS42NzYtLjQxMXoiLz48L3N2Zz4=`;
+        const whatsappIconSvg = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzI1ZDM2NiI+PHBhdGggZD0iTTE3LjQ3MiAzLjQ3OGMtMi42Ny0yLjY3MS02LjIyOC00LjEzMS0xMC4wOC00LjEzMWMtNy44NTMgMC0xNC4yNDEgNi4zODgtMTQuMjQxIDE0LjI0MmMwIDIuNTA4LjY1NSA0Ljk1NCAxLjg5OSA3LjEyM2wtMi4wMTkgNy4zNzIgNy41NDMtMS45NzhjMi4wNzcuMTEzMyA0LjQxNSAxLjczOCA2LjgxNiAxLjczOHYtLjAwMWg1LjQ1OGU3Ljg1NSAwIDE0LjI0NS02LjM5IDE0LjI0NS0xNC4yNDVjMC0zLjgwNC0xLjQ4LTYuMzc2LTQuMTQ0LTkuMDU2em0tMTAuMDggMjEuMjc1Yy0yLjExNSAwLTQuMTg4LS41Ny01Ljk5Ny0xLjYzM2wtLjQyOS0uMjUxLTQuNDU3IDEuMTY5IDEuMTg5LTQuMzQ1LS4yNzgtLjQ0MmMtMS4xNzQtMS44NjUtMS43OTMtNC4wMzEtMS43OTMtNi4yNDcgMC02LjQ5MyA1LjI4My0xMS43NzYgMTEuNzc4LTExLjc3NiA2LjQ5MSAwIDExLjc3NCA1LjI4MyAxMS43NzQgMTEuNzc2IDAgNi40OTUtNS4yODMgMTEuNzc4LTExLjc3OCAxMS43Nzh6bTYuNDQxLTguODI2Yy0uMzUzLS4xNzctMi4wODgtMS4wMjgtMi40MTEtMS4xNDctLjMyMy0uMTE4LS41NTktLjE3Ni0uNzk0LjE3Ni0uMjM1LjM1My0uOTEyIDEuMTQ3LTEuMTE4IDEuMzc5LS4yMDYuMjM1LS40MTIuMjY1LS43NjUuMDg4LS4zNTMtLjE3Ni0xLjQ5MS0uNTUtMi44MzktMS43NTItMS4wNDUtLjkzMi0xLjc1MS0yLjA4My0xLjk1Ni0yLjQzNS0uMjA2LS4zNTMtLjAyMi0uNTQ0LjE1NC0uNzIyLjE1OC0uMTU5LjM1My0uNDEyLjUyOS0uNjE4LjE3Ni0uMjA2LjIzNS0uMzUzLjM1My0uNTg4LjExOC0uMjM1LjA1OS0uNDQxLS4wMjktLjYxOC0uMDg4LS4xNzYtLjc5NC0xLjkxMi0xLjA4OC0yLjYxOC0uMjg3LS42ODUtLjU4MS0uNTkzLS43OTQtLjYwM2wtLjY3Ni0uMDE1Yy0uMjM1IDAtLjYxOC4wODgtLjk0MS40NDEtLjMyMy4zNTMtMS4yMzUgMS4yMDYtMS4yMzUgMi45NDFzMS4yNjUgMi45NDEgMS40NDEgMy4xNzZjLjE3Ni4yMzUgMi40ODggMy43OTYgNi4wMjkgNS4zMjIuODQxLjM2MiAxLjQ5OC41NzggMi4wMDcuNzQxLjg1My4yNzIgMS42My4yMzQgMi4yNDQuMTQyLjY4NS0uMTAzIDIuMDg4LS44NTMgMi4zODItMS42NzYuMjk0LS48MjMuMjk0LTEuNTI9LjIwNi0xLjY3Ni0uMDg4LS4xNDctLjMyMy0uMjM1LS42NzYtLjQxMXoiLz48L3N2Zz4=`;
 
         const isRecovered = ['recovered', 'resolved'].includes(report.status);
         const statusText = isRecovered ? 'RECOVERED' : (report.status === 'active' || report.status === 'assigned' || report.status === 'in_progress' || report.status === 'on_scene' ? 'HIJACKED' : report.status.toUpperCase());
@@ -150,7 +163,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             <div xmlns="http://www.w3.org/1999/xhtml" style="width: 580px; height: 820px; background-color: #000000; font-family: Arial, sans-serif; display: flex; flex-direction: column; box-sizing: border-box;">
                 <!-- Header -->
                 <div style="background-color: #EF4444; padding: 15px 10px; text-align: center; border-bottom: 2px solid #991B1B;">
-                    <div style="font-size: 18px; font-weight: bold; color: #000000; margin-bottom: 5px;">WC Stolen & Hijacked Vehicles NPC</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #000000; margin-bottom: 5px;">Rapid 911 Rapid Rescue PTY (Ltd)</div>
                     <div style="font-size: 72px; font-weight: 900; color: #000000; font-family: 'Impact', sans-serif; line-height: 1; letter-spacing: 2px; text-transform: uppercase;">SOUGHT VEHICLE</div>
                 </div>
 
@@ -167,12 +180,12 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 <div style="display: flex; padding: 25px 30px; color: #FFFFFF; flex-grow: 1; justify-content: space-between;">
                     <!-- Left Column: Details -->
                     <div style="flex: 1; font-size: 28px; line-height: 1.4; font-family: 'Arial', sans-serif;">
-                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Status:</span> <span style="font-weight: bold;">${statusText}</span></div>
-                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Reg:</span> <span style="font-weight: bold;">${reg}</span></div>
-                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Make:</span> <span style="font-weight: bold;">${make}</span></div>
-                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Type:</span> <span style="font-weight: bold;">${model}</span></div>
-                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Colour:</span> <span style="font-weight: bold;">${color}</span></div>
-                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Case:</span> <span style="font-weight: bold;">${caseNumber}</span></div>
+                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Status:</span> <span style="font-weight: bold;">${escapeXml(statusText)}</span></div>
+                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Reg:</span> <span style="font-weight: bold;">${escapeXml(reg)}</span></div>
+                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Make:</span> <span style="font-weight: bold;">${escapeXml(make)}</span></div>
+                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Type:</span> <span style="font-weight: bold;">${escapeXml(model)}</span></div>
+                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Colour:</span> <span style="font-weight: bold;">${escapeXml(color)}</span></div>
+                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Case:</span> <span style="font-weight: bold;">${escapeXml(caseNumber)}</span></div>
                     </div>
 
                     <!-- Right Column: QR Codes -->
@@ -214,7 +227,10 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             </div>`;
 
         const svgString = `<svg width="580" height="820" xmlns="http://www.w3.org/2000/svg"><foreignObject width="580" height="820">${boloHtml}</foreignObject></svg>`;
-        const svgDataUrl = `data:image/svg+xml;base64,${btoa(encodeURIComponent(svgString).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))))}`;
+        
+        // Use Blob instead of base64 data URL to avoid size limits and encoding issues
+        const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
 
         const image = new Image();
         image.onload = () => {
@@ -232,14 +248,15 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 a.click();
                 document.body.removeChild(a);
             }
+            URL.revokeObjectURL(url);
             setIsGeneratingBolo(false);
         };
-        image.onerror = (e) => {
-            addToast("Failed to generate BOLO card image. Check console for errors.", 'error');
-            console.error("Image loading error for BOLO card.", e)
-            setIsGeneratingBolo(false);
+        image.onerror = () => { 
+            addToast("Failed to generate BOLO card image.", 'error'); 
+            URL.revokeObjectURL(url);
+            setIsGeneratingBolo(false); 
         }
-        image.src = svgDataUrl;
+        image.src = url;
     };
 
     return (
