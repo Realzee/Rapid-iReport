@@ -118,11 +118,15 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             }
         };
 
-        const loadImage = (src: string): Promise<HTMLImageElement> => {
-            return new Promise((resolve, reject) => {
+        const loadImage = (src: string): Promise<HTMLImageElement | null> => {
+            return new Promise((resolve) => {
                 const img = new Image();
+                img.crossOrigin = "anonymous";
                 img.onload = () => resolve(img);
-                img.onerror = (e) => reject(e);
+                img.onerror = () => {
+                    console.warn(`Failed to load image: ${src}`);
+                    resolve(null);
+                };
                 img.src = src;
             });
         };
