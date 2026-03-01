@@ -145,21 +145,26 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 mainImageDataUrl,
                 companyLogoDataUrl,
                 qrWwwDataUrl,
-                qrFbDataUrl
+                qrFbDataUrl,
+                whatsappDataUrl,
+                rapidLogoDataUrl
             ] = await Promise.all([
                 imageUrl ? fetchImageAsDataURL(imageUrl) : Promise.resolve(null),
                 companyLogoUrl ? fetchImageAsDataURL(companyLogoUrl) : Promise.resolve(null),
                 fetchImageAsDataURL(qrCodeWwwUrl),
-                fetchImageAsDataURL(qrCodeFbUrl)
+                fetchImageAsDataURL(qrCodeFbUrl),
+                fetchImageAsDataURL('https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg'),
+                fetchImageAsDataURL(logoUrl)
             ]);
 
             // 3. Load images into HTMLImageElements
-            const [mainImage, companyLogo, qrWww, qrFb, whatsappIcon] = await Promise.all([
+            const [mainImage, companyLogo, qrWww, qrFb, whatsappIcon, rapidLogo] = await Promise.all([
                 mainImageDataUrl ? loadImage(mainImageDataUrl) : Promise.resolve(null),
                 companyLogoDataUrl ? loadImage(companyLogoDataUrl) : loadImage(logoUrl),
                 qrWwwDataUrl ? loadImage(qrWwwDataUrl) : Promise.resolve(null),
                 qrFbDataUrl ? loadImage(qrFbDataUrl) : Promise.resolve(null),
-                loadImage(whatsappIconSvg)
+                whatsappDataUrl ? loadImage(whatsappDataUrl) : Promise.resolve(null),
+                rapidLogoDataUrl ? loadImage(rapidLogoDataUrl) : Promise.resolve(null)
             ]);
 
             // 4. Setup Canvas
@@ -298,18 +303,18 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
             // 9. Draw QR Codes
             const qrY = detailsY - 5;
-            const qrX = width - 30 - 100; // Right margin 30, width 100
+            const qrX = width - 30 - 80; // Right margin 30, width 80
             
             const drawQr = (img: HTMLImageElement | null, y: number) => {
                 ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(qrX - 5, y - 5, 110, 110); // White padding
+                ctx.fillRect(qrX - 5, y - 5, 90, 90); // White padding
                 if (img) {
-                    ctx.drawImage(img, qrX, y, 100, 100);
+                    ctx.drawImage(img, qrX, y, 80, 80);
                 }
             };
 
             drawQr(qrWww, qrY);
-            drawQr(qrFb, qrY + 120);
+            drawQr(qrFb, qrY + 100);
 
             // 10. Draw Footer
             const footerY = height - 160;
@@ -370,9 +375,22 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             ctx.fillText(contactNumber, width / 2, bottomY + 30);
 
             // Copyright
+            const copyrightY = height - 15;
             ctx.font = '12px Arial, sans-serif';
+            const copyrightText = `Copyright © ${new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)`;
+            const textMetrics = ctx.measureText(copyrightText);
+            const logoH = 16;
+            const logoW = rapidLogo ? (rapidLogo.width / rapidLogo.height) * logoH : 0;
+            const gap = 5;
+            const totalContentWidth = logoW + gap + textMetrics.width;
+            const startX = (width - totalContentWidth) / 2;
+
+            if (rapidLogo) {
+                ctx.drawImage(rapidLogo, startX, copyrightY - 12, logoW, logoH);
+            }
             ctx.fillStyle = '#AAAAAA';
-            ctx.fillText('© 2025 Rapid 911. All Rights Reserved.', width / 2, height - 10);
+            ctx.textAlign = 'left';
+            ctx.fillText(copyrightText, startX + logoW + gap, copyrightY);
 
             // 11. Export
             const pngUrl = canvas.toDataURL('image/png');
