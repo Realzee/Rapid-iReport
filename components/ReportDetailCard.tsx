@@ -136,7 +136,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         const imageAsDataUrl = imageUrl ? await fetchImageAsDataURL(imageUrl) : null;
         
         const companyLogoUrl = profile.company?.logo_url;
-        const companyLogoAsDataUrl = companyLogoUrl ? await fetchImageAsDataURL(companyLogoUrl) : logoUrl;
+        const fetchedLogo = companyLogoUrl ? await fetchImageAsDataURL(companyLogoUrl) : null;
+        const companyLogoAsDataUrl = fetchedLogo || logoUrl;
 
         // Generate QR Codes (Placeholders pointing to generic URLs as we don't have specific ones)
         const qrCodeWwwUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('https://navic.cloud')}`;
@@ -191,10 +192,10 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     <!-- Right Column: QR Codes -->
                     <div style="width: 140px; display: flex; flex-direction: column; gap: 15px; align-items: center; justify-content: flex-start; padding-top: 5px;">
                         <div style="background: white; padding: 5px; border-radius: 4px;">
-                            <img src="${qrWwwDataUrl}" style="width: 120px; height: 120px; display: block;" />
+                            ${qrWwwDataUrl ? `<img src="${qrWwwDataUrl}" style="width: 120px; height: 120px; display: block;" />` : ''}
                         </div>
                         <div style="background: white; padding: 5px; border-radius: 4px;">
-                            <img src="${qrFbDataUrl}" style="width: 120px; height: 120px; display: block;" />
+                            ${qrFbDataUrl ? `<img src="${qrFbDataUrl}" style="width: 120px; height: 120px; display: block;" />` : ''}
                         </div>
                     </div>
                 </div>
@@ -207,7 +208,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
                         <!-- Left Logo -->
                         <div style="width: 120px; height: 70px; background: #000; border: 1px solid #333; display: flex; align-items: center; justify-content: center; border-radius: 8px; overflow: hidden;">
-                             <img src="${companyLogoAsDataUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+                             ${companyLogoAsDataUrl ? `<img src="${companyLogoAsDataUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />` : ''}
                         </div>
 
                         <!-- Center Contact -->
@@ -220,7 +221,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
                         <!-- Right Logo -->
                         <div style="width: 120px; height: 70px; background: #000; border: 1px solid #333; display: flex; align-items: center; justify-content: center; border-radius: 8px; overflow: hidden;">
-                             <img src="${companyLogoAsDataUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+                             ${companyLogoAsDataUrl ? `<img src="${companyLogoAsDataUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />` : ''}
                         </div>
                     </div>
                 </div>
@@ -233,6 +234,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         const url = URL.createObjectURL(blob);
 
         const image = new Image();
+        image.crossOrigin = "Anonymous";
         image.onload = () => {
             const canvas = document.createElement('canvas');
             canvas.width = 580;
@@ -240,13 +242,18 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             const ctx = canvas.getContext('2d');
             if (ctx) {
                 ctx.drawImage(image, 0, 0);
-                const pngUrl = canvas.toDataURL('image/png');
-                const a = document.createElement('a');
-                a.href = pngUrl;
-                a.download = `bolo-${report.ob_number.replace(/\//g, '-')}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                try {
+                    const pngUrl = canvas.toDataURL('image/png');
+                    const a = document.createElement('a');
+                    a.href = pngUrl;
+                    a.download = `bolo-${report.ob_number.replace(/\//g, '-')}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                } catch (e) {
+                    console.error("Error exporting canvas:", e);
+                    addToast("Security Error: Unable to export BOLO card. This may be due to cross-origin images.", 'error');
+                }
             }
             URL.revokeObjectURL(url);
             setIsGeneratingBolo(false);

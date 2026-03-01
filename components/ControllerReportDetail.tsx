@@ -276,10 +276,10 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         const imageAsDataUrl = imageUrl ? await fetchImageAsDataURL(imageUrl) : null;
         
         const companyLogoUrl = profile.company?.logo_url;
-        const companyLogoAsDataUrl = companyLogoUrl ? await fetchImageAsDataURL(companyLogoUrl) : logoUrl;
+        const fetchedLogo = companyLogoUrl ? await fetchImageAsDataURL(companyLogoUrl) : null;
+        const companyLogoAsDataUrl = fetchedLogo || logoUrl;
 
         // Generate QR Codes (Placeholders pointing to generic URLs as we don't have specific ones)
-        // In a real app, these would point to the specific report URL or social media post
         const qrCodeWwwUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('https://navic.cloud')}`;
         const qrCodeFbUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('https://facebook.com')}`;
         
@@ -289,7 +289,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         ]);
 
         // WhatsApp Icon SVG Data URL
-        const whatsappIconSvg = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzI1ZDM2NiI+PHBhdGggZD0iTTE3LjQ3MiAzLjQ3OGMtMi42Ny0yLjY3MS02LjIyOC00LjEzMS0xMC4wOC00LjEzMWMtNy44NTMgMC0xNC4yNDEgNi4zODgtMTQuMjQxIDE0LjI0MmMwIDIuNTA4LjY1NSA0Ljk1NCAxLjg5OSA3LjEyM2wtMi4wMTkgNy4zNzIgNy41NDMtMS45NzhjMi4wNzcuMTEzMyA0LjQxNSAxLjczOCA2LjgxNiAxLjczOHYtLjAwMWg1LjQ1OGU3Ljg1NSAwIDE0LjI0NS02LjM5IDE0LjI0NS0xNC4yNDVjMC0zLjgwNC0xLjQ4LTYuMzc2LTQuMTQ0LTkuMDU2em0tMTAuMDggMjEuMjc1Yy0yLjExNSAwLTQuMTg4LS41Ny01Ljk5Ny0xLjYzM2wtLjQyOS0uMjUxLTQuNDU3IDEuMTY5IDEuMTg5LTQuMzQ1LS4yNzgtLjQ0MmMtMS4xNzQtMS44NjUtMS43OTMtNC4wMzEtMS43OTMtNi4yNDcgMC02LjQ5MyA1LjI4My0xMS43NzYgMTEuNzc4LTExLjc3NiA2LjQ5MSAwIDExLjc3NCA1LjI4MyAxMS43NzQgMTEuNzc2IDAgNi40OTUtNS4yODMgMTEuNzc4LTExLjc3OCAxMS43Nzh6bTYuNDQxLTguODI2Yy0uMzUzLS4xNzctMi4wODgtMS4wMjgtMi40MTEtMS4xNDctLjMyMy0uMTE4LS41NTktLjE3Ni0uNzk0LjE3Ni0uMjM1LjM1My0uOTEyIDEuMTQ3LTEuMTE4IDEuMzc5LS4yMDYuMjM1LS40MTIuMjY1LS43NjUuMDg4LS4zNTMtLjE3Ni0xLjQ5MS0uNTUtMi44MzktMS43NTItMS4wNDUtLjkzMi0xLjc1MS0yLjA4My0xLjk1Ni0yLjQzNS0uMjA2LS4zNTMtLjAyMi0uNTQ0LjE1NC0uNzIyLjE1OC0uMTU5LjM1My0uNDEyLjUyOS0uNjE4LjE3Ni0uMjA2LjIzNS0uMzUzLjM1My0uNTg4LjExOC0uMjM1LjA1OS0uNDQxLS4wMjktLjYxOC0uMDg4LS4xNzYtLjc5NC0xLjkxMi0xLjA4OC0yLjYxOC0uMjg3LS42ODUtLjU4MS0uNTkzLS43OTQtLjYwM2wtLjY3Ni0uMDE1Yy0uMjM1IDAtLjYxOC4wODgtLjk0MS40NDEtLjMyMy4zNTMtMS4yMzUgMS4yMDYtMS4yMzUgMi45NDFzMS4yNjUgMi45NDEgMS40NDEgMy4xNzZjLjE3Ni4yMzUgMi40ODggMy43OTYgNi4wMjkgNS4zMjIuODQxLjM2MiAxLjQ5OC41NzggMi4wMDcuNzQxLjg1My4yNzIgMS42My4yMzQgMi4yNDQuMTQyLjY4NS0uMTAzIDIuMDg4LS44NTMgMi4zODItMS42NzYuMjk0LS44MjMuMjk0LTEuNTI9LjIwNi0xLjY3Ni0uMDg4LS4xNDctLjMyMy0uMjM1LS42NzYtLjQxMXoiLz48L3N2Zz4=`;
+        const whatsappIconSvg = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzI1ZDM2NiI+PHBhdGggZD0iTTE3LjQ3MiAzLjQ3OGMtMi42Ny0yLjY3MS02LjIyOC00LjEzMS0xMC4wOC00LjEzMWMtNy44NTMgMC0xNC4yNDEgNi4zODgtMTQuMjQxIDE0LjI0MmMwIDIuNTA4LjY1NSA0Ljk1NCAxLjg5OSA3LjEyM2wtMi4wMTkgNy4zNzIgNy41NDMtMS45NzhjMi4wNzcuMTEzMyA0LjQxNSAxLjczOCA2LjgxNiAxLjczOHYtLjAwMWg1LjQ1OGU3Ljg1NSAwIDE0LjI0NS02LjM5IDE0LjI0NS0xNC4yNDVjMC0zLjgwNC0xLjQ4LTYuMzc2LTQuMTQ0LTkuMDU2em0tMTAuMDggMjEuMjc1Yy0yLjExNSAwLTQuMTg4LS41Ny01Ljk5Ny0xLjYzM2wtLjQyOS0uMjUxLTQuNDU3IDEuMTY5IDEuMTg5LTQuMzQ1LS4yNzgtLjQ0MmMtMS4xNzQtMS44NjUtMS43OTMtNC4wMzEtMS43OTMtNi4yNDcgMC02LjQ5MyA1LjI4My0xMS43NzYgMTEuNzc4LTExLjc3NiA2LjQ5MSAwIDExLjc3NCA1LjI4MyAxMS43NzQgMTEuNzc2IDAgNi40OTUtNS4yODMgMTEuNzc4LTExLjc3OCAxMS43Nzh6bTYuNDQxLTguODI2Yy0uMzUzLS4xNzctMi4wODgtMS4wMjgtMi40MTEtMS4xNDctLjMyMy0uMTE4LS41NTktLjE3Ni0uNzk0LjE3Ni0uMjM1LjM1My0uOTEyIDEuMTQ3LTEuMTE4IDEuMzc5LS4yMDYuMjM1LS40MTIuMjY1LS43NjUuMDg4LS4zNTMtLjE3Ni0xLjQ5MS0uNTUtMi44MzktMS43NTItMS4wNDUtLjkzMi0xLjc1MS0yLjA4My0xLjk1Ni0yLjQzNS0uMjA2LS4zNTMtLjAyMi0uNTQ0LjE1NC0uNzIyLjE1OC0uMTU5LjM1My0uNDEyLjUyOS0uNjE4LjE3Ni0uMjA2LjIzNS0uMzUzLjM1My0uNTg4LjExOC0uMjM1LjA1OS0uNDQxLS4wMjktLjYxOC0uMDg4LS4xNzYtLjc5NC0xLjkxMi0xLjA4OC0yLjYxOC0uMjg3LS42ODUtLjU4MS0uNTkzLS43OTQtLjYwM2wtLjY3Ni0uMDE1Yy0uMjM1IDAtLjYxOC4wODgtLjk0MS40NDEtLjMyMy4zNTMtMS4yMzUgMS4yMDYtMS4yMzUgMi45NDFzMS4yNjUgMi45NDEgMS40NDEgMy4xNzZjLjE3Ni4yMzUgMi40ODggMy43OTYgNi4wMjkgNS4zMjIuODQxLjM2MiAxLjQ5OC41NzggMi4wMDcuNzQxLjg1My4yNzIgMS42My4yMzQgMi4yNDQuMTQyLjY4NS0uMTAzIDIuMDg4LS44NTMgMi4zODItMS42NzYuMjk0LS48MjMuMjk0LTEuNTI9LjIwNi0xLjY3Ni0uMDg4LS4xNDctLjMyMy0uMjM1LS42NzYtLjQxMXoiLz48L3N2Zz4=`;
 
         const isRecovered = ['recovered', 'resolved'].includes(report.status);
         const statusText = isRecovered ? 'RECOVERED' : (report.status === 'active' || report.status === 'assigned' || report.status === 'in_progress' || report.status === 'on_scene' ? 'HIJACKED' : report.status.toUpperCase());
@@ -332,10 +332,10 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     <!-- Right Column: QR Codes -->
                     <div style="width: 140px; display: flex; flex-direction: column; gap: 15px; align-items: center; justify-content: flex-start; padding-top: 5px;">
                         <div style="background: white; padding: 5px; border-radius: 4px;">
-                            <img src="${qrWwwDataUrl}" style="width: 120px; height: 120px; display: block;" />
+                            ${qrWwwDataUrl ? `<img src="${qrWwwDataUrl}" style="width: 120px; height: 120px; display: block;" />` : ''}
                         </div>
                         <div style="background: white; padding: 5px; border-radius: 4px;">
-                            <img src="${qrFbDataUrl}" style="width: 120px; height: 120px; display: block;" />
+                            ${qrFbDataUrl ? `<img src="${qrFbDataUrl}" style="width: 120px; height: 120px; display: block;" />` : ''}
                         </div>
                     </div>
                 </div>
@@ -348,7 +348,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
                         <!-- Left Logo -->
                         <div style="width: 120px; height: 70px; background: #000; border: 1px solid #333; display: flex; align-items: center; justify-content: center; border-radius: 8px; overflow: hidden;">
-                             <img src="${companyLogoAsDataUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+                             ${companyLogoAsDataUrl ? `<img src="${companyLogoAsDataUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />` : ''}
                         </div>
 
                         <!-- Center Contact -->
@@ -361,7 +361,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
                         <!-- Right Logo -->
                         <div style="width: 120px; height: 70px; background: #000; border: 1px solid #333; display: flex; align-items: center; justify-content: center; border-radius: 8px; overflow: hidden;">
-                             <img src="${companyLogoAsDataUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+                             ${companyLogoAsDataUrl ? `<img src="${companyLogoAsDataUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />` : ''}
                         </div>
                     </div>
                 </div>
@@ -374,6 +374,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         const url = URL.createObjectURL(blob);
 
         const image = new Image();
+        image.crossOrigin = "Anonymous";
         image.onload = () => {
             const canvas = document.createElement('canvas');
             canvas.width = 580;
@@ -381,13 +382,18 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             const ctx = canvas.getContext('2d');
             if (ctx) {
                 ctx.drawImage(image, 0, 0);
-                const pngUrl = canvas.toDataURL('image/png');
-                const a = document.createElement('a');
-                a.href = pngUrl;
-                a.download = `bolo-${report.ob_number.replace(/\//g, '-')}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                try {
+                    const pngUrl = canvas.toDataURL('image/png');
+                    const a = document.createElement('a');
+                    a.href = pngUrl;
+                    a.download = `bolo-${report.ob_number.replace(/\//g, '-')}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                } catch (e) {
+                    console.error("Error exporting canvas:", e);
+                    addToast("Security Error: Unable to export BOLO card. This may be due to cross-origin images.", 'error');
+                }
             }
             URL.revokeObjectURL(url);
             setIsGeneratingBolo(false);
