@@ -122,59 +122,105 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         const imageUrl = report.evidence_images && report.evidence_images.length > 0 ? report.evidence_images[0] : null;
         const imageAsDataUrl = imageUrl ? await fetchImageAsDataURL(imageUrl) : null;
         
-        const companyName = profile.company?.name || '';
         const companyLogoUrl = profile.company?.logo_url;
         const companyLogoAsDataUrl = companyLogoUrl ? await fetchImageAsDataURL(companyLogoUrl) : logoUrl;
 
-        const reportImageHtml = imageAsDataUrl
-            ? `<img src="${imageAsDataUrl}" alt="Evidence" style="width: 100%; height: 100%; object-fit: cover;" />`
-            : `<span style="color: #9CA3AF; font-size: 16px;">No Image Available</span>`;
+        // Generate QR Codes (Placeholders pointing to generic URLs as we don't have specific ones)
+        const qrCodeWwwUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('https://navic.cloud')}`;
+        const qrCodeFbUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('https://facebook.com')}`;
         
-        const vehicleDetailsHtml = report.type === 'vehicle' ? `
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Make</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${(report as any).vehicle_make}</p></div>
-                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Model</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${(report as any).vehicle_model}</p></div>
-                <div><p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 500;">Color</p><p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 700; color: #111827;">${(report as any).vehicle_color}</p></div>
-            </div>
-        ` : '';
+        const [qrWwwDataUrl, qrFbDataUrl] = await Promise.all([
+            fetchImageAsDataURL(qrCodeWwwUrl),
+            fetchImageAsDataURL(qrCodeFbUrl)
+        ]);
+
+        // WhatsApp Icon SVG Data URL
+        const whatsappIconSvg = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzI1ZDM2NiI+PHBhdGggZD0iTTE3LjQ3MiAzLjQ3OGMtMi42Ny0yLjY3MS02LjIyOC00LjEzMS0xMC4wOC00LjEzMWMtNy44NTMgMC0xNC4yNDEgNi4zODgtMTQuMjQxIDE0LjI0MmMwIDIuNTA4LjY1NSA0Ljk1NCAxLjg5OSA3LjEyM2wtMi4wMTkgNy4zNzIgNy41NDMtMS45NzhjMi4wNzcuMTEzMyA0LjQxNSAxLjczOCA2LjgxNiAxLjczOHYtLjAwMWg1LjQ1OGU3Ljg1NSAwIDE0LjI0NS02LjM5IDE0LjI0NS0xNC4yNDVjMC0zLjgwNC0xLjQ4LTYuMzc2LTQuMTQ0LTkuMDU2em0tMTAuMDggMjEuMjc1Yy0yLjExNSAwLTQuMTg4LS41Ny01Ljk5Ny0xLjYzM2wtLjQyOS0uMjUxLTQuNDU3IDEuMTY5IDEuMTg5LTQuMzQ1LS4yNzgtLjQ0MmMtMS4xNzQtMS44NjUtMS43OTMtNC4wMzEtMS43OTMtNi4yNDcgMC02LjQ5MyA1LjI4My0xMS43NzYgMTEuNzc4LTExLjc3NiA2LjQ5MSAwIDExLjc3NCA1LjI4MyAxMS43NzQgMTEuNzc2IDAgNi40OTUtNS4yODMgMTEuNzc4LTExLjc3OCAxMS43Nzh6bTYuNDQxLTguODI2Yy0uMzUzLS4xNzctMi4wODgtMS4wMjgtMi40MTEtMS4xNDctLjMyMy0uMTE4LS41NTktLjE3Ni0uNzk0LjE3Ni0uMjM1LjM1My0uOTEyIDEuMTQ3LTEuMTE4IDEuMzc5LS4yMDYuMjM1LS40MTIuMjY1LS43NjUuMDg4LS4zNTMtLjE3Ni0xLjQ5MS0uNTUtMi44MzktMS43NTItMS4wNDUtLjkzMi0xLjc1MS0yLjA4My0xLjk1Ni0yLjQzNS0uMjA2LS4zNTMtLjAyMi0uNTQ0LjE1NC0uNzIyLjE1OC0uMTU5LjM1My0uNDEyLjUyOS0uNjE4LjE3Ni0uMjA2LjIzNS0uMzUzLjM1My0uNTg4LjExOC0uMjM1LjA1OS0uNDQxLS4wMjktLjYxOC0uMDg4LS4xNzYtLjc5NC0xLjkxMi0xLjA4OC0yLjYxOC0uMjg3LS42ODUtLjU4MS0uNTkzLS43OTQtLjYwM2wtLjY3Ni0uMDE1Yy0uMjM1IDAtLjYxOC4wODgtLjk0MS40NDEtLjMyMy4zNTMtMS4yMzUgMS4yMDYtMS4yMzUgMi45NDFzMS4yNjUgMi45NDEgMS40NDEgMy4xNzZjLjE3Ni4yMzUgMi40ODggMy43OTYgNi4wMjkgNS4zMjIuODQxLjM2MiAxLjQ5OC41NzggMi4wMDcuNzQxLjg1My4yNzIgMS42My4yMzQgMi4yNDQuMTQyLjY4NS0uMTAzIDIuMDg4LS44NTMgMi4zODItMS42NzYuMjk0LS44MjMuMjk0LTEuNTI9LjIwNi0xLjY3Ni0uMDg4LS4xNDctLjMyMy0uMjM1LS42NzYtLjQxMXoiLz48L3N2Zz4=`;
+
+        const isRecovered = ['recovered', 'resolved'].includes(report.status);
+        const statusText = isRecovered ? 'RECOVERED' : (report.status === 'active' || report.status === 'assigned' || report.status === 'in_progress' || report.status === 'on_scene' ? 'HIJACKED' : report.status.toUpperCase());
+        
+        const reg = report.type === 'vehicle' ? (report as any).license_plate : 'N/A';
+        const make = report.type === 'vehicle' ? (report as any).vehicle_make : 'N/A';
+        const model = report.type === 'vehicle' ? (report as any).vehicle_model : 'N/A';
+        const color = report.type === 'vehicle' ? (report as any).vehicle_color : 'N/A';
+        const caseNumber = report.cas_number ? `${report.station_name || ''} ${report.cas_number}` : 'N/A';
 
         const boloHtml = `
-            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; flex-direction: column; width: 380px; height: 580px; background-color: #FFFFFF; color: #111827; border-radius: 12px; padding: 20px; border: 1px solid #E5E7EB; box-sizing: border-box; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #EF4444; padding-bottom: 12px; margin-bottom: 12px;">
-                    <h1 style="font-size: 28px; font-weight: 700; color: #EF4444; margin: 0; text-transform: uppercase;">BOLO Alert</h1>
-                    <div style="text-align: right;">
-                        <img src="${companyLogoAsDataUrl}" alt="Logo" style="width: 120px; height: auto; object-fit: contain; margin-bottom: 4px;" />
-                        ${companyName ? `<p style="margin: 0; font-weight: 700; font-size: 14px; color: #111827;">${companyName}</p>` : ''}
+            <div xmlns="http://www.w3.org/1999/xhtml" style="width: 580px; height: 820px; background-color: #000000; font-family: Arial, sans-serif; display: flex; flex-direction: column; box-sizing: border-box;">
+                <!-- Header -->
+                <div style="background-color: #EF4444; padding: 15px 10px; text-align: center; border-bottom: 2px solid #991B1B;">
+                    <div style="font-size: 18px; font-weight: bold; color: #000000; margin-bottom: 5px;">WC Stolen & Hijacked Vehicles NPC</div>
+                    <div style="font-size: 72px; font-weight: 900; color: #000000; font-family: 'Impact', sans-serif; line-height: 1; letter-spacing: 2px; text-transform: uppercase;">SOUGHT VEHICLE</div>
+                </div>
+
+                <!-- Image Area -->
+                <div style="position: relative; width: 100%; height: 400px; background-color: #333333; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                    ${imageAsDataUrl 
+                        ? `<img src="${imageAsDataUrl}" style="width: 100%; height: 100%; object-fit: cover;" />` 
+                        : `<div style="color: #666; font-size: 24px; font-weight: bold;">NO IMAGE AVAILABLE</div>`
+                    }
+                    ${isRecovered ? `<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #FFFF00; font-size: 90px; font-weight: 900; font-family: 'Impact', sans-serif; text-shadow: 4px 4px 8px #000000; letter-spacing: 5px; z-index: 10; border: 4px solid #000; padding: 0 20px; background-color: rgba(0,0,0,0.3);">RECOVERED</div>` : ''}
+                </div>
+
+                <!-- Details Section -->
+                <div style="display: flex; padding: 25px 30px; color: #FFFFFF; flex-grow: 1; justify-content: space-between;">
+                    <!-- Left Column: Details -->
+                    <div style="flex: 1; font-size: 28px; line-height: 1.4; font-family: 'Arial', sans-serif;">
+                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Status:</span> <span style="font-weight: bold;">${statusText}</span></div>
+                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Reg:</span> <span style="font-weight: bold;">${reg}</span></div>
+                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Make:</span> <span style="font-weight: bold;">${make}</span></div>
+                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Type:</span> <span style="font-weight: bold;">${model}</span></div>
+                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Colour:</span> <span style="font-weight: bold;">${color}</span></div>
+                        <div style="margin-bottom: 8px;"><span style="font-weight: normal;">Case:</span> <span style="font-weight: bold;">${caseNumber}</span></div>
+                    </div>
+
+                    <!-- Right Column: QR Codes -->
+                    <div style="width: 140px; display: flex; flex-direction: column; gap: 15px; align-items: center; justify-content: flex-start; padding-top: 5px;">
+                        <div style="background: white; padding: 5px; border-radius: 4px;">
+                            <img src="${qrWwwDataUrl}" style="width: 120px; height: 120px; display: block;" />
+                        </div>
+                        <div style="background: white; padding: 5px; border-radius: 4px;">
+                            <img src="${qrFbDataUrl}" style="width: 120px; height: 120px; display: block;" />
+                        </div>
                     </div>
                 </div>
-                <div style="width: 100%; height: 200px; background-color: #F3F4F6; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #E5E7EB;">
-                    ${reportImageHtml}
-                </div>
-                <div style="background-color: #F3F4F6; padding: 12px; border-radius: 8px; margin-bottom: 16px; text-align: center; border: 1px solid #E5E7EB;">
-                    <p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">${report.type === 'vehicle' ? 'License Plate' : (report.type === 'accident' ? 'Accident' : 'Incident')}</p>
-                    <p style="margin: 4px 0 0 0; font-size: 28px; font-weight: 700; letter-spacing: 2px; color: #1E40AF;">${report.type === 'vehicle' ? (report as any).license_plate : report.title}</p>
-                </div>
-                ${vehicleDetailsHtml}
-                <div style="flex-grow: 1; min-height: 50px;">
-                    <p style="margin: 0; font-size: 12px; color: #6B7280; text-transform: uppercase; margin-bottom: 6px; font-weight: 500;">Details</p>
-                    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #374151; max-height: 60px; overflow: hidden;">
-                        ${report.description}
-                    </p>
-                </div>
-                <div style="border-top: 1px solid #E5E7EB; padding-top: 12px; margin-top: auto; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #9CA3AF; font-family: monospace;">
-                    <span>OB: ${report.ob_number}</span>
-                    <span>${format(new Date(report.reported_at), 'yyyy-MM-dd HH:mm')}</span>
+
+                <!-- Footer -->
+                <div style="text-align: center; color: #FFFFFF; padding: 10px 20px 25px 20px; margin-top: auto;">
+                    <div style="font-size: 18px; margin-bottom: 15px; font-weight: 500;">If spotted please contact SAPS Crime Stop on 08600<br/>10111 or your nearest SAPS Station</div>
+                    <div style="font-size: 22px; font-weight: bold; font-family: serif; margin-bottom: 25px;">"Working TOGETHER we are STRONGER"</div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
+                        <!-- Left Logo -->
+                        <div style="width: 120px; height: 70px; background: #000; border: 1px solid #333; display: flex; align-items: center; justify-content: center; border-radius: 8px; overflow: hidden;">
+                             <img src="${companyLogoAsDataUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+                        </div>
+
+                        <!-- Center Contact -->
+                        <div style="text-align: center;">
+                            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 5px;">
+                                 <img src="${whatsappIconSvg}" style="width: 50px; height: 50px;" />
+                            </div>
+                            <div style="font-size: 28px; font-weight: bold;">062 031 3134</div>
+                        </div>
+
+                        <!-- Right Logo -->
+                        <div style="width: 120px; height: 70px; background: #000; border: 1px solid #333; display: flex; align-items: center; justify-content: center; border-radius: 8px; overflow: hidden;">
+                             <img src="${companyLogoAsDataUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+                        </div>
+                    </div>
                 </div>
             </div>`;
 
-        const svgString = `<svg width="400" height="600" xmlns="http://www.w3.org/2000/svg"><foreignObject width="400" height="600">${boloHtml}</foreignObject></svg>`;
+        const svgString = `<svg width="580" height="820" xmlns="http://www.w3.org/2000/svg"><foreignObject width="580" height="820">${boloHtml}</foreignObject></svg>`;
         const svgDataUrl = `data:image/svg+xml;base64,${btoa(encodeURIComponent(svgString).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))))}`;
 
         const image = new Image();
         image.onload = () => {
             const canvas = document.createElement('canvas');
-            canvas.width = 400;
-            canvas.height = 600;
+            canvas.width = 580;
+            canvas.height = 820;
             const ctx = canvas.getContext('2d');
             if (ctx) {
                 ctx.drawImage(image, 0, 0);
@@ -190,7 +236,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         };
         image.onerror = (e) => {
             addToast("Failed to generate BOLO card image. Check console for errors.", 'error');
-            console.error("Image loading error for BOLO card. This could be due to a malformed data URL or browser security policies.", e)
+            console.error("Image loading error for BOLO card.", e)
             setIsGeneratingBolo(false);
         }
         image.src = svgDataUrl;
