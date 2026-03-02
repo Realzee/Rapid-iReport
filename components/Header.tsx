@@ -7,6 +7,7 @@ import ThemeToggle from './ThemeToggle';
 import NotificationsPanel from './NotificationsPanel';
 import PTTModal from './PTTModal';
 import LedClock from './LedClock';
+import { updateFaviconBadge, updateDocumentTitle, playNotificationSound } from '../utils/notificationUtils';
 
 interface HeaderProps {
     currentView: string;
@@ -21,13 +22,43 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isPTTModalOpen, setIsPTTModalOpen] = useState(false);
-  const { mainLogoUrl } = useSettings();
+  const { mainLogoUrl, faviconUrl } = useSettings();
 
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const prevUnreadCount = useRef(0);
   
   const unreadCount = useMemo(() => notifications.filter(n => !n.is_read).length, [notifications]);
   const canAccessAdminPages = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
+
+  // Handle notification enhancements (Favicon, Title, Sound)
+  useEffect(() => {
+    // Update Document Title
+    updateDocumentTitle(unreadCount);
+
+    // Update Favicon Badge
+    if (faviconUrl) {
+        updateFaviconBadge(unreadCount, faviconUrl);
+    }
+
+    // Play Sound on new unread notifications
+    if (unreadCount > prevUnreadCount.current) {
+        playNotificationSound();
+    }
+    
+    prevUnreadCount.current = unreadCount;
+  }, [unreadCount, faviconUrl]);
+
+  // Cleanup on unmount (e.g. logout)
+  useEffect(() => {
+    return () => {
+       if (faviconUrl) {
+           const link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+           if (link) link.href = faviconUrl;
+       }
+       document.title = 'Rapid iReport';
+    };
+  }, [faviconUrl]);
 
   useEffect(() => {
     if (!profile) return;
