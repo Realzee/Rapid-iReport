@@ -173,7 +173,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             if (!ctx) throw new Error("Could not get canvas context");
 
             const width = 580;
-            const height = 820;
+            const height = 900;
             canvas.width = width;
             canvas.height = height;
 
@@ -194,12 +194,11 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             // Header Text
             ctx.fillStyle = '#000000';
             ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
             
-            ctx.font = 'bold 18px Arial, sans-serif';
-            ctx.fillText('Rapid 911 Rapid Rescue PTY (Ltd)', width / 2, 35);
-
-            ctx.font = '900 72px Impact, sans-serif';
-            ctx.fillText('SOUGHT VEHICLE', width / 2, 95);
+            ctx.font = '900 60px Impact, sans-serif';
+            ctx.fillText('SOUGHT VEHICLE', width / 2, 110 / 2);
+            ctx.textBaseline = 'alphabetic';
 
             // 7. Draw Main Image Area
             const imgY = 110;
@@ -283,7 +282,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             const make = report.type === 'vehicle' ? (report as any).vehicle_make : 'N/A';
             const model = report.type === 'vehicle' ? (report as any).vehicle_model : 'N/A';
             const color = report.type === 'vehicle' ? (report as any).vehicle_color : 'N/A';
-            const caseNumber = report.cas_number ? `${report.station_name || ''} ${report.cas_number}` : 'N/A';
+            const caseNumber = report.cas_number || 'N/A';
+            const stationName = report.station_name || 'N/A';
 
             const drawField = (label: string, value: string, y: number) => {
                 ctx.font = 'normal 24px Arial, sans-serif';
@@ -300,6 +300,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             drawField('Type:', model, detailsY + lineHeight * 3);
             drawField('Colour:', color, detailsY + lineHeight * 4);
             drawField('Case:', caseNumber, detailsY + lineHeight * 5);
+            drawField('Station:', stationName, detailsY + lineHeight * 6);
 
             // 9. Draw QR Codes
             const qrY = detailsY - 5;
@@ -326,7 +327,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             ctx.fillText('10111 or your nearest SAPS Station', width / 2, footerY + 22);
 
             ctx.font = 'bold 22px serif';
-            ctx.fillText('"Smarter Choice"', width / 2, footerY + 60);
+            ctx.fillText('"The Smarter Choice"', width / 2, footerY + 60);
 
             // Logos and Contact
             const bottomY = height - 80;
@@ -366,31 +367,41 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             drawLogo(companyLogo, 20);
 
             // Center Contact
-            if (whatsappIcon) {
-                ctx.drawImage(whatsappIcon, width / 2 - 25, bottomY - 45, 50, 50);
-            }
             ctx.font = 'bold 28px Arial, sans-serif';
-            ctx.fillStyle = '#FFFFFF';
             const contactNumber = profile.company?.cell_number || '062 031 3134';
-            ctx.fillText(contactNumber, width / 2, bottomY + 30);
+            
+            const iconSize = 32;
+            const iconPadding = 10;
+            const textMetrics = ctx.measureText(contactNumber);
+            const totalWidth = iconSize + iconPadding + textMetrics.width;
+            const startX = (width - totalWidth) / 2;
+            const contactY = bottomY + 10;
+
+            if (whatsappIcon) {
+                ctx.drawImage(whatsappIcon, startX, contactY - 24, iconSize, iconSize);
+            }
+            
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'left';
+            ctx.fillText(contactNumber, startX + iconSize + iconPadding, contactY);
 
             // Copyright
             const copyrightY = height - 15;
             ctx.font = '12px Arial, sans-serif';
             const copyrightText = `Copyright © ${new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)`;
-            const textMetrics = ctx.measureText(copyrightText);
+            const copyrightMetrics = ctx.measureText(copyrightText);
             const logoH = 16;
             const logoW = rapidLogo ? (rapidLogo.width / rapidLogo.height) * logoH : 0;
             const gap = 5;
-            const totalContentWidth = logoW + gap + textMetrics.width;
-            const startX = (width - totalContentWidth) / 2;
+            const totalContentWidth = logoW + gap + copyrightMetrics.width;
+            const copyrightStartX = (width - totalContentWidth) / 2;
 
             if (rapidLogo) {
-                ctx.drawImage(rapidLogo, startX, copyrightY - 12, logoW, logoH);
+                ctx.drawImage(rapidLogo, copyrightStartX, copyrightY - 12, logoW, logoH);
             }
             ctx.fillStyle = '#AAAAAA';
             ctx.textAlign = 'left';
-            ctx.fillText(copyrightText, startX + logoW + gap, copyrightY);
+            ctx.fillText(copyrightText, copyrightStartX + logoW + gap, copyrightY);
 
             // 11. Export
             const pngUrl = canvas.toDataURL('image/png');
