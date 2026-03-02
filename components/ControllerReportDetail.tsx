@@ -239,7 +239,11 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         else addToast('Report successfully moved to archives.', 'success');
     };
 
-    const generateBoloImage = async () => {
+    const handleShareWhatsApp = () => {
+        generateBoloImage('share');
+    };
+
+    const generateBoloImage = async (action: 'download' | 'share' = 'download') => {
         setIsGeneratingBolo(true);
 
         const fetchImageAsDataURL = async (url: string) => {
@@ -545,15 +549,64 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             ctx.fillText(copyrightText, copyrightStartX + logoW + gap, copyrightY);
 
             // 11. Export
-            const pngUrl = canvas.toDataURL('image/png');
-            const a = document.createElement('a');
-            a.href = pngUrl;
-            a.download = `bolo-${report.ob_number.replace(/\//g, '-')}.png`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            canvas.toBlob(async (blob) => {
+                if (!blob) {
+                    setIsGeneratingBolo(false);
+                    return;
+                }
 
-            setIsGeneratingBolo(false);
+                if (action === 'download') {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `bolo-${report.ob_number.replace(/\//g, '-')}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    addToast('BOLO card downloaded successfully', 'success');
+                } else if (action === 'share') {
+                    const filename = `bolo-${report.ob_number.replace(/\//g, '-')}.png`;
+                    const file = new File([blob], filename, { type: 'image/png' });
+                    const companyNumber = profile.company?.cell_number?.replace(/\D/g, '') || '';
+                    
+                    let caption = `*RAPID iREPORT BOLO*\n`;
+                    caption += `*Type:* ${report.type.toUpperCase()}\n`;
+                    caption += `*Ref:* ${report.ob_number}\n`;
+                    caption += `*Title:* ${report.title}\n`;
+                    
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        try {
+                            await navigator.share({
+                                files: [file],
+                                title: 'BOLO Card',
+                                text: caption
+                            });
+                        } catch (error) {
+                            if ((error as Error).name !== 'AbortError') {
+                                console.error('Error sharing:', error);
+                                addToast('Error sharing BOLO card', 'error');
+                            }
+                        }
+                    } else {
+                        // Fallback for desktop/unsupported browsers
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        
+                        addToast('Image downloaded. Please attach it to the WhatsApp chat.', 'info');
+                        
+                        const waUrl = `https://wa.me/${companyNumber}?text=${encodeURIComponent(caption)}`;
+                        window.open(waUrl, '_blank');
+                    }
+                }
+                setIsGeneratingBolo(false);
+            }, 'image/png');
 
         } catch (error) {
             console.error("BOLO Generation Error:", error);
@@ -642,8 +695,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 </div>
                  <div className="grid grid-cols-3 gap-3">
                      <button onClick={() => window.print()} className="flex items-center justify-center gap-2 py-2 px-3 bg-gray-600/90 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-semibold"><PrintIcon className="w-5 h-5"/> Print</button>
-                     <button onClick={() => { /* WhatsApp Share Logic */ }} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold"><WhatsappIcon className="w-5 h-5"/> Share</button>
-                     <button onClick={generateBoloImage} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50"><DownloadIcon className="w-5 h-5"/> BOLO</button>
+                     <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold"><WhatsappIcon className="w-5 h-5"/> Share</button>
+                     <button onClick={() => generateBoloImage('download')} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50"><DownloadIcon className="w-5 h-5"/> BOLO</button>
                  </div>
                  {canManageReport && (
                     <div className="grid grid-cols-2 gap-3">

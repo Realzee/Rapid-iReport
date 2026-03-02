@@ -73,32 +73,10 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     };
 
     const handleShareWhatsApp = () => {
-        let text = `*RAPID iREPORT ALERT*\n\n`;
-        if (report.type === 'vehicle') {
-            text += `*Type:* Vehicle Theft\n`;
-            text += `*License Plate:* ${(report as any).license_plate}\n`;
-            text += `*Vehicle:* ${(report as any).vehicle_make} ${(report as any).vehicle_model} (${(report as any).vehicle_color})\n`;
-            text += `*Last Seen:* ${(report as any).last_seen_location}\n`;
-        } else if (report.type === 'accident') {
-            text += `*Type:* Accident Incident\n`;
-            text += `*Title:* ${report.title}\n`;
-            text += `*Accident Type:* ${(report as any).accident_type}\n`;
-            text += `*Location:* ${(report as any).location}\n`;
-        } else {
-            text += `*Type:* Crime Incident\n`;
-            text += `*Title:* ${report.title}\n`;
-            text += `*Crime Type:* ${(report as any).crime_type}\n`;
-            text += `*Location:* ${(report as any).location}\n`;
-        }
-        text += `*OB Number:* ${report.ob_number}\n`;
-        text += `*Severity:* ${report.severity.charAt(0).toUpperCase() + report.severity.slice(1)}\n\n`;
-        text += `*Description:* ${report.description}`;
-        
-        const encodedText = encodeURIComponent(text);
-        window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+        generateBoloImage('share');
     };
 
-    const generateBoloImage = async () => {
+    const generateBoloImage = async (action: 'download' | 'share' = 'download') => {
         setIsGeneratingBolo(true);
 
         const fetchImageAsDataURL = async (url: string) => {
@@ -404,15 +382,64 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             ctx.fillText(copyrightText, copyrightStartX + logoW + gap, copyrightY);
 
             // 11. Export
-            const pngUrl = canvas.toDataURL('image/png');
-            const a = document.createElement('a');
-            a.href = pngUrl;
-            a.download = `bolo-${report.ob_number.replace(/\//g, '-')}.png`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            canvas.toBlob(async (blob) => {
+                if (!blob) {
+                    setIsGeneratingBolo(false);
+                    return;
+                }
 
-            setIsGeneratingBolo(false);
+                if (action === 'download') {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `bolo-${report.ob_number.replace(/\//g, '-')}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    addToast('BOLO card downloaded successfully', 'success');
+                } else if (action === 'share') {
+                    const filename = `bolo-${report.ob_number.replace(/\//g, '-')}.png`;
+                    const file = new File([blob], filename, { type: 'image/png' });
+                    const companyNumber = profile.company?.cell_number?.replace(/\D/g, '') || '';
+                    
+                    let caption = `*RAPID iREPORT BOLO*\n`;
+                    caption += `*Type:* ${report.type.toUpperCase()}\n`;
+                    caption += `*Ref:* ${report.ob_number}\n`;
+                    caption += `*Title:* ${report.title}\n`;
+                    
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        try {
+                            await navigator.share({
+                                files: [file],
+                                title: 'BOLO Card',
+                                text: caption
+                            });
+                        } catch (error) {
+                            if ((error as Error).name !== 'AbortError') {
+                                console.error('Error sharing:', error);
+                                addToast('Error sharing BOLO card', 'error');
+                            }
+                        }
+                    } else {
+                        // Fallback for desktop/unsupported browsers
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        
+                        addToast('Image downloaded. Please attach it to the WhatsApp chat.', 'info');
+                        
+                        const waUrl = `https://wa.me/${companyNumber}?text=${encodeURIComponent(caption)}`;
+                        window.open(waUrl, '_blank');
+                    }
+                }
+                setIsGeneratingBolo(false);
+            }, 'image/png');
 
         } catch (error) {
             console.error("BOLO Generation Error:", error);
@@ -538,7 +565,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold">
                     <WhatsappIcon className="w-5 h-5"/> Share
                 </button>
-                 <button onClick={generateBoloImage} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-wait">
+                 <button onClick={() => generateBoloImage('download')} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-wait">
                     {isGeneratingBolo ? (
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : (
