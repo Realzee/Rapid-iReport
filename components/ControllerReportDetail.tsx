@@ -517,8 +517,18 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             
             const iconSize = 32;
             const iconPadding = 10;
+            const rapidLogoHeight = 40;
+            const logoPadding = 15;
+
             const textMetrics = ctx.measureText(contactNumber);
-            const totalWidth = iconSize + iconPadding + textMetrics.width;
+            
+            let rapidLogoWidth = 0;
+            if (rapidLogo) {
+                const ratio = rapidLogo.width / rapidLogo.height;
+                rapidLogoWidth = rapidLogoHeight * ratio;
+            }
+
+            const totalWidth = iconSize + iconPadding + textMetrics.width + (rapidLogo ? (logoPadding + rapidLogoWidth) : 0);
             const startX = (width - totalWidth) / 2;
             const contactY = bottomY + 10;
 
@@ -529,6 +539,12 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             ctx.fillStyle = '#FFFFFF';
             ctx.textAlign = 'left';
             ctx.fillText(contactNumber, startX + iconSize + iconPadding, contactY);
+
+            if (rapidLogo) {
+                const logoX = startX + iconSize + iconPadding + textMetrics.width + logoPadding;
+                const logoY = contactY - 30; 
+                ctx.drawImage(rapidLogo, logoX, logoY, rapidLogoWidth, rapidLogoHeight);
+            }
 
             // Copyright
             const copyrightY = height - 15;
