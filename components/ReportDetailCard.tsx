@@ -305,7 +305,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             ctx.fillText('10111 or your nearest SAPS Station', width / 2, footerY + 22);
 
             ctx.font = 'bold 22px serif';
-            ctx.fillText('"The Smarter Choice"', width / 2, footerY + 60);
+            ctx.fillText('"The Smarter Choice"', width / 2, footerY + 50);
 
             // Logos and Contact
             const bottomY = height - 80;
@@ -362,7 +362,11 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             }
 
             const totalWidth = iconSize + iconPadding + textMetrics.width + (rapidLogo ? (logoPadding + rapidLogoWidth) : 0);
-            const startX = (width - totalWidth) / 2;
+            
+            // Ensure centering but prevent overlap with left logo (ends at 140px)
+            let startX = (width - totalWidth) / 2;
+            if (startX < 150) startX = 150;
+            
             const contactY = bottomY + 10;
 
             if (whatsappIcon) {
