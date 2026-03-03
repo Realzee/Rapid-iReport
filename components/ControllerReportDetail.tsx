@@ -11,6 +11,7 @@ import ConfirmModal from './ConfirmModal';
 import { logoUrl } from '../assets/logo';
 import { useChat } from '../contexts/ChatContext';
 import ImagePreviewModal from './ImagePreviewModal';
+import { useSettings } from '../contexts/SettingsContext';
 
 const DetailField: React.FC<{ label: string, children: React.ReactNode, className?: string }> = ({ label, children, className }) => (
     <div className={className}>
@@ -58,6 +59,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
     const { addToast } = useToast();
     const { openChat } = useChat();
+    const { mainLogoUrl } = useSettings();
 
     const isTerminalStatus = useMemo(() => {
         return [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED, ReportStatus.DELETED].includes(report.status);
@@ -299,7 +301,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 fetchImageAsDataURL(qrCodeWwwUrl),
                 fetchImageAsDataURL(qrCodeFbUrl),
                 fetchImageAsDataURL('https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg'),
-                fetchImageAsDataURL(logoUrl)
+                fetchImageAsDataURL(mainLogoUrl)
             ]);
 
             // 3. Load images into HTMLImageElements

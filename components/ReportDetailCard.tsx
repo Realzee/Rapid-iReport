@@ -9,6 +9,7 @@ import { supabase } from '../utils/supabase';
 import { logoUrl } from '../assets/logo';
 import { useToast } from '../contexts/ToastContext';
 import { useChat } from '../contexts/ChatContext';
+import { useSettings } from '../contexts/SettingsContext';
 
 interface ReportDetailCardProps {
     report: Report;
@@ -26,6 +27,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
     const { addToast } = useToast();
     const { openChat } = useChat();
+    const { mainLogoUrl } = useSettings();
 
     const canManageReport = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role);
     const isAssignedResponder = profile.role === UserRole.RESPONDER && report.assigned_to === profile.id;
@@ -132,7 +134,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 fetchImageAsDataURL(qrCodeWwwUrl),
                 fetchImageAsDataURL(qrCodeFbUrl),
                 fetchImageAsDataURL('https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg'),
-                fetchImageAsDataURL(logoUrl)
+                fetchImageAsDataURL(mainLogoUrl)
             ]);
 
             // 3. Load images into HTMLImageElements
