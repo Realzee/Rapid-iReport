@@ -519,7 +519,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             
             const iconSize = 32;
             const iconPadding = 10;
-            const rapidLogoHeight = 40;
+            const rapidLogoHeight = 70;
             const logoPadding = 15;
 
             const textMetrics = ctx.measureText(contactNumber);
@@ -548,7 +548,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
             if (rapidLogo) {
                 const logoX = startX + iconSize + iconPadding + textMetrics.width + logoPadding;
-                const logoY = contactY - 30; 
+                const logoY = contactY - 45; 
                 ctx.drawImage(rapidLogo, logoX, logoY, rapidLogoWidth, rapidLogoHeight);
             }
 
