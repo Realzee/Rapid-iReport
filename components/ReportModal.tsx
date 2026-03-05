@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { useToast } from '../contexts/ToastContext';
 import { MapStyle } from '../components/MapStyleToggle';
 import { useFormPersistence } from '../useFormPersistence';
+import { logUserAction } from '../utils/logger';
 
 interface ReportModalProps {
     isOpen: boolean;
@@ -496,6 +497,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             if (reportToEdit) {
                  const { error } = await supabase.from(tableName).update(reportData).eq('id', reportToEdit.id);
                  if (error) throw error;
+                 logUserAction(user.id, 'UPDATE_REPORT', `Updated report ${reportToEdit.id} (${reportToEdit.ob_number})`);
             } else {
                 const { data: profileData, error: profileError } = await supabase
                     .from('profiles')
@@ -536,6 +538,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 };
                 const { error } = await supabase.from(tableName).insert(insertData);
                 if (error) throw error;
+                logUserAction(user.id, 'CREATE_REPORT', `Created new ${reportType} report ${reportId} (${ob_number})`);
             }
             
             addToast(`Report ${reportToEdit ? 'updated' : 'submitted'} successfully!`, 'success');
