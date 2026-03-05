@@ -255,14 +255,18 @@ const TrendsReport: React.FC<{ reports: Report[], theme: string }> = ({ reports,
     const data = useMemo(() => {
         // Group by date
         const grouped = reports.reduce((acc, report) => {
-            const date = format(new Date(report.reported_at), 'yyyy-MM-dd');
-            if (!acc[date]) acc[date] = { date, vehicle: 0, crime: 0, accident: 0, total: 0 };
-            
-            if (isVehicleReport(report)) acc[date].vehicle++;
-            else if (isAccidentReport(report)) acc[date].accident++;
-            else acc[date].crime++;
-            acc[date].total++;
-            
+            if (!report.reported_at) return acc;
+            try {
+                const date = format(new Date(report.reported_at), 'yyyy-MM-dd');
+                if (!acc[date]) acc[date] = { date, vehicle: 0, crime: 0, accident: 0, total: 0 };
+                
+                if (isVehicleReport(report)) acc[date].vehicle++;
+                else if (isAccidentReport(report)) acc[date].accident++;
+                else acc[date].crime++;
+                acc[date].total++;
+            } catch (e) {
+                console.error("Invalid date in report:", report);
+            }
             return acc;
         }, {} as Record<string, { date: string, vehicle: number, crime: number, accident: number, total: number }>);
 
@@ -273,7 +277,7 @@ const TrendsReport: React.FC<{ reports: Report[], theme: string }> = ({ reports,
     return (
         <div className="h-full flex flex-col">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Incident Trends Over Time</h3>
-            <div className="flex-1 min-h-[400px]">
+            <div className="w-full h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                         <defs>
@@ -387,7 +391,7 @@ const StatusReport: React.FC<{ reports: Report[], theme: string }> = ({ reports,
     return (
         <div className="h-full flex flex-col">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Reports by Status</h3>
-            <div className="flex-1 min-h-[400px]">
+            <div className="w-full h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={theme === 'dark' ? '#374151' : '#E5E7EB'} />
@@ -415,9 +419,16 @@ const TimeAnalysisReport: React.FC<{ reports: Report[], theme: string }> = ({ re
         const hours = Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 }));
         
         reports.forEach(report => {
-            const date = new Date(report.reported_at);
-            const hour = getHours(date);
-            hours[hour].count++;
+            if (!report.reported_at) return;
+            try {
+                const date = new Date(report.reported_at);
+                const hour = getHours(date);
+                if (!isNaN(hour)) {
+                    hours[hour].count++;
+                }
+            } catch (e) {
+                console.error("Invalid date in report:", report);
+            }
         });
 
         return hours.map(h => ({
@@ -429,7 +440,7 @@ const TimeAnalysisReport: React.FC<{ reports: Report[], theme: string }> = ({ re
     return (
         <div className="h-full flex flex-col">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Incidents by Time of Day</h3>
-            <div className="flex-1 min-h-[400px]">
+            <div className="w-full h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#374151' : '#E5E7EB'} />
