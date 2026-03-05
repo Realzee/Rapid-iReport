@@ -9,6 +9,7 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import { useTheme } from '../contexts/ThemeContext';
 import { useChat } from '../contexts/ChatContext';
+import ImagePreviewModal from './ImagePreviewModal';
 
 const markerIcon = new L.Icon({
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -45,6 +46,7 @@ const TimelineItem: React.FC<{
 const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (report: Report) => void, allUsers: Profile[] }> = ({ report, profile, onEdit, allUsers }) => {
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
     const [assignmentHistory, setAssignmentHistory] = useState<AssignmentLog[]>([]);
+    const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
     const { theme } = useTheme();
     const { openChat } = useChat();
 
@@ -162,7 +164,16 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                 {report.evidence_images && report.evidence_images.length > 0 && (
                      <div className="grid grid-cols-2 gap-2">
                         {report.evidence_images.map((img, index) => (
-                             <img key={index} src={img} alt={`Evidence ${index+1}`} className="w-full h-24 object-cover rounded-md border border-gray-200 dark:border-gray-700" />
+                             <button 
+                                key={index} 
+                                onClick={() => setPreviewImageUrl(img)}
+                                className="relative group w-full h-24 rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <img src={img} alt={`Evidence ${index+1}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                    <span className="text-white opacity-0 group-hover:opacity-100 font-semibold text-xs bg-black/50 px-2 py-1 rounded">View</span>
+                                </div>
+                            </button>
                         ))}
                     </div>
                 )}
@@ -256,6 +267,7 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                     </button>
                 </div>
             </div>
+            <ImagePreviewModal isOpen={!!previewImageUrl} onClose={() => setPreviewImageUrl(null)} imageUrl={previewImageUrl} />
         </div>
     );
 };

@@ -14,6 +14,7 @@ import { useChat } from '../contexts/ChatContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
 import { useWakeLock } from '../hooks/useWakeLock';
 import ReportModal from '../components/ReportModal';
+import ImagePreviewModal from '../components/ImagePreviewModal';
 
 interface ResponderPageProps {
     profile: Profile;
@@ -463,6 +464,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [isActionLoading, setIsActionLoading] = useState<ReportStatus | 'stand_down' | null>(null);
+    const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
     const { addToast } = useToast();
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, confirmText: string, confirmVariant: 'danger' | 'primary' } | null>(null);
     const { openChat } = useChat();
@@ -642,9 +644,24 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                 
                 <div>
                     <h4 className="font-bold mb-2">Evidence</h4>
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                        {report.evidence_images?.map(img => <img key={img} src={img} className="w-full h-24 object-cover rounded-md" alt="Evidence" />)}
-                    </div>
+                    {report.evidence_images && report.evidence_images.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                            {report.evidence_images.map((img, index) => (
+                                <button 
+                                    key={index} 
+                                    onClick={() => setPreviewImageUrl(img)}
+                                    className="relative group w-full h-24 rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <img src={img} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" alt={`Evidence ${index + 1}`} />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                        <span className="text-white opacity-0 group-hover:opacity-100 font-semibold text-xs bg-black/50 px-2 py-1 rounded">View</span>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 italic">No evidence images uploaded yet.</p>
+                    )}
                     <label htmlFor="evidence-upload" className="w-full flex items-center justify-center gap-2 cursor-pointer py-2 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors">
                         <CameraIcon className="w-5 h-5" /> {isUploading ? "Uploading..." : "Add Evidence"}
                         <input id="evidence-upload" type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" disabled={isUploading} />
@@ -679,6 +696,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                     confirmVariant={confirmModalState.confirmVariant}
                 />
             )}
+            <ImagePreviewModal isOpen={!!previewImageUrl} onClose={() => setPreviewImageUrl(null)} imageUrl={previewImageUrl} />
         </>
     );
 };
