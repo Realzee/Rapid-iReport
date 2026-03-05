@@ -159,7 +159,6 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                     <thead className="bg-gray-50 dark:bg-gray-800/50">
                         <tr>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cell Number</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Company</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Role</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
@@ -216,10 +215,10 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                             <div className="ml-4">
                                                 <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{`${user.first_name || ''} ${user.surname || ''}`}</div>
                                                 <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</div>
+                                                {user.cell && <div className="text-xs text-gray-400 dark:text-gray-500 truncate">{user.cell}</div>}
                                             </div>
                                         </button>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{user.cell || 'N/A'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                                         {canEditUser && !isPending ? (
                                             <div className="flex items-center gap-2">
