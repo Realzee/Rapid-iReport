@@ -4,7 +4,7 @@ interface StatCardProps {
   title: string;
   value: string;
   icon: React.ReactElement;
-  color: 'blue' | 'red' | 'green' | 'yellow';
+  color: 'blue' | 'red' | 'green' | 'yellow' | 'orange';
 }
 
 const colorClasses = {
@@ -12,6 +12,7 @@ const colorClasses = {
   red: 'text-red-500 dark:text-red-400',
   green: 'text-green-500 dark:text-green-400',
   yellow: 'text-yellow-500 dark:text-yellow-400',
+  orange: 'text-orange-500 dark:text-orange-400',
 };
 
 const iconBgClasses = {
@@ -19,6 +20,7 @@ const iconBgClasses = {
   red: 'bg-red-500/10',
   green: 'bg-green-500/10',
   yellow: 'bg-yellow-500/10',
+  orange: 'bg-orange-500/10',
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
