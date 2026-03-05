@@ -169,7 +169,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                         {users.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                     <div className="flex flex-col items-center justify-center space-y-3">
                                         <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-full">
                                             <UsersIcon className="w-8 h-8 text-gray-400" />

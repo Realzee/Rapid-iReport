@@ -267,3 +267,18 @@ export interface LegacyObEntry {
   tracker?: boolean | string;
   dateOfIncident?: string;
 }
+
+export interface UserActivityLog {
+  id: string;
+  user_id: string;
+  action: string;
+  details: string;
+  ip_address?: string;
+  created_at: string;
+  profile?: {
+    first_name: string;
+    surname: string;
+    email: string;
+    role: UserRole;
+  };
+}

@@ -10,6 +10,7 @@ import { useToast } from '../contexts/ToastContext';
 import UserDetailModal from '../components/UserDetailModal';
 import StatCard from '../components/StatCard';
 import { format } from 'date-fns';
+import { logUserAction } from '../utils/logger';
 
 const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<Profile[]>([]);
@@ -211,6 +212,9 @@ const UsersPage: React.FC = () => {
             addToast(`Error updating role: ${error.message}`, 'error');
         } else {
             addToast(`User role updated successfully.`, 'success');
+            if (currentUserProfile) {
+                logUserAction(currentUserProfile.id, 'UPDATE_USER_ROLE', `Updated role for user ${userId} to ${newRole}`);
+            }
         }
         setUpdatingRoleId(null);
     }, [addToast]);
@@ -226,6 +230,9 @@ const UsersPage: React.FC = () => {
             addToast(`Error updating status: ${error.message}`, 'error');
         } else {
             addToast(`User status updated to ${newStatus}.`, 'success');
+            if (currentUserProfile) {
+                logUserAction(currentUserProfile.id, 'UPDATE_USER_STATUS', `Updated status for user ${userId} to ${newStatus}`);
+            }
         }
         setUpdatingStatusId(null);
     }, [addToast]);
@@ -241,6 +248,10 @@ const UsersPage: React.FC = () => {
             addToast(`Error updating company: ${error.message}`, 'error');
         } else {
             addToast(`User company updated successfully.`, 'success');
+            if (currentUserProfile) {
+                const companyName = companies.find(c => c.id === newCompanyId)?.name || 'None';
+                logUserAction(currentUserProfile.id, 'UPDATE_USER_COMPANY', `Updated company for user ${userId} to ${companyName}`);
+            }
         }
         setUpdatingCompanyId(null);
     }, [addToast]);
@@ -275,6 +286,9 @@ const UsersPage: React.FC = () => {
                 addToast('Error updating user profile: ' + profileError.message, 'error');
             } else {
                 addToast('User profile updated successfully.', 'success');
+                if (currentUserProfile) {
+                    logUserAction(currentUserProfile.id, 'UPDATE_USER_PROFILE', `Updated profile for user ${userToSave.id} (${userToSave.email})`);
+                }
             }
 
             if (password) {
@@ -358,6 +372,9 @@ const UsersPage: React.FC = () => {
                      addToast(`User created, but linking selfie failed: ${profileUpdateError.message}`, 'warning');
                 } else {
                     addToast('User created successfully!', 'success');
+                    if (currentUserProfile) {
+                        logUserAction(currentUserProfile.id, 'CREATE_USER', `Created new user ${newAuthUser.id} (${userToSave.email})`);
+                    }
                 }
             }
         }
@@ -385,6 +402,9 @@ const UsersPage: React.FC = () => {
                 }
             } else {
                 addToast('User deleted successfully.', 'success');
+                if (currentUserProfile) {
+                    logUserAction(currentUserProfile.id, 'DELETE_USER', `Deleted user ${selectedUser.id} (${selectedUser.email})`);
+                }
             }
         }
         setIsDeleteModalOpen(false);

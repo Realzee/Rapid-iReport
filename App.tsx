@@ -25,8 +25,9 @@ import { useSettings } from './contexts/SettingsContext';
 import { ChatProvider } from './contexts/ChatContext';
 import { AlertTriangleIcon, ClockIcon } from './components/icons';
 import { useToast } from './contexts/ToastContext';
+import UserActivityPage from './pages/UserActivityPage';
 
-type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller';
+type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -277,6 +278,7 @@ const App: React.FC = () => {
       case 'archives': return <ReportsPage profile={profile} />;
       case 'analytics': return <AnalyticsPage />;
       case 'users': return <UsersPage />;
+      case 'activity_logs': return <UserActivityPage />;
       case 'companies': return <CompaniesPage />;
       case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} />;
       case 'map':
