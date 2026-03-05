@@ -23,7 +23,13 @@ const UserActivityPage: React.FC = () => {
                 .from('user_activity_logs')
                 .select(`
                     *,
-                    profile:profiles(first_name, surname, email, role)
+                    profile:profiles(
+                        first_name, 
+                        surname, 
+                        email, 
+                        role,
+                        company:companies(name)
+                    )
                 `)
                 .order('created_at', { ascending: false });
 
@@ -167,6 +173,11 @@ const UserActivityPage: React.FC = () => {
                                                 </div>
                                             </div>
                                             <div className="text-xs text-gray-500 dark:text-gray-400">{log.profile?.email}</div>
+                                            {log.profile?.company?.name && (
+                                                <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 font-medium">
+                                                    {log.profile.company.name}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize">
                                             {log.profile?.role}

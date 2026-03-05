@@ -12,6 +12,7 @@ import { logoUrl } from '../assets/logo';
 import { useChat } from '../contexts/ChatContext';
 import ImagePreviewModal from './ImagePreviewModal';
 import { useSettings } from '../contexts/SettingsContext';
+import { logUserAction } from '../utils/logger';
 
 const DetailField: React.FC<{ label: string, children: React.ReactNode, className?: string }> = ({ label, children, className }) => (
     <div className={className}>
@@ -186,6 +187,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             addToast('Failed to post update: ' + error.message, 'error');
         } else {
             setNewUpdate('');
+            logUserAction(profile.id, 'ADD_REPORT_UPDATE', `Added update to report ${report.id} (${report.ob_number}): ${newUpdate.substring(0, 50)}${newUpdate.length > 50 ? '...' : ''}`);
         }
         setIsSubmittingUpdate(false);
     };
@@ -223,6 +225,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             if (updateContent) {
                 await supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: updateContent });
             }
+            logUserAction(profile.id, 'UPDATE_REPORT_STATUS', `Updated report ${report.id} (${report.ob_number}). Status: ${selectedStatus}, Responder: ${selectedResponder || 'None'}`);
         }
         setIsActionLoading(false);
         setAssignmentModalOpen(false);
@@ -238,7 +241,10 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         }).eq('id', report.id);
         
         if (error) addToast(`Error deleting report: ${error.message}`, 'error');
-        else addToast('Report successfully moved to archives.', 'success');
+        else {
+            addToast('Report successfully moved to archives.', 'success');
+            logUserAction(profile.id, 'DELETE_REPORT', `Deleted report ${report.id} (${report.ob_number})`);
+        }
     };
 
     const handleShareWhatsApp = () => {

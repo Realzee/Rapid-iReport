@@ -280,5 +280,8 @@ export interface UserActivityLog {
     surname: string;
     email: string;
     role: UserRole;
+    company?: {
+      name: string;
+    };
   };
 }
