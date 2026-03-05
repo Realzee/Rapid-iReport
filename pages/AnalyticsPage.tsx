@@ -271,7 +271,7 @@ const TrendsReport: React.FC<{ reports: Report[], theme: string }> = ({ reports,
         }, {} as Record<string, { date: string, vehicle: number, crime: number, accident: number, total: number }>);
 
         // Fill in missing days if needed, or just sort
-        return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
+        return (Object.values(grouped) as any[]).sort((a, b) => a.date.localeCompare(b.date));
     }, [reports]);
 
     return (
@@ -385,7 +385,7 @@ const StatusReport: React.FC<{ reports: Report[], theme: string }> = ({ reports,
 
         return Object.entries(counts)
             .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value);
+            .sort((a: any, b: any) => b.value - a.value);
     }, [reports]);
 
     return (
@@ -508,7 +508,7 @@ const HotspotsReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
             low: number; 
         }>);
 
-        return Object.values(stats)
+        return (Object.values(stats) as any[])
             .sort((a, b) => b.count - a.count)
             .slice(0, 10);
     }, [reports]);

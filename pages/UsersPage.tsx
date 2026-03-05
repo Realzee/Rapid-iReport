@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { PlusIcon, UsersIcon } from '../components/icons';
+import { PlusIcon, UsersIcon, DownloadIcon, FilterIcon, CheckCircleIcon, ClockIcon, AlertTriangleIcon } from '../components/icons';
 import { Profile, Company, UserRole, UserStatus } from '../types';
 import UserManagementTable from '../components/UserManagementTable';
 import AddEditUserModal from '../components/AddEditUserModal';
@@ -8,6 +8,8 @@ import DeleteUserModal from '../components/DeleteUserModal';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
 import UserDetailModal from '../components/UserDetailModal';
+import StatCard from '../components/StatCard';
+import { format } from 'date-fns';
 
 const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<Profile[]>([]);
@@ -24,6 +26,11 @@ const UsersPage: React.FC = () => {
     const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
     const [updatingCompanyId, setUpdatingCompanyId] = useState<string | null>(null);
     const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
+    // Filters
+    const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
+    const [statusFilter, setStatusFilter] = useState<UserStatus | 'all'>('all');
+    const [companyFilter, setCompanyFilter] = useState<string>('all');
 
     useEffect(() => {
         const fetchCurrentUserProfile = async () => {
@@ -116,14 +123,63 @@ const UsersPage: React.FC = () => {
     }, [searchTerm]);
 
     const filteredUsers = useMemo(() => {
-        const lowercasedTerm = debouncedSearchTerm.toLowerCase();
-        if (!lowercasedTerm) return users;
-        return users.filter(user =>
-            (user.first_name || '').toLowerCase().includes(lowercasedTerm) ||
-            (user.surname || '').toLowerCase().includes(lowercasedTerm) ||
-            user.email.toLowerCase().includes(lowercasedTerm)
-        );
-    }, [users, debouncedSearchTerm]);
+        return users.filter(user => {
+            // Search Term
+            const lowercasedTerm = debouncedSearchTerm.toLowerCase();
+            const matchesSearch = !lowercasedTerm || 
+                (user.first_name || '').toLowerCase().includes(lowercasedTerm) ||
+                (user.surname || '').toLowerCase().includes(lowercasedTerm) ||
+                user.email.toLowerCase().includes(lowercasedTerm);
+
+            // Role Filter
+            const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+
+            // Status Filter
+            const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
+
+            // Company Filter
+            const matchesCompany = companyFilter === 'all' || user.company_id === companyFilter;
+
+            return matchesSearch && matchesRole && matchesStatus && matchesCompany;
+        });
+    }, [users, debouncedSearchTerm, roleFilter, statusFilter, companyFilter]);
+
+    // Statistics
+    const stats = useMemo(() => {
+        return {
+            total: users.length,
+            active: users.filter(u => u.status === UserStatus.ACTIVE).length,
+            pending: users.filter(u => u.status === UserStatus.PENDING).length,
+            suspended: users.filter(u => u.status === UserStatus.SUSPENDED).length
+        };
+    }, [users]);
+
+    const handleExportCSV = () => {
+        const headers = ['ID', 'First Name', 'Surname', 'Email', 'Role', 'Status', 'Company', 'Cell', 'Last Seen'];
+        const csvContent = [
+            headers.join(','),
+            ...filteredUsers.map(u => [
+                u.id,
+                `"${u.first_name || ''}"`,
+                `"${u.surname || ''}"`,
+                u.email,
+                u.role,
+                u.status,
+                `"${companies.find(c => c.id === u.company_id)?.name || 'N/A'}"`,
+                `"${u.cell || ''}"`,
+                `"${u.last_seen_at || ''}"`
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `users_export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const handleAddUser = useCallback(() => {
         setSelectedUser(null);
@@ -336,30 +392,98 @@ const UsersPage: React.FC = () => {
     }, [selectedUser, addToast]);
 
     return (
-        <div className="container mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <div className="container mx-auto px-4 py-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
                     <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                         <UsersIcon className="w-8 h-8"/> User Management
                     </h2>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">Manage all user accounts in the system.</p>
                 </div>
-                 <button 
-                    onClick={handleAddUser}
-                    className="mt-4 md:mt-0 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
-                >
-                    <PlusIcon className="w-5 h-5" />
-                    <span>Add New User</span>
-                </button>
+                 <div className="flex gap-3">
+                    <button 
+                        onClick={handleExportCSV}
+                        className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 font-medium rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                    >
+                        <DownloadIcon className="w-4 h-4" />
+                        <span>Export CSV</span>
+                    </button>
+                    <button 
+                        onClick={handleAddUser}
+                        className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                    >
+                        <PlusIcon className="w-5 h-5" />
+                        <span>Add New User</span>
+                    </button>
+                 </div>
             </div>
-            <div className="mb-4">
-                <input
-                    type="text"
-                    placeholder="Search by name or email..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full max-w-sm bg-white dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg py-2 px-4"
-                />
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <StatCard title="Total Users" value={stats.total.toString()} icon={<UsersIcon />} color="blue" />
+                <StatCard title="Active Users" value={stats.active.toString()} icon={<CheckCircleIcon />} color="green" />
+                <StatCard title="Pending Approval" value={stats.pending.toString()} icon={<ClockIcon />} color="yellow" />
+                <StatCard title="Suspended" value={stats.suspended.toString()} icon={<AlertTriangleIcon />} color="red" />
+            </div>
+
+            {/* Filters and Search */}
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
+                <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1">
+                        <input
+                            type="text"
+                            placeholder="Search by name or email..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg py-2 px-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:text-white"
+                        />
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                        <div className="relative min-w-[150px]">
+                            <select
+                                value={roleFilter}
+                                onChange={(e) => setRoleFilter(e.target.value as UserRole | 'all')}
+                                className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:text-white"
+                            >
+                                <option value="all">All Roles</option>
+                                {Object.values(UserRole).map(role => (
+                                    <option key={role} value={role} className="capitalize">{role}</option>
+                                ))}
+                            </select>
+                            <FilterIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                        </div>
+
+                        <div className="relative min-w-[150px]">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value as UserStatus | 'all')}
+                                className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:text-white"
+                            >
+                                <option value="all">All Statuses</option>
+                                {Object.values(UserStatus).map(status => (
+                                    <option key={status} value={status} className="capitalize">{status}</option>
+                                ))}
+                            </select>
+                            <FilterIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                        </div>
+
+                        {currentUserProfile?.role === UserRole.ADMIN && (
+                            <div className="relative min-w-[150px]">
+                                <select
+                                    value={companyFilter}
+                                    onChange={(e) => setCompanyFilter(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:text-white"
+                                >
+                                    <option value="all">All Companies</option>
+                                    {companies.map(company => (
+                                        <option key={company.id} value={company.id}>{company.name}</option>
+                                    ))}
+                                </select>
+                                <FilterIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
 
             <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300">

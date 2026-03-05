@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Profile, Company, UserRole, UserStatus } from '../types';
-import { EditIcon, TrashIcon, EyeIcon } from './icons';
+import { EditIcon, TrashIcon, EyeIcon, UsersIcon } from './icons';
 import { formatDistanceToNow } from 'date-fns';
 
 interface RoleBadgeProps { role: UserRole; }
@@ -168,7 +168,20 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                        {users.map((user) => {
+                        {users.length === 0 ? (
+                            <tr>
+                                <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                    <div className="flex flex-col items-center justify-center space-y-3">
+                                        <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-full">
+                                            <UsersIcon className="w-8 h-8 text-gray-400" />
+                                        </div>
+                                        <p className="text-lg font-medium">No users found</p>
+                                        <p className="text-sm">Try adjusting your search or filters.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        ) : (
+                            users.map((user) => {
                              if (!currentUserProfile) return null;
 
                             const canEditUser = (
@@ -285,7 +298,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                     </td>
                                 </tr>
                             )
-                        })}
+                        }))}
                     </tbody>
                 </table>
             </div>
