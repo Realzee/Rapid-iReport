@@ -1,27 +1,28 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, ReportStatus, Severity, VehicleReport } from '../types';
+import { Report, ReportStatus, Severity, VehicleReport, AccidentReport } from '../types';
 import { 
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, 
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
     AreaChart, Area
 } from 'recharts';
 import { useTheme } from '../contexts/ThemeContext';
-import { format, subDays, startOfDay, endOfDay, isWithinInterval, parseISO, getHours } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay, isWithinInterval, parseISO, getHours, differenceInHours, differenceInMinutes } from 'date-fns';
 import { 
     CarIcon, CrimeIcon, ChartBarIcon, ChartPieIcon, MapIcon, ZapIcon, 
-    CheckCircleIcon, AlertTriangleIcon, DownloadIcon 
+    CheckCircleIcon, AlertTriangleIcon, DownloadIcon, ClockIcon, ClipboardCheckIcon
 } from '../components/icons';
 import { Calendar, Filter } from 'lucide-react';
 import StatCard from '../components/StatCard';
 
 // Type Guard
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
+const isAccidentReport = (report: Report): report is AccidentReport => 'accident_type' in report;
 
 type ReportType = 'summary' | 'trends' | 'severity' | 'status' | 'time' | 'hotspots';
 type DateRange = '7days' | '30days' | '90days' | 'all';
 
-const COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
+const COLORS = ['#3B82F6', '#EF4444', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899'];
 const SEVERITY_COLORS = {
     critical: '#EF4444',
     high: '#F97316',
@@ -42,17 +43,21 @@ const AnalyticsPage: React.FC = () => {
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
+                { data: accidentData, error: aError },
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*'),
                 supabase.from('crime_reports').select('*'),
+                supabase.from('accident_reports').select('*'),
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
             if (cError) console.error('Error fetching crime reports:', cError);
+            if (aError) console.error('Error fetching accident reports:', aError);
             
             const combined = [
                 ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
                 ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
+                ...(accidentData || []).map(r => ({ ...r, type: 'accident' })),
             ];
 
             // Sort by date descending
@@ -86,7 +91,7 @@ const AnalyticsPage: React.FC = () => {
             headers.join(','),
             ...filteredReports.map(r => [
                 r.id,
-                r.type,
+                isVehicleReport(r) ? 'Vehicle' : (isAccidentReport(r) ? 'Accident' : 'Crime'),
                 r.status,
                 r.severity,
                 `"${r.reported_at}"`,
@@ -198,12 +203,34 @@ const AnalyticsPage: React.FC = () => {
 const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
     const totalReports = reports.length;
     const vehicleReports = reports.filter(r => isVehicleReport(r)).length;
-    const crimeReports = totalReports - vehicleReports;
+    const accidentReports = reports.filter(r => isAccidentReport(r)).length;
+    const crimeReports = totalReports - vehicleReports - accidentReports;
     const resolved = reports.filter(r => r.status === ReportStatus.RESOLVED || r.status === ReportStatus.RECOVERED).length;
     const pending = reports.filter(r => r.status === ReportStatus.PENDING).length;
     
     // Calculate resolution rate
     const resolutionRate = totalReports > 0 ? Math.round((resolved / totalReports) * 100) : 0;
+
+    // Calculate Average Response Time (for resolved/recovered/closed reports)
+    const avgResponseTime = useMemo(() => {
+        const completedReports = reports.filter(r => 
+            (r.status === ReportStatus.RESOLVED || r.status === ReportStatus.RECOVERED || r.status === ReportStatus.CLOSED) && 
+            r.completed_at
+        );
+        
+        if (completedReports.length === 0) return 'N/A';
+
+        const totalMinutes = completedReports.reduce((acc, r) => {
+            const start = new Date(r.reported_at);
+            const end = new Date(r.completed_at!);
+            return acc + differenceInMinutes(end, start);
+        }, 0);
+
+        const avgMinutes = totalMinutes / completedReports.length;
+        
+        if (avgMinutes < 60) return `${Math.round(avgMinutes)} mins`;
+        return `${Math.round(avgMinutes / 60)} hours`;
+    }, [reports]);
 
     return (
         <div className="space-y-8">
@@ -212,18 +239,12 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <StatCard title="Total Reports" value={totalReports.toString()} icon={<ZapIcon />} color="blue" />
                     <StatCard title="Vehicle Incidents" value={vehicleReports.toString()} icon={<CarIcon />} color="yellow" />
+                    <StatCard title="Accident Reports" value={accidentReports.toString()} icon={<AlertTriangleIcon />} color="orange" />
                     <StatCard title="Crime Incidents" value={crimeReports.toString()} icon={<CrimeIcon />} color="red" />
                     <StatCard title="Resolved Cases" value={resolved.toString()} icon={<CheckCircleIcon />} color="green" />
-                    <StatCard title="Pending Review" value={pending.toString()} icon={<AlertTriangleIcon />} color="orange" />
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Resolution Rate</p>
-                            <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{resolutionRate}%</p>
-                        </div>
-                        <div className={`p-3 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400`}>
-                            <ChartBarIcon className="w-6 h-6" />
-                        </div>
-                    </div>
+                    <StatCard title="Pending Review" value={pending.toString()} icon={<ClipboardCheckIcon />} color="purple" />
+                    <StatCard title="Resolution Rate" value={`${resolutionRate}%`} icon={<ChartBarIcon />} color="indigo" />
+                    <StatCard title="Avg. Resolution Time" value={avgResponseTime} icon={<ClockIcon />} color="cyan" />
                 </div>
             </div>
         </div>
@@ -235,14 +256,15 @@ const TrendsReport: React.FC<{ reports: Report[], theme: string }> = ({ reports,
         // Group by date
         const grouped = reports.reduce((acc, report) => {
             const date = format(new Date(report.reported_at), 'yyyy-MM-dd');
-            if (!acc[date]) acc[date] = { date, vehicle: 0, crime: 0, total: 0 };
+            if (!acc[date]) acc[date] = { date, vehicle: 0, crime: 0, accident: 0, total: 0 };
             
             if (isVehicleReport(report)) acc[date].vehicle++;
+            else if (isAccidentReport(report)) acc[date].accident++;
             else acc[date].crime++;
             acc[date].total++;
             
             return acc;
-        }, {} as Record<string, { date: string, vehicle: number, crime: number, total: number }>);
+        }, {} as Record<string, { date: string, vehicle: number, crime: number, accident: number, total: number }>);
 
         // Fill in missing days if needed, or just sort
         return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
@@ -256,12 +278,16 @@ const TrendsReport: React.FC<{ reports: Report[], theme: string }> = ({ reports,
                     <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorVehicle" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
-                                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                                <stop offset="5%" stopColor="#EAB308" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#EAB308" stopOpacity={0}/>
                             </linearGradient>
                             <linearGradient id="colorCrime" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#EF4444" stopOpacity={0.8}/>
                                 <stop offset="95%" stopColor="#EF4444" stopOpacity={0}/>
+                            </linearGradient>
+                            <linearGradient id="colorAccident" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#F97316" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#F97316" stopOpacity={0}/>
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#E5E7EB'} vertical={false} />
@@ -277,7 +303,8 @@ const TrendsReport: React.FC<{ reports: Report[], theme: string }> = ({ reports,
                             labelFormatter={(label) => format(parseISO(label as string), 'MMM d, yyyy')}
                         />
                         <Legend />
-                        <Area type="monotone" dataKey="vehicle" name="Vehicle Incidents" stroke="#3B82F6" fillOpacity={1} fill="url(#colorVehicle)" />
+                        <Area type="monotone" dataKey="vehicle" name="Vehicle Incidents" stroke="#EAB308" fillOpacity={1} fill="url(#colorVehicle)" />
+                        <Area type="monotone" dataKey="accident" name="Accident Reports" stroke="#F97316" fillOpacity={1} fill="url(#colorAccident)" />
                         <Area type="monotone" dataKey="crime" name="Crime Incidents" stroke="#EF4444" fillOpacity={1} fill="url(#colorCrime)" />
                     </AreaChart>
                 </ResponsiveContainer>
