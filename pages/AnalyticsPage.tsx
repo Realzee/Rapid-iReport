@@ -465,71 +465,127 @@ const TimeAnalysisReport: React.FC<{ reports: Report[], theme: string }> = ({ re
 };
 
 const HotspotsReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
-    const topLocations = useMemo(() => {
-        const locationCounts = reports.reduce((acc, report) => {
-            const location = isVehicleReport(report) ? report.last_seen_location : report.location;
-            if (location) {
-                // Simple normalization
-                const normalizedLoc = location.trim();
-                acc[normalizedLoc] = (acc[normalizedLoc] || 0) + 1;
+    const hotspots = useMemo(() => {
+        const stats = reports.reduce((acc, report) => {
+            const location = (isVehicleReport(report) ? report.last_seen_location : report.location)?.trim();
+            if (!location) return acc;
+
+            if (!acc[location]) {
+                acc[location] = {
+                    location,
+                    count: 0,
+                    vehicle: 0,
+                    crime: 0,
+                    accident: 0,
+                    critical: 0,
+                    high: 0,
+                    medium: 0,
+                    low: 0,
+                };
             }
+
+            acc[location].count++;
+            
+            if (isVehicleReport(report)) acc[location].vehicle++;
+            else if (isAccidentReport(report)) acc[location].accident++;
+            else acc[location].crime++;
+
+            if (report.severity === Severity.CRITICAL) acc[location].critical++;
+            else if (report.severity === Severity.HIGH) acc[location].high++;
+            else if (report.severity === Severity.MEDIUM) acc[location].medium++;
+            else acc[location].low++;
+
             return acc;
-        }, {} as Record<string, number>);
-        
-        return Object.entries(locationCounts)
-            .sort((a, b) => (b[1] as number) - (a[1] as number))
+        }, {} as Record<string, { 
+            location: string; 
+            count: number; 
+            vehicle: number; 
+            crime: number; 
+            accident: number; 
+            critical: number; 
+            high: number; 
+            medium: number; 
+            low: number; 
+        }>);
+
+        return Object.values(stats)
+            .sort((a, b) => b.count - a.count)
             .slice(0, 10);
     }, [reports]);
 
+    const getRiskLevel = (item: typeof hotspots[0]) => {
+        const score = (item.critical * 3) + (item.high * 2) + (item.medium * 1);
+        const avg = score / item.count;
+        if (avg > 2.5) return { label: 'Critical', color: 'text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-900/30' };
+        if (avg > 1.5) return { label: 'High', color: 'text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30' };
+        if (avg > 0.5) return { label: 'Medium', color: 'text-yellow-600 bg-yellow-100 dark:text-yellow-400 dark:bg-yellow-900/30' };
+        return { label: 'Low', color: 'text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900/30' };
+    };
+
     return (
-        <div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Top 10 Incident Hotspots</h3>
-            <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-800">
-                        <tr>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rank</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Location</th>
-                            <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Report Count</th>
-                            <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Percentage</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                        {topLocations.map(([location, count], index) => {
-                            const percentage = Math.round((count / reports.length) * 100);
-                            return (
-                                <tr key={location} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
-                                            index < 3 
-                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' 
-                                            : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                                        }`}>
-                                            {index + 1}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{location}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white font-bold">{count}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-400">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                                                <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${percentage}%` }}></div>
-                                            </div>
-                                            <span className="text-xs">{percentage}%</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                        {topLocations.length === 0 && (
-                            <tr>
-                                <td colSpan={4} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
-                                    No location data available for the selected period.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+        <div className="space-y-6">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Top 10 Incident Hotspots</h3>
+            <div className="grid grid-cols-1 gap-4">
+                {hotspots.map((spot, index) => {
+                    const risk = getRiskLevel(spot);
+                    const percentage = Math.round((spot.count / reports.length) * 100);
+                    
+                    return (
+                        <div key={spot.location} className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4 transition-all hover:shadow-md">
+                            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
+                                index < 3 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                            }`}>
+                                {index + 1}
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white truncate">{spot.location}</h4>
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${risk.color}`}>
+                                        {risk.label} Risk
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                                    <span>{spot.count} Reports ({percentage}%)</span>
+                                    <div className="flex items-center gap-3">
+                                        {spot.vehicle > 0 && (
+                                            <span className="flex items-center gap-1" title="Vehicle Incidents">
+                                                <CarIcon className="w-3 h-3" /> {spot.vehicle}
+                                            </span>
+                                        )}
+                                        {spot.crime > 0 && (
+                                            <span className="flex items-center gap-1" title="Crime Incidents">
+                                                <CrimeIcon className="w-3 h-3" /> {spot.crime}
+                                            </span>
+                                        )}
+                                        {spot.accident > 0 && (
+                                            <span className="flex items-center gap-1" title="Accident Reports">
+                                                <AlertTriangleIcon className="w-3 h-3" /> {spot.accident}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex-shrink-0 w-full sm:w-32">
+                                <div className="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
+                                    <div style={{ width: `${(spot.vehicle / spot.count) * 100}%` }} className="h-full bg-yellow-500" />
+                                    <div style={{ width: `${(spot.crime / spot.count) * 100}%` }} className="h-full bg-red-500" />
+                                    <div style={{ width: `${(spot.accident / spot.count) * 100}%` }} className="h-full bg-orange-500" />
+                                </div>
+                                <div className="flex justify-between text-[10px] text-gray-400 mt-1 px-1">
+                                    <span>Type Dist.</span>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+                
+                {hotspots.length === 0 && (
+                    <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                        No location data available for the selected period.
+                    </div>
+                )}
             </div>
         </div>
     );
