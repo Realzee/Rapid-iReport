@@ -325,113 +325,145 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
 
     return (
         <>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            <div className="lg:col-span-1 space-y-6">
-                 <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg sticky top-24 z-10">
-                    <h3 className="text-lg font-bold mb-2">On-Duty Manager</h3>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <label className="relative inline-flex items-center cursor-pointer" title={isEngaged ? "You must resolve active incidents to go off-duty." : "Toggle duty status"}>
-                                <input type="checkbox" checked={isOnDuty} onChange={handleDutyToggle} className="sr-only peer" disabled={isEngaged} />
-                                <div className="w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"></div>
-                            </label>
-                            <span className="font-semibold text-lg">{isOnDuty ? 'On Duty' : 'Off Duty'}</span>
-                        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column: Duty Status & Assignments */}
+            <div className="lg:col-span-4 space-y-6">
+                 {/* Duty Status Card */}
+                 <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm sticky top-24 z-10">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Duty Status</h3>
                         {profile.responder_status && <ResponderStatusBadge status={profile.responder_status} />}
                     </div>
+                    
+                    <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 mb-4">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">Active Duty</span>
+                        <label className="relative inline-flex items-center cursor-pointer" title={isEngaged ? "You must resolve active incidents to go off-duty." : "Toggle duty status"}>
+                            <input type="checkbox" checked={isOnDuty} onChange={handleDutyToggle} className="sr-only peer" disabled={isEngaged} />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+
                     {isEngaged && (
-                        <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
-                            You are on an active assignment. Resolve it before going off-duty.
-                        </p>
+                        <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                            <p className="text-xs text-yellow-700 dark:text-yellow-400">
+                                ⚠️ Resolve active assignments before going off-duty.
+                            </p>
+                        </div>
                     )}
+
                     {isOnDuty && (
-                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
+                        <div className="space-y-4 pt-2 border-t border-gray-100 dark:border-gray-800">
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={isSharingLocation} onChange={handleLocationToggle} className="sr-only peer" />
-                                        <div className="w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                                    </label>
-                                    <span className="font-semibold text-lg">Share Location</span>
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${isSharingLocation ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Location Sharing</span>
                                 </div>
-                                <div className="text-sm">
-                                    {locationError ? (
-                                        <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                                            <span className="relative flex h-3 w-3"><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>
-                                            <span>Error</span>
-                                        </div>
-                                    ) : isSharingLocation ? (
-                                        <div className="flex flex-col items-end">
-                                            <div className="flex items-center gap-2">
-                                                <span className="relative flex h-3 w-3">
-                                                    {isSyncing && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>}
-                                                    <span className={`relative inline-flex rounded-full h-3 w-3 ${isSyncing ? 'bg-blue-500' : 'bg-green-500'}`}></span>
-                                                </span>
-                                                <span className="text-green-600 dark:text-green-400">Active</span>
-                                            </div>
-                                            {lastSyncTimestamp && (
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                    Last sync: {formatDistanceToNow(lastSyncTimestamp, { addSuffix: true })}
-                                                </p>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                                            <span className="relative flex h-3 w-3"><span className="relative inline-flex rounded-full h-3 w-3 bg-gray-500"></span></span>
-                                            <span>Inactive</span>
-                                        </div>
-                                    )}
-                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={isSharingLocation} onChange={handleLocationToggle} className="sr-only peer" />
+                                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-green-500"></div>
+                                </label>
                             </div>
+                            
+                            {locationError && (
+                                <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-100 dark:border-red-800">
+                                    {locationError}
+                                </p>
+                            )}
+                            
+                            {isSharingLocation && lastSyncTimestamp && (
+                                <p className="text-xs text-right text-gray-400 dark:text-gray-500">
+                                    Synced {formatDistanceToNow(lastSyncTimestamp, { addSuffix: true })}
+                                </p>
+                            )}
                         </div>
                     )}
                 </div>
-
-                {locationError && <div className="bg-red-500/10 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-r-lg" role="alert"><p className="font-bold">System Error</p><p>{locationError}</p></div>}
                 
                 {isOnDuty && (
-                    <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg space-y-3">
-                        <button onClick={() => openChat(CONTROLLER_CHANNEL_REPORT)} className="w-full flex items-center justify-center gap-2 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors">
-                            <ChatAlt2Icon className="w-5 h-5" />
-                            <span>Open Staff Channel</span>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button onClick={() => openChat(CONTROLLER_CHANNEL_REPORT)} className="flex flex-col items-center justify-center gap-2 p-4 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors shadow-sm">
+                            <ChatAlt2Icon className="w-6 h-6" />
+                            <span className="text-xs">Staff Chat</span>
                         </button>
-                        <button onClick={() => setIsReportModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
-                            <PlusIcon className="w-5 h-5" />
-                            <span>Create New Report</span>
+                        <button onClick={() => setIsReportModalOpen(true)} className="flex flex-col items-center justify-center gap-2 p-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-sm">
+                            <PlusIcon className="w-6 h-6" />
+                            <span className="text-xs">New Report</span>
                         </button>
                     </div>
                 )}
                 
                 {isOnDuty && <ANPRScanner onReportHit={handleAnprHit} />}
 
-                <div className="space-y-3 lg:h-[calc(100vh-22rem)] lg:overflow-y-auto pr-2">
-                    <h2 className="text-xl font-bold px-1">Assigned Incidents ({assignedReports.length})</h2>
-                     {loading ? <div className="flex justify-center items-center h-64"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
-                    : assignedReports.length === 0 ? <p className="text-center py-10 text-gray-500 dark:text-gray-400">Stand by for assignments.</p> 
-                    : assignedReports.map(report => (
-                        <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
-                            className={`p-3 cursor-pointer rounded-lg border-2 transition-all ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-white/70 dark:bg-gray-900/60 border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600'}`}>
-                            <div className="flex justify-between items-start">
-                                <h3 className="font-bold text-md truncate pr-2">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
-                                <StatusBadge status={report.status} />
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between px-1">
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">Dispatch Queue</h2>
+                        <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold px-2 py-1 rounded-full">{assignedReports.length}</span>
+                    </div>
+                    
+                    <div className="space-y-3 lg:h-[calc(100vh-32rem)] lg:overflow-y-auto pr-1 custom-scrollbar">
+                        {loading ? (
+                            <div className="flex justify-center items-center h-32">
+                                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isAccidentReport(report) ? report.accident_type : report.crime_type)}</p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
-                        </div>
-                    ))}
+                        ) : assignedReports.length === 0 ? (
+                            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                                <p className="text-gray-500 dark:text-gray-400 text-sm">No active assignments.</p>
+                                <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Stand by for dispatch.</p>
+                            </div>
+                        ) : (
+                            assignedReports.map(report => (
+                                <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
+                                    className={`group relative p-4 cursor-pointer rounded-xl border transition-all duration-200 ${selectedReportId === report.id 
+                                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 shadow-md transform scale-[1.02]' 
+                                        : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm'}`}>
+                                    
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`w-2 h-2 rounded-full ${report.severity === 'critical' ? 'bg-red-500 animate-pulse' : report.severity === 'high' ? 'bg-orange-500' : 'bg-blue-500'}`}></span>
+                                            <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{report.ob_number}</span>
+                                        </div>
+                                        <StatusBadge status={report.status} />
+                                    </div>
+                                    
+                                    <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 truncate">
+                                        {isVehicleReport(report) ? report.license_plate : report.title}
+                                    </h3>
+                                    
+                                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 mb-3">
+                                        {isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isAccidentReport(report) ? report.accident_type : report.crime_type)}
+                                    </p>
+                                    
+                                    <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-2 mt-2">
+                                        <span>{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</span>
+                                        <span className="group-hover:text-blue-500 transition-colors">View Details →</span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <div className="lg:col-span-2 lg:sticky lg:top-24">
-                <div className="space-y-6">
-                    <div className="h-[40vh] rounded-2xl overflow-hidden">
-                       <ResponderMapView report={selectedReport} responderProfile={profile} />
-                    </div>
-                    {selectedReport ? <ResponderReportDetail key={selectedReport.id} report={selectedReport} profile={profile} allUsers={allUsers} /> : 
-                    <div className="h-full bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center min-h-[50vh]">
-                        <p className="text-gray-500 dark:text-gray-400">Select an incident to view details.</p>
-                    </div>}
+            {/* Right Column: Detail View & Map */}
+            <div className="lg:col-span-8 lg:sticky lg:top-24 space-y-6">
+                <div className="h-[35vh] rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-800 relative group">
+                    <ResponderMapView report={selectedReport} responderProfile={profile} />
+                    {/* Map overlay gradient for better text visibility if needed, or controls */}
                 </div>
+                
+                {selectedReport ? (
+                    <ResponderReportDetail key={selectedReport.id} report={selectedReport} profile={profile} allUsers={allUsers} />
+                ) : (
+                    <div className="h-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-8 flex flex-col items-center justify-center text-center shadow-sm">
+                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                            <NavigationIcon className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Ready for Assignment</h3>
+                        <p className="text-gray-500 dark:text-gray-400 max-w-md">
+                            Select an incident from the dispatch queue to view full details and manage your response.
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
 
@@ -592,96 +624,213 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
         setIsUploading(false);
     };
 
-    const actionButtonClasses = "w-full text-center py-3 px-4 font-semibold rounded-lg transition-transform duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center";
     const isTerminalStatus = report.status === ReportStatus.RESOLVED || report.status === ReportStatus.RECOVERED || report.status === ReportStatus.CLOSED;
     const Spinner = () => <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>;
     
     return (
         <>
-        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg">
-            <h2 className="text-2xl font-bold">{isVehicleReport(report) ? report.license_plate : report.title}</h2>
-            <p className="font-mono text-sm text-gray-500 dark:text-gray-400 mb-4">{report.ob_number}</p>
-            
-            <div className="grid grid-cols-2 gap-2 mb-4">
-                <button onClick={() => handleStatusUpdate(ReportStatus.IN_PROGRESS)} disabled={isTerminalStatus || !!isActionLoading} className={`${actionButtonClasses} bg-blue-600 text-white`}>{isActionLoading === ReportStatus.IN_PROGRESS ? <Spinner /> : 'En Route'}</button>
-                <button onClick={() => handleStatusUpdate(ReportStatus.ON_SCENE)} disabled={isTerminalStatus || !!isActionLoading} className={`${actionButtonClasses} bg-yellow-500 text-white`}>{isActionLoading === ReportStatus.ON_SCENE ? <Spinner /> : 'On Scene'}</button>
-                <button onClick={() => handleStatusUpdate(ReportStatus.RESOLVED)} disabled={isTerminalStatus || !!isActionLoading} className={`${actionButtonClasses} bg-green-600 text-white`}>{isActionLoading === ReportStatus.RESOLVED ? <Spinner /> : 'Resolve'}</button>
-                {isVehicleReport(report) && (
-                    <button onClick={() => handleStatusUpdate(ReportStatus.RECOVERED)} disabled={isTerminalStatus || !!isActionLoading} className={`${actionButtonClasses} bg-teal-500 text-white`}>{isActionLoading === ReportStatus.RECOVERED ? <Spinner /> : 'Recovered'}</button>
-                )}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden">
+            {/* Header Section */}
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                    <div>
+                        <div className="flex items-center gap-3 mb-1">
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                {isVehicleReport(report) ? report.license_plate : report.title}
+                            </h2>
+                            <StatusBadge status={report.status} />
+                        </div>
+                        <p className="font-mono text-sm text-gray-500 dark:text-gray-400">OB: {report.ob_number}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                         <button onClick={() => openChat(report)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium text-sm">
+                            <ChatAlt2Icon className="w-4 h-4" />
+                            Live Chat
+                        </button>
+                        <button onClick={handleStandDown} disabled={isTerminalStatus || !!isActionLoading} className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors font-medium text-sm disabled:opacity-50">
+                            {isActionLoading === 'stand_down' ? <Spinner /> : 'Stand Down'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Primary Action Bar */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <button 
+                        onClick={() => handleStatusUpdate(ReportStatus.IN_PROGRESS)} 
+                        disabled={isTerminalStatus || !!isActionLoading || report.status === ReportStatus.IN_PROGRESS} 
+                        className={`py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2
+                            ${report.status === ReportStatus.IN_PROGRESS 
+                                ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-600 ring-offset-2 dark:ring-offset-gray-900' 
+                                : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40'}`}
+                    >
+                        {isActionLoading === ReportStatus.IN_PROGRESS ? <Spinner /> : 'En Route'}
+                    </button>
+                    
+                    <button 
+                        onClick={() => handleStatusUpdate(ReportStatus.ON_SCENE)} 
+                        disabled={isTerminalStatus || !!isActionLoading || report.status === ReportStatus.ON_SCENE} 
+                        className={`py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2
+                            ${report.status === ReportStatus.ON_SCENE 
+                                ? 'bg-yellow-500 text-white shadow-md ring-2 ring-yellow-500 ring-offset-2 dark:ring-offset-gray-900' 
+                                : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/40'}`}
+                    >
+                        {isActionLoading === ReportStatus.ON_SCENE ? <Spinner /> : 'On Scene'}
+                    </button>
+                    
+                    <button 
+                        onClick={() => handleStatusUpdate(ReportStatus.RESOLVED)} 
+                        disabled={isTerminalStatus || !!isActionLoading} 
+                        className="py-3 px-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                    >
+                        {isActionLoading === ReportStatus.RESOLVED ? <Spinner /> : 'Resolve'}
+                    </button>
+                    
+                    {isVehicleReport(report) && (
+                        <button 
+                            onClick={() => handleStatusUpdate(ReportStatus.RECOVERED)} 
+                            disabled={isTerminalStatus || !!isActionLoading} 
+                            className="py-3 px-4 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/40 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                        >
+                            {isActionLoading === ReportStatus.RECOVERED ? <Spinner /> : 'Recovered'}
+                        </button>
+                    )}
+                </div>
             </div>
 
-            <button onClick={handleStandDown} disabled={isTerminalStatus || !!isActionLoading} className={`${actionButtonClasses} bg-orange-500 text-white mb-4`}>
-                {isActionLoading === 'stand_down' ? <Spinner /> : 'Stand Down'}
-            </button>
-
-
-            <div className="space-y-4">
-                <div><h4 className="font-bold">Location</h4><p>{isVehicleReport(report) ? report.last_seen_location : report.location}</p></div>
-                <div><h4 className="font-bold">Description</h4><p className="whitespace-pre-wrap">{report.description}</p></div>
-                {isVehicleReport(report) && <div><h4 className="font-bold">Vehicle</h4><p>{report.vehicle_color} {report.vehicle_make} {report.vehicle_model}</p></div>}
+            {/* Content Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-gray-100 dark:divide-gray-800">
                 
-                {isAccidentReport(report) && (
-                    <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                        <div>
-                            <h4 className="text-xs font-bold text-gray-500 uppercase">Accident Type</h4>
-                            <p className="text-sm">{report.accident_type}</p>
-                        </div>
-                        <div>
-                            <h4 className="text-xs font-bold text-gray-500 uppercase">Vehicles</h4>
-                            <p className="text-sm">{report.vehicles_involved}</p>
-                        </div>
-                        <div>
-                            <h4 className="text-xs font-bold text-gray-500 uppercase">Injuries</h4>
-                            <p className="text-sm">{report.injuries_reported ? 'Yes' : 'No'}</p>
-                        </div>
-                        <div>
-                            <h4 className="text-xs font-bold text-gray-500 uppercase">Fatalities</h4>
-                            <p className="text-sm">{report.fatalities_reported ? 'Yes' : 'No'}</p>
-                        </div>
-                    </div>
-                )}
-                
-                <div>
-                    <h4 className="font-bold mb-2">Evidence</h4>
-                    {report.evidence_images && report.evidence_images.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                            {report.evidence_images.map((img, index) => (
-                                <button 
-                                    key={index} 
-                                    onClick={() => setPreviewImageUrl(img)}
-                                    className="relative group w-full h-24 rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <img src={img} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" alt={`Evidence ${index + 1}`} />
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                        <span className="text-white opacity-0 group-hover:opacity-100 font-semibold text-xs bg-black/50 px-2 py-1 rounded">View</span>
+                {/* Left Panel: Details & Evidence */}
+                <div className="p-6 space-y-6">
+                    <div>
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Incident Details</h4>
+                        <div className="space-y-4">
+                            <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                <span className="text-xs text-gray-500 block mb-1">Location</span>
+                                <p className="font-medium text-gray-900 dark:text-gray-100">
+                                    {isVehicleReport(report) ? report.last_seen_location : report.location}
+                                </p>
+                            </div>
+                            
+                            <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                <span className="text-xs text-gray-500 block mb-1">Description</span>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                    {report.description}
+                                </p>
+                            </div>
+
+                            {isVehicleReport(report) && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                        <span className="text-xs text-gray-500 block mb-1">Vehicle</span>
+                                        <p className="font-medium">{report.vehicle_color} {report.vehicle_make}</p>
                                     </div>
-                                </button>
-                            ))}
+                                    <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                        <span className="text-xs text-gray-500 block mb-1">Model</span>
+                                        <p className="font-medium">{report.vehicle_model}</p>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {isAccidentReport(report) && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                        <span className="text-xs text-gray-500 block mb-1">Type</span>
+                                        <p className="font-medium">{report.accident_type}</p>
+                                    </div>
+                                    <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                        <span className="text-xs text-gray-500 block mb-1">Vehicles</span>
+                                        <p className="font-medium">{report.vehicles_involved}</p>
+                                    </div>
+                                    <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                        <span className="text-xs text-gray-500 block mb-1">Injuries</span>
+                                        <p className={`font-medium ${report.injuries_reported ? 'text-red-500' : 'text-gray-700'}`}>
+                                            {report.injuries_reported ? 'Yes' : 'None'}
+                                        </p>
+                                    </div>
+                                    <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                        <span className="text-xs text-gray-500 block mb-1">Fatalities</span>
+                                        <p className={`font-medium ${report.fatalities_reported ? 'text-red-600 font-bold' : 'text-gray-700'}`}>
+                                            {report.fatalities_reported ? 'Yes' : 'None'}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    ) : (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 italic">No evidence images uploaded yet.</p>
-                    )}
-                    <label htmlFor="evidence-upload" className="w-full flex items-center justify-center gap-2 cursor-pointer py-2 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors">
-                        <CameraIcon className="w-5 h-5" /> {isUploading ? "Uploading..." : "Add Evidence"}
-                        <input id="evidence-upload" type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" disabled={isUploading} />
-                    </label>
+                    </div>
+
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Evidence</h4>
+                            <label htmlFor="evidence-upload" className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer flex items-center gap-1">
+                                <CameraIcon className="w-3 h-3" />
+                                {isUploading ? "Uploading..." : "Add Photo"}
+                                <input id="evidence-upload" type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" disabled={isUploading} />
+                            </label>
+                        </div>
+                        
+                        {report.evidence_images && report.evidence_images.length > 0 ? (
+                            <div className="grid grid-cols-3 gap-2">
+                                {report.evidence_images.map((img, index) => (
+                                    <button 
+                                        key={index} 
+                                        onClick={() => setPreviewImageUrl(img)}
+                                        className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <img src={img} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" alt={`Evidence ${index + 1}`} />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                            <span className="text-white opacity-0 group-hover:opacity-100 font-semibold text-xs bg-black/50 px-2 py-1 rounded backdrop-blur-sm">View</span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center text-center">
+                                <CameraIcon className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+                                <p className="text-xs text-gray-400">No evidence uploaded</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <div>
-                    <h4 className="font-bold mb-2">Incident Log</h4>
-                    <div className="space-y-2 max-h-48 overflow-y-auto bg-gray-100 dark:bg-gray-800/50 p-2 rounded-md mb-2">
-                        {updates.map(u => <div key={u.id} className="text-sm"><p>{u.content}</p><p className="text-xs text-gray-500 text-right">- {u.user_full_name} ({formatDistanceToNow(new Date(u.created_at), {addSuffix: true})})</p></div>)}
+                {/* Right Panel: Incident Log */}
+                <div className="p-6 flex flex-col h-full min-h-[400px]">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Incident Log</h4>
+                    
+                    <div className="flex-grow bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-lg p-4 mb-4 overflow-y-auto custom-scrollbar space-y-3 max-h-[500px]">
+                        {updates.length === 0 ? (
+                            <p className="text-center text-gray-400 text-xs italic py-4">No updates yet.</p>
+                        ) : (
+                            updates.map(u => (
+                                <div key={u.id} className="flex flex-col">
+                                    <div className="flex items-baseline justify-between mb-1">
+                                        <span className="font-semibold text-xs text-gray-700 dark:text-gray-300">{u.user_full_name}</span>
+                                        <span className="text-[10px] text-gray-400 font-mono">{formatDistanceToNow(new Date(u.created_at), {addSuffix: true})}</span>
+                                    </div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700/50 shadow-sm">
+                                        {u.content}
+                                    </p>
+                                </div>
+                            ))
+                        )}
                     </div>
+                    
                     <form onSubmit={handlePostUpdate} className="flex gap-2">
-                        <input type="text" value={newUpdate} onChange={e => setNewUpdate(e.target.value)} placeholder="Post an update..." className="flex-grow bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm" />
-                        <button type="submit" disabled={isSubmitting} className="px-4 bg-blue-600 text-white rounded-md font-semibold disabled:opacity-50">Post</button>
+                        <input 
+                            type="text" 
+                            value={newUpdate} 
+                            onChange={e => setNewUpdate(e.target.value)} 
+                            placeholder="Type an update..." 
+                            className="flex-grow bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all" 
+                        />
+                        <button 
+                            type="submit" 
+                            disabled={isSubmitting || !newUpdate.trim()} 
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            Post
+                        </button>
                     </form>
-                </div>
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-700/50">
-                    <button onClick={() => openChat(report)} className="w-full py-2 px-4 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition">
-                        Open Live Chat
-                    </button>
                 </div>
             </div>
         </div>
