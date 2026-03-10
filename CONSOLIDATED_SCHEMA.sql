@@ -241,19 +241,38 @@ ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 
 -- Companies
+DROP POLICY IF EXISTS "Public read companies" ON public.companies;
 CREATE POLICY "Public read companies" ON public.companies FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admin manage companies" ON public.companies;
 CREATE POLICY "Admin manage companies" ON public.companies FOR ALL USING (get_user_role(auth.uid()) = 'admin');
 
 -- Profiles
+DROP POLICY IF EXISTS "Self read profile" ON public.profiles;
 CREATE POLICY "Self read profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Self update profile" ON public.profiles;
 CREATE POLICY "Self update profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Staff read all profiles" ON public.profiles;
 CREATE POLICY "Staff read all profiles" ON public.profiles FOR SELECT USING (get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'));
+DROP POLICY IF EXISTS "Admin manage profiles" ON public.profiles;
 CREATE POLICY "Admin manage profiles" ON public.profiles FOR ALL USING (get_user_role(auth.uid()) = 'admin');
 
 -- Reports (Simplified for brevity, but functional)
+DROP POLICY IF EXISTS "Users read own reports" ON public.vehicle_reports;
 CREATE POLICY "Users read own reports" ON public.vehicle_reports FOR SELECT USING (auth.uid() = reported_by);
+DROP POLICY IF EXISTS "Users create reports" ON public.vehicle_reports;
 CREATE POLICY "Users create reports" ON public.vehicle_reports FOR INSERT WITH CHECK (auth.uid() = reported_by);
+DROP POLICY IF EXISTS "Staff manage company reports" ON public.vehicle_reports;
 CREATE POLICY "Staff manage company reports" ON public.vehicle_reports FOR ALL USING (
+    get_user_role(auth.uid()) = 'admin' OR 
+    (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()))
+);
+
+DROP POLICY IF EXISTS "Users read own crime reports" ON public.crime_reports;
+CREATE POLICY "Users read own crime reports" ON public.crime_reports FOR SELECT USING (auth.uid() = reported_by);
+DROP POLICY IF EXISTS "Users create crime reports" ON public.crime_reports;
+CREATE POLICY "Users create crime reports" ON public.crime_reports FOR INSERT WITH CHECK (auth.uid() = reported_by);
+DROP POLICY IF EXISTS "Staff manage company crime reports" ON public.crime_reports;
+CREATE POLICY "Staff manage company crime reports" ON public.crime_reports FOR ALL USING (
     get_user_role(auth.uid()) = 'admin' OR 
     (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()))
 );
@@ -266,33 +285,32 @@ CREATE POLICY "Staff manage company reports" ON public.crime_reports FOR ALL USI
 );
 
 -- Announcements
+DROP POLICY IF EXISTS "Public read announcements" ON public.announcements;
 CREATE POLICY "Public read announcements" ON public.announcements FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Staff manage announcements" ON public.announcements;
 CREATE POLICY "Staff manage announcements" ON public.announcements FOR ALL USING (get_user_role(auth.uid()) IN ('admin', 'moderator'));
 
 -- App Settings
+DROP POLICY IF EXISTS "Public read settings" ON public.app_settings;
 CREATE POLICY "Public read settings" ON public.app_settings FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admin manage settings" ON public.app_settings;
 CREATE POLICY "Admin manage settings" ON public.app_settings FOR ALL USING (get_user_role(auth.uid()) = 'admin');
 
 -- 6. Storage Policies (Run these if you have issues with uploads)
 -- Note: These assume buckets 'avatars', 'evidence', 'company-logos', 'app-assets' exist.
 
 -- Allow public read access to all buckets
+DROP POLICY IF EXISTS "Public Read Access" ON storage.objects;
 CREATE POLICY "Public Read Access" ON storage.objects FOR SELECT USING (bucket_id IN ('avatars', 'evidence', 'company-logos', 'app-assets'));
 
--- Allow authenticated users to upload to avatars and evidence
-CREATE POLICY "Authenticated Upload Avatars" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'avatars');
-CREATE POLICY "Authenticated Upload Evidence" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'evidence');
+-- Allow authenticated users to upload to evidence and avatars
+DROP POLICY IF EXISTS "Authenticated Upload Access" ON storage.objects;
+CREATE POLICY "Authenticated Upload Access" ON storage.objects FOR INSERT WITH CHECK (auth.role() = 'authenticated' AND bucket_id IN ('avatars', 'evidence'));
 
--- Allow admins and staff to upload to company-logos and app-assets
-CREATE POLICY "Staff Upload Company Logos" ON storage.objects FOR INSERT TO authenticated WITH CHECK (
-    bucket_id = 'company-logos' AND 
-    (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'))
-);
+-- Allow users to update their own avatars
+DROP POLICY IF EXISTS "Users Update Own Avatars" ON storage.objects;
+CREATE POLICY "Users Update Own Avatars" ON storage.objects FOR UPDATE USING (auth.uid()::text = (storage.foldername(name))[1] AND bucket_id = 'avatars');
 
-CREATE POLICY "Admin Upload App Assets" ON storage.objects FOR INSERT TO authenticated WITH CHECK (
-    bucket_id = 'app-assets' AND 
-    (public.get_user_role(auth.uid()) = 'admin')
-);
-
--- Allow users to update/delete their own uploads (simplified)
-CREATE POLICY "Users Manage Own Uploads" ON storage.objects FOR ALL TO authenticated USING (auth.uid() = owner);
+-- Allow admins to manage all storage
+DROP POLICY IF EXISTS "Admins Manage All Storage" ON storage.objects;
+CREATE POLICY "Admins Manage All Storage" ON storage.objects FOR ALL USING (get_user_role(auth.uid()) = 'admin');
