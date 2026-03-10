@@ -101,8 +101,8 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                          <div className="flex justify-center items-center h-full"><div className="w-5 h-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div></div>
                                     ) : (
                                         <div className="flex gap-2">
-                                            <button onClick={() => onStatusChange(user.id, UserStatus.ACTIVE)} className="w-full px-2 py-2 text-sm font-semibold bg-green-600 text-white rounded-md hover:bg-green-700">Approve</button>
-                                            <button onClick={() => onStatusChange(user.id, UserStatus.SUSPENDED)} className="w-full px-2 py-2 text-sm font-semibold bg-red-600 text-white rounded-md hover:bg-red-700">Reject</button>
+                                            <button onClick={() => onStatusChange(user.id, UserStatus.ACTIVE)} className="w-full btn-success text-sm">Approve</button>
+                                            <button onClick={() => onStatusChange(user.id, UserStatus.SUSPENDED)} className="w-full btn-danger text-sm">Reject</button>
                                         </div>
                                     )}
                                 </div>
@@ -273,8 +273,8 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                                     <div className="w-5 h-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
                                                 ) : (
                                                     <>
-                                                        <button onClick={() => onStatusChange(user.id, UserStatus.ACTIVE)} className="px-2 py-1 text-xs font-semibold bg-green-600 text-white rounded-md hover:bg-green-700">Approve</button>
-                                                        <button onClick={() => onStatusChange(user.id, UserStatus.SUSPENDED)} className="px-2 py-1 text-xs font-semibold bg-red-600 text-white rounded-md hover:bg-red-700">Reject</button>
+                                                        <button onClick={() => onStatusChange(user.id, UserStatus.ACTIVE)} className="btn-success text-xs py-1 px-2">Approve</button>
+                                                        <button onClick={() => onStatusChange(user.id, UserStatus.SUSPENDED)} className="btn-danger text-xs py-1 px-2">Reject</button>
                                                     </>
                                                 )}
                                                 <button onClick={() => onView(user)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" title="View Details">

@@ -4,7 +4,7 @@ interface StatCardProps {
   title: string;
   value: string;
   icon: React.ReactElement;
-  color: 'blue' | 'red' | 'green' | 'yellow' | 'orange' | 'purple' | 'indigo' | 'cyan';
+  color: 'blue' | 'red' | 'green' | 'yellow' | 'orange' | 'purple' | 'indigo' | 'cyan' | 'primary';
 }
 
 const colorClasses = {
@@ -16,6 +16,7 @@ const colorClasses = {
   purple: 'text-purple-500 dark:text-purple-400',
   indigo: 'text-indigo-500 dark:text-indigo-400',
   cyan: 'text-cyan-500 dark:text-cyan-400',
+  primary: 'text-primary-500 dark:text-primary-400',
 };
 
 const iconBgClasses = {
@@ -27,11 +28,12 @@ const iconBgClasses = {
   purple: 'bg-purple-500/10',
   indigo: 'bg-indigo-500/10',
   cyan: 'bg-cyan-500/10',
+  primary: 'bg-primary-500/10',
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
   return (
-    <div className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-md p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-blue-500/50 transition-all duration-300 flex items-center space-x-4 shadow-sm dark:shadow-none">
+    <div className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-md p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-primary-500/50 transition-all duration-300 flex items-center space-x-4 shadow-sm dark:shadow-none">
        <div className={`p-3 rounded-lg ${iconBgClasses[color]}`}>
           {React.cloneElement(icon as React.ReactElement<{ className: string }>, { className: `w-6 h-6 ${colorClasses[color]}` })}
       </div>

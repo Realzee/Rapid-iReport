@@ -374,10 +374,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                         <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Control Center</h2>
                         <p className="text-gray-500 dark:text-gray-400 mt-1">Live operational overview of community safety.</p>
                     </div>
-                    <button onClick={handleOpenNewReportModal} className="mt-4 md:mt-0 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"><PlusIcon className="w-5 h-5" /><span>New Report</span></button>
+                    <button onClick={handleOpenNewReportModal} className="mt-4 md:mt-0 btn-primary flex items-center space-x-2">
+                        <PlusIcon className="w-5 h-5" />
+                        <span>New Report</span>
+                    </button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                    <StatCard title="Total Reports" value={reports.length.toString()} icon={<ZapIcon />} color="blue" />
+                    <StatCard title="Total Reports" value={reports.length.toString()} icon={<ZapIcon />} color="primary" />
                     <StatCard title="Active Incidents" value={reports.filter(r => r.status === 'active' || r.status === 'in_progress').length.toString()} icon={<AlertTriangleIcon />} color="red" />
                     <StatCard title="Resolved Today" value={reports.filter(r => r.status === 'resolved' || r.status === 'recovered').length.toString()} icon={<CheckCircleIcon />} color="green" />
                     <StatCard title="Available Responders" value={responders.filter(r => r.status === 'available').length.toString()} icon={<ZapIcon />} color="yellow" />
