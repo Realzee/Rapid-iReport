@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS public.emergency_reports (
     vehicle_make text,
     vehicle_model text,
     vehicle_color text,
+    "vehicle_Involved" boolean DEFAULT false,
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     deleted_at timestamp with time zone
 );
