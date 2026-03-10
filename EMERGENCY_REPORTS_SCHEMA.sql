@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS public.emergency_reports (
     vehicles_involved integer DEFAULT 1,
     injuries_reported boolean DEFAULT false,
     fatalities_reported boolean DEFAULT false,
+    license_plate text,
+    vehicle_make text,
+    vehicle_model text,
+    vehicle_color text,
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     deleted_at timestamp with time zone
 );

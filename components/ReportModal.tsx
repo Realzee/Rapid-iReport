@@ -483,10 +483,14 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     title: formData.title,
                     emergency_type: formData.emergency_type,
                     location: formData.location,
-                    vehicle_involved: formData.vehicle_involved === 'true',
-                    vehicles_involved: formData.vehicle_involved === 'true' ? parseInt(formData.vehicles_involved || '1') : 0,
+                    vehicle_involved: formData.vehicle_involved === 'true' || formData.emergency_type === 'Kidnapping (taken with vehicle)',
+                    vehicles_involved: (formData.vehicle_involved === 'true' || formData.emergency_type === 'Kidnapping (taken with vehicle)') ? parseInt(formData.vehicles_involved || '1') : 0,
                     injuries_reported: formData.injuries_reported === 'true',
                     fatalities_reported: formData.fatalities_reported === 'true',
+                    license_plate: formData.license_plate,
+                    vehicle_make: formData.vehicle_make,
+                    vehicle_model: formData.vehicle_model,
+                    vehicle_color: formData.vehicle_color,
                 };
             } else {
                  reportData = {
@@ -618,10 +622,10 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {reportType === 'vehicle' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label htmlFor="license_plate" className={labelClasses}>License Plate</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} required className={inputClasses} /></div>
-                            <div><label htmlFor="vehicle_make" className={labelClasses}>Vehicle Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} required className={inputClasses} list="makes-list" /></div>
-                            <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} required className={inputClasses} list="models-list" /></div>
-                            <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} required className={inputClasses} list="colors-list" /></div>
+                            <div><label htmlFor="license_plate" className={labelClasses}>License Plate</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} className={inputClasses} /></div>
+                            <div><label htmlFor="vehicle_make" className={labelClasses}>Vehicle Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} className={inputClasses} list="makes-list" /></div>
+                            <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} className={inputClasses} list="models-list" /></div>
+                            <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" /></div>
                             <div><label htmlFor="vin_number" className={labelClasses}>VIN Number</label><input type="text" name="vin_number" id="vin_number" value={formData.vin_number || ''} onChange={handleChange} className={inputClasses} /></div>
                             <div><label htmlFor="engine_number" className={labelClasses}>Engine Number</label><input type="text" name="engine_number" id="engine_number" value={formData.engine_number || ''} onChange={handleChange} className={inputClasses} /></div>
                             <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
@@ -630,10 +634,10 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     ) : reportType === 'emergency' ? (
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label htmlFor="title" className={labelClasses}>Emergency Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g. Multi-vehicle collision, Fire, Medical" /></div>
+                                <div><label htmlFor="title" className={labelClasses}>Emergency Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. Multi-vehicle collision, Fire, Medical" /></div>
                                 <div>
                                     <label htmlFor="emergency_type" className={labelClasses}>Type of Emergency</label>
-                                    <select name="emergency_type" id="emergency_type" value={formData.emergency_type || ''} onChange={handleChange} required className={inputClasses}>
+                                    <select name="emergency_type" id="emergency_type" value={formData.emergency_type || ''} onChange={handleChange} className={inputClasses}>
                                         <option value="" disabled>Select Emergency Type</option>
                                         <option value="Fire">Fire</option>
                                         <option value="Medical Emergency">Medical Emergency</option>
@@ -641,10 +645,22 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                         <option value="Multi-vehicle Collision">Multi-vehicle Collision</option>
                                         <option value="Pedestrian Incident">Pedestrian Incident</option>
                                         <option value="Natural Disaster">Natural Disaster</option>
+                                        <option value="Kidnapping (taken with vehicle)">Kidnapping (taken with vehicle)</option>
                                         <option value="Other">Other</option>
                                     </select>
                                 </div>
                             </div>
+                            {(formData.emergency_type === 'Kidnapping (taken with vehicle)' || formData.emergency_type === 'Multi-vehicle Collision') && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                                    <div className="md:col-span-2 text-sm font-bold text-blue-800 dark:text-blue-300 mb-1 flex items-center gap-2">
+                                        <CarIcon className="w-4 h-4" /> Vehicle Details
+                                    </div>
+                                    <div><label htmlFor="license_plate" className={labelClasses}>License Plate</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} className={inputClasses} /></div>
+                                    <div><label htmlFor="vehicle_make" className={labelClasses}>Vehicle Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} className={inputClasses} list="makes-list" /></div>
+                                    <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} className={inputClasses} list="models-list" /></div>
+                                    <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" /></div>
+                                </div>
+                            )}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label htmlFor="vehicle_involved" className={labelClasses}>Vehicle Involved?</label>
@@ -679,8 +695,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         </div>
                     ) : (
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="md:col-span-2"><label htmlFor="title" className={labelClasses}>Incident Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} required className={inputClasses} /></div>
-                            <div className="md:col-span-2"><label htmlFor="crime_type" className={labelClasses}>Type of Crime</label><input type="text" name="crime_type" id="crime_type" value={formData.crime_type || ''} onChange={handleChange} required className={inputClasses} /></div>
+                            <div className="md:col-span-2"><label htmlFor="title" className={labelClasses}>Incident Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} className={inputClasses} /></div>
+                            <div className="md:col-span-2"><label htmlFor="crime_type" className={labelClasses}>Type of Crime</label><input type="text" name="crime_type" id="crime_type" value={formData.crime_type || ''} onChange={handleChange} className={inputClasses} /></div>
                             <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
                             <div><label htmlFor="station_name" className={labelClasses}>Station Name</label><input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="STATION" /></div>
                         </div>
@@ -689,7 +705,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     <div>
                         <label htmlFor="location" className={labelClasses}>{reportType === 'vehicle' ? 'Last Seen Location' : 'Location'}</label>
                         <div className="relative mt-1" ref={suggestionsRef}>
-                            <input type="text" name="location" id="location" value={formData.location || ''} onChange={handleChange} required className={`${inputClasses} !mt-0 pr-10`} placeholder="Type an address to search..." autoComplete="off"/>
+                            <input type="text" name="location" id="location" value={formData.location || ''} onChange={handleChange} className={`${inputClasses} !mt-0 pr-10`} placeholder="Type an address to search..." autoComplete="off"/>
                             <button type="button" onClick={() => setMapVisible(!isMapVisible)} className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 transition-colors" title="Pin location on map">
                                 <MapPinIcon className="w-5 h-5" />
                             </button>
@@ -722,7 +738,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     
                     <div>
                         <label htmlFor="severity" className={labelClasses}>Severity</label>
-                        <select name="severity" id="severity" value={formData.severity || ''} onChange={handleChange} required className={inputClasses}>
+                        <select name="severity" id="severity" value={formData.severity || ''} onChange={handleChange} className={inputClasses}>
                             <option value="">Select Severity</option>
                             {Object.values(Severity).map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
                         </select>
@@ -730,7 +746,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
                     <div>
                         <label htmlFor="description" className={labelClasses}>Description</label>
-                        <textarea name="description" id="description" rows={4} value={formData.description || ''} onChange={handleChange} required className={inputClasses} />
+                        <textarea name="description" id="description" rows={4} value={formData.description || ''} onChange={handleChange} className={inputClasses} />
                     </div>
 
                     <div>

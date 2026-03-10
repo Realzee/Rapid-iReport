@@ -164,6 +164,10 @@ export interface EmergencyReport {
   vehicles_involved?: number;
   injuries_reported?: boolean;
   fatalities_reported?: boolean;
+  license_plate?: string;
+  vehicle_make?: string;
+  vehicle_model?: string;
+  vehicle_color?: string;
 }
 
 export type Report = VehicleReport | CrimeReport | EmergencyReport;

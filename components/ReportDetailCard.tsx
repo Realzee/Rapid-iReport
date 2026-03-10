@@ -258,10 +258,10 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             const lineHeight = 35;
 
             const statusText = isRecovered ? 'RECOVERED' : (report.status === 'active' || report.status === 'assigned' || report.status === 'in_progress' || report.status === 'on_scene' ? 'HIJACKED' : report.status.toUpperCase());
-            const reg = report.type === 'vehicle' ? (report as any).license_plate : 'N/A';
-            const make = report.type === 'vehicle' ? (report as any).vehicle_make : 'N/A';
-            const model = report.type === 'vehicle' ? (report as any).vehicle_model : 'N/A';
-            const color = report.type === 'vehicle' ? (report as any).vehicle_color : 'N/A';
+            const reg = report.type === 'vehicle' ? (report as any).license_plate : ((report as any).license_plate || 'N/A');
+            const make = report.type === 'vehicle' ? (report as any).vehicle_make : ((report as any).vehicle_make || 'N/A');
+            const model = report.type === 'vehicle' ? (report as any).vehicle_model : ((report as any).vehicle_model || 'N/A');
+            const color = report.type === 'vehicle' ? (report as any).vehicle_color : ((report as any).vehicle_color || 'N/A');
             const caseNumber = (report as any).cas_number || 'N/A';
             const stationName = (report as any).station_name || 'N/A';
 
@@ -558,7 +558,31 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicle Involved</p>
                                 <p className="text-gray-900 dark:text-white">{(report as any).vehicle_involved ? 'Yes' : 'No'}</p>
                             </div>
-                            {(report as any).vehicle_involved && (
+                            {(report as any).license_plate && (
+                                <div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">License Plate</p>
+                                    <p className="text-gray-900 dark:text-white">{(report as any).license_plate}</p>
+                                </div>
+                            )}
+                            {(report as any).vehicle_make && (
+                                <div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Make</p>
+                                    <p className="text-gray-900 dark:text-white">{(report as any).vehicle_make}</p>
+                                </div>
+                            )}
+                            {(report as any).vehicle_model && (
+                                <div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Model</p>
+                                    <p className="text-gray-900 dark:text-white">{(report as any).vehicle_model}</p>
+                                </div>
+                            )}
+                            {(report as any).vehicle_color && (
+                                <div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Color</p>
+                                    <p className="text-gray-900 dark:text-white">{(report as any).vehicle_color}</p>
+                                </div>
+                            )}
+                            {(report as any).vehicle_involved && (report as any).vehicles_involved > 0 && (
                                 <div>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicles Involved</p>
                                     <p className="text-gray-900 dark:text-white">{(report as any).vehicles_involved}</p>

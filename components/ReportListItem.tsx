@@ -128,6 +128,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                         <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
                         {' · '}
                         {(report as any).emergency_type}
+                        {(report as any).license_plate && ` · ${(report as any).license_plate}`}
                     </p>
                 ) : (
                      <p className="truncate">
