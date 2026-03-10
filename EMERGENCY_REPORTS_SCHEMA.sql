@@ -49,17 +49,31 @@ AS $$
 DECLARE
     report_month integer := extract(month from p_report_date);
     report_year integer := extract(year from p_report_date);
-    total_count integer;
+    max_seq integer;
 BEGIN
-    SELECT count(*) INTO total_count
+    -- Use MAX instead of COUNT to avoid collisions if reports are deleted
+    -- and to be more robust against race conditions.
+    SELECT MAX(seq) INTO max_seq
     FROM (
-        SELECT id FROM public.vehicle_reports WHERE extract(year from reported_at) = report_year AND extract(month from reported_at) = report_month
+        -- Extract the numeric part from the ob_number (e.g., 'P0001/03/2026' -> 1)
+        -- We assume the format is [Initial][4-digit-sequence]/MM/YYYY
+        SELECT CAST(substring(ob_number from 2 for 4) AS integer) as seq 
+        FROM public.vehicle_reports 
+        WHERE extract(year from reported_at) = report_year AND extract(month from reported_at) = report_month
+        AND ob_number ~ '^[A-Z][0-9]{4}/[0-9]{2}/[0-9]{4}$'
         UNION ALL
-        SELECT id FROM public.crime_reports WHERE extract(year from reported_at) = report_year AND extract(month from reported_at) = report_month
+        SELECT CAST(substring(ob_number from 2 for 4) AS integer) as seq 
+        FROM public.crime_reports 
+        WHERE extract(year from reported_at) = report_year AND extract(month from reported_at) = report_month
+        AND ob_number ~ '^[A-Z][0-9]{4}/[0-9]{2}/[0-9]{4}$'
         UNION ALL
-        SELECT id FROM public.emergency_reports WHERE extract(year from reported_at) = report_year AND extract(month from reported_at) = report_month
+        SELECT CAST(substring(ob_number from 2 for 4) AS integer) as seq 
+        FROM public.emergency_reports 
+        WHERE extract(year from reported_at) = report_year AND extract(month from reported_at) = report_month
+        AND ob_number ~ '^[A-Z][0-9]{4}/[0-9]{2}/[0-9]{4}$'
     ) AS combined;
-    RETURN total_count + 1;
+    
+    RETURN COALESCE(max_seq, 0) + 1;
 END;
 $$;
 

@@ -515,35 +515,64 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 }
                 
                 const companyId = profileData?.company_id;
-                // FIX: Property 'name' does not exist on type 'never'. The Supabase client can infer a joined table as 'never' without full type information. Casting to 'any' resolves this.
                 const company = profileData?.company as any;
                 const companyName = Array.isArray(company) ? company[0]?.name : company?.name;
                 const initial = companyName ? companyName.charAt(0).toUpperCase() : 'P';
                 
                 const now = new Date();
-                const { data: sequence, error: rpcError } = await supabase.rpc('get_next_ob_sequence', {
+                const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                const year = now.getFullYear();
+
+                const { data: initialSequence, error: rpcError } = await supabase.rpc('get_next_ob_sequence', {
                     p_company_id: companyId,
                     p_report_date: now.toISOString()
                 });
                 
                 if (rpcError) throw new Error(`Failed to generate OB Number: ${rpcError.message}`);
 
-                const paddedSequence = String(sequence).padStart(4, '0');
-                const month = (now.getMonth() + 1).toString().padStart(2, '0');
-                const year = now.getFullYear();
-                const ob_number = `${initial}${paddedSequence}/${month}/${year}`;
+                let success = false;
+                let lastError = null;
+                let finalObNumber = '';
 
-                const insertData = {
-                    ...reportData,
-                    id: reportId,
-                    ob_number: ob_number,
-                    status: ReportStatus.ACTIVE,
-                    reported_by: user.id,
-                    reported_at: now.toISOString(),
-                };
-                const { error } = await supabase.from(tableName).insert(insertData);
-                if (error) throw error;
-                logUserAction(user.id, 'CREATE_REPORT', `Created new ${reportType} report ${reportId} (${ob_number})`);
+                // Retry up to 10 times if we hit a unique constraint violation
+                for (let attempt = 0; attempt < 10; attempt++) {
+                    const currentSequence = (initialSequence || 1) + attempt;
+                    const paddedSequence = String(currentSequence).padStart(4, '0');
+                    const ob_number = `${initial}${paddedSequence}/${month}/${year}`;
+
+                    const insertData = {
+                        ...reportData,
+                        id: reportId,
+                        ob_number: ob_number,
+                        status: ReportStatus.ACTIVE,
+                        reported_by: user.id,
+                        reported_at: now.toISOString(),
+                    };
+
+                    const { error: insertError } = await supabase.from(tableName).insert(insertData);
+                    
+                    if (!insertError) {
+                        success = true;
+                        finalObNumber = ob_number;
+                        break;
+                    }
+
+                    // Check for unique constraint violation (Postgres error code 23505)
+                    if (insertError.code === '23505' || (insertError.message && insertError.message.includes('unique constraint'))) {
+                        lastError = insertError;
+                        // Small random delay before retry to help with concurrent requests
+                        await new Promise(resolve => setTimeout(resolve, Math.random() * 200));
+                        continue;
+                    }
+
+                    throw insertError;
+                }
+
+                if (!success) {
+                    throw lastError || new Error("Failed to generate a unique OB number after multiple attempts.");
+                }
+
+                logUserAction(user.id, 'CREATE_REPORT', `Created new ${reportType} report ${reportId} (${finalObNumber})`);
             }
             
             addToast(`Report ${reportToEdit ? 'updated' : 'submitted'} successfully!`, 'success');
