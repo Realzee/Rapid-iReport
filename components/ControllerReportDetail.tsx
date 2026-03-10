@@ -336,12 +336,12 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
             // 6. Draw Header
             ctx.fillStyle = '#EF4444';
-            ctx.fillRect(0, 0, width, 110);
+            ctx.fillRect(0, 0, width, 80);
             ctx.strokeStyle = '#991B1B';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(0, 110);
-            ctx.lineTo(width, 110);
+            ctx.moveTo(0, 80);
+            ctx.lineTo(width, 80);
             ctx.stroke();
 
             // Header Text
@@ -349,12 +349,12 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
-            ctx.font = '900 60px Impact, sans-serif';
-            ctx.fillText('SOUGHT VEHICLE', width / 2, 110 / 2);
+            ctx.font = '900 45px Impact, sans-serif';
+            ctx.fillText('SOUGHT VEHICLE', width / 2, 80 / 2);
             ctx.textBaseline = 'alphabetic';
 
             // 7. Draw Main Image Area
-            const imgY = 110;
+            const imgY = 80;
             const imgHeight = 300;
             ctx.fillStyle = '#333333';
             ctx.fillRect(0, imgY, width, imgHeight);
@@ -422,7 +422,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             }
 
             // 8. Draw Details Section
-            const detailsY = imgY + imgHeight + 25;
+            const detailsY = imgY + imgHeight + 50;
             const leftMargin = 30;
             
             ctx.textAlign = 'left';
