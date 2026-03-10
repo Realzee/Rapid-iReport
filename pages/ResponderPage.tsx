@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, AccidentReport, ReportUpdate, Profile as UserProfile } from '../types';
+import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, EmergencyReport, ReportUpdate, Profile as UserProfile } from '../types';
 import { supabase } from '../utils/supabase';
 import { format, formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
@@ -22,7 +22,7 @@ interface ResponderPageProps {
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
-const isAccidentReport = (report: Report): report is AccidentReport => 'accident_type' in report;
+const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
 
 const ResponderStatusBadge: React.FC<{ status: ResponderStatus }> = ({ status }) => {
     const styles: Record<ResponderStatus, string> = {
@@ -116,7 +116,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             // Fetch assigned reports OR reported by me
             const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
             const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
-            const { data: aData, error: aError } = await supabase.from('accident_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
+            const { data: aData, error: aError } = await supabase.from('emergency_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
             const { data: usersData, error: usersError } = await supabase.from('profiles').select('*').eq('company_id', profile.company_id);
 
             if (vError || cError || aError) console.error("Error fetching reports:", vError || cError || aError);
@@ -189,15 +189,15 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             // Listen for changes where assigned_to is us
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `assigned_to=eq.${profile.id}` }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `assigned_to=eq.${profile.id}` }, handleUpsert)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports', filter: `assigned_to=eq.${profile.id}` }, handleUpsert)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports', filter: `assigned_to=eq.${profile.id}` }, handleUpsert)
             // Listen for changes where reported_by is us
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
             
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handlePotentialUnassignmentOrDelete)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handlePotentialUnassignmentOrDelete)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports' }, handlePotentialUnassignmentOrDelete)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, handlePotentialUnassignmentOrDelete)
             .subscribe();
         
         return () => { supabase.removeChannel(channel); };
@@ -430,7 +430,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                                     </h3>
                                     
                                     <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 mb-3">
-                                        {isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isAccidentReport(report) ? report.accident_type : report.crime_type)}
+                                        {isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isEmergencyReport(report) ? report.emergency_type : report.crime_type)}
                                     </p>
                                     
                                     <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-2 mt-2">
@@ -516,7 +516,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
 
     const handleStatusUpdate = async (status: ReportStatus) => {
         setIsActionLoading(status);
-        const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isAccidentReport(report) ? 'accident_reports' : 'crime_reports');
+        const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
     
         const updatePromises: PromiseLike<any>[] = [];
     
@@ -570,7 +570,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                 setConfirmModalState(null);
                 setIsActionLoading('stand_down');
                 try {
-                    const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isAccidentReport(report) ? 'accident_reports' : 'crime_reports');
+                    const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
                     const updatePromises: PromiseLike<any>[] = [];
                     updatePromises.push(supabase.from(tableName).update({ assigned_to: null, status: ReportStatus.ACTIVE }).eq('id', report.id));
                     updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Responder ${profile.first_name} ${profile.surname} has stood down.` }));
@@ -618,7 +618,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
 
         const { data: { publicUrl } } = supabase.storage.from('evidence').getPublicUrl(filePath);
         const updatedImages = [...(report.evidence_images || []), publicUrl];
-        const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isAccidentReport(report) ? 'accident_reports' : 'crime_reports');
+        const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
         await supabase.from(tableName).update({ evidence_images: updatedImages }).eq('id', report.id);
         addToast("Evidence uploaded successfully.", 'success');
         setIsUploading(false);
@@ -732,11 +732,11 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                                 </div>
                             )}
                             
-                            {isAccidentReport(report) && (
+                            {isEmergencyReport(report) && (
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
                                         <span className="text-xs text-gray-500 block mb-1">Type</span>
-                                        <p className="font-medium">{report.accident_type}</p>
+                                        <p className="font-medium">{report.emergency_type}</p>
                                     </div>
                                     <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
                                         <span className="text-xs text-gray-500 block mb-1">Vehicles</span>

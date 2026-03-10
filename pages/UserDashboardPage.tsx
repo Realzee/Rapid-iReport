@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { Profile, Report, VehicleReport, AccidentReport, ReportStatus } from '../types';
+import { Profile, Report, VehicleReport, EmergencyReport, ReportStatus } from '../types';
 import { PlusIcon, ZapIcon, CarIcon, CrimeIcon, AlertTriangleIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
 import UserReportDetail from '../components/UserReportDetail';
@@ -9,7 +9,7 @@ import StatusBadge from '../components/StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
-const isAccidentReport = (report: Report): report is AccidentReport => 'accident_type' in report;
+const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
 
 const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
     const [myReports, setMyReports] = useState<Report[]>([]);
@@ -27,7 +27,7 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
             const reportPromises = [
                 supabase.from('vehicle_reports').select('*').neq('status', ReportStatus.DELETED),
                 supabase.from('crime_reports').select('*').neq('status', ReportStatus.DELETED),
-                supabase.from('accident_reports').select('*').neq('status', ReportStatus.DELETED)
+                supabase.from('emergency_reports').select('*').neq('status', ReportStatus.DELETED)
             ];
 
             const usersPromise = profile.company_id 
@@ -47,7 +47,7 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 const combined = [
                     ...(vData || []).map(r => ({ ...r, type: 'vehicle' as const })),
                     ...(cData || []).map(r => ({ ...r, type: 'crime' as const })),
-                    ...(aData || []).map(r => ({ ...r, type: 'accident' as const }))
+                    ...(aData || []).map(r => ({ ...r, type: 'emergency' as const }))
                 ].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
                 setMyReports(combined);
                 if (combined.length > 0 && !selectedReportId) {
@@ -68,7 +68,7 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
 
     useEffect(() => {
         const handleUpsert = (payload: any) => {
-            const reportType = payload.table === 'vehicle_reports' ? 'vehicle' : (payload.table === 'accident_reports' ? 'accident' : 'crime');
+            const reportType = payload.table === 'vehicle_reports' ? 'vehicle' : (payload.table === 'emergency_reports' ? 'emergency' : 'crime');
             const newReport = { ...payload.new, type: reportType } as Report;
 
             setMyReports(prev => {
@@ -96,7 +96,7 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
         const channel = supabase.channel(`company-reports-${profile.company_id}`)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleUpsert)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports' }, handleUpsert)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, handleUpsert)
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
@@ -147,14 +147,14 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                                 className={`p-3 cursor-pointer rounded-lg border-2 transition-all ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-white/70 dark:bg-gray-900/60 border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600'}`}>
                                 <div className="flex justify-between items-start">
                                     <div className="flex items-center gap-2 truncate pr-2">
-                                        <div className={`p-1.5 rounded-full flex-shrink-0 ${report.type === 'vehicle' ? 'bg-yellow-500/20 text-yellow-600' : (report.type === 'accident' ? 'bg-orange-500/20 text-orange-600' : 'bg-red-500/20 text-red-600')}`}>
-                                            {report.type === 'vehicle' ? <CarIcon className="w-4 h-4" /> : (report.type === 'accident' ? <AlertTriangleIcon className="w-4 h-4" /> : <CrimeIcon className="w-4 h-4" />)}
+                                        <div className={`p-1.5 rounded-full flex-shrink-0 ${report.type === 'vehicle' ? 'bg-yellow-500/20 text-yellow-600' : (report.type === 'emergency' ? 'bg-orange-500/20 text-orange-600' : 'bg-red-500/20 text-red-600')}`}>
+                                            {report.type === 'vehicle' ? <CarIcon className="w-4 h-4" /> : (report.type === 'emergency' ? <AlertTriangleIcon className="w-4 h-4" /> : <CrimeIcon className="w-4 h-4" />)}
                                         </div>
                                         <h3 className="font-bold text-md truncate">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
                                     </div>
                                     <StatusBadge status={report.status} />
                                 </div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isAccidentReport(report) ? report.accident_type : report.crime_type)}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isEmergencyReport(report) ? report.emergency_type : report.crime_type)}</p>
                                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
                             </div>
                         ))}

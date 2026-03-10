@@ -34,9 +34,9 @@ const createIncidentIcon = (report: Report, isSelected: boolean) => {
         <path d="M5 17h.01"></path>
         <path d="M2 10l3.5-3.5A2 2 0 0 1 7 6h10a2 2 0 0 1 1.5.5L22 10"></path>`;
     const crimeSvgPath = `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>`;
-    const accidentSvgPath = `<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path>`;
+    const emergencySvgPath = `<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path>`;
     
-    const iconSvgPath = report.type === 'vehicle' ? carSvgPath : (report.type === 'accident' ? accidentSvgPath : crimeSvgPath);
+    const iconSvgPath = report.type === 'vehicle' ? carSvgPath : (report.type === 'emergency' ? emergencySvgPath : crimeSvgPath);
 
     const size = isSelected ? 48 : 36;
     const scale = isSelected ? 1.1 : 1;

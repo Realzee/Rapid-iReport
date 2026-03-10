@@ -133,35 +133,35 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
 
             let vehicleQuery = supabase.from('vehicle_reports').select('*');
             let crimeQuery = supabase.from('crime_reports').select('*');
-            let accidentQuery = supabase.from('accident_reports').select('*');
+            let emergencyQuery = supabase.from('emergency_reports').select('*');
 
             if (allowedReporterIds) {
                 vehicleQuery = vehicleQuery.in('reported_by', allowedReporterIds);
                 crimeQuery = crimeQuery.in('reported_by', allowedReporterIds);
-                accidentQuery = accidentQuery.in('reported_by', allowedReporterIds);
+                emergencyQuery = emergencyQuery.in('reported_by', allowedReporterIds);
             }
 
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
-                { data: accidentData, error: aError },
+                { data: emergencyData, error: aError },
                 { data: usersData, error: uError }
             ] = await Promise.all([
                 vehicleQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 crimeQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                accidentQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
+                emergencyQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 usersQuery
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
             if (cError) console.error('Error fetching crime reports:', cError);
-            if (aError) console.error('Error fetching accident reports:', aError);
+            if (aError) console.error('Error fetching emergency reports:', aError);
             if (uError) console.error('Error fetching users:', uError);
 
             const combinedReports = [
                 ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
                 ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
-                ...(accidentData || []).map(r => ({ ...r, type: 'accident' })),
+                ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' })),
             ];
 
             // Ensure we have profiles for all reporters
@@ -184,9 +184,9 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         fetchData();
 
         const handleReportChange = async (payload: any) => {
-            let reportType: 'vehicle' | 'crime' | 'accident';
+            let reportType: 'vehicle' | 'crime' | 'emergency';
             if (payload.table === 'vehicle_reports') reportType = 'vehicle';
-            else if (payload.table === 'accident_reports') reportType = 'accident';
+            else if (payload.table === 'emergency_reports') reportType = 'emergency';
             else reportType = 'crime';
             
             const newReport = payload.new as Report;
@@ -285,12 +285,12 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             reportsChannel
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports' }, handleReportChange);
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, handleReportChange);
         } else if (profile.company_id) {
             reportsChannel
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports' }, handleReportChange);
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, handleReportChange);
         }
         reportsChannel.subscribe();
             
@@ -408,7 +408,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const handleAssignResponder = async (responderId: string) => {
         if (!selectedReportId || !selectedReport) return;
 
-        const tableName = selectedReport.type === 'vehicle' ? 'vehicle_reports' : (selectedReport.type === 'accident' ? 'accident_reports' : 'crime_reports');
+        const tableName = selectedReport.type === 'vehicle' ? 'vehicle_reports' : (selectedReport.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
         const responder = responders.find(r => r.id === responderId);
         
         if (!responder) return;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, ReportStatus, Severity, VehicleReport, AccidentReport } from '../types';
+import { Report, ReportStatus, Severity, VehicleReport, EmergencyReport } from '../types';
 import { 
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, 
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
@@ -17,7 +17,7 @@ import StatCard from '../components/StatCard';
 
 // Type Guard
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
-const isAccidentReport = (report: Report): report is AccidentReport => 'accident_type' in report;
+const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
 
 type ReportType = 'summary' | 'trends' | 'severity' | 'status' | 'time' | 'hotspots';
 type DateRange = '7days' | '30days' | '90days' | 'all';
@@ -43,21 +43,21 @@ const AnalyticsPage: React.FC = () => {
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
-                { data: accidentData, error: aError },
+                { data: emergencyData, error: aError },
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*'),
                 supabase.from('crime_reports').select('*'),
-                supabase.from('accident_reports').select('*'),
+                supabase.from('emergency_reports').select('*'),
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
             if (cError) console.error('Error fetching crime reports:', cError);
-            if (aError) console.error('Error fetching accident reports:', aError);
+            if (aError) console.error('Error fetching emergency reports:', aError);
             
             const combined = [
                 ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
                 ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
-                ...(accidentData || []).map(r => ({ ...r, type: 'accident' })),
+                ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' })),
             ];
 
             // Sort by date descending
@@ -91,7 +91,7 @@ const AnalyticsPage: React.FC = () => {
             headers.join(','),
             ...filteredReports.map(r => [
                 r.id,
-                isVehicleReport(r) ? 'Vehicle' : (isAccidentReport(r) ? 'Accident' : 'Crime'),
+                isVehicleReport(r) ? 'Vehicle' : (isEmergencyReport(r) ? 'Emergency' : 'Crime'),
                 r.status,
                 r.severity,
                 `"${r.reported_at}"`,
@@ -203,8 +203,8 @@ const AnalyticsPage: React.FC = () => {
 const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
     const totalReports = reports.length;
     const vehicleReports = reports.filter(r => isVehicleReport(r)).length;
-    const accidentReports = reports.filter(r => isAccidentReport(r)).length;
-    const crimeReports = totalReports - vehicleReports - accidentReports;
+    const emergencyReports = reports.filter(r => isEmergencyReport(r)).length;
+    const crimeReports = totalReports - vehicleReports - emergencyReports;
     const resolved = reports.filter(r => r.status === ReportStatus.RESOLVED || r.status === ReportStatus.RECOVERED).length;
     const pending = reports.filter(r => r.status === ReportStatus.PENDING).length;
     
@@ -239,7 +239,7 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <StatCard title="Total Reports" value={totalReports.toString()} icon={<ZapIcon />} color="blue" />
                     <StatCard title="Vehicle Incidents" value={vehicleReports.toString()} icon={<CarIcon />} color="yellow" />
-                    <StatCard title="Accident Reports" value={accidentReports.toString()} icon={<AlertTriangleIcon />} color="orange" />
+                    <StatCard title="Emergency Reports" value={emergencyReports.toString()} icon={<AlertTriangleIcon />} color="orange" />
                     <StatCard title="Crime Incidents" value={crimeReports.toString()} icon={<CrimeIcon />} color="red" />
                     <StatCard title="Resolved Cases" value={resolved.toString()} icon={<CheckCircleIcon />} color="green" />
                     <StatCard title="Pending Review" value={pending.toString()} icon={<ClipboardCheckIcon />} color="purple" />
@@ -258,17 +258,17 @@ const TrendsReport: React.FC<{ reports: Report[], theme: string }> = ({ reports,
             if (!report.reported_at) return acc;
             try {
                 const date = format(new Date(report.reported_at), 'yyyy-MM-dd');
-                if (!acc[date]) acc[date] = { date, vehicle: 0, crime: 0, accident: 0, total: 0 };
+                if (!acc[date]) acc[date] = { date, vehicle: 0, crime: 0, emergency: 0, total: 0 };
                 
                 if (isVehicleReport(report)) acc[date].vehicle++;
-                else if (isAccidentReport(report)) acc[date].accident++;
+                else if (isEmergencyReport(report)) acc[date].emergency++;
                 else acc[date].crime++;
                 acc[date].total++;
             } catch (e) {
                 console.error("Invalid date in report:", report);
             }
             return acc;
-        }, {} as Record<string, { date: string, vehicle: number, crime: number, accident: number, total: number }>);
+        }, {} as Record<string, { date: string, vehicle: number, crime: number, emergency: number, total: number }>);
 
         // Fill in missing days if needed, or just sort
         return (Object.values(grouped) as any[]).sort((a, b) => a.date.localeCompare(b.date));
@@ -289,7 +289,7 @@ const TrendsReport: React.FC<{ reports: Report[], theme: string }> = ({ reports,
                                 <stop offset="5%" stopColor="#EF4444" stopOpacity={0.8}/>
                                 <stop offset="95%" stopColor="#EF4444" stopOpacity={0}/>
                             </linearGradient>
-                            <linearGradient id="colorAccident" x1="0" y1="0" x2="0" y2="1">
+                            <linearGradient id="colorEmergency" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#F97316" stopOpacity={0.8}/>
                                 <stop offset="95%" stopColor="#F97316" stopOpacity={0}/>
                             </linearGradient>
@@ -308,7 +308,7 @@ const TrendsReport: React.FC<{ reports: Report[], theme: string }> = ({ reports,
                         />
                         <Legend />
                         <Area type="monotone" dataKey="vehicle" name="Vehicle Incidents" stroke="#EAB308" fillOpacity={1} fill="url(#colorVehicle)" />
-                        <Area type="monotone" dataKey="accident" name="Accident Reports" stroke="#F97316" fillOpacity={1} fill="url(#colorAccident)" />
+                        <Area type="monotone" dataKey="emergency" name="Emergency Reports" stroke="#F97316" fillOpacity={1} fill="url(#colorEmergency)" />
                         <Area type="monotone" dataKey="crime" name="Crime Incidents" stroke="#EF4444" fillOpacity={1} fill="url(#colorCrime)" />
                     </AreaChart>
                 </ResponsiveContainer>
@@ -476,7 +476,7 @@ const HotspotsReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
                     count: 0,
                     vehicle: 0,
                     crime: 0,
-                    accident: 0,
+                    emergency: 0,
                     critical: 0,
                     high: 0,
                     medium: 0,
@@ -487,7 +487,7 @@ const HotspotsReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
             acc[location].count++;
             
             if (isVehicleReport(report)) acc[location].vehicle++;
-            else if (isAccidentReport(report)) acc[location].accident++;
+            else if (isEmergencyReport(report)) acc[location].emergency++;
             else acc[location].crime++;
 
             if (report.severity === Severity.CRITICAL) acc[location].critical++;
@@ -501,7 +501,7 @@ const HotspotsReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
             count: number; 
             vehicle: number; 
             crime: number; 
-            accident: number; 
+            emergency: number; 
             critical: number; 
             high: number; 
             medium: number; 
@@ -558,9 +558,9 @@ const HotspotsReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
                                                 <CrimeIcon className="w-3 h-3" /> {spot.crime}
                                             </span>
                                         )}
-                                        {spot.accident > 0 && (
-                                            <span className="flex items-center gap-1" title="Accident Reports">
-                                                <AlertTriangleIcon className="w-3 h-3" /> {spot.accident}
+                                        {spot.emergency > 0 && (
+                                            <span className="flex items-center gap-1" title="Emergency Reports">
+                                                <AlertTriangleIcon className="w-3 h-3" /> {spot.emergency}
                                             </span>
                                         )}
                                     </div>
@@ -571,7 +571,7 @@ const HotspotsReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
                                 <div className="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
                                     <div style={{ width: `${(spot.vehicle / spot.count) * 100}%` }} className="h-full bg-yellow-500" />
                                     <div style={{ width: `${(spot.crime / spot.count) * 100}%` }} className="h-full bg-red-500" />
-                                    <div style={{ width: `${(spot.accident / spot.count) * 100}%` }} className="h-full bg-orange-500" />
+                                    <div style={{ width: `${(spot.emergency / spot.count) * 100}%` }} className="h-full bg-orange-500" />
                                 </div>
                                 <div className="flex justify-between text-[10px] text-gray-400 mt-1 px-1">
                                     <span>Type Dist.</span>
