@@ -23,25 +23,46 @@ interface ReportDetailCardProps {
 
 const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, profile, onEdit, onDelete, onViewOnMap, allUsers }) => {
     const [reporter, setReporter] = useState<Profile | null>(null);
+    const [localReport, setLocalReport] = useState<Report>(report);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
     const { addToast } = useToast();
     const { openChat } = useChat();
     const { mainLogoUrl } = useSettings();
 
+    useEffect(() => {
+        setLocalReport(report);
+    }, [report]);
+
+    useEffect(() => {
+        const fetchLatestReport = async () => {
+            const tableName = localReport.type === 'vehicle' ? 'vehicle_reports' : (localReport.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
+            const { data, error } = await supabase
+                .from(tableName)
+                .select('*')
+                .eq('id', localReport.id)
+                .single();
+            
+            if (data) {
+                setLocalReport({ ...data, type: localReport.type });
+            }
+        };
+        fetchLatestReport();
+    }, [localReport.id, localReport.type]);
+
     const canManageReport = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role);
-    const isAssignedResponder = profile.role === UserRole.RESPONDER && report.assigned_to === profile.id;
+    const isAssignedResponder = profile.role === UserRole.RESPONDER && localReport.assigned_to === profile.id;
     const canUpdateStatus = canManageReport || isAssignedResponder;
 
     const isTerminalStatus = useMemo(() => {
-        return [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(report.status);
-    }, [report.status]);
+        return [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(localReport.status);
+    }, [localReport.status]);
 
     const responderStatusOptions = [
         ReportStatus.IN_PROGRESS,
         ReportStatus.RESOLVED,
     ];
-    if (report.type === 'vehicle') {
+    if (localReport.type === 'vehicle') {
         responderStatusOptions.push(ReportStatus.RECOVERED);
     }
 
@@ -50,26 +71,29 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
-                .eq('id', report.reported_by)
+                .eq('id', localReport.reported_by)
                 .maybeSingle();
             if (error) console.error("Error fetching reporter:", error);
             else setReporter(data);
         };
         fetchReporter();
-    }, [report.reported_by]);
+    }, [localReport.reported_by]);
 
     const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newStatus = e.target.value as ReportStatus;
         setStatusUpdateLoading(true);
 
-        const tableName = report.type === 'vehicle' ? 'vehicle_reports' : (report.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
+        const tableName = localReport.type === 'vehicle' ? 'vehicle_reports' : (localReport.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
         const { error } = await supabase
             .from(tableName)
             .update({ status: newStatus })
-            .eq('id', report.id);
+            .eq('id', localReport.id);
 
         if (error) {
             addToast('Failed to update status: ' + error.message, 'error');
+        } else {
+            // Update local state immediately
+            setLocalReport(prev => ({ ...prev, status: newStatus }));
         }
         setStatusUpdateLoading(false);
     };
@@ -474,8 +498,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-full">
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <div className="flex items-center gap-2 min-w-0">
-                    <ReportTypeBadge type={report.type as any} className="p-1.5" />
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
+                    <ReportTypeBadge type={localReport.type as any} className="p-1.5" />
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{localReport.type === 'vehicle' ? (localReport as any).license_plate : localReport.title}</h3>
                 </div>
                 <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
                     <XIcon className="w-6 h-6" />
@@ -483,9 +507,9 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             </div>
 
             <div className="space-y-4 overflow-y-auto flex-grow">
-                {report.evidence_images && report.evidence_images.length > 0 && (
+                {localReport.evidence_images && localReport.evidence_images.length > 0 && (
                      <div className="grid grid-cols-2 gap-2">
-                        {report.evidence_images.map((img, index) => (
+                        {localReport.evidence_images.map((img, index) => (
                              <img key={index} src={img} alt={`Evidence ${index+1}`} className="w-full h-24 object-cover rounded-md border border-gray-200 dark:border-gray-700" />
                         ))}
                     </div>
@@ -496,7 +520,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Status</p>
                         {canUpdateStatus ? (
                              <select
-                                value={report.status}
+                                value={localReport.status}
                                 onChange={handleStatusChange}
                                 disabled={statusUpdateLoading || isTerminalStatus}
                                 className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-1 px-2 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70"
@@ -506,107 +530,107 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                                 <option value={ReportStatus.IN_PROGRESS}>In Progress</option>
                                 <option value={ReportStatus.RESOLVED}>Resolved</option>
                                 <option value={ReportStatus.REJECTED}>Rejected</option>
-                                {report.type === 'vehicle' && <option value={ReportStatus.RECOVERED}>Recovered</option>}
+                                {localReport.type === 'vehicle' && <option value={ReportStatus.RECOVERED}>Recovered</option>}
                             </select>
                         ) : (
-                            <StatusBadge status={report.status} />
+                            <StatusBadge status={localReport.status} />
                         )}
                     </div>
                     <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Severity</p>
-                        <p className="font-semibold text-gray-900 dark:text-white capitalize">{report.severity}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white capitalize">{localReport.severity}</p>
                     </div>
                     <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">OB Number</p>
-                        <p className="font-mono text-gray-900 dark:text-white">{report.ob_number}</p>
+                        <p className="font-mono text-gray-900 dark:text-white">{localReport.ob_number}</p>
                     </div>
                      <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported</p>
-                        <p className="text-gray-900 dark:text-white">{format(new Date(report.reported_at), 'MMM d, yyyy HH:mm')}</p>
+                        <p className="text-gray-900 dark:text-white">{format(new Date(localReport.reported_at), 'MMM d, yyyy HH:mm')}</p>
                     </div>
-                    {(report as any).cas_number && (
+                    {(localReport as any).cas_number && (
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">CAS Number</p>
-                            <p className="text-gray-900 dark:text-white">{(report as any).cas_number}</p>
+                            <p className="text-gray-900 dark:text-white">{(localReport as any).cas_number}</p>
                         </div>
                     )}
-                    {(report as any).station_name && (
+                    {(localReport as any).station_name && (
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Station</p>
-                            <p className="text-gray-900 dark:text-white">{(report as any).station_name}</p>
+                            <p className="text-gray-900 dark:text-white">{(localReport as any).station_name}</p>
                         </div>
                     )}
-                    {report.type === 'vehicle' && (report as any).vin_number && (
+                    {localReport.type === 'vehicle' && (localReport as any).vin_number && (
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">VIN</p>
-                            <p className="text-gray-900 dark:text-white">{(report as any).vin_number}</p>
+                            <p className="text-gray-900 dark:text-white">{(localReport as any).vin_number}</p>
                         </div>
                     )}
-                    {report.type === 'vehicle' && (report as any).engine_number && (
+                    {localReport.type === 'vehicle' && (localReport as any).engine_number && (
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Engine</p>
-                            <p className="text-gray-900 dark:text-white">{(report as any).engine_number}</p>
+                            <p className="text-gray-900 dark:text-white">{(localReport as any).engine_number}</p>
                         </div>
                     )}
-                    {report.type === 'emergency' && (
+                    {localReport.type === 'emergency' && (
                         <>
                             <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Emergency Type</p>
-                                <p className="text-gray-900 dark:text-white">{(report as any).emergency_type}</p>
+                                <p className="text-gray-900 dark:text-white">{(localReport as any).emergency_type}</p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicle Involved</p>
-                                <p className="text-gray-900 dark:text-white">{(report as any).vehicle_Involved || (report as any).vehicle_involved ? 'Yes' : 'No'}</p>
+                                <p className="text-gray-900 dark:text-white">{(localReport as any).vehicle_Involved || (localReport as any).vehicle_involved ? 'Yes' : 'No'}</p>
                             </div>
-                            {(report as any).license_plate && (
+                            {(localReport as any).license_plate && (
                                 <div>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">License Plate</p>
-                                    <p className="text-gray-900 dark:text-white">{(report as any).license_plate}</p>
+                                    <p className="text-gray-900 dark:text-white">{(localReport as any).license_plate}</p>
                                 </div>
                             )}
-                            {(report as any).vehicle_make && (
+                            {(localReport as any).vehicle_make && (
                                 <div>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Make</p>
-                                    <p className="text-gray-900 dark:text-white">{(report as any).vehicle_make}</p>
+                                    <p className="text-gray-900 dark:text-white">{(localReport as any).vehicle_make}</p>
                                 </div>
                             )}
-                            {(report as any).vehicle_model && (
+                            {(localReport as any).vehicle_model && (
                                 <div>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Model</p>
-                                    <p className="text-gray-900 dark:text-white">{(report as any).vehicle_model}</p>
+                                    <p className="text-gray-900 dark:text-white">{(localReport as any).vehicle_model}</p>
                                 </div>
                             )}
-                            {(report as any).vehicle_color && (
+                            {(localReport as any).vehicle_color && (
                                 <div>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Color</p>
-                                    <p className="text-gray-900 dark:text-white">{(report as any).vehicle_color}</p>
+                                    <p className="text-gray-900 dark:text-white">{(localReport as any).vehicle_color}</p>
                                 </div>
                             )}
-                            {(report as any).vehicle_involved && (report as any).vehicles_involved > 0 && (
+                            {(localReport as any).vehicle_involved && (localReport as any).vehicles_involved > 0 && (
                                 <div>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicles Involved</p>
-                                    <p className="text-gray-900 dark:text-white">{(report as any).vehicles_involved}</p>
+                                    <p className="text-gray-900 dark:text-white">{(localReport as any).vehicles_involved}</p>
                                 </div>
                             )}
                             <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Injuries</p>
-                                <p className="text-gray-900 dark:text-white">{(report as any).injuries_reported ? 'Yes' : 'No'}</p>
+                                <p className="text-gray-900 dark:text-white">{(localReport as any).injuries_reported ? 'Yes' : 'No'}</p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Fatalities</p>
-                                <p className="text-gray-900 dark:text-white">{(report as any).fatalities_reported ? 'Yes' : 'No'}</p>
+                                <p className="text-gray-900 dark:text-white">{(localReport as any).fatalities_reported ? 'Yes' : 'No'}</p>
                             </div>
                         </>
                     )}
                 </div>
 
                 <div>
-                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{report.type === 'vehicle' ? 'Last Seen Location' : 'Location'}</p>
-                     <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</p>
+                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{localReport.type === 'vehicle' ? 'Last Seen Location' : 'Location'}</p>
+                     <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {localReport.type === 'vehicle' ? (localReport as any).last_seen_location : (localReport as any).location}</p>
                 </div>
                  <button 
                     onClick={onViewOnMap} 
-                    disabled={!report.location_coords}
+                    disabled={!localReport.location_coords}
                     className="w-full btn-secondary text-primary-600 dark:text-primary-400"
                  >
                     View on Map
@@ -614,7 +638,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
                 <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Description</p>
-                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{report.description}</p>
+                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{localReport.description}</p>
                 </div>
 
                  {reporter && (
@@ -625,9 +649,9 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                  )}
             </div>
 
-            {[ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(report.status) && (
+            {[ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(localReport.status) && (
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
-                     <button onClick={() => openChat(report)} className="w-full btn-secondary text-primary-600 dark:text-primary-400">
+                     <button onClick={() => openChat(localReport)} className="w-full btn-secondary text-primary-600 dark:text-primary-400">
                         Open Live Chat
                     </button>
                 </div>
@@ -648,10 +672,10 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             </div>
             {canManageReport && (
                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 grid grid-cols-2 gap-3">
-                    <button onClick={() => onEdit(report)} disabled={isTerminalStatus} className="flex items-center justify-center gap-2 btn-primary text-sm">
+                    <button onClick={() => onEdit(localReport)} disabled={isTerminalStatus} className="flex items-center justify-center gap-2 btn-primary text-sm">
                         <EditIcon className="w-5 h-5"/> Edit
                     </button>
-                    <button onClick={() => onDelete(report)} disabled={isTerminalStatus} className="flex items-center justify-center gap-2 btn-danger text-sm">
+                    <button onClick={() => onDelete(localReport)} disabled={isTerminalStatus} className="flex items-center justify-center gap-2 btn-danger text-sm">
                         <TrashIcon className="w-5 h-5"/> Delete
                     </button>
                 </div>
