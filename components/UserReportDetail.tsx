@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, Profile, VehicleReport, AccidentReport, ReportUpdate, ReportStatus, AssignmentLog } from '../types';
+import { Report, Profile, VehicleReport, EmergencyReport, ReportUpdate, ReportStatus, AssignmentLog } from '../types';
 import StatusBadge from './StatusBadge';
 import { MapPinIcon, EditIcon, AssignResponderIcon, ZapIcon, CarIcon, AlertTriangleIcon, CrimeIcon } from './icons';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -139,8 +139,8 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
             <div className="flex justify-between items-start mb-4 flex-shrink-0 gap-4">
                 <div className="flex-grow min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                        <div className={`p-1.5 rounded-full flex-shrink-0 ${report.type === 'vehicle' ? 'bg-yellow-500/20 text-yellow-600' : (report.type === 'accident' ? 'bg-orange-500/20 text-orange-600' : 'bg-red-500/20 text-red-600')}`}>
-                            {report.type === 'vehicle' ? <CarIcon className="w-5 h-5" /> : (report.type === 'accident' ? <AlertTriangleIcon className="w-5 h-5" /> : <CrimeIcon className="w-5 h-5" />)}
+                        <div className={`p-1.5 rounded-full flex-shrink-0 ${report.type === 'vehicle' ? 'bg-yellow-500/20 text-yellow-600' : (report.type === 'emergency' ? 'bg-orange-500/20 text-orange-600' : 'bg-red-500/20 text-red-600')}`}>
+                            {report.type === 'vehicle' ? <CarIcon className="w-5 h-5" /> : (report.type === 'emergency' ? <AlertTriangleIcon className="w-5 h-5" /> : <CrimeIcon className="w-5 h-5" />)}
                         </div>
                         <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
                     </div>
@@ -194,11 +194,11 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                      <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</p>
                 </div>
 
-                {report.type === 'accident' && (
+                {report.type === 'emergency' && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
                         <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Accident Type</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">{(report as any).accident_type}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Emergency Type</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{(report as any).emergency_type}</p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicles</p>

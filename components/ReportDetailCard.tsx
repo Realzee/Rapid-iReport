@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Report, Profile, VehicleReport, AccidentReport, UserRole, ReportStatus } from '../types';
+import { Report, Profile, VehicleReport, EmergencyReport, UserRole, ReportStatus } from '../types';
 import StatusBadge from './StatusBadge';
 import ReportTypeBadge from './ReportTypeBadge';
 import { MapPinIcon, WhatsappIcon, DownloadIcon, XIcon, EditIcon, TrashIcon } from './icons';
@@ -62,7 +62,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         const newStatus = e.target.value as ReportStatus;
         setStatusUpdateLoading(true);
 
-        const tableName = report.type === 'vehicle' ? 'vehicle_reports' : (report.type === 'accident' ? 'accident_reports' : 'crime_reports');
+        const tableName = report.type === 'vehicle' ? 'vehicle_reports' : (report.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
         const { error } = await supabase
             .from(tableName)
             .update({ status: newStatus })

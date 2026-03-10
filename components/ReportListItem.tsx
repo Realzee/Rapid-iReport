@@ -11,7 +11,7 @@ interface ReportListItemProps {
   onClick: () => void;
   profile: Profile;
   reporterName: string;
-  onStatusUpdate: (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime' | 'accident') => Promise<void>;
+  onStatusUpdate: (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime' | 'emergency') => Promise<void>;
   companyLogoUrl?: string;
 }
 
@@ -42,7 +42,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value as ReportStatus;
     setIsUpdating(true);
-    await onStatusUpdate(report.id, newStatus, report.type as 'vehicle' | 'crime' | 'accident');
+    await onStatusUpdate(report.id, newStatus, report.type as 'vehicle' | 'crime' | 'emergency');
     setIsUpdating(false);
   };
   
@@ -123,11 +123,11 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                         {' · '}
                         {(report as any).vehicle_make} {(report as any).vehicle_model} ({(report as any).vehicle_color})
                     </p>
-                ) : report.type === 'accident' ? (
+                ) : report.type === 'emergency' ? (
                      <p className="truncate">
                         <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
                         {' · '}
-                        {(report as any).accident_type}
+                        {(report as any).emergency_type}
                     </p>
                 ) : (
                      <p className="truncate">

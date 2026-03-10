@@ -2,7 +2,7 @@ import React from 'react';
 import { CarIcon, AlertTriangleIcon, CrimeIcon } from './icons';
 
 interface ReportTypeBadgeProps {
-  type: 'vehicle' | 'crime' | 'accident';
+  type: 'vehicle' | 'crime' | 'emergency';
   className?: string;
   showText?: boolean;
 }
@@ -15,12 +15,12 @@ const typeStyles = {
     icon: CarIcon,
     label: 'Vehicle'
   },
-  accident: {
+  emergency: {
     bg: 'bg-orange-500/20',
     text: 'text-orange-600 dark:text-orange-400',
     border: 'border-orange-500/30',
     icon: AlertTriangleIcon,
-    label: 'Accident'
+    label: 'Emergency'
   },
   crime: {
     bg: 'bg-red-500/20',

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Report, Profile, VehicleReport, AccidentReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole } from '../types';
+import { Report, Profile, VehicleReport, EmergencyReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
 import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon, CarIcon, AlertTriangleIcon, CrimeIcon } from './icons';
@@ -197,7 +197,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
         let tableName = '';
         if (report.type === 'vehicle') tableName = 'vehicle_reports';
-        else if (report.type === 'accident') tableName = 'accident_reports';
+        else if (report.type === 'emergency') tableName = 'emergency_reports';
         else tableName = 'crime_reports';
 
         const updatePayload: { status?: ReportStatus; assigned_to?: string | null; completed_at?: string | null } = {};
@@ -233,7 +233,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
     const confirmDeleteReport = async () => {
         setDeleteModalOpen(false);
-        const tableName = report.type === 'vehicle' ? 'vehicle_reports' : (report.type === 'accident' ? 'accident_reports' : 'crime_reports');
+        const tableName = report.type === 'vehicle' ? 'vehicle_reports' : (report.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
         const { error } = await supabase.from(tableName).update({ 
             status: ReportStatus.DELETED,
             deleted_by: profile.id,
@@ -702,9 +702,9 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 <DetailField label="Description"><p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{report.description}</p></DetailField>
                 {report.type === 'vehicle' && <DetailField label="Vehicle">{`${(report as any).vehicle_color} ${(report as any).vehicle_make} ${(report as any).vehicle_model}`}</DetailField>}
                 
-                {report.type === 'accident' && (
+                {report.type === 'emergency' && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                        <DetailField label="Accident Type">{(report as any).accident_type}</DetailField>
+                        <DetailField label="Emergency Type">{(report as any).emergency_type}</DetailField>
                         <DetailField label="Vehicles Involved">{(report as any).vehicles_involved}</DetailField>
                         <DetailField label="Injuries">{(report as any).injuries_reported ? 'Yes' : 'No'}</DetailField>
                         <DetailField label="Fatalities">{(report as any).fatalities_reported ? 'Yes' : 'No'}</DetailField>

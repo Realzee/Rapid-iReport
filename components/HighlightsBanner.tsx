@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, Severity, VehicleReport, AccidentReport } from '../types';
+import { Report, Severity, VehicleReport, EmergencyReport } from '../types';
 import { CarIcon, CrimeIcon, AlertTriangleIcon } from './icons';
 import ReportTypeBadge from './ReportTypeBadge';
 // FIX: Reverted `sub` to `subDays` to resolve compatibility issues with the current date-fns version.
@@ -43,18 +43,18 @@ const HighlightsBanner: React.FC<HighlightsBannerProps> = ({ onSelectReport, top
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
-                { data: accidentData, error: aError },
+                { data: emergencyData, error: aError },
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo),
                 supabase.from('crime_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo),
-                supabase.from('accident_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo)
+                supabase.from('emergency_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo)
             ]);
 
             if (vError) console.error("Error fetching vehicle highlights:", vError);
             if (cError) console.error("Error fetching crime highlights:", cError);
-            if (aError) console.error("Error fetching accident highlights:", aError);
+            if (aError) console.error("Error fetching emergency highlights:", aError);
 
-            const combined = [...(vehicleData || []).map(r => ({...r, type: 'vehicle'})), ...(crimeData || []).map(r => ({...r, type: 'crime'})), ...(accidentData || []).map(r => ({...r, type: 'accident'}))]
+            const combined = [...(vehicleData || []).map(r => ({...r, type: 'vehicle'})), ...(crimeData || []).map(r => ({...r, type: 'crime'})), ...(emergencyData || []).map(r => ({...r, type: 'emergency'}))]
                 .sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
             
             setReports(combined as Report[]);
@@ -69,8 +69,8 @@ const HighlightsBanner: React.FC<HighlightsBannerProps> = ({ onSelectReport, top
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'crime_reports', filter: `severity=in.("${Severity.CRITICAL}","${Severity.HIGH}")` }, payload => {
                 setReports(prev => [{...payload.new, type: 'crime'} as Report, ...prev].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()));
             })
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'accident_reports', filter: `severity=in.("${Severity.CRITICAL}","${Severity.HIGH}")` }, payload => {
-                setReports(prev => [{...payload.new, type: 'accident'} as Report, ...prev].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()));
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'emergency_reports', filter: `severity=in.("${Severity.CRITICAL}","${Severity.HIGH}")` }, payload => {
+                setReports(prev => [{...payload.new, type: 'emergency'} as Report, ...prev].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime()));
             })
             .subscribe();
 

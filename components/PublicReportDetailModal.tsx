@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Report, VehicleReport, AccidentReport } from '../types';
+import { Report, VehicleReport, EmergencyReport } from '../types';
 import { XIcon, MapPinIcon } from './icons';
 import StatusBadge from './StatusBadge';
 import { format } from 'date-fns';
@@ -81,8 +81,8 @@ const PublicReportDetailModal: React.FC<PublicReportDetailModalProps> = ({ isOpe
                             <DetailItem label="Reported At" value={format(new Date(report.reported_at), 'MMM d, yyyy HH:mm')} />
                             {report.type === 'vehicle' ? (
                                 <DetailItem label="Vehicle" value={`${(report as any).vehicle_color} ${(report as any).vehicle_make} ${(report as any).vehicle_model}`} />
-                            ) : report.type === 'accident' ? (
-                                <DetailItem label="Accident Type" value={(report as any).accident_type} />
+                            ) : report.type === 'emergency' ? (
+                                <DetailItem label="Emergency Type" value={(report as any).emergency_type} />
                             ) : (
                                 <DetailItem label="Crime Type" value={(report as any).crime_type} />
                             )}

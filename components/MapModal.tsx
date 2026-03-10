@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } from 'react-leaflet';
 import L, { LatLngBoundsExpression } from 'leaflet';
-import { Report, VehicleReport, AccidentReport, Severity, ReportStatus } from '../types';
+import { Report, VehicleReport, EmergencyReport, Severity, ReportStatus } from '../types';
 import { XIcon } from './icons';
 import StatusBadge from './StatusBadge';
 import MapStyleToggle, { MapStyle } from './MapStyleToggle';
@@ -36,7 +36,7 @@ const createCrimeIcon = (status: ReportStatus) => {
     return new L.DivIcon({ html: iconHtml, className: '', iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -16] });
 };
 
-const createAccidentIcon = (status: ReportStatus) => {
+const createEmergencyIcon = (status: ReportStatus) => {
     let bgColorClass = 'bg-orange-600';
     if (status === ReportStatus.RESOLVED) {
         bgColorClass = 'bg-green-600';
@@ -94,7 +94,7 @@ const MapModal: React.FC<MapModalProps> = ({ isOpen, onClose, report }) => {
 
     const reportIcon = report.type === 'vehicle'
         ? createVehicleIcon(report.severity, report.status)
-        : (report.type === 'accident' ? createAccidentIcon(report.status) : createCrimeIcon(report.status));
+        : (report.type === 'emergency' ? createEmergencyIcon(report.status) : createCrimeIcon(report.status));
 
     const isValidCoords = report.location_coords && typeof report.location_coords.lat === 'number' && !isNaN(report.location_coords.lat) && typeof report.location_coords.lng === 'number' && !isNaN(report.location_coords.lng);
     const position: [number, number] | undefined = isValidCoords ? [report.location_coords!.lat, report.location_coords!.lng] : undefined;

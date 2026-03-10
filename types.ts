@@ -140,14 +140,14 @@ export interface CrimeReport {
   station_name?: string;
 }
 
-export interface AccidentReport {
+export interface EmergencyReport {
   id: string;
-  type?: 'accident';
+  type?: 'emergency';
   ob_number: string;
   title: string;
   description: string;
   location: string;
-  accident_type: string;
+  emergency_type: string;
   severity: Severity;
   status: ReportStatus;
   reported_by: string; // profile id
@@ -160,14 +160,12 @@ export interface AccidentReport {
   deleted_by?: string; // profile id
   deleted_at?: string; // ISO date string
   completed_at?: string; // ISO date string
-  cas_number?: string;
-  station_name?: string;
   vehicles_involved?: number;
   injuries_reported?: boolean;
   fatalities_reported?: boolean;
 }
 
-export type Report = VehicleReport | CrimeReport | AccidentReport;
+export type Report = VehicleReport | CrimeReport | EmergencyReport;
 
 export interface Responder {
     id: string;

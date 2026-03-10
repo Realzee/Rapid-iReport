@@ -72,24 +72,24 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
 
             let vehicleQuery = supabase.from('vehicle_reports').select('*');
             let crimeQuery = supabase.from('crime_reports').select('*');
-            let accidentQuery = supabase.from('accident_reports').select('*');
+            let emergencyQuery = supabase.from('emergency_reports').select('*');
 
             if (allowedReporterIds) {
                 vehicleQuery = vehicleQuery.in('reported_by', allowedReporterIds);
                 crimeQuery = crimeQuery.in('reported_by', allowedReporterIds);
-                accidentQuery = accidentQuery.in('reported_by', allowedReporterIds);
+                emergencyQuery = emergencyQuery.in('reported_by', allowedReporterIds);
             }
 
             const [
                 { data: vehicleData, error: vError }, 
                 { data: crimeData, error: cError },
-                { data: accidentData, error: aError },
+                { data: emergencyData, error: aError },
                 { data: usersData, error: uError },
                 { data: companiesData, error: companiesError }
             ] = await Promise.all([
                 vehicleQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 crimeQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                accidentQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
+                emergencyQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 profilesQuery,
                 supabase.from('companies').select('*')
             ]);
@@ -98,7 +98,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             const combinedReports = [
                 ...(vehicleData || []).map(r => ({...r, type: 'vehicle' as const})), 
                 ...(crimeData || []).map(r => ({...r, type: 'crime' as const})),
-                ...(accidentData || []).map(r => ({...r, type: 'accident' as const}))
+                ...(emergencyData || []).map(r => ({...r, type: 'emergency' as const}))
             ];
             
             // Ensure we have profiles for all reporters, even if they are outside the user's company scope
@@ -120,7 +120,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         fetchData();
 
         const handleReportChange = async (payload: any) => {
-            const reportType = payload.table === 'vehicle_reports' ? 'vehicle' : (payload.table === 'accident_reports' ? 'accident' : 'crime');
+            const reportType = payload.table === 'vehicle_reports' ? 'vehicle' : (payload.table === 'emergency_reports' ? 'emergency' : 'crime');
             const newReport = { ...payload.new, type: reportType };
 
             // Filter incoming reports for non-global admins
@@ -207,12 +207,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             reportsChannel
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports' }, handleReportChange);
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, handleReportChange);
         } else if (profile.company_id) {
             reportsChannel
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'accident_reports' }, handleReportChange);
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, handleReportChange);
         }
         reportsChannel.subscribe();
             
@@ -286,7 +286,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     
     const confirmDeleteReport = useCallback(async () => {
         if (!reportToDelete) return;
-        const tableName = reportToDelete.type === 'vehicle' ? 'vehicle_reports' : (reportToDelete.type === 'accident' ? 'accident_reports' : 'crime_reports');
+        const tableName = reportToDelete.type === 'vehicle' ? 'vehicle_reports' : (reportToDelete.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
         const { error } = await supabase.from(tableName).update({ 
             status: ReportStatus.DELETED,
             deleted_by: profile.id,
@@ -304,8 +304,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         setReportToDelete(null);
     }, [reportToDelete, addToast, selectedReportId, profile.id]);
     
-    const handleStatusUpdate = useCallback(async (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime' | 'accident') => {
-        const tableName = reportType === 'vehicle' ? 'vehicle_reports' : (reportType === 'accident' ? 'accident_reports' : 'crime_reports');
+    const handleStatusUpdate = useCallback(async (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime' | 'emergency') => {
+        const tableName = reportType === 'vehicle' ? 'vehicle_reports' : (reportType === 'emergency' ? 'emergency_reports' : 'crime_reports');
         const reportToUpdate = reports.find(r => r.id === reportId);
         if (!reportToUpdate) return;
     
@@ -348,15 +348,15 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 .eq('assigned_to', responderId)
                 .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
 
-            const { count: activeAccidentAssignments } = await supabase
-                .from('accident_reports')
+            const { count: activeEmergencyAssignments } = await supabase
+                .from('emergency_reports')
                 .select('*', { count: 'exact', head: true })
                 .eq('assigned_to', responderId)
                 .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
     
             if ((activeVehicleAssignments === null || activeVehicleAssignments === 0) && 
                 (activeCrimeAssignments === null || activeCrimeAssignments === 0) &&
-                (activeAccidentAssignments === null || activeAccidentAssignments === 0)) {
+                (activeEmergencyAssignments === null || activeEmergencyAssignments === 0)) {
                 const { error: profileUpdateError } = await supabase.from('profiles').update({ responder_status: ResponderStatus.AVAILABLE }).eq('id', responderId);
                 if(profileUpdateError) console.warn("Report status updated, but failed to update responder status:", profileUpdateError.message);
             }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Report, VehicleReport, AccidentReport, Company } from '../types';
+import { Report, VehicleReport, EmergencyReport, Company } from '../types';
 import { logoUrl } from '../assets/logo';
 import { format } from 'date-fns';
 import { AssignResponderIcon, ZapIcon } from './icons';
@@ -48,7 +48,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
         <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <div>
             <p className="font-bold text-gray-500">Type</p>
-            <p>{report.type === 'vehicle' ? 'Vehicle Incident' : (report.type === 'accident' ? 'Accident Report' : 'Crime Incident')}</p>
+            <p>{report.type === 'vehicle' ? 'Vehicle Incident' : (report.type === 'emergency' ? 'Emergency Report' : 'Crime Incident')}</p>
           </div>
           <div>
             <p className="font-bold text-gray-500">Reported At</p>
@@ -66,10 +66,10 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
               <div><p className="font-bold text-gray-500">Color</p><p>{(report as any).vehicle_color}</p></div>
               <div className="col-span-2"><p className="font-bold text-gray-500">Last Seen Location</p><p>{(report as any).last_seen_location}</p></div>
             </>
-          ) : report.type === 'accident' ? (
+          ) : report.type === 'emergency' ? (
             <>
               <div><p className="font-bold text-gray-500">Title</p><p>{report.title}</p></div>
-              <div><p className="font-bold text-gray-500">Accident Type</p><p>{(report as any).accident_type}</p></div>
+              <div><p className="font-bold text-gray-500">Emergency Type</p><p>{(report as any).emergency_type}</p></div>
               <div className="col-span-2"><p className="font-bold text-gray-500">Location</p><p>{(report as any).location}</p></div>
             </>
           ) : (

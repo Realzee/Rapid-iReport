@@ -5,7 +5,7 @@
  */
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport, AccidentReport } from '../types';
+import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport, EmergencyReport } from '../types';
 import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon } from '../components/icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
@@ -23,7 +23,7 @@ interface ReportModalProps {
     isQuickAdd?: boolean;
 }
 
-type ReportType = 'vehicle' | 'crime' | 'accident';
+type ReportType = 'vehicle' | 'crime' | 'emergency';
 
 const geocodeLocation = async (location: string): Promise<{coords: LocationCoords | null, boundary: any | null, boundingbox: [number, number, number, number] | null}> => {
     try {
@@ -442,9 +442,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             }
             
             let reportData: any;
-            let tableName: 'vehicle_reports' | 'crime_reports' | 'accident_reports';
+            let tableName: 'vehicle_reports' | 'crime_reports' | 'emergency_reports';
             if (reportType === 'vehicle') tableName = 'vehicle_reports';
-            else if (reportType === 'accident') tableName = 'accident_reports';
+            else if (reportType === 'emergency') tableName = 'emergency_reports';
             else tableName = 'crime_reports';
             
             const commonData = {
@@ -469,19 +469,17 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     vin_number: formData.vin_number,
                     engine_number: formData.engine_number,
                 };
-            } else if (reportType === 'accident') {
-                // Exclude location_boundary and location_boundingbox for accident reports as the table might not support them yet
-                const { location_boundary, location_boundingbox, ...accidentCommonData } = commonData;
+            } else if (reportType === 'emergency') {
+                // Exclude location_boundary and location_boundingbox for emergency reports as the table might not support them yet
+                const { location_boundary, location_boundingbox, ...emergencyCommonData } = commonData;
                 reportData = {
-                    ...accidentCommonData,
+                    ...emergencyCommonData,
                     title: formData.title,
-                    accident_type: formData.accident_type,
+                    emergency_type: formData.emergency_type,
                     location: formData.location,
                     vehicles_involved: parseInt(formData.vehicles_involved || '1'),
                     injuries_reported: formData.injuries_reported === 'true',
                     fatalities_reported: formData.fatalities_reported === 'true',
-                    cas_number: formData.cas_number,
-                    station_name: formData.station_name,
                 };
             } else {
                  reportData = {
@@ -575,7 +573,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     <div className="mb-6">
                         <div className="flex bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
                             <button type="button" onClick={() => setReportType('vehicle')} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'vehicle' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-5 h-5" /> Vehicle</button>
-                            <button type="button" onClick={() => setReportType('accident')} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'accident' ? 'bg-orange-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><AlertTriangleIcon className="w-5 h-5" /> Accident</button>
+                            <button type="button" onClick={() => setReportType('emergency')} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'emergency' ? 'bg-orange-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><AlertTriangleIcon className="w-5 h-5" /> Emergency</button>
                             <button type="button" onClick={() => setReportType('crime')} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'crime' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CrimeIcon className="w-5 h-5" /> Crime</button>
                         </div>
                     </div>
@@ -593,11 +591,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
                             <div><label htmlFor="station_name" className={labelClasses}>Station Name</label><input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="STATION" /></div>
                         </div>
-                    ) : reportType === 'accident' ? (
+                    ) : reportType === 'emergency' ? (
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label htmlFor="title" className={labelClasses}>Accident Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g. Multi-vehicle collision" /></div>
-                                <div><label htmlFor="accident_type" className={labelClasses}>Type of Accident</label><input type="text" name="accident_type" id="accident_type" value={formData.accident_type || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g. Head-on, Rear-end" /></div>
+                                <div><label htmlFor="title" className={labelClasses}>Emergency Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g. Multi-vehicle collision, Medical Emergency" /></div>
+                                <div><label htmlFor="emergency_type" className={labelClasses}>Type of Emergency</label><input type="text" name="emergency_type" id="emergency_type" value={formData.emergency_type || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g. Fire, Medical, Roadside Assist" /></div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div><label htmlFor="vehicles_involved" className={labelClasses}>Vehicles Involved</label><input type="number" name="vehicles_involved" id="vehicles_involved" value={formData.vehicles_involved || '1'} onChange={handleChange} min="1" className={inputClasses} /></div>
@@ -615,10 +613,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                         <option value="true">Yes</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
-                                <div><label htmlFor="station_name" className={labelClasses}>Station Name</label><input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="STATION" /></div>
                             </div>
                         </div>
                     ) : (
