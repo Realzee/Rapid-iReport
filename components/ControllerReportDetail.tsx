@@ -705,7 +705,10 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 {report.type === 'emergency' && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
                         <DetailField label="Emergency Type">{(report as any).emergency_type}</DetailField>
-                        <DetailField label="Vehicles Involved">{(report as any).vehicles_involved}</DetailField>
+                        <DetailField label="Vehicle Involved">{(report as any).vehicle_involved ? 'Yes' : 'No'}</DetailField>
+                        {(report as any).vehicle_involved && (
+                            <DetailField label="Vehicles Involved">{(report as any).vehicles_involved}</DetailField>
+                        )}
                         <DetailField label="Injuries">{(report as any).injuries_reported ? 'Yes' : 'No'}</DetailField>
                         <DetailField label="Fatalities">{(report as any).fatalities_reported ? 'Yes' : 'No'}</DetailField>
                     </div>

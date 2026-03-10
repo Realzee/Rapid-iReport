@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.emergency_reports (
     completed_at timestamp with time zone,
     location_coords jsonb,
     evidence_images text[],
+    vehicle_involved boolean DEFAULT false,
     vehicles_involved integer DEFAULT 1,
     injuries_reported boolean DEFAULT false,
     fatalities_reported boolean DEFAULT false,

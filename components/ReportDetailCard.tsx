@@ -548,6 +548,32 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                             <p className="text-gray-900 dark:text-white">{(report as any).engine_number}</p>
                         </div>
                     )}
+                    {report.type === 'emergency' && (
+                        <>
+                            <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Emergency Type</p>
+                                <p className="text-gray-900 dark:text-white">{(report as any).emergency_type}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicle Involved</p>
+                                <p className="text-gray-900 dark:text-white">{(report as any).vehicle_involved ? 'Yes' : 'No'}</p>
+                            </div>
+                            {(report as any).vehicle_involved && (
+                                <div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicles Involved</p>
+                                    <p className="text-gray-900 dark:text-white">{(report as any).vehicles_involved}</p>
+                                </div>
+                            )}
+                            <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Injuries</p>
+                                <p className="text-gray-900 dark:text-white">{(report as any).injuries_reported ? 'Yes' : 'No'}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Fatalities</p>
+                                <p className="text-gray-900 dark:text-white">{(report as any).fatalities_reported ? 'Yes' : 'No'}</p>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 <div>

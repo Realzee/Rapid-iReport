@@ -240,7 +240,13 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             const location = reportToEdit.type === 'vehicle' ? (reportToEdit as any).last_seen_location : (reportToEdit as any).location;
             return { ...reportToEdit, location };
         }
-        return { severity: isQuickAdd ? Severity.HIGH : '' };
+        return { 
+            severity: isQuickAdd ? Severity.HIGH : '',
+            vehicle_involved: 'false',
+            vehicles_involved: '1',
+            injuries_reported: 'false',
+            fatalities_reported: 'false'
+        };
     }, [reportToEdit, isQuickAdd]);
 
     const [initialData, setInitialData] = useState(getInitialData);
@@ -477,7 +483,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     title: formData.title,
                     emergency_type: formData.emergency_type,
                     location: formData.location,
-                    vehicles_involved: parseInt(formData.vehicles_involved || '1'),
+                    vehicle_involved: formData.vehicle_involved === 'true',
+                    vehicles_involved: formData.vehicle_involved === 'true' ? parseInt(formData.vehicles_involved || '1') : 0,
                     injuries_reported: formData.injuries_reported === 'true',
                     fatalities_reported: formData.fatalities_reported === 'true',
                 };
@@ -609,8 +616,22 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     </select>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div><label htmlFor="vehicles_involved" className={labelClasses}>Vehicles Involved</label><input type="number" name="vehicles_involved" id="vehicles_involved" value={formData.vehicles_involved || '1'} onChange={handleChange} min="1" className={inputClasses} /></div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="vehicle_involved" className={labelClasses}>Vehicle Involved?</label>
+                                    <select name="vehicle_involved" id="vehicle_involved" value={formData.vehicle_involved || 'false'} onChange={handleChange} className={inputClasses}>
+                                        <option value="false">No</option>
+                                        <option value="true">Yes</option>
+                                    </select>
+                                </div>
+                                {formData.vehicle_involved === 'true' && (
+                                    <div>
+                                        <label htmlFor="vehicles_involved" className={labelClasses}>Number of Vehicles</label>
+                                        <input type="number" name="vehicles_involved" id="vehicles_involved" value={formData.vehicles_involved || '1'} onChange={handleChange} min="1" className={inputClasses} />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label htmlFor="injuries_reported" className={labelClasses}>Injuries?</label>
                                     <select name="injuries_reported" id="injuries_reported" value={formData.injuries_reported || 'false'} onChange={handleChange} className={inputClasses}>

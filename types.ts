@@ -160,6 +160,7 @@ export interface EmergencyReport {
   deleted_by?: string; // profile id
   deleted_at?: string; // ISO date string
   completed_at?: string; // ISO date string
+  vehicle_involved?: boolean;
   vehicles_involved?: number;
   injuries_reported?: boolean;
   fatalities_reported?: boolean;
