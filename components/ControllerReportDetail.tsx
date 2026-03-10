@@ -435,8 +435,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             const make = report.type === 'vehicle' ? (report as any).vehicle_make : 'N/A';
             const model = report.type === 'vehicle' ? (report as any).vehicle_model : 'N/A';
             const color = report.type === 'vehicle' ? (report as any).vehicle_color : 'N/A';
-            const caseNumber = report.cas_number || 'N/A';
-            const stationName = report.station_name || 'N/A';
+            const caseNumber = (report as any).cas_number || 'N/A';
+            const stationName = (report as any).station_name || 'N/A';
 
             const drawField = (label: string, value: string, y: number) => {
                 ctx.font = 'normal 24px Arial, sans-serif';
@@ -710,8 +710,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         <DetailField label="Fatalities">{(report as any).fatalities_reported ? 'Yes' : 'No'}</DetailField>
                     </div>
                 )}
-                {report.cas_number && <DetailField label="CAS Number"><p className="text-gray-800 dark:text-gray-200">{report.cas_number}</p></DetailField>}
-                {report.station_name && <DetailField label="Station"><p className="text-gray-800 dark:text-gray-200">{report.station_name}</p></DetailField>}
+                {(report as any).cas_number && <DetailField label="CAS Number"><p className="text-gray-800 dark:text-gray-200">{(report as any).cas_number}</p></DetailField>}
+                {(report as any).station_name && <DetailField label="Station"><p className="text-gray-800 dark:text-gray-200">{(report as any).station_name}</p></DetailField>}
                 {report.type === 'vehicle' && (report as any).vin_number && <DetailField label="VIN"><p className="text-gray-800 dark:text-gray-200">{(report as any).vin_number}</p></DetailField>}
                 {report.type === 'vehicle' && (report as any).engine_number && <DetailField label="Engine"><p className="text-gray-800 dark:text-gray-200">{(report as any).engine_number}</p></DetailField>}
             </div>

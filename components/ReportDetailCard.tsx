@@ -262,8 +262,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             const make = report.type === 'vehicle' ? (report as any).vehicle_make : 'N/A';
             const model = report.type === 'vehicle' ? (report as any).vehicle_model : 'N/A';
             const color = report.type === 'vehicle' ? (report as any).vehicle_color : 'N/A';
-            const caseNumber = report.cas_number || 'N/A';
-            const stationName = report.station_name || 'N/A';
+            const caseNumber = (report as any).cas_number || 'N/A';
+            const stationName = (report as any).station_name || 'N/A';
 
             const drawField = (label: string, value: string, y: number) => {
                 ctx.font = 'normal 24px Arial, sans-serif';
@@ -524,16 +524,16 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported</p>
                         <p className="text-gray-900 dark:text-white">{format(new Date(report.reported_at), 'MMM d, yyyy HH:mm')}</p>
                     </div>
-                    {report.cas_number && (
+                    {(report as any).cas_number && (
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">CAS Number</p>
-                            <p className="text-gray-900 dark:text-white">{report.cas_number}</p>
+                            <p className="text-gray-900 dark:text-white">{(report as any).cas_number}</p>
                         </div>
                     )}
-                    {report.station_name && (
+                    {(report as any).station_name && (
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Station</p>
-                            <p className="text-gray-900 dark:text-white">{report.station_name}</p>
+                            <p className="text-gray-900 dark:text-white">{(report as any).station_name}</p>
                         </div>
                     )}
                     {report.type === 'vehicle' && (report as any).vin_number && (

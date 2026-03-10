@@ -480,8 +480,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     vehicles_involved: parseInt(formData.vehicles_involved || '1'),
                     injuries_reported: formData.injuries_reported === 'true',
                     fatalities_reported: formData.fatalities_reported === 'true',
-                    cas_number: formData.cas_number,
-                    station_name: formData.station_name,
                 };
             } else {
                  reportData = {
@@ -597,7 +595,19 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div><label htmlFor="title" className={labelClasses}>Emergency Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g. Multi-vehicle collision, Fire, Medical" /></div>
-                                <div><label htmlFor="emergency_type" className={labelClasses}>Type of Emergency</label><input type="text" name="emergency_type" id="emergency_type" value={formData.emergency_type || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g. Fire, Medical, Roadside Assist" /></div>
+                                <div>
+                                    <label htmlFor="emergency_type" className={labelClasses}>Type of Emergency</label>
+                                    <select name="emergency_type" id="emergency_type" value={formData.emergency_type || ''} onChange={handleChange} required className={inputClasses}>
+                                        <option value="" disabled>Select Emergency Type</option>
+                                        <option value="Fire">Fire</option>
+                                        <option value="Medical Emergency">Medical Emergency</option>
+                                        <option value="Roadside Assistance">Roadside Assistance</option>
+                                        <option value="Multi-vehicle Collision">Multi-vehicle Collision</option>
+                                        <option value="Pedestrian Incident">Pedestrian Incident</option>
+                                        <option value="Natural Disaster">Natural Disaster</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div><label htmlFor="vehicles_involved" className={labelClasses}>Vehicles Involved</label><input type="number" name="vehicles_involved" id="vehicles_involved" value={formData.vehicles_involved || '1'} onChange={handleChange} min="1" className={inputClasses} /></div>
@@ -615,10 +625,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                         <option value="true">Yes</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
-                                <div><label htmlFor="station_name" className={labelClasses}>Station Name</label><input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="STATION" /></div>
                             </div>
                         </div>
                     ) : (
