@@ -454,8 +454,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             else tableName = 'crime_reports';
             
             const commonData = {
-                description: formData.description,
-                severity: formData.severity,
+                description: formData.description || '',
+                severity: formData.severity || 'low',
                 evidence_images: finalImageUrls,
                 location_coords: geocodedData.coords,
                 location_boundary: geocodedData.boundary,
