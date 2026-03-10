@@ -104,7 +104,7 @@ const AddEditAnnouncementModal: React.FC<AddEditAnnouncementModalProps> = ({ isO
                                 )}
                             </div>
                              <div className="flex items-center gap-2">
-                                <label htmlFor="image-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                <label htmlFor="image-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition">
                                     <UploadCloudIcon className="w-5 h-5"/>
                                     <span>{imageFile || imagePreview ? 'Change' : 'Upload'}</span>
                                 </label>
@@ -118,7 +118,7 @@ const AddEditAnnouncementModal: React.FC<AddEditAnnouncementModalProps> = ({ isO
                         </div>
                     </div>
                     <div className="pt-6 flex justify-end space-x-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 transition-colors">Cancel</button>
                         <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-md hover:scale-105 transition-transform duration-300">Save</button>
                     </div>
                 </form>

@@ -409,7 +409,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
                              extractedPlates !== null && <p className="text-center text-gray-500 dark:text-gray-400">No plates were detected in the image.</p>
                         )}
 
-                        <button onClick={resetStateAndStartScan} className="w-full py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                        <button onClick={resetStateAndStartScan} className="w-full py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 transition">
                             Scan Again
                         </button>
                     </div>

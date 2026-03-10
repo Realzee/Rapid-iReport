@@ -81,7 +81,7 @@ const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({ isOpen, onClose
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
-                    <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Close</button>
+                    <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 transition-colors">Close</button>
                 </div>
             </div>
         </div>

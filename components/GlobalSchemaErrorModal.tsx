@@ -17,7 +17,7 @@ const CodeBlock: React.FC<{ code: string }> = ({ code }) => {
         <div className="relative bg-gray-100 dark:bg-gray-800/50 p-4 rounded-md border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto">
             <button
                 onClick={handleCopy}
-                className="absolute top-2 right-2 px-2 py-1 text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition z-10"
+                className="absolute top-2 right-2 px-2 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 transition z-10"
             >
                 {copied ? 'Copied!' : 'Copy'}
             </button>
@@ -302,7 +302,7 @@ CREATE TRIGGER on_crime_report_created
                         </div>
 
                          <div className="mt-8">
-                            <button onClick={() => window.location.reload()} className="w-full inline-flex items-center justify-center px-4 py-3 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <button onClick={() => window.location.reload()} className="w-full inline-flex items-center justify-center px-4 py-3 border border-blue-300 dark:border-blue-700 text-sm font-medium rounded-md text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
                                 Refresh Application
                             </button>
                         </div>

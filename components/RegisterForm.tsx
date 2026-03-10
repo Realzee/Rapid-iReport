@@ -138,7 +138,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
                         <UserIcon className="h-12 w-12 text-gray-400" />
                     )}
                 </span>
-                <label htmlFor="avatar-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                <label htmlFor="avatar-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition">
                     <UploadCloudIcon className="w-5 h-5"/>
                     <span>Upload Selfie</span>
                 </label>

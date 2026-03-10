@@ -28,7 +28,7 @@ const DeleteUserModal: React.FC<DeleteUserModalProps> = ({ isOpen, onClose, onCo
                 <div className="mt-5 sm:mt-6 flex justify-center space-x-4">
                     <button
                         type="button"
-                        className="inline-flex justify-center w-full rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 bg-white dark:bg-gray-700/50 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none sm:text-sm"
+                        className="inline-flex justify-center w-full rounded-md border border-blue-300 dark:border-blue-700 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 text-base font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 focus:outline-none sm:text-sm"
                         onClick={onClose}
                     >
                         Cancel

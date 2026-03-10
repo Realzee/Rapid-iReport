@@ -150,7 +150,7 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                     {canEdit && (
                         <button 
                             onClick={() => onEdit(report)}
-                            className="p-2 bg-gray-100 dark:bg-gray-700/50 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 transition-colors"
                             title="Edit this report"
                         >
                             <EditIcon className="w-4 h-4" />
