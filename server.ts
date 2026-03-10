@@ -28,12 +28,6 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || '', {
 
 app.use(express.json());
 
-// Request logging
-app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-    next();
-});
-
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Backend is running', timestamp: new Date().toISOString() });
@@ -198,6 +192,9 @@ async function setupFrontend() {
         
         // Add a catch-all for development mode to handle SPA fallback
         app.use(async (req, res, next) => {
+            if (req.method !== 'GET' || !req.headers.accept?.includes('text/html')) {
+                return res.status(404).json({ error: 'Not found' });
+            }
             try {
                 const url = req.originalUrl;
                 let template = await import('fs').then(fs => fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8'));
@@ -207,6 +204,12 @@ async function setupFrontend() {
                 vite.ssrFixStacktrace(e as Error);
                 next(e);
             }
+        });
+        
+        // Error handler middleware
+        app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+            console.error('Server Error:', err);
+            res.status(500).json({ error: 'Internal Server Error', message: err.message });
         });
     } else {
         const distPath = path.resolve(__dirname, 'dist');
