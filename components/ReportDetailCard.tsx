@@ -556,7 +556,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                             </div>
                             <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicle Involved</p>
-                                <p className="text-gray-900 dark:text-white">{(report as any).vehicle_involved ? 'Yes' : 'No'}</p>
+                                <p className="text-gray-900 dark:text-white">{(report as any).vehicle_Involved || (report as any).vehicle_involved ? 'Yes' : 'No'}</p>
                             </div>
                             {(report as any).license_plate && (
                                 <div>

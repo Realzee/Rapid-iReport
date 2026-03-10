@@ -483,7 +483,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     title: formData.title,
                     emergency_type: formData.emergency_type,
                     location: formData.location,
-                    vehicle_involved: formData.vehicle_involved === 'true' || formData.emergency_type === 'Kidnapping (taken with vehicle)',
+                    "vehicle_Involved": formData.vehicle_involved === 'true' || formData.emergency_type === 'Kidnapping (taken with vehicle)',
                     vehicles_involved: (formData.vehicle_involved === 'true' || formData.emergency_type === 'Kidnapping (taken with vehicle)') ? parseInt(formData.vehicles_involved || '1') : 0,
                     injuries_reported: formData.injuries_reported === 'true',
                     fatalities_reported: formData.fatalities_reported === 'true',
