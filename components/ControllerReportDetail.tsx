@@ -710,6 +710,15 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         )}
                         <DetailField label="Injuries">{(report as any).injuries_reported ? 'Yes' : 'No'}</DetailField>
                         <DetailField label="Fatalities">{(report as any).fatalities_reported ? 'Yes' : 'No'}</DetailField>
+                        
+                        {((report as any).emergency_type === 'Kidnapping (taken with vehicle)') && (
+                            <>
+                                <DetailField label="License Plate">{(report as any).license_plate || 'N/A'}</DetailField>
+                                <DetailField label="Vehicle Make">{(report as any).vehicle_make || 'N/A'}</DetailField>
+                                <DetailField label="Vehicle Model">{(report as any).vehicle_model || 'N/A'}</DetailField>
+                                <DetailField label="Vehicle Color">{(report as any).vehicle_color || 'N/A'}</DetailField>
+                            </>
+                        )}
                     </div>
                 )}
                 {(report as any).cas_number && <DetailField label="CAS Number"><p className="text-gray-800 dark:text-gray-200">{(report as any).cas_number}</p></DetailField>}

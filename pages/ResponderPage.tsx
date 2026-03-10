@@ -754,6 +754,26 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                                             {report.fatalities_reported ? 'Yes' : 'None'}
                                         </p>
                                     </div>
+                                    {report.emergency_type === 'Kidnapping (taken with vehicle)' && (
+                                        <>
+                                            <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                                <span className="text-xs text-gray-500 block mb-1">License Plate</span>
+                                                <p className="font-medium">{(report as any).license_plate || 'N/A'}</p>
+                                            </div>
+                                            <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                                <span className="text-xs text-gray-500 block mb-1">Vehicle Make</span>
+                                                <p className="font-medium">{(report as any).vehicle_make || 'N/A'}</p>
+                                            </div>
+                                            <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                                <span className="text-xs text-gray-500 block mb-1">Vehicle Model</span>
+                                                <p className="font-medium">{(report as any).vehicle_model || 'N/A'}</p>
+                                            </div>
+                                            <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                                <span className="text-xs text-gray-500 block mb-1">Vehicle Color</span>
+                                                <p className="font-medium">{(report as any).vehicle_color || 'N/A'}</p>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>
