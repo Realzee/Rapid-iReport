@@ -475,9 +475,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             ctx.textAlign = 'center';
             ctx.fillStyle = '#FFFFFF';
             
-            ctx.font = '500 18px Arial, sans-serif';
-            ctx.fillText('If spotted please contact SAPS Crime Stop on 08600', width / 2, footerY);
-            ctx.fillText('10111 or your nearest SAPS Station', width / 2, footerY + 22);
+            ctx.font = 'bold 20px Arial, sans-serif';
+            ctx.fillText('If Seen Please Call 10111 Or Contact Nearest SAPS Station', width / 2, footerY + 10);
 
             ctx.font = 'bold 22px serif';
             ctx.fillText('"The Smarter Choice"', width / 2, footerY + 50);
