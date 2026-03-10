@@ -482,7 +482,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     ...emergencyCommonData,
                     title: formData.title,
                     emergency_type: formData.emergency_type,
-                    location: formData.location,
+                    location: formData.location || 'Unknown Location',
                     "vehicle_Involved": formData.vehicle_involved === 'true' || formData.emergency_type === 'Kidnapping (taken with vehicle)',
                     vehicles_involved: (formData.vehicle_involved === 'true' || formData.emergency_type === 'Kidnapping (taken with vehicle)') ? parseInt(formData.vehicles_involved || '1') : 0,
                     injuries_reported: formData.injuries_reported === 'true',
@@ -497,7 +497,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     ...commonData,
                     title: formData.title,
                     crime_type: formData.crime_type,
-                    location: formData.location,
+                    location: formData.location || 'Unknown Location',
                     cas_number: formData.cas_number,
                     station_name: formData.station_name,
                 };
