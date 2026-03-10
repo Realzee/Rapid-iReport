@@ -78,6 +78,24 @@ const reverseGeocode = async (coords: LocationCoords): Promise<string> => {
     }
 }
 
+const parseGoogleMapsUrl = (url: string) => {
+    // Regex to match lat,lng in google maps URLs
+    const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+    const match = url.match(regex);
+    if (match) {
+        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+    }
+    
+    // Example: https://www.google.com/maps/place/48.8566,2.3522
+    const regex2 = /place\/(-?\d+\.\d+),(-?\d+\.\d+)/;
+    const match2 = url.match(regex2);
+    if (match2) {
+        return { lat: parseFloat(match2[1]), lng: parseFloat(match2[2]) };
+    }
+    
+    return null;
+}
+
 // --- Location Picker Component ---
 const markerIcon = new L.Icon({
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -386,7 +404,14 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
         const processedValue = fieldsToUppercase.includes(name) ? value.toUpperCase() : value;
 
-        if (name === 'location') {
+        if (name === 'map_link') {
+            const coords = parseGoogleMapsUrl(value);
+            if (coords) {
+                setFormData({ ...formData, map_link: value, location: 'Coordinates from map link', location_coords: coords, location_boundary: null, location_boundingbox: null });
+            } else {
+                setFormData({ ...formData, map_link: value });
+            }
+        } else if (name === 'location') {
             setFormData({ ...formData, location: processedValue, location_coords: null, location_boundary: null, location_boundingbox: null });
         } else {
             setFormData({ ...formData, [name]: processedValue });
@@ -725,6 +750,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 </div>
                             )}
                         </div>
+                    </div>
+                    
+                    <div>
+                        <label htmlFor="map_link" className={labelClasses}>Map Link (Optional - Google Maps)</label>
+                        <input type="text" name="map_link" id="map_link" value={formData.map_link || ''} onChange={handleChange} className={inputClasses} placeholder="Paste Google Maps link here..." />
                     </div>
 
                     {isMapVisible && (
