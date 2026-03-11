@@ -468,7 +468,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 <div className="mt-4 md:mt-0 flex items-center gap-4">
                     <button
                         onClick={() => openChat(CONTROLLER_CHANNEL_REPORT)}
-                        className="px-5 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
+                        className="px-6 py-3.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-bold rounded-xl shadow-lg shadow-purple-500/30 hover:scale-105 hover:shadow-purple-500/50 transition-all duration-300 flex items-center space-x-2 ring-2 ring-purple-400 ring-offset-2 dark:ring-offset-gray-900"
                         title="Open staff communication channel"
                     >
                         <ChatAlt2Icon className="w-5 h-5" />
@@ -476,7 +476,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                     </button>
                     <button
                         onClick={handleOpenNewReportModal}
-                        className="px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"
+                        className="px-6 py-3.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:scale-105 hover:shadow-blue-500/50 transition-all duration-300 flex items-center space-x-2 ring-2 ring-blue-400 ring-offset-2 dark:ring-offset-gray-900"
                     >
                         <PlusIcon className="w-5 h-5" />
                         <span>New Report</span>
