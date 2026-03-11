@@ -35,6 +35,11 @@ export const useFormPersistence = <T extends object>(
   }, [formId]);
   
   const isDirty = !isDataEqual(formData, initialData);
+  const isDirtyRef = useRef(isDirty);
+
+  useEffect(() => {
+    isDirtyRef.current = isDirty;
+  }, [isDirty]);
 
   // 1. Load draft on mount
   useEffect(() => {
@@ -93,24 +98,30 @@ export const useFormPersistence = <T extends object>(
   const [isGuardEnabled, setIsGuardEnabled] = useState(true);
 
   const handleBeforeUnload = useCallback((event: BeforeUnloadEvent) => {
-      if (isDirty) {
+      if (isDirtyRef.current) {
         event.preventDefault();
         event.returnValue = '';
       }
-  }, [isDirty]);
+  }, []);
 
   const disableNavigationGuard = useCallback(() => {
+    console.log('Disabling navigation guard');
     setIsGuardEnabled(false);
     window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [handleBeforeUnload]);
 
   // 3. Navigation Guard
   useEffect(() => {
-    if (!isEnabled || !isGuardEnabled) return;
+    if (!isEnabled || !isGuardEnabled) {
+        console.log('Navigation Guard not enabled, skipping listener addition');
+        return;
+    }
     
+    console.log('Adding beforeunload listener');
     window.addEventListener('beforeunload', handleBeforeUnload);
     
     return () => {
+      console.log('Removing beforeunload listener (cleanup)');
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [isEnabled, isGuardEnabled, handleBeforeUnload]);
