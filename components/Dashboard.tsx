@@ -9,9 +9,11 @@ import ReportModal from './ReportModal';
 import ArchiveReportModal from './ArchiveReportModal';
 import ReportDetailCard from './ReportDetailCard';
 import MapModal from './MapModal';
-import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon } from './icons';
+import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon, ChatAlt2Icon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
+import { useChat } from '../contexts/ChatContext';
+import { CONTROLLER_CHANNEL_REPORT } from '../constants';
 
 interface DashboardProps {
     profile: Profile;
@@ -32,6 +34,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
     const { addToast } = useToast();
+    const { openChat } = useChat();
 
     useEffect(() => {
         allUsersRef.current = allUsers;
@@ -374,10 +377,23 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                         <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Control Center</h2>
                         <p className="text-gray-500 dark:text-gray-400 mt-1">Live operational overview of community safety.</p>
                     </div>
-                    <button onClick={handleOpenNewReportModal} className="mt-4 md:mt-0 btn-primary flex items-center space-x-2">
-                        <PlusIcon className="w-5 h-5" />
-                        <span>New Report</span>
-                    </button>
+                    <div className="mt-4 md:mt-0 flex items-center gap-4">
+                        <button
+                            onClick={() => openChat(CONTROLLER_CHANNEL_REPORT)}
+                            className="px-6 py-3.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-bold rounded-xl shadow-lg shadow-purple-500/30 hover:scale-105 hover:shadow-purple-500/50 transition-all duration-300 flex items-center space-x-2 ring-2 ring-purple-400 ring-offset-2 dark:ring-offset-gray-900"
+                            title="Open staff communication channel"
+                        >
+                            <ChatAlt2Icon className="w-5 h-5" />
+                            <span>Staff Channel</span>
+                        </button>
+                        <button 
+                            onClick={handleOpenNewReportModal} 
+                            className="px-6 py-3.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:scale-105 hover:shadow-blue-500/50 transition-all duration-300 flex items-center space-x-2 ring-2 ring-blue-400 ring-offset-2 dark:ring-offset-gray-900"
+                        >
+                            <PlusIcon className="w-5 h-5" />
+                            <span>New Report</span>
+                        </button>
+                    </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                     <StatCard title="Total Reports" value={reports.length.toString()} icon={<ZapIcon />} color="primary" />
