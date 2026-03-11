@@ -92,27 +92,28 @@ export const useFormPersistence = <T extends object>(
 
   const [isGuardEnabled, setIsGuardEnabled] = useState(true);
 
-  const disableNavigationGuard = useCallback(() => {
-    setIsGuardEnabled(false);
-  }, []);
-
-  // 3. Navigation Guard
-  useEffect(() => {
-    if (!isEnabled || !isGuardEnabled) return;
-    
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+  const handleBeforeUnload = useCallback((event: BeforeUnloadEvent) => {
       if (isDirty) {
         event.preventDefault();
         event.returnValue = '';
       }
-    };
+  }, [isDirty]);
+
+  const disableNavigationGuard = useCallback(() => {
+    setIsGuardEnabled(false);
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [handleBeforeUnload]);
+
+  // 3. Navigation Guard
+  useEffect(() => {
+    if (!isEnabled || !isGuardEnabled) return;
     
     window.addEventListener('beforeunload', handleBeforeUnload);
     
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [isDirty, isEnabled, isGuardEnabled]);
+  }, [isEnabled, isGuardEnabled, handleBeforeUnload]);
 
   return { clearDraft, isDirty, disableNavigationGuard };
 };
