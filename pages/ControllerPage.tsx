@@ -577,12 +577,14 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 isOpen={isReportModalOpen}
                 onClose={() => setIsReportModalOpen(false)}
                 reportToEdit={reportToEdit}
+                onReportSubmitted={() => window.location.reload()}
             />
              <ReportModal
                 isOpen={isQuickAddModalOpen}
                 onClose={() => setIsQuickAddModalOpen(false)}
                 reportToEdit={null}
                 isQuickAdd={true}
+                onReportSubmitted={() => window.location.reload()}
             />
         </>
     );

@@ -21,6 +21,7 @@ interface ReportModalProps {
     onClose: () => void;
     reportToEdit: Report | null;
     isQuickAdd?: boolean;
+    onReportSubmitted?: () => void;
 }
 
 type ReportType = 'vehicle' | 'crime' | 'emergency';
@@ -239,7 +240,7 @@ const LocationPicker: React.FC<{
 };
 // --- End Location Picker Component ---
 
-const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit, isQuickAdd = false }) => {
+const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit, isQuickAdd = false, onReportSubmitted }) => {
     const [reportType, setReportType] = useState<ReportType>('vehicle');
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -606,6 +607,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             
             addToast(`Report ${reportToEdit ? 'updated' : 'submitted'} successfully!`, 'success');
             clearDraft();
+            if (onReportSubmitted) onReportSubmitted();
             onClose();
 
         } catch (error: any) {

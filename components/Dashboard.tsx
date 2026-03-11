@@ -43,83 +43,84 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const isGlobalAdmin = profile.role === UserRole.ADMIN && 
         (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 
-    useEffect(() => {
-        const activeStatuses = [
-            ReportStatus.PENDING,
-            ReportStatus.ACTIVE,
-            ReportStatus.ASSIGNED,
-            ReportStatus.IN_PROGRESS,
-            ReportStatus.ON_SCENE,
+    const ACTIVE_STATUSES = [
+        ReportStatus.PENDING,
+        ReportStatus.ACTIVE,
+        ReportStatus.ASSIGNED,
+        ReportStatus.IN_PROGRESS,
+        ReportStatus.ON_SCENE,
+    ];
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+
+        let allowedReporterIds: string[] | null = null;
+
+        if (!isGlobalAdmin && profile.company_id) {
+            const { data: companyUsers } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('company_id', profile.company_id);
+            
+            if (companyUsers) {
+                allowedReporterIds = companyUsers.map(u => u.id);
+            }
+        }
+
+        const profilesQuery = supabase.from('profiles').select('*');
+        if (!isGlobalAdmin && profile.company_id) {
+            profilesQuery.eq('company_id', profile.company_id);
+        }
+
+        let vehicleQuery = supabase.from('vehicle_reports').select('*');
+        let crimeQuery = supabase.from('crime_reports').select('*');
+        let emergencyQuery = supabase.from('emergency_reports').select('*');
+
+        if (allowedReporterIds) {
+            vehicleQuery = vehicleQuery.in('reported_by', allowedReporterIds);
+            crimeQuery = crimeQuery.in('reported_by', allowedReporterIds);
+            emergencyQuery = emergencyQuery.in('reported_by', allowedReporterIds);
+        }
+
+        const [
+            { data: vehicleData, error: vError }, 
+            { data: crimeData, error: cError },
+            { data: emergencyData, error: aError },
+            { data: usersData, error: uError },
+            { data: companiesData, error: companiesError }
+        ] = await Promise.all([
+            vehicleQuery.in('status', ACTIVE_STATUSES).order('reported_at', { ascending: false }).limit(100),
+            crimeQuery.in('status', ACTIVE_STATUSES).order('reported_at', { ascending: false }).limit(100),
+            emergencyQuery.in('status', ACTIVE_STATUSES).order('reported_at', { ascending: false }).limit(100),
+            profilesQuery,
+            supabase.from('companies').select('*')
+        ]);
+        if (vError || cError || aError || uError || companiesError) console.error('Data fetch error:', vError || cError || aError || uError || companiesError);
+
+        const combinedReports = [
+            ...(vehicleData || []).map(r => ({...r, type: 'vehicle' as const})), 
+            ...(crimeData || []).map(r => ({...r, type: 'crime' as const})),
+            ...(emergencyData || []).map(r => ({...r, type: 'emergency' as const}))
         ];
+        
+        // Ensure we have profiles for all reporters, even if they are outside the user's company scope
+        const reporterIds = Array.from(new Set(combinedReports.map(r => r.reported_by)));
+        const loadedUserIds = new Set((usersData || []).map(u => u.id));
+        const missingReporterIds = reporterIds.filter(id => !loadedUserIds.has(id));
+        
+        let additionalProfiles: Profile[] = [];
+        if (missingReporterIds.length > 0) {
+                const { data: missingProfiles } = await supabase.from('profiles').select('*').in('id', missingReporterIds);
+                if (missingProfiles) additionalProfiles = missingProfiles;
+        }
+        
+        setReports(combinedReports);
+        setAllUsers([...(usersData || []), ...additionalProfiles]);
+        setCompanies(companiesData || []);
+        setLoading(false);
+    }, [isGlobalAdmin, profile.company_id]);
 
-        const fetchData = async () => {
-            setLoading(true);
-
-            let allowedReporterIds: string[] | null = null;
-
-            if (!isGlobalAdmin && profile.company_id) {
-                const { data: companyUsers } = await supabase
-                    .from('profiles')
-                    .select('id')
-                    .eq('company_id', profile.company_id);
-                
-                if (companyUsers) {
-                    allowedReporterIds = companyUsers.map(u => u.id);
-                }
-            }
-
-            const profilesQuery = supabase.from('profiles').select('*');
-            if (!isGlobalAdmin && profile.company_id) {
-                profilesQuery.eq('company_id', profile.company_id);
-            }
-
-            let vehicleQuery = supabase.from('vehicle_reports').select('*');
-            let crimeQuery = supabase.from('crime_reports').select('*');
-            let emergencyQuery = supabase.from('emergency_reports').select('*');
-
-            if (allowedReporterIds) {
-                vehicleQuery = vehicleQuery.in('reported_by', allowedReporterIds);
-                crimeQuery = crimeQuery.in('reported_by', allowedReporterIds);
-                emergencyQuery = emergencyQuery.in('reported_by', allowedReporterIds);
-            }
-
-            const [
-                { data: vehicleData, error: vError }, 
-                { data: crimeData, error: cError },
-                { data: emergencyData, error: aError },
-                { data: usersData, error: uError },
-                { data: companiesData, error: companiesError }
-            ] = await Promise.all([
-                vehicleQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                crimeQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                emergencyQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                profilesQuery,
-                supabase.from('companies').select('*')
-            ]);
-            if (vError || cError || aError || uError || companiesError) console.error('Data fetch error:', vError || cError || aError || uError || companiesError);
-
-            const combinedReports = [
-                ...(vehicleData || []).map(r => ({...r, type: 'vehicle' as const})), 
-                ...(crimeData || []).map(r => ({...r, type: 'crime' as const})),
-                ...(emergencyData || []).map(r => ({...r, type: 'emergency' as const}))
-            ];
-            
-            // Ensure we have profiles for all reporters, even if they are outside the user's company scope
-            const reporterIds = Array.from(new Set(combinedReports.map(r => r.reported_by)));
-            const loadedUserIds = new Set((usersData || []).map(u => u.id));
-            const missingReporterIds = reporterIds.filter(id => !loadedUserIds.has(id));
-            
-            let additionalProfiles: Profile[] = [];
-            if (missingReporterIds.length > 0) {
-                 const { data: missingProfiles } = await supabase.from('profiles').select('*').in('id', missingReporterIds);
-                 if (missingProfiles) additionalProfiles = missingProfiles;
-            }
-            
-            setReports(combinedReports);
-            setAllUsers([...(usersData || []), ...additionalProfiles]);
-            setCompanies(companiesData || []);
-            setLoading(false);
-        };
+    useEffect(() => {
         fetchData();
 
         const handleReportChange = async (payload: any) => {
@@ -148,7 +149,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
 
             setReports(currentReports => {
                 if (payload.eventType === 'INSERT') {
-                    if (activeStatuses.includes(newReport.status)) {
+                    if (ACTIVE_STATUSES.includes(newReport.status)) {
                         if (currentReports.some(r => r.id === newReport.id)) {
                             return currentReports;
                         }
@@ -160,7 +161,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 if (payload.eventType === 'UPDATE') {
                     const updatedReport = { ...payload.new, type: reportType };
                     const wasInList = currentReports.some(r => r.id === updatedReport.id);
-                    const isNowActive = activeStatuses.includes(updatedReport.status);
+                    const isNowActive = ACTIVE_STATUSES.includes(updatedReport.status);
 
                     if (isNowActive) {
                         if (wasInList) {
@@ -423,7 +424,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                     </div>
                 </div>
             </div>
-            <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} reportToEdit={reportToEdit} />
+            <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} reportToEdit={reportToEdit} onReportSubmitted={() => window.location.reload()} />
             <ArchiveReportModal isOpen={!!reportToDelete} onClose={() => setReportToDelete(null)} onConfirm={confirmDeleteReport} reportIdentifier={reportToDelete ? (reportToDelete.type === 'vehicle' ? (reportToDelete as any).license_plate : reportToDelete.title) : ''} />
             <MapModal isOpen={isMapModalOpen} onClose={() => setIsMapModalOpen(false)} report={selectedReport} />
         </div>
