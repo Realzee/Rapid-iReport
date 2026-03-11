@@ -699,7 +699,17 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                     </div>
                 )}
                 <DetailField label="Description"><p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{report.description}</p></DetailField>
-                {report.type === 'vehicle' && <DetailField label="Vehicle">{`${(report as any).vehicle_color} ${(report as any).vehicle_make} ${(report as any).vehicle_model}`}</DetailField>}
+                
+                {((report as any).license_plate || (report as any).vehicle_make || (report as any).vehicle_model || (report as any).vehicle_color || (report as any).vin_number || (report as any).engine_number) && (
+                    <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                        {(report as any).license_plate && <DetailField label="License Plate">{(report as any).license_plate}</DetailField>}
+                        {(report as any).vehicle_make && <DetailField label="Vehicle Make">{(report as any).vehicle_make}</DetailField>}
+                        {(report as any).vehicle_model && <DetailField label="Vehicle Model">{(report as any).vehicle_model}</DetailField>}
+                        {(report as any).vehicle_color && <DetailField label="Vehicle Color">{(report as any).vehicle_color}</DetailField>}
+                        {(report as any).vin_number && <DetailField label="VIN">{(report as any).vin_number}</DetailField>}
+                        {(report as any).engine_number && <DetailField label="Engine">{(report as any).engine_number}</DetailField>}
+                    </div>
+                )}
                 
                 {report.type === 'emergency' && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
@@ -710,21 +720,10 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         )}
                         <DetailField label="Injuries">{(report as any).injuries_reported ? 'Yes' : 'No'}</DetailField>
                         <DetailField label="Fatalities">{(report as any).fatalities_reported ? 'Yes' : 'No'}</DetailField>
-                        
-                        {((report as any).emergency_type === 'Kidnapping (taken with vehicle)') && (
-                            <>
-                                <DetailField label="License Plate">{(report as any).license_plate || 'N/A'}</DetailField>
-                                <DetailField label="Vehicle Make">{(report as any).vehicle_make || 'N/A'}</DetailField>
-                                <DetailField label="Vehicle Model">{(report as any).vehicle_model || 'N/A'}</DetailField>
-                                <DetailField label="Vehicle Color">{(report as any).vehicle_color || 'N/A'}</DetailField>
-                            </>
-                        )}
                     </div>
                 )}
                 {(report as any).cas_number && <DetailField label="CAS Number"><p className="text-gray-800 dark:text-gray-200">{(report as any).cas_number}</p></DetailField>}
                 {(report as any).station_name && <DetailField label="Station"><p className="text-gray-800 dark:text-gray-200">{(report as any).station_name}</p></DetailField>}
-                {report.type === 'vehicle' && (report as any).vin_number && <DetailField label="VIN"><p className="text-gray-800 dark:text-gray-200">{(report as any).vin_number}</p></DetailField>}
-                {report.type === 'vehicle' && (report as any).engine_number && <DetailField label="Engine"><p className="text-gray-800 dark:text-gray-200">{(report as any).engine_number}</p></DetailField>}
             </div>
 
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 space-y-3 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm -mx-4 px-4 pb-2 sticky bottom-0">

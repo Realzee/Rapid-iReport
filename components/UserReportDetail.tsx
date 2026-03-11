@@ -194,6 +194,17 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                      <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</p>
                 </div>
 
+                {((report as any).license_plate || (report as any).vehicle_make || (report as any).vehicle_model || (report as any).vehicle_color || (report as any).vin_number || (report as any).engine_number) && (
+                    <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm">
+                        {(report as any).license_plate && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">License Plate</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).license_plate}</p></div>}
+                        {(report as any).vehicle_make && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicle Make</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).vehicle_make}</p></div>}
+                        {(report as any).vehicle_model && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicle Model</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).vehicle_model}</p></div>}
+                        {(report as any).vehicle_color && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicle Color</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).vehicle_color}</p></div>}
+                        {(report as any).vin_number && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">VIN</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).vin_number}</p></div>}
+                        {(report as any).engine_number && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Engine</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).engine_number}</p></div>}
+                    </div>
+                )}
+                
                 {report.type === 'emergency' && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
                         <div>
