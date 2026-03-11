@@ -8,6 +8,7 @@ import { supabase } from '../utils/supabase';
 import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport, EmergencyReport } from '../types';
 import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon } from '../components/icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
+import { sapsStations } from '../data/policeStations';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { format } from 'date-fns';
@@ -250,9 +251,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     
     // Address suggestion state
     const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+    const [stationSuggestions, setStationSuggestions] = useState<string[]>([]);
     const [isGeocoding, setIsGeocoding] = useState(false);
     const debounceTimeoutRef = useRef<number | null>(null);
     const suggestionsRef = useRef<HTMLDivElement>(null);
+    const stationSuggestionsRef = useRef<HTMLDivElement>(null);
 
     const getInitialData = useCallback(() => {
         if (reportToEdit) {
@@ -336,6 +339,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
                 setAddressSuggestions([]);
             }
+            if (stationSuggestionsRef.current && !stationSuggestionsRef.current.contains(event.target as Node)) {
+                setStationSuggestions([]);
+            }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -414,6 +420,13 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             }
         } else if (name === 'location') {
             setFormData({ ...formData, location: processedValue, location_coords: null, location_boundary: null, location_boundingbox: null });
+        } else if (name === 'station_name') {
+            setFormData({ ...formData, station_name: processedValue });
+            if (processedValue.length >= 2) {
+                setStationSuggestions(sapsStations.filter(s => s.toLowerCase().includes(processedValue.toLowerCase())));
+            } else {
+                setStationSuggestions([]);
+            }
         } else {
             setFormData({ ...formData, [name]: processedValue });
         }
@@ -656,7 +669,29 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             <div><label htmlFor="vin_number" className={labelClasses}>VIN Number</label><input type="text" name="vin_number" id="vin_number" value={formData.vin_number || ''} onChange={handleChange} className={inputClasses} /></div>
                             <div><label htmlFor="engine_number" className={labelClasses}>Engine Number</label><input type="text" name="engine_number" id="engine_number" value={formData.engine_number || ''} onChange={handleChange} className={inputClasses} /></div>
                             <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
-                            <div><label htmlFor="station_name" className={labelClasses}>Station Name</label><input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="STATION" /></div>
+                            <div>
+                                <label htmlFor="station_name" className={labelClasses}>Station Name</label>
+                                <div className="relative" ref={stationSuggestionsRef}>
+                                    <input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="STATION" autoComplete="off" />
+                                    {stationSuggestions.length > 0 && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                            {stationSuggestions.map(station => (
+                                                <button
+                                                    type="button"
+                                                    key={station}
+                                                    onClick={() => {
+                                                        setFormData(prev => ({ ...prev, station_name: station }));
+                                                        setStationSuggestions([]);
+                                                    }}
+                                                    className="w-full text-left p-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                >
+                                                    {station}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     ) : reportType === 'emergency' ? (
                         <div className="space-y-4">
@@ -725,7 +760,29 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             <div className="md:col-span-2"><label htmlFor="title" className={labelClasses}>Incident Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} className={inputClasses} /></div>
                             <div className="md:col-span-2"><label htmlFor="crime_type" className={labelClasses}>Type of Crime</label><input type="text" name="crime_type" id="crime_type" value={formData.crime_type || ''} onChange={handleChange} className={inputClasses} /></div>
                             <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
-                            <div><label htmlFor="station_name" className={labelClasses}>Station Name</label><input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="STATION" /></div>
+                            <div>
+                                <label htmlFor="station_name" className={labelClasses}>Station Name</label>
+                                <div className="relative" ref={stationSuggestionsRef}>
+                                    <input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="STATION" autoComplete="off" />
+                                    {stationSuggestions.length > 0 && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                            {stationSuggestions.map(station => (
+                                                <button
+                                                    type="button"
+                                                    key={station}
+                                                    onClick={() => {
+                                                        setFormData(prev => ({ ...prev, station_name: station }));
+                                                        setStationSuggestions([]);
+                                                    }}
+                                                    className="w-full text-left p-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                >
+                                                    {station}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     )}
 
