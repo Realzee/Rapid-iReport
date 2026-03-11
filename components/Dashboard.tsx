@@ -380,7 +380,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                     <div className="mt-4 md:mt-0 flex items-center gap-4">
                         <button
                             onClick={() => openChat(CONTROLLER_CHANNEL_REPORT)}
-                            className="px-6 py-3.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-bold rounded-xl shadow-lg shadow-purple-500/30 hover:scale-105 hover:shadow-purple-500/50 transition-all duration-300 flex items-center space-x-2 ring-2 ring-purple-400 ring-offset-2 dark:ring-offset-gray-900"
+                            className="px-6 py-3.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold rounded-xl shadow-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-2 ring-2 ring-blue-400/50 ring-offset-2 dark:ring-offset-gray-900"
                             title="Open staff communication channel"
                         >
                             <ChatAlt2Icon className="w-5 h-5" />
@@ -388,7 +388,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                         </button>
                         <button 
                             onClick={handleOpenNewReportModal} 
-                            className="px-6 py-3.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:scale-105 hover:shadow-blue-500/50 transition-all duration-300 flex items-center space-x-2 ring-2 ring-blue-400 ring-offset-2 dark:ring-offset-gray-900"
+                            className="px-6 py-3.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold rounded-xl shadow-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-2 ring-2 ring-blue-400/50 ring-offset-2 dark:ring-offset-gray-900"
                         >
                             <PlusIcon className="w-5 h-5" />
                             <span>New Report</span>
