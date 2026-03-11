@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { useToast } from './contexts/ToastContext';
 
 // A simple comparison function. Good enough for this form data.
@@ -90,9 +90,15 @@ export const useFormPersistence = <T extends object>(
     };
   }, [formId, formData, isEnabled, isDirty, clearDraft]);
 
+  const [isGuardEnabled, setIsGuardEnabled] = useState(true);
+
+  const disableNavigationGuard = useCallback(() => {
+    setIsGuardEnabled(false);
+  }, []);
+
   // 3. Navigation Guard
   useEffect(() => {
-    if (!isEnabled) return;
+    if (!isEnabled || !isGuardEnabled) return;
     
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (isDirty) {
@@ -106,7 +112,7 @@ export const useFormPersistence = <T extends object>(
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [isDirty, isEnabled]);
+  }, [isDirty, isEnabled, isGuardEnabled]);
 
-  return { clearDraft, isDirty };
+  return { clearDraft, isDirty, disableNavigationGuard };
 };

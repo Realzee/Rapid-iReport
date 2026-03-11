@@ -291,7 +291,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         reportToEdit ? `edit-report-${reportToEdit.id}` : (isQuickAdd ? 'quick-add-report' : 'new-report'),
     [reportToEdit, isQuickAdd]);
 
-    const { clearDraft, isDirty } = useFormPersistence(formId, {
+    const { clearDraft, isDirty, disableNavigationGuard } = useFormPersistence(formId, {
         formData,
         setFormData,
         initialData,
@@ -620,6 +620,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             
             addToast(`Report ${reportToEdit ? 'updated' : 'submitted'} successfully!`, 'success');
             clearDraft();
+            disableNavigationGuard();
             if (onReportSubmitted) onReportSubmitted();
             onClose();
 
