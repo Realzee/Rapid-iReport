@@ -77,10 +77,17 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         let crimeQuery = supabase.from('crime_reports').select('*');
         let emergencyQuery = supabase.from('emergency_reports').select('*');
 
+        let resolvedVehicleQuery = supabase.from('vehicle_reports').select('*');
+        let resolvedCrimeQuery = supabase.from('crime_reports').select('*');
+        let resolvedEmergencyQuery = supabase.from('emergency_reports').select('*');
+
         if (allowedReporterIds) {
             vehicleQuery = vehicleQuery.in('reported_by', allowedReporterIds);
             crimeQuery = crimeQuery.in('reported_by', allowedReporterIds);
             emergencyQuery = emergencyQuery.in('reported_by', allowedReporterIds);
+            resolvedVehicleQuery = resolvedVehicleQuery.in('reported_by', allowedReporterIds);
+            resolvedCrimeQuery = resolvedCrimeQuery.in('reported_by', allowedReporterIds);
+            resolvedEmergencyQuery = resolvedEmergencyQuery.in('reported_by', allowedReporterIds);
         }
 
         const [
@@ -96,9 +103,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             vehicleQuery.in('status', ACTIVE_STATUSES).order('reported_at', { ascending: false }).limit(100),
             crimeQuery.in('status', ACTIVE_STATUSES).order('reported_at', { ascending: false }).limit(100),
             emergencyQuery.in('status', ACTIVE_STATUSES).order('reported_at', { ascending: false }).limit(100),
-            vehicleQuery.in('status', [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED]).gte('completed_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
-            crimeQuery.in('status', [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED]).gte('completed_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
-            emergencyQuery.in('status', [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED]).gte('completed_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
+            resolvedVehicleQuery.in('status', [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED]).gte('completed_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
+            resolvedCrimeQuery.in('status', [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED]).gte('completed_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
+            resolvedEmergencyQuery.in('status', [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED]).gte('completed_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
             profilesQuery,
             supabase.from('companies').select('*')
         ]);
