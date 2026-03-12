@@ -323,6 +323,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             if (reportToUpdate.assigned_to) {
                 updatePayload.assigned_to = null;
             }
+        } else {
+            updatePayload.completed_at = null;
         }
     
         const { error: updateError } = await supabase.from(tableName).update(updatePayload).eq('id', reportId);
@@ -337,6 +339,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             user_id: profile.id,
             content: `Status changed to: ${newStatus.replace(/_/g, ' ')}`
         });
+        
+        await fetchData();
     
         if (isTerminalStatus && reportToUpdate.assigned_to) {
             const responderId = reportToUpdate.assigned_to;
