@@ -87,21 +87,30 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             { data: vehicleData, error: vError }, 
             { data: crimeData, error: cError },
             { data: emergencyData, error: aError },
+            { data: resolvedVehicleData, error: rvError },
+            { data: resolvedCrimeData, error: rcError },
+            { data: resolvedEmergencyData, error: reError },
             { data: usersData, error: uError },
             { data: companiesData, error: companiesError }
         ] = await Promise.all([
             vehicleQuery.in('status', ACTIVE_STATUSES).order('reported_at', { ascending: false }).limit(100),
             crimeQuery.in('status', ACTIVE_STATUSES).order('reported_at', { ascending: false }).limit(100),
             emergencyQuery.in('status', ACTIVE_STATUSES).order('reported_at', { ascending: false }).limit(100),
+            vehicleQuery.in('status', [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED]).gte('completed_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
+            crimeQuery.in('status', [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED]).gte('completed_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
+            emergencyQuery.in('status', [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED]).gte('completed_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
             profilesQuery,
             supabase.from('companies').select('*')
         ]);
-        if (vError || cError || aError || uError || companiesError) console.error('Data fetch error:', vError || cError || aError || uError || companiesError);
+        if (vError || cError || aError || rvError || rcError || reError || uError || companiesError) console.error('Data fetch error:', vError || cError || aError || rvError || rcError || reError || uError || companiesError);
 
         const combinedReports = [
             ...(vehicleData || []).map(r => ({...r, type: 'vehicle' as const})), 
             ...(crimeData || []).map(r => ({...r, type: 'crime' as const})),
-            ...(emergencyData || []).map(r => ({...r, type: 'emergency' as const}))
+            ...(emergencyData || []).map(r => ({...r, type: 'emergency' as const})),
+            ...(resolvedVehicleData || []).map(r => ({...r, type: 'vehicle' as const})),
+            ...(resolvedCrimeData || []).map(r => ({...r, type: 'crime' as const})),
+            ...(resolvedEmergencyData || []).map(r => ({...r, type: 'emergency' as const}))
         ];
         
         // Ensure we have profiles for all reporters, even if they are outside the user's company scope
