@@ -521,7 +521,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
     
         const updatePromises: PromiseLike<any>[] = [];
     
-        const isResolving = status === ReportStatus.RESOLVED || status === ReportStatus.RECOVERED;
+        const isResolving = status === ReportStatus.RESOLVED || status === ReportStatus.RECOVERED || status === ReportStatus.CLOSED;
     
         const reportUpdatePayload: { status: ReportStatus; assigned_to?: null; completed_at?: string | null } = { status };
         if (isResolving) {

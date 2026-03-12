@@ -314,7 +314,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         const reportToUpdate = reports.find(r => r.id === reportId);
         if (!reportToUpdate) return;
     
-        const isTerminalStatus = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(newStatus);
+        const isTerminalStatus = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED].includes(newStatus);
         
         const updatePayload: { status: ReportStatus; assigned_to?: string | null; completed_at?: string | null } = { status: newStatus };
     

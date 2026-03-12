@@ -203,7 +203,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         const updatePayload: { status?: ReportStatus; assigned_to?: string | null; completed_at?: string | null } = {};
         let updateContent = '';
         
-        const isTerminalStatus = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED].includes(selectedStatus);
+        const isTerminalStatus = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED].includes(selectedStatus);
 
         if (selectedStatus !== report.status) {
             updatePayload.status = selectedStatus;
