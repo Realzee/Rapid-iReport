@@ -354,7 +354,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             
             ctx.fillStyle = '#000000';
             ctx.font = '900 45px Impact, sans-serif';
-            ctx.fillText('SOUGHT VEHICLE', width / 2, 80 / 2 + 10);
+            const headerTitle = report.type === 'vehicle' ? 'SOUGHT VEHICLE' : (report.title || report.type.toUpperCase() + ' INCIDENT');
+            ctx.fillText(headerTitle, width / 2, 80 / 2 + 10);
             ctx.textBaseline = 'alphabetic';
 
             // 7. Draw Main Image Area
@@ -395,6 +396,61 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 ctx.fillText('NO IMAGE AVAILABLE', width / 2, imgY + imgHeight / 2 + 8);
             }
 
+            // 8. Draw Details Section
+            const detailsY = imgY + imgHeight + 25;
+            const leftMargin = 30;
+            
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '24px Arial, sans-serif';
+            const lineHeight = 35;
+
+            const drawField = (label: string, value: string, y: number) => {
+                ctx.font = 'normal 24px Arial, sans-serif';
+                const labelWidth = ctx.measureText(label).width;
+                ctx.fillText(label, leftMargin, y);
+                
+                ctx.font = 'bold 24px Arial, sans-serif';
+                ctx.fillText(value, leftMargin + labelWidth + 10, y);
+            };
+
+            const statusText = report.status.toUpperCase();
+            drawField('Status:', statusText, detailsY);
+
+            if (report.type === 'vehicle') {
+                drawField('Reg:', (report as any).license_plate || 'N/A', detailsY + lineHeight);
+                drawField('Make:', (report as any).vehicle_make || 'N/A', detailsY + lineHeight * 2);
+                drawField('Type:', (report as any).vehicle_model || 'N/A', detailsY + lineHeight * 3);
+                drawField('Colour:', (report as any).vehicle_color || 'N/A', detailsY + lineHeight * 4);
+                drawField('Case:', (report as any).cas_number || 'N/A', detailsY + lineHeight * 5);
+                drawField('Station:', (report as any).station_name || 'N/A', detailsY + lineHeight * 6);
+            } else {
+                drawField('Location:', (report as any).location || 'N/A', detailsY + lineHeight);
+                drawField('Case:', (report as any).cas_number || 'N/A', detailsY + lineHeight * 2);
+                drawField('Station:', (report as any).station_name || 'N/A', detailsY + lineHeight * 3);
+                
+                ctx.font = 'normal 24px Arial, sans-serif';
+                ctx.fillText('Description:', leftMargin, detailsY + lineHeight * 4);
+                ctx.font = 'bold 24px Arial, sans-serif';
+                
+                const description = (report as any).description || 'N/A';
+                const words = description.split(' ');
+                let line = '';
+                let y = detailsY + lineHeight * 5;
+                for (let i = 0; i < words.length; i++) {
+                    let testLine = line + words[i] + ' ';
+                    let metrics = ctx.measureText(testLine);
+                    if (metrics.width > width - leftMargin * 2 && i > 0) {
+                        ctx.fillText(line, leftMargin, y);
+                        line = words[i] + ' ';
+                        y += lineHeight;
+                    } else {
+                        line = testLine;
+                    }
+                }
+                ctx.fillText(line, leftMargin, y);
+            }
+
             // Recovered Stamp
             const isRecovered = ['recovered', 'resolved'].includes(report.status);
             if (isRecovered) {
@@ -424,40 +480,6 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 ctx.fillText(stampText, 0, 15); // Adjustment for baseline
                 ctx.restore();
             }
-
-            // 8. Draw Details Section
-            const detailsY = imgY + imgHeight + 50;
-            const leftMargin = 30;
-            
-            ctx.textAlign = 'left';
-            ctx.fillStyle = '#FFFFFF';
-            ctx.font = '24px Arial, sans-serif';
-            const lineHeight = 35;
-
-            const statusText = isRecovered ? 'RECOVERED' : (report.status === 'active' || report.status === 'assigned' || report.status === 'in_progress' || report.status === 'on_scene' ? 'HIJACKED' : report.status.toUpperCase());
-            const reg = report.type === 'vehicle' ? (report as any).license_plate : 'N/A';
-            const make = report.type === 'vehicle' ? (report as any).vehicle_make : 'N/A';
-            const model = report.type === 'vehicle' ? (report as any).vehicle_model : 'N/A';
-            const color = report.type === 'vehicle' ? (report as any).vehicle_color : 'N/A';
-            const caseNumber = (report as any).cas_number || 'N/A';
-            const stationName = (report as any).station_name || 'N/A';
-
-            const drawField = (label: string, value: string, y: number) => {
-                ctx.font = 'normal 24px Arial, sans-serif';
-                const labelWidth = ctx.measureText(label).width;
-                ctx.fillText(label, leftMargin, y);
-                
-                ctx.font = 'bold 24px Arial, sans-serif';
-                ctx.fillText(value, leftMargin + labelWidth + 10, y);
-            };
-
-            drawField('Status:', statusText, detailsY);
-            drawField('Reg:', reg, detailsY + lineHeight);
-            drawField('Make:', make, detailsY + lineHeight * 2);
-            drawField('Type:', model, detailsY + lineHeight * 3);
-            drawField('Colour:', color, detailsY + lineHeight * 4);
-            drawField('Case:', caseNumber, detailsY + lineHeight * 5);
-            drawField('Station:', stationName, detailsY + lineHeight * 6);
 
             // 9. Draw QR Codes
             const qrY = detailsY - 5;

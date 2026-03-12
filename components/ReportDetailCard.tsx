@@ -205,7 +205,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             
             ctx.fillStyle = '#000000';
             ctx.font = '900 60px Impact, sans-serif';
-            ctx.fillText('SOUGHT VEHICLE', width / 2, 110 / 2 + 15);
+            const headerTitle = report.type === 'vehicle' ? 'SOUGHT VEHICLE' : (report.title || report.type.toUpperCase() + ' INCIDENT');
+            ctx.fillText(headerTitle, width / 2, 110 / 2 + 15);
             ctx.textBaseline = 'alphabetic';
 
             // 7. Draw Main Image Area
@@ -286,13 +287,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             const lineHeight = 35;
 
             const statusText = isRecovered ? 'RECOVERED' : (report.status === 'active' || report.status === 'assigned' || report.status === 'in_progress' || report.status === 'on_scene' ? 'HIJACKED' : report.status.toUpperCase());
-            const reg = report.type === 'vehicle' ? (report as any).license_plate : ((report as any).license_plate || 'N/A');
-            const make = report.type === 'vehicle' ? (report as any).vehicle_make : ((report as any).vehicle_make || 'N/A');
-            const model = report.type === 'vehicle' ? (report as any).vehicle_model : ((report as any).vehicle_model || 'N/A');
-            const color = report.type === 'vehicle' ? (report as any).vehicle_color : ((report as any).vehicle_color || 'N/A');
-            const caseNumber = (report as any).cas_number || 'N/A';
-            const stationName = (report as any).station_name || 'N/A';
-
+            
             const drawField = (label: string, value: string, y: number) => {
                 ctx.font = 'normal 24px Arial, sans-serif';
                 const labelWidth = ctx.measureText(label).width;
@@ -303,12 +298,40 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             };
 
             drawField('Status:', statusText, detailsY);
-            drawField('Reg:', reg, detailsY + lineHeight);
-            drawField('Make:', make, detailsY + lineHeight * 2);
-            drawField('Type:', model, detailsY + lineHeight * 3);
-            drawField('Colour:', color, detailsY + lineHeight * 4);
-            drawField('Case:', caseNumber, detailsY + lineHeight * 5);
-            drawField('Station:', stationName, detailsY + lineHeight * 6);
+
+            if (report.type === 'vehicle') {
+                drawField('Reg:', (report as any).license_plate || 'N/A', detailsY + lineHeight);
+                drawField('Make:', (report as any).vehicle_make || 'N/A', detailsY + lineHeight * 2);
+                drawField('Type:', (report as any).vehicle_model || 'N/A', detailsY + lineHeight * 3);
+                drawField('Colour:', (report as any).vehicle_color || 'N/A', detailsY + lineHeight * 4);
+                drawField('Case:', (report as any).cas_number || 'N/A', detailsY + lineHeight * 5);
+                drawField('Station:', (report as any).station_name || 'N/A', detailsY + lineHeight * 6);
+            } else {
+                drawField('Location:', (report as any).location || 'N/A', detailsY + lineHeight);
+                drawField('Case:', (report as any).cas_number || 'N/A', detailsY + lineHeight * 2);
+                drawField('Station:', (report as any).station_name || 'N/A', detailsY + lineHeight * 3);
+                
+                ctx.font = 'normal 24px Arial, sans-serif';
+                ctx.fillText('Description:', leftMargin, detailsY + lineHeight * 4);
+                ctx.font = 'bold 24px Arial, sans-serif';
+                
+                const description = (report as any).description || 'N/A';
+                const words = description.split(' ');
+                let line = '';
+                let y = detailsY + lineHeight * 5;
+                for (let i = 0; i < words.length; i++) {
+                    let testLine = line + words[i] + ' ';
+                    let metrics = ctx.measureText(testLine);
+                    if (metrics.width > width - leftMargin * 2 && i > 0) {
+                        ctx.fillText(line, leftMargin, y);
+                        line = words[i] + ' ';
+                        y += lineHeight;
+                    } else {
+                        line = testLine;
+                    }
+                }
+                ctx.fillText(line, leftMargin, y);
+            }
 
             // 9. Draw QR Codes
             const qrY = detailsY - 5;
