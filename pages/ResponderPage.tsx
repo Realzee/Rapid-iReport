@@ -110,29 +110,30 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         oscillator.stop(context.currentTime + 0.15); // Short and sharp
     };
 
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        // Fetch assigned reports OR reported by me
+        const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
+        const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
+        const { data: aData, error: aError } = await supabase.from('emergency_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
+        const { data: usersData, error: usersError } = await supabase.from('profiles').select('*').eq('company_id', profile.company_id);
+
+        if (vError || cError || aError) console.error("Error fetching reports:", vError || cError || aError);
+        else {
+            const combined = [...(vData || []), ...(cData || []), ...(aData || [])].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+            setAssignedReports(combined);
+            if (combined.length > 0 && !selectedReportId) setSelectedReportId(combined[0].id);
+        }
+        if(usersError) console.error("Error fetching company users:", usersError);
+        else setAllUsers(usersData || []);
+
+        setLoading(false);
+        isInitialLoad.current = false;
+    }, [profile.id, profile.company_id, selectedReportId]);
+
     useEffect(() => {
-        const fetchInitialData = async () => {
-            setLoading(true);
-            // Fetch assigned reports OR reported by me
-            const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
-            const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
-            const { data: aData, error: aError } = await supabase.from('emergency_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
-            const { data: usersData, error: usersError } = await supabase.from('profiles').select('*').eq('company_id', profile.company_id);
-
-            if (vError || cError || aError) console.error("Error fetching reports:", vError || cError || aError);
-            else {
-                const combined = [...(vData || []), ...(cData || []), ...(aData || [])].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
-                setAssignedReports(combined);
-                if (combined.length > 0 && !selectedReportId) setSelectedReportId(combined[0].id);
-            }
-            if(usersError) console.error("Error fetching company users:", usersError);
-            else setAllUsers(usersData || []);
-
-            setLoading(false);
-            isInitialLoad.current = false;
-        };
-        fetchInitialData();
-    }, [profile.id, profile.company_id]);
+        fetchData();
+    }, [fetchData]);
     
     useEffect(() => {
         const handleUpsert = (payload: any) => {
@@ -452,7 +453,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                 </div>
                 
                 {selectedReport ? (
-                    <ResponderReportDetail key={selectedReport.id} report={selectedReport} profile={profile} allUsers={allUsers} />
+                    <ResponderReportDetail key={selectedReport.id} report={selectedReport} profile={profile} allUsers={allUsers} fetchData={fetchData} />
                 ) : (
                     <div className="h-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-8 flex flex-col items-center justify-center text-center shadow-sm">
                         <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
@@ -490,7 +491,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     );
 };
 
-const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUsers: Profile[] }> = ({ report, profile, allUsers }) => {
+const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUsers: Profile[], fetchData: () => Promise<void> }> = ({ report, profile, allUsers, fetchData }) => {
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
     const [newUpdate, setNewUpdate] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -557,6 +558,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
             console.error('Status update errors:', errors);
         } else {
             addToast(`Status updated to ${status.replace(/_/g, ' ')}.`, 'success');
+            await fetchData();
         }
         setIsActionLoading(null);
     };
@@ -587,6 +589,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                     if (errors.length > 0) throw new Error(errors.map(e => e.message).join('\n'));
 
                     addToast('Successfully stood down from the incident.', 'info');
+                    await fetchData();
                 } catch (e: any) {
                     addToast('An error occurred while standing down: ' + e.message, 'error');
                 } finally {

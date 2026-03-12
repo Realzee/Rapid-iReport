@@ -366,7 +366,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 if(profileUpdateError) console.warn("Report status updated, but failed to update responder status:", profileUpdateError.message);
             }
         }
-    }, [reports, profile.id, addToast]);
+        
+        // Refresh data to ensure UI is up to date
+        await fetchData();
+    }, [reports, profile.id, addToast, fetchData]);
 
 
     if (loading) return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
