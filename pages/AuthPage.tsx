@@ -9,9 +9,10 @@ import { Company } from '../types';
 
 interface AuthPageProps {
     onViewPublicDashboard: () => void;
+    onViewAbout: () => void;
 }
 
-const AuthPage: React.FC<AuthPageProps> = ({ onViewPublicDashboard }) => {
+const AuthPage: React.FC<AuthPageProps> = ({ onViewPublicDashboard, onViewAbout }) => {
     const [isLoginView, setIsLoginView] = useState(true);
     const [companies, setCompanies] = useState<Company[]>([]);
     const { mainLogoUrl } = useSettings();
@@ -30,7 +31,10 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewPublicDashboard }) => {
 
     return (
         <div className="min-h-screen flex flex-col relative">
-            <div className="absolute top-6 right-6 z-20">
+            <div className="absolute top-6 right-6 z-20 flex gap-4">
+              <button onClick={onViewAbout} className="text-sm font-medium text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400">
+                  About
+              </button>
               <ThemeToggle />
             </div>
 

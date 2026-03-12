@@ -14,6 +14,7 @@ import ControllerPage from './pages/ControllerPage';
 import ResponderPage from './pages/ResponderPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import PublicDashboardPage from './pages/PublicDashboardPage';
+import AboutPage from './pages/AboutPage';
 import AnnouncementsBanner from './components/AnnouncementsBanner';
 import { supabase } from './utils/supabase';
 import type { AuthSession as Session } from '@supabase/supabase-js';
@@ -40,6 +41,7 @@ const App: React.FC = () => {
   const [initialReportId, setInitialReportId] = useState<string | null>(null);
   const [schemaError, setSchemaError] = useState<string | null>(null);
   const [showPublicView, setShowPublicView] = useState(false);
+  const [showAboutPage, setShowAboutPage] = useState(false);
   const { mainLogoUrl, faviconUrl } = useSettings();
   const [isGlobalMapModalOpen, setIsGlobalMapModalOpen] = useState(false);
   const [isAnnouncementVisible, setIsAnnouncementVisible] = useState(false);
@@ -318,7 +320,10 @@ const App: React.FC = () => {
       if (showPublicView) {
         return <PublicDashboardPage onBackToLogin={() => setShowPublicView(false)} />;
       }
-      return <AuthPage onViewPublicDashboard={() => setShowPublicView(true)} />;
+      if (showAboutPage) {
+        return <AboutPage onBackToLogin={() => setShowAboutPage(false)} />;
+      }
+      return <AuthPage onViewPublicDashboard={() => setShowPublicView(true)} onViewAbout={() => setShowAboutPage(true)} />;
   }
   
   if (session && !profile && !profileLoading && !error) {
