@@ -50,21 +50,22 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
     status => !(report.type !== 'vehicle' && status === ReportStatus.RECOVERED)
   );
 
-  const borderColor = isSelected ? 'border-blue-500' : severityBorderColors[report.severity];
-  const bgColor = isSelected ? 'bg-blue-500/10 dark:bg-blue-500/30' : 'bg-gray-50/50 dark:bg-gray-800/60';
+  const borderColor = isSelected ? 'border-blue-500' : (isTerminalStatus ? 'border-gray-300 dark:border-gray-700' : severityBorderColors[report.severity]);
+  const bgColor = isSelected ? 'bg-blue-500/10 dark:bg-blue-500/30' : (isTerminalStatus ? 'bg-gray-200/50 dark:bg-gray-900/50' : 'bg-gray-50/50 dark:bg-gray-800/60');
+  const textColor = isTerminalStatus ? 'text-gray-500 dark:text-gray-500' : 'text-gray-800 dark:text-white';
   const hasImage = report.evidence_images && report.evidence_images.length > 0;
 
   return (
     <div 
         onClick={onClick}
-        className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4 group ${bgColor} ${borderColor} hover:bg-gray-100 dark:hover:bg-gray-800 flex items-start space-x-4`}
+        className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4 group ${bgColor} ${borderColor} hover:bg-gray-100 dark:hover:bg-gray-800 flex items-start space-x-4 ${isTerminalStatus ? 'opacity-70' : ''}`}
     >
         {hasImage && (
             <div className="flex-shrink-0">
                 <img 
                     src={report.evidence_images![0]} 
                     alt="Evidence" 
-                    className="w-20 h-20 object-cover rounded-md border border-gray-200 dark:border-gray-700"
+                    className={`w-20 h-20 object-cover rounded-md border border-gray-200 dark:border-gray-700 ${isTerminalStatus ? 'grayscale' : ''}`}
                 />
             </div>
         )}
@@ -82,7 +83,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                     <div className="flex-1 min-w-0 flex items-center gap-2">
                         <ReportTypeBadge type={report.type as any} showText={false} className="p-1.5" />
                         <div className="min-w-0">
-                            <p className="font-bold text-base text-gray-800 dark:text-white group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate">
+                            <p className={`font-bold text-base ${textColor} group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate`}>
                                 {report.type === 'vehicle' ? (report as any).license_plate : report.title}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</p>
