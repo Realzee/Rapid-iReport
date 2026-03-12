@@ -420,13 +420,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                         </button>
                     </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                     <StatCard title="Total Reports" value={reports.length.toString()} icon={<ZapIcon />} color="primary" />
                     <StatCard title="Vehicle" value={reports.filter(r => r.type === 'vehicle').length.toString()} icon={<CarIcon />} color="yellow" />
                     <StatCard title="Crime" value={reports.filter(r => r.type === 'crime').length.toString()} icon={<CrimeIcon />} color="red" />
                     <StatCard title="Emergency" value={reports.filter(r => r.type === 'emergency').length.toString()} icon={<AlertTriangleIcon />} color="orange" />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     <StatCard title="Active Incidents" value={reports.filter(r => r.status === 'active' || r.status === 'in_progress').length.toString()} icon={<AlertTriangleIcon />} color="red" />
                     <StatCard title="Resolved Today" value={reports.filter(r => (r.status === 'resolved' || r.status === 'recovered' || r.status === 'closed') && r.completed_at && isSameDay(parseISO(r.completed_at), new Date())).length.toString()} icon={<CheckCircleIcon />} color="green" />
                     <StatCard title="Available Responders" value={responders.filter(r => r.status === 'available').length.toString()} icon={<ZapIcon />} color="yellow" />
