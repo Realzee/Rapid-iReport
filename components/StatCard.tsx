@@ -33,13 +33,13 @@ const iconBgClasses = {
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
   return (
-    <div className="bg-white dark:bg-gray-900 p-2 rounded-lg border border-gray-100 dark:border-gray-800 flex items-center space-x-2">
-       <div className={`p-1 rounded ${iconBgClasses[color]}`}>
-          {React.cloneElement(icon as React.ReactElement<{ className: string }>, { className: `w-3.5 h-3.5 ${colorClasses[color]}` })}
+    <div className="bg-white dark:bg-gray-900 p-3 sm:p-2 rounded-lg border border-gray-100 dark:border-gray-800 flex items-center space-x-3 sm:space-x-2">
+       <div className={`p-2 sm:p-1 rounded ${iconBgClasses[color]}`}>
+          {React.cloneElement(icon as React.ReactElement<{ className: string }>, { className: `w-6 h-6 sm:w-3.5 sm:h-3.5 ${colorClasses[color]}` })}
       </div>
       <div>
-        <p className="text-[9px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500">{title}</p>
-        <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{value}</p>
+        <p className="text-xs sm:text-[9px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500">{title}</p>
+        <p className="text-2xl sm:text-lg font-bold text-gray-900 dark:text-gray-100">{value}</p>
       </div>
     </div>
   );
