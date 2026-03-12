@@ -67,6 +67,33 @@ const AnalyticsPage: React.FC = () => {
             setLoading(false);
         };
         fetchData();
+
+        const handleReportChange = (payload: any) => {
+            const reportType = payload.table === 'vehicle_reports' ? 'vehicle' : (payload.table === 'emergency_reports' ? 'emergency' : 'crime');
+            
+            setAllReports(currentReports => {
+                if (payload.eventType === 'INSERT') {
+                    return [{ ...payload.new, type: reportType }, ...currentReports];
+                }
+                if (payload.eventType === 'UPDATE') {
+                    return currentReports.map(r => r.id === payload.new.id ? { ...payload.new, type: reportType } : r);
+                }
+                if (payload.eventType === 'DELETE') {
+                    return currentReports.filter(r => r.id !== payload.old.id);
+                }
+                return currentReports;
+            });
+        };
+
+        const reportsChannel = supabase.channel('analytics-reports')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handleReportChange)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handleReportChange)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, handleReportChange)
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(reportsChannel);
+        };
     }, []);
 
     const filteredReports = useMemo(() => {
