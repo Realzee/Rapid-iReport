@@ -206,7 +206,15 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             ctx.fillStyle = '#000000';
             ctx.font = '900 60px Impact, sans-serif';
             const headerTitle = report.type === 'vehicle' ? 'SOUGHT VEHICLE' : (report.title || report.type.toUpperCase() + ' INCIDENT');
-            ctx.fillText(headerTitle, width / 2, 110 / 2 + 15);
+            let truncatedHeader = headerTitle;
+            const maxHeaderWidth = width - 40; // 20 padding on each side
+            if (ctx.measureText(truncatedHeader).width > maxHeaderWidth) {
+                while (ctx.measureText(truncatedHeader + '...').width > maxHeaderWidth && truncatedHeader.length > 0) {
+                    truncatedHeader = truncatedHeader.slice(0, -1);
+                }
+                truncatedHeader += '...';
+            }
+            ctx.fillText(truncatedHeader, width / 2, 110 / 2 + 15);
             ctx.textBaseline = 'alphabetic';
 
             // 7. Draw Main Image Area
@@ -294,7 +302,15 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 ctx.fillText(label, leftMargin, y);
                 
                 ctx.font = 'bold 24px Arial, sans-serif';
-                ctx.fillText(value, leftMargin + labelWidth + 10, y);
+                const maxWidth = width - leftMargin - labelWidth - 10 - 30; // 30 for padding
+                let truncatedValue = value;
+                if (ctx.measureText(value).width > maxWidth) {
+                    while (ctx.measureText(truncatedValue + '...').width > maxWidth && truncatedValue.length > 0) {
+                        truncatedValue = truncatedValue.slice(0, -1);
+                    }
+                    truncatedValue += '...';
+                }
+                ctx.fillText(truncatedValue, leftMargin + labelWidth + 10, y);
             };
 
             drawField('Status:', statusText, detailsY);
