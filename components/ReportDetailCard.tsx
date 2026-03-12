@@ -196,13 +196,14 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             ctx.stroke();
 
             // Header Text
-            ctx.fillStyle = '#000000';
+            ctx.fillStyle = '#FFFFFF';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
-            ctx.font = 'bold 20px sans-serif';
-            ctx.fillText('SA Stolen And Highjacked Vehicles (Pty)Ltd', width / 2, 110 / 2 - 20);
+            ctx.font = 'bold 28px sans-serif';
+            ctx.fillText('SA Stolen And Highjacked Vehicles (Pty)Ltd', width / 2, 110 / 2 - 25);
             
+            ctx.fillStyle = '#000000';
             ctx.font = '900 60px Impact, sans-serif';
             ctx.fillText('SOUGHT VEHICLE', width / 2, 110 / 2 + 15);
             ctx.textBaseline = 'alphabetic';
