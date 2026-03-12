@@ -14,7 +14,7 @@ import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
 import { useChat } from '../contexts/ChatContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
-import { isSameDay } from 'date-fns';
+import { isSameDay, parseISO } from 'date-fns';
 
 interface DashboardProps {
     profile: Profile;
@@ -403,7 +403,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                     <StatCard title="Total Reports" value={reports.length.toString()} icon={<ZapIcon />} color="primary" />
                     <StatCard title="Active Incidents" value={reports.filter(r => r.status === 'active' || r.status === 'in_progress').length.toString()} icon={<AlertTriangleIcon />} color="red" />
-                    <StatCard title="Resolved Today" value={reports.filter(r => (r.status === 'resolved' || r.status === 'recovered') && r.completed_at && isSameDay(new Date(r.completed_at), new Date())).length.toString()} icon={<CheckCircleIcon />} color="green" />
+                    <StatCard title="Resolved Today" value={reports.filter(r => (r.status === 'resolved' || r.status === 'recovered' || r.status === 'closed') && r.completed_at && isSameDay(parseISO(r.completed_at), new Date())).length.toString()} icon={<CheckCircleIcon />} color="green" />
                     <StatCard title="Available Responders" value={responders.filter(r => r.status === 'available').length.toString()} icon={<ZapIcon />} color="yellow" />
                 </div>
             </div>
