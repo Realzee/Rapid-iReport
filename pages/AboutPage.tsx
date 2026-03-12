@@ -57,9 +57,11 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLogin }) => {
                         <h2 className="text-2xl font-semibold mb-6">Platform Highlights</h2>
                         <div className="space-y-8">
                             <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-4 bg-white dark:bg-gray-900">
-                                <div className="aspect-video bg-gray-200 dark:bg-gray-800 rounded-lg flex items-center justify-center text-gray-500 mb-4">
-                                    [Screenshot: Incident Dashboard]
-                                </div>
+                                <img 
+                                    src="https://placehold.co/600x400?text=Incident+Dashboard" 
+                                    alt="Real-time Incident Dashboard" 
+                                    className="w-full h-auto rounded-lg shadow-lg mb-4"
+                                />
                                 <h3 className="text-xl font-bold mb-2">Real-time Incident Dashboard</h3>
                                 <p className="text-gray-600 dark:text-gray-400">Monitor all active incidents on a single, intuitive interface.</p>
                             </div>

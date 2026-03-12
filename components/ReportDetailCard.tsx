@@ -200,8 +200,11 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
+            ctx.font = 'bold 20px sans-serif';
+            ctx.fillText('SA Stolen And Highjacked Vehicles (Pty)Ltd', width / 2, 110 / 2 - 20);
+            
             ctx.font = '900 60px Impact, sans-serif';
-            ctx.fillText('SOUGHT VEHICLE', width / 2, 110 / 2);
+            ctx.fillText('SOUGHT VEHICLE', width / 2, 110 / 2 + 15);
             ctx.textBaseline = 'alphabetic';
 
             // 7. Draw Main Image Area

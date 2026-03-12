@@ -349,8 +349,11 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
+            ctx.font = 'bold 15px sans-serif';
+            ctx.fillText('SA Stolen And Highjacked Vehicles (Pty)Ltd', width / 2, 80 / 2 - 15);
+            
             ctx.font = '900 45px Impact, sans-serif';
-            ctx.fillText('SOUGHT VEHICLE', width / 2, 80 / 2);
+            ctx.fillText('SOUGHT VEHICLE', width / 2, 80 / 2 + 10);
             ctx.textBaseline = 'alphabetic';
 
             // 7. Draw Main Image Area
