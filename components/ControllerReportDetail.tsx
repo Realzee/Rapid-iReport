@@ -336,12 +336,12 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
             // 6. Draw Header
             ctx.fillStyle = '#EF4444';
-            ctx.fillRect(0, 0, width, 80);
+            ctx.fillRect(0, 0, width, 100);
             ctx.strokeStyle = '#991B1B';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(0, 80);
-            ctx.lineTo(width, 80);
+            ctx.moveTo(0, 100);
+            ctx.lineTo(width, 100);
             ctx.stroke();
 
             // Header Text
@@ -350,7 +350,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             ctx.textBaseline = 'middle';
             
             ctx.font = 'bold 22px sans-serif';
-            ctx.fillText('SA Stolen And Highjacked Vehicles (Pty)Ltd', width / 2, 80 / 2 - 20);
+            ctx.fillText('SA Stolen And Highjacked Vehicles (Pty)Ltd', width / 2, 30);
             
             ctx.fillStyle = '#000000';
             ctx.font = '900 45px Impact, sans-serif';
@@ -363,12 +363,12 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 }
                 truncatedHeader += '...';
             }
-            ctx.fillText(truncatedHeader, width / 2, 80 / 2 + 10);
+            ctx.fillText(truncatedHeader, width / 2, 75);
             ctx.textBaseline = 'alphabetic';
 
             // 7. Draw Main Image Area
-            const imgY = 80;
-            const imgHeight = 300;
+            const imgY = 100;
+            const imgHeight = 280;
             ctx.fillStyle = '#333333';
             ctx.fillRect(0, imgY, width, imgHeight);
 
@@ -524,9 +524,9 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             ctx.fillText('"The Smarter Choice"', width / 2, footerY + 50);
 
             // Logos and Contact
-            const bottomY = height - 100;
-            const logoWidth = 180;
-            const logoHeight = 100;
+            const bottomY = height - 60; // Center Y of the footer logos
+            const logoWidth = 100;
+            const logoHeight = 60;
             const logoY = bottomY - logoHeight / 2;
 
             // Helper to draw logo contained
@@ -561,12 +561,12 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             drawLogo(companyLogo, 20);
 
             // Center Contact
-            ctx.font = 'bold 28px Arial, sans-serif';
+            ctx.font = 'bold 24px Arial, sans-serif';
             const contactNumber = profile.company?.cell_number || '062 031 3134';
             
-            const iconSize = 32;
+            const iconSize = 28;
             const iconPadding = 10;
-            const rapidLogoHeight = 100;
+            const rapidLogoHeight = 60;
             const logoPadding = 15;
 
             const textMetrics = ctx.measureText(contactNumber);
@@ -579,14 +579,16 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
             const totalWidth = iconSize + iconPadding + textMetrics.width + (rapidLogo ? (logoPadding + rapidLogoWidth) : 0);
             
-            // Ensure centering but prevent overlap with left logo (ends at 140px)
+            // Ensure centering but prevent overlap with left logo (ends at 20 + 100 = 120px)
             let startX = (width - totalWidth) / 2;
-            if (startX < 210) startX = 210; // Adjusted for larger left logo
+            if (startX < 130) startX = 130; 
             
-            const contactY = bottomY + 10;
+            // Align vertically to bottomY
+            ctx.textBaseline = 'middle';
+            const contactY = bottomY;
 
             if (whatsappIcon) {
-                ctx.drawImage(whatsappIcon, startX, contactY - 24, iconSize, iconSize);
+                ctx.drawImage(whatsappIcon, startX, contactY - iconSize / 2, iconSize, iconSize);
             }
             
             ctx.fillStyle = '#FFFFFF';
@@ -595,23 +597,24 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
             if (rapidLogo) {
                 const logoX = startX + iconSize + iconPadding + textMetrics.width + logoPadding;
-                const logoY = contactY - 55; // Adjusted for larger logo
-                ctx.drawImage(rapidLogo, logoX, logoY, rapidLogoWidth, rapidLogoHeight);
+                const rLogoY = bottomY - rapidLogoHeight / 2; 
+                ctx.drawImage(rapidLogo, logoX, rLogoY, rapidLogoWidth, rapidLogoHeight);
             }
 
             // Copyright
             const copyrightY = height - 20;
             ctx.font = '12px Arial, sans-serif';
+            ctx.textBaseline = 'alphabetic';
             const copyrightText = `Copyright © ${new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)`;
             const copyrightMetrics = ctx.measureText(copyrightText);
-            const logoH = 32;
+            const logoH = 24;
             const logoW = rapidLogo ? (rapidLogo.width / rapidLogo.height) * logoH : 0;
-            const gap = 5;
+            const gap = 8;
             const totalContentWidth = logoW + gap + copyrightMetrics.width;
             const copyrightStartX = (width - totalContentWidth) / 2;
 
             if (rapidLogo) {
-                ctx.drawImage(rapidLogo, copyrightStartX, copyrightY - 22, logoW, logoH); // Adjusted Y for larger logo
+                ctx.drawImage(rapidLogo, copyrightStartX, copyrightY - 18, logoW, logoH); 
             }
             ctx.fillStyle = '#AAAAAA';
             ctx.textAlign = 'left';
