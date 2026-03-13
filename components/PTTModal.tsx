@@ -294,7 +294,7 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
                     <XIcon className="w-6 h-6" />
                 </button>
                 <div className="flex items-center gap-4 mb-2 pb-4 border-b border-gray-200 dark:border-gray-700">
-                    <img src={profile.company?.logo_url || undefined} alt={`${profile.company?.name} Logo`} className="w-16 h-16 object-contain bg-gray-100 dark:bg-gray-800 rounded-md p-1" />
+                    <img src={profile.company?.logo_url || undefined} alt={`${profile.company?.name} Logo`} className="w-24 h-24 object-contain bg-gray-100 dark:bg-gray-800 rounded-md p-1" />
                     <div>
                         <h3 className="text-xl font-bold text-gray-900 dark:text-white">PTT Channel</h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">{profile.company?.name}</p>

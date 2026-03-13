@@ -33,11 +33,11 @@ const CompanyManagementTable: React.FC<CompanyManagementTableProps> = ({ compani
                         <tr key={company.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors duration-200">
                             <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center">
-                                    <div className="flex-shrink-0 h-12 w-12">
+                                    <div className="flex-shrink-0 h-16 w-16">
                                         {company.logo_url ? (
-                                            <img className="h-12 w-12 rounded-md object-contain" src={company.logo_url} alt={`${company.name} logo`} />
+                                            <img className="h-16 w-16 rounded-md object-contain" src={company.logo_url} alt={`${company.name} logo`} />
                                         ) : (
-                                            <div className="h-12 w-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-md">
+                                            <div className="h-16 w-16 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-md">
                                                 <BuildingIcon className="w-6 h-6 text-gray-400" />
                                             </div>
                                         )}

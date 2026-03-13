@@ -23,7 +23,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
           <h1 className="text-3xl font-bold text-gray-900">INCIDENT REPORT</h1>
           <p className="text-gray-600">Generated: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}</p>
         </div>
-        <img src={company?.logo_url || logoUrl} alt="Logo" className="w-20 h-auto object-contain" />
+        <img src={company?.logo_url || logoUrl} alt="Logo" className="w-32 h-auto object-contain" />
       </header>
 
       {/* Main Details */}

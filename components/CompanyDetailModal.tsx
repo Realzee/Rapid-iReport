@@ -29,11 +29,11 @@ const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({ isOpen, onClose
                 </button>
                 
                 <div className="flex items-start gap-6 mb-6">
-                    <div className="flex-shrink-0 h-20 w-20 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex-shrink-0 h-32 w-32 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                         {company.logo_url ? (
                             <img src={company.logo_url} alt={`${company.name} logo`} className="h-full w-full object-contain p-2" />
                         ) : (
-                            <BuildingIcon className="w-10 h-10 text-gray-400" />
+                            <BuildingIcon className="w-16 h-16 text-gray-400" />
                         )}
                     </div>
                     <div>

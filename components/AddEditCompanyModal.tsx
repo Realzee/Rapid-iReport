@@ -133,11 +133,11 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
                     <div>
                         <label className={labelClasses}>Company Logo</label>
                         <div className="mt-2 flex items-center gap-4">
-                            <div className="h-16 w-16 flex-shrink-0 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center border border-gray-300 dark:border-gray-700">
+                            <div className="h-24 w-24 flex-shrink-0 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center border border-gray-300 dark:border-gray-700">
                                 {logoPreview ? (
                                     <img src={logoPreview} alt="Logo preview" className="h-full w-full object-contain rounded-md" />
                                 ) : (
-                                    <BuildingIcon className="h-8 w-8 text-gray-400" />
+                                    <BuildingIcon className="h-12 w-12 text-gray-400" />
                                 )}
                             </div>
                             <div className="flex-grow">

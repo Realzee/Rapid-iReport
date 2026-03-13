@@ -572,7 +572,7 @@ const CompaniesPage: React.FC = () => {
                             <div className="flex items-start gap-6">
                                 <div className="flex-shrink-0">
                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Logo Preview</p>
-                                    <div className="w-48 h-24 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center border border-gray-300 dark:border-gray-700">
+                                    <div className="w-64 h-32 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center border border-gray-300 dark:border-gray-700">
                                         <img src={logoPreview} alt="Main Logo Preview" className="max-w-full max-h-full object-contain p-2" />
                                     </div>
                                 </div>

@@ -524,9 +524,9 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             ctx.fillText('"The Smarter Choice"', width / 2, footerY + 50);
 
             // Logos and Contact
-            const bottomY = height - 80;
-            const logoWidth = 120;
-            const logoHeight = 70;
+            const bottomY = height - 100;
+            const logoWidth = 180;
+            const logoHeight = 100;
             const logoY = bottomY - logoHeight / 2;
 
             // Helper to draw logo contained
@@ -566,7 +566,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             
             const iconSize = 32;
             const iconPadding = 10;
-            const rapidLogoHeight = 70;
+            const rapidLogoHeight = 100;
             const logoPadding = 15;
 
             const textMetrics = ctx.measureText(contactNumber);
@@ -581,7 +581,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             
             // Ensure centering but prevent overlap with left logo (ends at 140px)
             let startX = (width - totalWidth) / 2;
-            if (startX < 150) startX = 150;
+            if (startX < 210) startX = 210; // Adjusted for larger left logo
             
             const contactY = bottomY + 10;
 
@@ -595,23 +595,23 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
 
             if (rapidLogo) {
                 const logoX = startX + iconSize + iconPadding + textMetrics.width + logoPadding;
-                const logoY = contactY - 45; 
+                const logoY = contactY - 55; // Adjusted for larger logo
                 ctx.drawImage(rapidLogo, logoX, logoY, rapidLogoWidth, rapidLogoHeight);
             }
 
             // Copyright
-            const copyrightY = height - 15;
+            const copyrightY = height - 20;
             ctx.font = '12px Arial, sans-serif';
             const copyrightText = `Copyright © ${new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)`;
             const copyrightMetrics = ctx.measureText(copyrightText);
-            const logoH = 16;
+            const logoH = 32;
             const logoW = rapidLogo ? (rapidLogo.width / rapidLogo.height) * logoH : 0;
             const gap = 5;
             const totalContentWidth = logoW + gap + copyrightMetrics.width;
             const copyrightStartX = (width - totalContentWidth) / 2;
 
             if (rapidLogo) {
-                ctx.drawImage(rapidLogo, copyrightStartX, copyrightY - 12, logoW, logoH);
+                ctx.drawImage(rapidLogo, copyrightStartX, copyrightY - 22, logoW, logoH); // Adjusted Y for larger logo
             }
             ctx.fillStyle = '#AAAAAA';
             ctx.textAlign = 'left';
