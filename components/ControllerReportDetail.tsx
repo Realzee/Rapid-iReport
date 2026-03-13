@@ -557,17 +557,14 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 }
             };
 
-            // Left Logo Only
-            drawLogo(companyLogo, 20);
-
-            // Center Contact
+            // Center Contact and Logos
             ctx.font = 'bold 24px Arial, sans-serif';
             const contactNumber = profile.company?.cell_number || '062 031 3134';
             
             const iconSize = 28;
             const iconPadding = 10;
             const rapidLogoHeight = 60;
-            const logoPadding = 15;
+            const logoPadding = 20;
 
             const textMetrics = ctx.measureText(contactNumber);
             
@@ -577,28 +574,36 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 rapidLogoWidth = rapidLogoHeight * ratio;
             }
 
-            const totalWidth = iconSize + iconPadding + textMetrics.width + (rapidLogo ? (logoPadding + rapidLogoWidth) : 0);
+            // Calculate total width of the entire footer block
+            const totalFooterWidth = logoWidth + logoPadding + iconSize + iconPadding + textMetrics.width + (rapidLogo ? logoPadding + rapidLogoWidth : 0);
             
-            // Ensure centering but prevent overlap with left logo (ends at 20 + 100 = 120px)
-            let startX = (width - totalWidth) / 2;
-            if (startX < 130) startX = 130; 
+            // Calculate starting X to perfectly center the entire block
+            const startX = (width - totalFooterWidth) / 2;
             
+            // Draw Left Logo
+            drawLogo(companyLogo, startX);
+
             // Align vertically to bottomY
             ctx.textBaseline = 'middle';
             const contactY = bottomY;
 
+            // Draw WhatsApp Icon
+            const whatsappX = startX + logoWidth + logoPadding;
             if (whatsappIcon) {
-                ctx.drawImage(whatsappIcon, startX, contactY - iconSize / 2, iconSize, iconSize);
+                ctx.drawImage(whatsappIcon, whatsappX, contactY - iconSize / 2, iconSize, iconSize);
             }
             
+            // Draw Contact Number
+            const textX = whatsappX + iconSize + iconPadding;
             ctx.fillStyle = '#FFFFFF';
             ctx.textAlign = 'left';
-            ctx.fillText(contactNumber, startX + iconSize + iconPadding, contactY);
+            ctx.fillText(contactNumber, textX, contactY);
 
+            // Draw Right Logo
             if (rapidLogo) {
-                const logoX = startX + iconSize + iconPadding + textMetrics.width + logoPadding;
+                const rightLogoX = textX + textMetrics.width + logoPadding;
                 const rLogoY = bottomY - rapidLogoHeight / 2; 
-                ctx.drawImage(rapidLogo, logoX, rLogoY, rapidLogoWidth, rapidLogoHeight);
+                ctx.drawImage(rapidLogo, rightLogoX, rLogoY, rapidLogoWidth, rapidLogoHeight);
             }
 
             // Copyright
