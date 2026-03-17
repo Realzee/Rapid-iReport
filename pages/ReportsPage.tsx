@@ -64,8 +64,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         const fetchData = async () => {
             setLoading(true);
 
-            const usersQuery = supabase.from('profiles').select('*, company(*)');
-            const respondersQuery = supabase.from('profiles').select('*, company(*)').eq('role', UserRole.RESPONDER);
+            const usersQuery = supabase.from('profiles').select('*');
+            const respondersQuery = supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER);
             const terminalStatuses = [ReportStatus.RESOLVED, ReportStatus.REJECTED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.DELETED];
 
             if (profile.role !== UserRole.ADMIN && profile.company_id) {
@@ -78,16 +78,18 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 { data: crimeData, error: cError },
                 { data: emergencyData, error: aError },
                 { data: usersData, error: uError },
-                { data: respondersData, error: rError }
+                { data: respondersData, error: rError },
+                { data: companiesData, error: compError }
             ] = await Promise.all([
                 supabase.from('vehicle_reports').select('*').in('status', terminalStatuses),
                 supabase.from('crime_reports').select('*').in('status', terminalStatuses),
                 supabase.from('emergency_reports').select('*').in('status', terminalStatuses),
                 usersQuery,
-                respondersQuery
+                respondersQuery,
+                supabase.from('company').select('*')
             ]);
 
-            if (vError || cError || aError || uError || rError) console.error("Error fetching data:", vError || cError || aError || uError || rError);
+            if (vError || cError || aError || uError || rError || compError) console.error("Error fetching data:", vError || cError || aError || uError || rError || compError);
             else {
                 const combined = [
                     ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
@@ -96,13 +98,14 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 ] as (Report & {type: 'vehicle' | 'crime' | 'emergency'})[];
                 setReports(combined);
                 setUsers(usersData || []);
+                const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
                 setResponders((respondersData || []).map(p => ({
                     id: p.id,
                     first_name: p.first_name,
                     surname: p.surname,
                     status: p.responder_status || ResponderStatus.OFF_DUTY,
                     location_coords: p.location_coords || undefined,
-                    company_logo_url: p.company?.logo_url,
+                    company_logo_url: p.company_id ? companiesMap.get(p.company_id)?.logo_url : undefined,
                 })));
             }
             setLoading(false);

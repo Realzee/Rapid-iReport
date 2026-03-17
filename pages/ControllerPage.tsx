@@ -127,7 +127,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 }
             }
 
-            const usersQuery = supabase.from('profiles').select('*, company(*)');
+            const usersQuery = supabase.from('profiles').select('*');
             if (!isGlobalAdmin && profile.company_id) {
                 usersQuery.eq('company_id', profile.company_id);
             }
@@ -146,18 +146,21 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
                 { data: emergencyData, error: aError },
-                { data: usersData, error: uError }
+                { data: usersData, error: uError },
+                { data: companiesData, error: compError }
             ] = await Promise.all([
                 vehicleQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 crimeQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 emergencyQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                usersQuery
+                usersQuery,
+                supabase.from('company').select('*')
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
             if (cError) console.error('Error fetching crime reports:', cError);
             if (aError) console.error('Error fetching emergency reports:', aError);
             if (uError) console.error('Error fetching users:', uError);
+            if (compError) console.error('Error fetching companies:', compError);
 
             const combinedReports = [
                 ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
@@ -170,14 +173,25 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             const loadedUserIds = new Set((usersData || []).map(u => u.id));
             const missingReporterIds = reporterIds.filter(id => !loadedUserIds.has(id));
             
+            setReports(combinedReports);
+
+            const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
+            
             let additionalProfiles: Profile[] = [];
             if (missingReporterIds.length > 0) {
                  const { data: missingProfiles } = await supabase.from('profiles').select('*').in('id', missingReporterIds);
-                 if (missingProfiles) additionalProfiles = missingProfiles;
+                 if (missingProfiles) additionalProfiles = missingProfiles.map(u => ({
+                    ...u,
+                    company: u.company_id ? companiesMap.get(u.company_id) : undefined
+                }));
             }
 
-            setReports(combinedReports);
-            setAllUsers([...(usersData || []), ...additionalProfiles]);
+            const usersWithCompany = (usersData || []).map(u => ({
+                ...u,
+                company: u.company_id ? companiesMap.get(u.company_id) : undefined
+            }));
+
+            setAllUsers([...usersWithCompany, ...additionalProfiles]);
             setLoading(false);
             isInitialLoad.current = false;
         };
