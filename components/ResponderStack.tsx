@@ -26,11 +26,14 @@ interface ResponderCardProps {
     onAssign?: (responderId: string) => void;
     onResponderSelect?: (responderId: string) => void;
 }
-const ResponderCard: React.FC<ResponderCardProps> = ({ responder, assignedReport, selectedReportId, onAssign }) => {
+const ResponderCard: React.FC<ResponderCardProps> = ({ responder, assignedReport, selectedReportId, selectedResponderId, onAssign, onResponderSelect }) => {
     const canAssign = selectedReportId && !assignedReport && responder.status === ResponderStatus.AVAILABLE;
 
     return (
-        <div className={`p-4 rounded-lg bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60 border shadow-sm transition-all ${canAssign ? 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-500/20' : 'border-gray-200 dark:border-gray-700/50'}`}>
+        <div 
+            onClick={() => onResponderSelect?.(responder.id)}
+            className={`p-4 rounded-lg bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60 border shadow-sm transition-all cursor-pointer ${canAssign ? 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-500/20' : 'border-gray-200 dark:border-gray-700/50'} ${selectedResponderId === responder.id ? 'ring-2 ring-blue-500' : ''}`}
+        >
             <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <div className="relative">

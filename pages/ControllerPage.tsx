@@ -127,7 +127,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 }
             }
 
-            const usersQuery = supabase.from('profiles').select('*');
+            const usersQuery = supabase.from('profiles').select('*, company(*)');
             if (!isGlobalAdmin && profile.company_id) {
                 usersQuery.eq('company_id', profile.company_id);
             }

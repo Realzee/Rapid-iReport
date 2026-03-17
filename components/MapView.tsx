@@ -101,7 +101,7 @@ const createResponderIcon = (status: ResponderStatus) => {
 };
 
 
-const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report | undefined, responders: Responder[], selectedResponder: Responder | undefined, activeTab?: 'events' | 'responders' }> = ({ reports, selectedReport, responders, selectedResponder, activeTab }) => {
+const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report | undefined, responders: Responder[], selectedResponder: Responder | undefined, selectedResponderId: string | null, activeTab?: 'events' | 'responders' }> = ({ reports, selectedReport, responders, selectedResponder, selectedResponderId, activeTab }) => {
     const map = useMap();
     useEffect(() => {
         // Use a timeout to allow CSS transitions on the container to finish before recalculating map size and position
@@ -113,6 +113,9 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
                 if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) {
                     map.flyTo([lat, lng], 16, { animate: true, duration: 1.0 });
                 }
+            } else if (activeTab === 'responders' && selectedResponderId) {
+                // If we are in responders tab and have a selected responder but no coords, 
+                // maybe we should do something?
             } else if (activeTab === 'responders') {
                 const respondersWithCoords = responders.filter(r => 
                     r.location_coords && 
@@ -172,7 +175,7 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
         }, 310); // A little longer than the 300ms transition of the side panel.
 
         return () => clearTimeout(timer);
-    }, [selectedReport, selectedResponder, reports, responders, activeTab, map]);
+    }, [selectedReport, selectedResponder, selectedResponderId, reports, responders, activeTab, map]);
     return null;
 };
 
@@ -239,7 +242,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                         />
                     </>
                 )}
-                <MapFocusController reports={reports} selectedReport={selectedReport} responders={responders} selectedResponder={selectedResponder} activeTab={activeTab} />
+                <MapFocusController reports={reports} selectedReport={selectedReport} responders={responders} selectedResponder={selectedResponder} selectedResponderId={selectedResponderId} activeTab={activeTab} />
 
                 {responders.map(responder => (
                     responder.location_coords && 

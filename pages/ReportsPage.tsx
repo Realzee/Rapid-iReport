@@ -64,8 +64,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         const fetchData = async () => {
             setLoading(true);
 
-            const usersQuery = supabase.from('profiles').select('*');
-            const respondersQuery = supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER);
+            const usersQuery = supabase.from('profiles').select('*, company(*)');
+            const respondersQuery = supabase.from('profiles').select('*, company(*)').eq('role', UserRole.RESPONDER);
             const terminalStatuses = [ReportStatus.RESOLVED, ReportStatus.REJECTED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.DELETED];
 
             if (profile.role !== UserRole.ADMIN && profile.company_id) {
@@ -102,6 +102,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                     surname: p.surname,
                     status: p.responder_status || ResponderStatus.OFF_DUTY,
                     location_coords: p.location_coords || undefined,
+                    company_logo_url: p.company?.logo_url,
                 })));
             }
             setLoading(false);
