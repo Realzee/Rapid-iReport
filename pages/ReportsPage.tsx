@@ -86,7 +86,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 supabase.from('emergency_reports').select('*').in('status', terminalStatuses),
                 usersQuery,
                 respondersQuery,
-                supabase.from('company').select('*')
+                supabase.from('companies').select('*')
             ]);
 
             if (vError || cError || aError || uError || rError || compError) console.error("Error fetching data:", vError || cError || aError || uError || rError || compError);

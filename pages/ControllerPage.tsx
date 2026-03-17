@@ -153,7 +153,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 crimeQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 emergencyQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
                 usersQuery,
-                supabase.from('company').select('*')
+                supabase.from('companies').select('*')
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
