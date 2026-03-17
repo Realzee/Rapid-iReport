@@ -176,7 +176,7 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
     return null;
 };
 
-const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, profile, onReportSelect, onAssignResponder, allUsers, activeTab }) => {
+const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, selectedResponderId, profile, onReportSelect, onResponderSelect, onAssignResponder, allUsers, activeTab }) => {
     const [copiedReportId, setCopiedReportId] = useState<string | null>(null);
     const [mapStyle, setMapStyle] = useState<MapStyle>('street');
 
