@@ -33,7 +33,12 @@ const ResponderCard: React.FC<ResponderCardProps> = ({ responder, assignedReport
         <div className={`p-4 rounded-lg bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60 border shadow-sm transition-all ${canAssign ? 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-500/20' : 'border-gray-200 dark:border-gray-700/50'}`}>
             <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <img src={`https://i.pravatar.cc/40?u=${responder.id}`} alt="avatar" className="w-10 h-10 rounded-full" />
+                    <div className="relative">
+                        <img src={`https://i.pravatar.cc/40?u=${responder.id}`} alt="avatar" className="w-10 h-10 rounded-full" />
+                        {responder.company_logo_url && (
+                            <img src={responder.company_logo_url} alt="company logo" className="w-5 h-5 rounded-full absolute -bottom-1 -right-1 border-2 border-white dark:border-gray-800" />
+                        )}
+                    </div>
                     <div className="flex flex-col">
                         <p className="font-bold text-gray-900 dark:text-white leading-tight">{responder.first_name} {responder.surname}</p>
                         <ResponderStatusBadge status={responder.status} />
@@ -119,7 +124,7 @@ const ResponderStack: React.FC<ResponderStackProps> = ({ responders, reports, se
                     <span>{onDutyResponders.length} On Duty</span>
                 </p>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-y-auto max-h-[calc(100vh-15rem)]">
                 {sortedResponders.map(responder => (
                     <ResponderCard
                         key={responder.id}

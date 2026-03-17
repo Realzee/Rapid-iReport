@@ -178,6 +178,7 @@ export interface Responder {
     surname: string;
     status: ResponderStatus;
     location_coords?: LocationCoords;
+    company_logo_url?: string;
 }
 
 export interface ChatMessage {

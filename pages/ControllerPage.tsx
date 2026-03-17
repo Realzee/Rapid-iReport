@@ -345,6 +345,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             surname: p.surname,
             status: p.responder_status || ResponderStatus.OFF_DUTY,
             location_coords: p.location_coords || undefined,
+            company_logo_url: p.company?.logo_url,
         }));
         setResponders(mappedResponders);
     }, [allUsers]);
