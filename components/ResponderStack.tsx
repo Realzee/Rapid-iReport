@@ -22,7 +22,9 @@ interface ResponderCardProps {
     responder: Responder;
     assignedReport?: Report;
     selectedReportId?: string | null;
+    selectedResponderId?: string | null;
     onAssign?: (responderId: string) => void;
+    onResponderSelect?: (responderId: string) => void;
 }
 const ResponderCard: React.FC<ResponderCardProps> = ({ responder, assignedReport, selectedReportId, onAssign }) => {
     const canAssign = selectedReportId && !assignedReport && responder.status === ResponderStatus.AVAILABLE;
@@ -79,9 +81,11 @@ interface ResponderStackProps {
     responders: Responder[];
     reports: Report[];
     selectedReportId?: string | null;
+    selectedResponderId?: string | null;
     onAssign?: (responderId: string) => void;
+    onResponderSelect?: (responderId: string) => void;
 }
-const ResponderStack: React.FC<ResponderStackProps> = ({ responders, reports, selectedReportId, onAssign }) => {
+const ResponderStack: React.FC<ResponderStackProps> = ({ responders, reports, selectedReportId, selectedResponderId, onAssign, onResponderSelect }) => {
     const onDutyResponders = responders.filter(r => r.status !== ResponderStatus.OFF_DUTY);
     const availableResponders = onDutyResponders.filter(r => r.status === ResponderStatus.AVAILABLE).length;
 
@@ -122,7 +126,9 @@ const ResponderStack: React.FC<ResponderStackProps> = ({ responders, reports, se
                         responder={responder}
                         assignedReport={assignmentMap.get(responder.id)}
                         selectedReportId={selectedReportId}
+                        selectedResponderId={selectedResponderId}
                         onAssign={onAssign}
+                        onResponderSelect={onResponderSelect}
                     />
                 ))}
             </div>

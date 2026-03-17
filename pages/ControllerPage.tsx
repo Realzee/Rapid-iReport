@@ -41,6 +41,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const [responders, setResponders] = useState<Responder[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+    const [selectedResponderId, setSelectedResponderId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<ControllerTab>('events');
     const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
         return localStorage.getItem('controller_report_modal_open') === 'true';
@@ -388,6 +389,10 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         }
     };
 
+    const handleResponderSelect = (id: string) => {
+        setSelectedResponderId(prevId => prevId === id ? null : id);
+    };
+
     const handleOpenNewReportModal = () => {
         setReportToEdit(null);
         setIsReportModalOpen(true);
@@ -518,7 +523,9 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 responders={responders}
                                 reports={reports}
                                 selectedReportId={selectedReportId}
+                                selectedResponderId={selectedResponderId}
                                 onAssign={handleAssignResponder}
+                                onResponderSelect={handleResponderSelect}
                             />
                         )}
                     </div>
@@ -534,8 +541,10 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 reports={reports}
                                 responders={responders}
                                 selectedReportId={selectedReportId}
+                                selectedResponderId={selectedResponderId}
                                 profile={profile}
                                 onReportSelect={handleReportSelect}
+                                onResponderSelect={handleResponderSelect}
                                 onAssignResponder={handleAssignResponder}
                                 allUsers={allUsers}
                                 activeTab={activeTab}

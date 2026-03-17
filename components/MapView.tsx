@@ -11,8 +11,10 @@ interface MapViewProps {
   reports: Report[];
   responders: Responder[];
   selectedReportId: string | null;
+  selectedResponderId?: string | null;
   profile?: Profile;
   onReportSelect?: (reportId: string) => void;
+  onResponderSelect?: (responderId: string) => void;
   onAssignResponder?: (responderId: string) => void;
   allUsers: Profile[];
   activeTab?: 'events' | 'responders';
@@ -99,14 +101,19 @@ const createResponderIcon = (status: ResponderStatus) => {
 };
 
 
-const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report | undefined, responders: Responder[], activeTab?: 'events' | 'responders' }> = ({ reports, selectedReport, responders, activeTab }) => {
+const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report | undefined, responders: Responder[], selectedResponder: Responder | undefined, activeTab?: 'events' | 'responders' }> = ({ reports, selectedReport, responders, selectedResponder, activeTab }) => {
     const map = useMap();
     useEffect(() => {
         // Use a timeout to allow CSS transitions on the container to finish before recalculating map size and position
         const timer = setTimeout(() => {
             map.invalidateSize();
 
-            if (activeTab === 'responders') {
+            if (selectedResponder?.location_coords) {
+                const { lat, lng } = selectedResponder.location_coords;
+                if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) {
+                    map.flyTo([lat, lng], 16, { animate: true, duration: 1.0 });
+                }
+            } else if (activeTab === 'responders') {
                 const respondersWithCoords = responders.filter(r => 
                     r.location_coords && 
                     typeof r.location_coords.lat === 'number' && !isNaN(r.location_coords.lat) &&
@@ -165,7 +172,7 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
         }, 310); // A little longer than the 300ms transition of the side panel.
 
         return () => clearTimeout(timer);
-    }, [selectedReport, reports, responders, activeTab, map]);
+    }, [selectedReport, selectedResponder, reports, responders, activeTab, map]);
     return null;
 };
 
@@ -181,6 +188,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
     };
 
     const selectedReport = reports.find(r => r.id === selectedReportId);
+    const selectedResponder = responders.find(r => r.id === selectedResponderId);
 
     const streetTile = {
         url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
@@ -231,7 +239,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                         />
                     </>
                 )}
-                <MapFocusController reports={reports} selectedReport={selectedReport} responders={responders} activeTab={activeTab} />
+                <MapFocusController reports={reports} selectedReport={selectedReport} responders={responders} selectedResponder={selectedResponder} activeTab={activeTab} />
 
                 {responders.map(responder => (
                     responder.location_coords && 
@@ -242,6 +250,9 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                             position={[responder.location_coords.lat, responder.location_coords.lng]}
                             icon={createResponderIcon(responder.status)}
                             zIndexOffset={100}
+                            eventHandlers={{
+                                click: () => onResponderSelect?.(responder.id)
+                            }}
                         >
                             <Tooltip direction="top" offset={[0, -32]}>
                                 <div className="font-bold">{`${responder.first_name} ${responder.surname}`}</div>
