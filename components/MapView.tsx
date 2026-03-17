@@ -15,6 +15,7 @@ interface MapViewProps {
   onReportSelect?: (reportId: string) => void;
   onAssignResponder?: (responderId: string) => void;
   allUsers: Profile[];
+  activeTab?: 'events' | 'responders';
 }
 
 const createIncidentIcon = (report: Report, isSelected: boolean) => {
@@ -98,14 +99,30 @@ const createResponderIcon = (status: ResponderStatus) => {
 };
 
 
-const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report | undefined, responders: Responder[] }> = ({ reports, selectedReport, responders }) => {
+const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report | undefined, responders: Responder[], activeTab?: 'events' | 'responders' }> = ({ reports, selectedReport, responders, activeTab }) => {
     const map = useMap();
     useEffect(() => {
         // Use a timeout to allow CSS transitions on the container to finish before recalculating map size and position
         const timer = setTimeout(() => {
             map.invalidateSize();
 
-            if (selectedReport?.location_coords) {
+            if (activeTab === 'responders') {
+                const respondersWithCoords = responders.filter(r => 
+                    r.location_coords && 
+                    typeof r.location_coords.lat === 'number' && !isNaN(r.location_coords.lat) &&
+                    typeof r.location_coords.lng === 'number' && !isNaN(r.location_coords.lng)
+                );
+                
+                if (respondersWithCoords.length > 0) {
+                    const bounds = L.latLngBounds(respondersWithCoords.map(r => [r.location_coords!.lat, r.location_coords!.lng]));
+                    if (bounds.isValid()) {
+                        map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0, maxZoom: 14 });
+                    }
+                } else {
+                    // Default view if no responders have coordinates.
+                    map.flyTo([-26.2041, 28.0473], 11, { animate: true, duration: 1.0 });
+                }
+            } else if (selectedReport?.location_coords) {
                 const { lat, lng } = selectedReport.location_coords;
                 if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) {
                     const reportLocation: L.LatLngExpression = [lat, lng];
@@ -148,7 +165,7 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
         }, 310); // A little longer than the 300ms transition of the side panel.
 
         return () => clearTimeout(timer);
-    }, [selectedReport, reports, map]);
+    }, [selectedReport, reports, responders, activeTab, map]);
     return null;
 };
 
@@ -214,7 +231,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                         />
                     </>
                 )}
-                <MapFocusController reports={reports} selectedReport={selectedReport} responders={responders} />
+                <MapFocusController reports={reports} selectedReport={selectedReport} responders={responders} activeTab={activeTab} />
 
                 {responders.map(responder => (
                     responder.location_coords && 

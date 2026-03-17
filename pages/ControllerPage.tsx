@@ -374,6 +374,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
 
     const handleReportSelect = (id: string) => {
         setSelectedReportId(prevId => prevId === id ? null : id);
+        setActiveTab('events');
         if (id === newPanicReportId) {
             setNewPanicReportId(null);
             stopAlertLoop();
@@ -537,6 +538,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 onReportSelect={handleReportSelect}
                                 onAssignResponder={handleAssignResponder}
                                 allUsers={allUsers}
+                                activeTab={activeTab}
                             />
                             <button
                                 onClick={() => setIsDetailsVisible(!isDetailsVisible)}
