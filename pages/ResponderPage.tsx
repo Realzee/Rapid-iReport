@@ -213,9 +213,11 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         }
         setIsSharingLocation(false);
         // Clear location from DB for privacy when sharing is explicitly stopped
-        supabase.from('profiles').update({ location_coords: null }).eq('id', profile.id).then(({ error }) => {
-            if (error) console.warn("Could not clear location on stop:", error.message);
-        });
+        fetch('/api/update-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: profile.id, location_coords: null })
+        }).catch(err => console.warn("Could not clear location on stop:", err));
     };
 
     const startLocationSharing = () => {
@@ -228,14 +230,26 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                     const { latitude, longitude } = position.coords;
                     
                     if (typeof latitude === 'number' && !isNaN(latitude) && typeof longitude === 'number' && !isNaN(longitude)) {
-                        const { error } = await supabase.from('profiles').update({ location_coords: { lat: latitude, lng: longitude } }).eq('id', profile.id);
+                        try {
+                            const response = await fetch('/api/update-profile', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                    userId: profile.id, 
+                                    location_coords: { lat: latitude, lng: longitude } 
+                                })
+                            });
 
-                        if (error) {
+                            if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(errorData.error || 'Failed to sync location');
+                            }
+
+                            setLastSyncTimestamp(new Date());
+                        } catch (error: any) {
                             console.error("Failed to update location:", error);
                             setLocationError(`Failed to sync location: ${error.message}`);
                             stopLocationSharing();
-                        } else {
-                            setLastSyncTimestamp(new Date());
                         }
                     } else {
                         console.warn("Invalid coordinates received:", latitude, longitude);
@@ -555,7 +569,11 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
         }
     
         if (newResponderStatus && profile.responder_status !== newResponderStatus) {
-            updatePromises.push(supabase.from('profiles').update({ responder_status: newResponderStatus }).eq('id', profile.id));
+            updatePromises.push(fetch('/api/update-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: profile.id, responder_status: newResponderStatus })
+            }).then(res => res.ok ? { error: null } : res.json().then(data => ({ error: { message: data.error } }))));
         }
         
         const results = await Promise.all(updatePromises);
@@ -589,7 +607,11 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
 
                     const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0);
                     if (!hasOtherActiveAssignments) {
-                        updatePromises.push(supabase.from('profiles').update({ responder_status: ResponderStatus.AVAILABLE }).eq('id', profile.id));
+                        updatePromises.push(fetch('/api/update-profile', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: profile.id, responder_status: ResponderStatus.AVAILABLE })
+                        }).then(res => res.ok ? { error: null } : res.json().then(data => ({ error: { message: data.error } }))));
                     }
                     const results = await Promise.all(updatePromises);
                     const errors = results.map((r: any) => r.error).filter(Boolean);

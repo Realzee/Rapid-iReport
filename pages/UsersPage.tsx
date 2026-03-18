@@ -203,58 +203,76 @@ const UsersPage: React.FC = () => {
     
     const handleRoleChange = useCallback(async (userId: string, newRole: UserRole) => {
         setUpdatingRoleId(userId);
-        const { error } = await supabase
-            .from('profiles')
-            .update({ role: newRole })
-            .eq('id', userId);
+        try {
+            const response = await fetch('/api/update-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, role: newRole })
+            });
 
-        if (error) {
-            addToast(`Error updating role: ${error.message}`, 'error');
-        } else {
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to update role');
+            }
+
             addToast(`User role updated successfully.`, 'success');
             if (currentUserProfile) {
                 logUserAction(currentUserProfile.id, 'UPDATE_USER_ROLE', `Updated role for user ${userId} to ${newRole}`);
             }
+        } catch (error: any) {
+            addToast(`Error updating role: ${error.message}`, 'error');
         }
         setUpdatingRoleId(null);
-    }, [addToast]);
+    }, [addToast, currentUserProfile]);
     
     const handleStatusChange = useCallback(async (userId: string, newStatus: UserStatus) => {
         setUpdatingStatusId(userId);
-        const { error } = await supabase
-            .from('profiles')
-            .update({ status: newStatus })
-            .eq('id', userId);
+        try {
+            const response = await fetch('/api/update-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, status: newStatus })
+            });
 
-        if (error) {
-            addToast(`Error updating status: ${error.message}`, 'error');
-        } else {
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to update status');
+            }
+
             addToast(`User status updated to ${newStatus}.`, 'success');
             if (currentUserProfile) {
                 logUserAction(currentUserProfile.id, 'UPDATE_USER_STATUS', `Updated status for user ${userId} to ${newStatus}`);
             }
+        } catch (error: any) {
+            addToast(`Error updating status: ${error.message}`, 'error');
         }
         setUpdatingStatusId(null);
-    }, [addToast]);
+    }, [addToast, currentUserProfile]);
 
     const handleCompanyChange = useCallback(async (userId: string, newCompanyId: string | null) => {
         setUpdatingCompanyId(userId);
-        const { error } = await supabase
-            .from('profiles')
-            .update({ company_id: newCompanyId })
-            .eq('id', userId);
+        try {
+            const response = await fetch('/api/update-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, company_id: newCompanyId })
+            });
 
-        if (error) {
-            addToast(`Error updating company: ${error.message}`, 'error');
-        } else {
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to update company');
+            }
+
             addToast(`User company updated successfully.`, 'success');
             if (currentUserProfile) {
                 const companyName = companies.find(c => c.id === newCompanyId)?.name || 'None';
                 logUserAction(currentUserProfile.id, 'UPDATE_USER_COMPANY', `Updated company for user ${userId} to ${companyName}`);
             }
+        } catch (error: any) {
+            addToast(`Error updating company: ${error.message}`, 'error');
         }
         setUpdatingCompanyId(null);
-    }, [addToast]);
+    }, [addToast, currentUserProfile, companies]);
 
     const handleSaveUser = useCallback(async (userToSave: Profile, password?: string, avatarFile?: File | null) => {
         // UPDATE user
@@ -280,15 +298,25 @@ const UsersPage: React.FC = () => {
             }
 
             const { id, email, ...updateData } = { ...userToSave, avatar_url: avatarUrlToUpdate };
-            const { error: profileError } = await supabase.from('profiles').update(updateData).eq('id', id);
+            
+            try {
+                const response = await fetch('/api/update-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: id, ...updateData })
+                });
 
-            if (profileError) {
-                addToast('Error updating user profile: ' + profileError.message, 'error');
-            } else {
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to update user profile');
+                }
+
                 addToast('User profile updated successfully.', 'success');
                 if (currentUserProfile) {
                     logUserAction(currentUserProfile.id, 'UPDATE_USER_PROFILE', `Updated profile for user ${userToSave.id} (${userToSave.email})`);
                 }
+            } catch (error: any) {
+                addToast('Error updating user profile: ' + error.message, 'error');
             }
 
             if (password) {
@@ -363,18 +391,28 @@ const UsersPage: React.FC = () => {
                 addToast(`User account created, but selfie upload failed. Please edit the user to add one.`, 'warning');
             } else {
                 const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-                const { error: profileUpdateError } = await supabase
-                    .from('profiles')
-                    .update({ avatar_url: `${urlData.publicUrl}?t=${new Date().getTime()}` })
-                    .eq('id', newAuthUser.id);
                 
-                if(profileUpdateError) {
-                     addToast(`User created, but linking selfie failed: ${profileUpdateError.message}`, 'warning');
-                } else {
+                try {
+                    const profileUpdateResponse = await fetch('/api/update-profile', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            userId: newAuthUser.id, 
+                            avatar_url: `${urlData.publicUrl}?t=${new Date().getTime()}` 
+                        })
+                    });
+
+                    if (!profileUpdateResponse.ok) {
+                        const errorData = await profileUpdateResponse.json();
+                        throw new Error(errorData.error || 'Failed to link selfie');
+                    }
+
                     addToast('User created successfully!', 'success');
                     if (currentUserProfile) {
                         logUserAction(currentUserProfile.id, 'CREATE_USER', `Created new user ${newAuthUser.id} (${userToSave.email})`);
                     }
+                } catch (error: any) {
+                    addToast(`User created, but linking selfie failed: ${error.message}`, 'warning');
                 }
             }
         }

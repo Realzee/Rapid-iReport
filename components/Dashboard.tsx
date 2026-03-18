@@ -382,8 +382,22 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             if ((activeVehicleAssignments === null || activeVehicleAssignments === 0) && 
                 (activeCrimeAssignments === null || activeCrimeAssignments === 0) &&
                 (activeEmergencyAssignments === null || activeEmergencyAssignments === 0)) {
-                const { error: profileUpdateError } = await supabase.from('profiles').update({ responder_status: ResponderStatus.AVAILABLE }).eq('id', responderId);
-                if(profileUpdateError) console.warn("Report status updated, but failed to update responder status:", profileUpdateError.message);
+                try {
+                    const response = await fetch('/api/update-profile', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: responderId,
+                            updates: { responder_status: ResponderStatus.AVAILABLE }
+                        }),
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.warn("Report status updated, but failed to update responder status:", errorData.details || errorData.message);
+                    }
+                } catch (err) {
+                    console.warn("Report status updated, but failed to update responder status (network error):", err);
+                }
             }
         }
         
