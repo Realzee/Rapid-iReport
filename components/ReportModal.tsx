@@ -80,19 +80,31 @@ const reverseGeocode = async (coords: LocationCoords): Promise<string> => {
     }
 }
 
-const parseGoogleMapsUrl = (url: string) => {
-    // Regex to match lat,lng in google maps URLs
-    const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
-    const match = url.match(regex);
-    if (match) {
-        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-    }
-    
-    // Example: https://www.google.com/maps/place/48.8566,2.3522
-    const regex2 = /place\/(-?\d+\.\d+),(-?\d+\.\d+)/;
-    const match2 = url.match(regex2);
-    if (match2) {
-        return { lat: parseFloat(match2[1]), lng: parseFloat(match2[2]) };
+const parseGoogleMapsUrl = (url: string): LocationCoords | null => {
+    try {
+        // Regex to match lat,lng in google maps URLs
+        const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+        const match = url.match(regex);
+        if (match && match[1] && match[2]) {
+            const lat = parseFloat(match[1]);
+            const lng = parseFloat(match[2]);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                return { lat, lng };
+            }
+        }
+        
+        // Example: https://www.google.com/maps/place/48.8566,2.3522
+        const regex2 = /place\/(-?\d+\.\d+),(-?\d+\.\d+)/;
+        const match2 = url.match(regex2);
+        if (match2 && match2[1] && match2[2]) {
+            const lat = parseFloat(match2[1]);
+            const lng = parseFloat(match2[2]);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                return { lat, lng };
+            }
+        }
+    } catch (e) {
+        console.error("Error parsing Google Maps URL:", e);
     }
     
     return null;
@@ -123,8 +135,12 @@ const MapClickHandler: React.FC<{ onLocationChange: (coords: LocationCoords, add
 const MapViewUpdater: React.FC<{ coords?: LocationCoords | null }> = ({ coords }) => {
     const map = useMap();
     useEffect(() => {
-        if (coords) {
-            map.flyTo([coords.lat, coords.lng], 16);
+        if (coords && typeof coords.lat === 'number' && !isNaN(coords.lat) && typeof coords.lng === 'number' && !isNaN(coords.lng)) {
+            try {
+                map.flyTo([coords.lat, coords.lng], 16);
+            } catch (e) {
+                console.error("Error flying to coordinates:", e);
+            }
         }
     }, [coords, map]);
     return null;

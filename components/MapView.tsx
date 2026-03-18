@@ -124,9 +124,13 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
                 );
                 
                 if (respondersWithCoords.length > 0) {
-                    const bounds = L.latLngBounds(respondersWithCoords.map(r => [r.location_coords!.lat, r.location_coords!.lng]));
-                    if (bounds.isValid()) {
-                        map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0, maxZoom: 14 });
+                    try {
+                        const bounds = L.latLngBounds(respondersWithCoords.map(r => [r.location_coords!.lat, r.location_coords!.lng]));
+                        if (bounds.isValid()) {
+                            map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0, maxZoom: 14 });
+                        }
+                    } catch (e) {
+                        console.error("Error calculating responder bounds:", e);
                     }
                 } else {
                     // Default view if no responders have coordinates.
@@ -140,12 +144,17 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
                     // If the report has a defined bounding box (e.g., a neighborhood), fit to that.
                     if (selectedReport.location_boundingbox && selectedReport.location_boundingbox.length === 4) {
                         const [s, n, w, e] = selectedReport.location_boundingbox;
-                        if (![s, n, w, e].some(isNaN)) {
-                            const bounds: LatLngBoundsExpression = [
-                                [s, w],
-                                [n, e]
-                            ];
-                            map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0 });
+                        if (typeof s === 'number' && !isNaN(s) && typeof n === 'number' && !isNaN(n) && 
+                            typeof w === 'number' && !isNaN(w) && typeof e === 'number' && !isNaN(e)) {
+                            try {
+                                const bounds: LatLngBoundsExpression = [
+                                    [s, w],
+                                    [n, e]
+                                ];
+                                map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0 });
+                            } catch (e) {
+                                map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
+                            }
                         } else {
                              map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
                         }
@@ -163,9 +172,13 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
                 );
                 
                 if (reportsWithCoords.length > 0) {
-                    const bounds = L.latLngBounds(reportsWithCoords.map(r => [r.location_coords!.lat, r.location_coords!.lng]));
-                    if (bounds.isValid()) {
-                        map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0, maxZoom: 14 });
+                    try {
+                        const bounds = L.latLngBounds(reportsWithCoords.map(r => [r.location_coords!.lat, r.location_coords!.lng]));
+                        if (bounds.isValid()) {
+                            map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0, maxZoom: 14 });
+                        }
+                    } catch (e) {
+                        console.error("Error calculating report bounds:", e);
                     }
                 } else {
                     // Default view if no reports have coordinates.
