@@ -85,21 +85,29 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
             avatarUrlToUpdate = `${urlData.publicUrl}?t=${new Date().getTime()}`;
         }
         
-        const { data: updatedProfile, error: profileError } = await supabase
-            .from('profiles')
-            .update({ ...formData, avatar_url: avatarUrlToUpdate })
-            .eq('id', profile.id)
-            .select()
-            .single();
-        
-        if (profileError) {
-            addToast('Error updating profile: ' + profileError.message, 'error');
-        } else if (updatedProfile) {
-            setProfile(updatedProfile);
-            setAvatarPreview(updatedProfile.avatar_url);
-            addToast('Profile updated successfully!', 'success');
-            setAvatarFile(null);
-            clearDraft();
+        try {
+            const response = await fetch('/api/update-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: profile.id, ...formData, avatar_url: avatarUrlToUpdate })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to update profile');
+            }
+
+            if (result) {
+                setProfile(result);
+                setAvatarPreview(result.avatar_url);
+                addToast('Profile updated successfully!', 'success');
+                setAvatarFile(null);
+                clearDraft();
+            }
+        } catch (error: any) {
+            addToast('Error updating profile: ' + (error.message || 'Network error'), 'error');
+            console.error("Profile update error:", error);
         }
         
         setLoadingProfile(false);

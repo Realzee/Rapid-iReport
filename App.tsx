@@ -84,19 +84,22 @@ const App: React.FC = () => {
     let presenceInterval: number | undefined;
 
     const setupPresence = (userId: string) => {
-        supabase
-            .from('profiles')
-            .update({ last_seen_at: new Date().toISOString() })
-            .eq('id', userId)
-            .then(({ error }) => {
-                if (error) console.warn("Could not update presence:", error.message);
-            });
+        fetch('/api/update-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, last_seen_at: new Date().toISOString() })
+        }).catch(err => console.warn("Could not update presence:", err));
 
         presenceInterval = window.setInterval(async () => {
-            await supabase
-                .from('profiles')
-                .update({ last_seen_at: new Date().toISOString() })
-                .eq('id', userId);
+            try {
+                await fetch('/api/update-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, last_seen_at: new Date().toISOString() })
+                });
+            } catch (error) {
+                console.warn('Error updating presence interval:', error);
+            }
         }, 60000);
     };
 

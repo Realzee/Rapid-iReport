@@ -175,6 +175,33 @@ app.post('/api/update-setting', async (req, res) => {
     }
 });
 
+// API Routes for Profile Management
+app.post('/api/update-profile', async (req, res) => {
+    const { userId, ...dbPayload } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('profiles')
+            .update(dbPayload)
+            .eq('id', userId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Supabase Error updating profile:', error);
+            throw new Error(error.message || 'Database error occurred');
+        }
+        res.status(200).json(data);
+    } catch (error: any) {
+        console.error('Error updating profile:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
 // Catch-all for /api that doesn't match
 app.use('/api', (req, res) => {
     res.status(404).json({ error: `API route ${req.method} ${req.url} not found` });

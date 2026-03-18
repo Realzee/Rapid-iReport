@@ -273,18 +273,25 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             updatePayload.location_coords = null;
         }
     
-        const { data: updatedProfile, error } = await supabase
-            .from('profiles')
-            .update(updatePayload)
-            .eq('id', profile.id)
-            .select()
-            .single();
+        try {
+            const response = await fetch('/api/update-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: profile.id, ...updatePayload })
+            });
 
-        if (error) {
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to update duty status');
+            }
+
+            if (result) {
+                setProfile(result);
+            }
+        } catch (error: any) {
             console.error("Failed to update duty status:", error);
-            setLocationError(`Failed to update duty status: ${error.message}`);
-        } else if (updatedProfile) {
-            setProfile(updatedProfile);
+            setLocationError(`Failed to update duty status: ${error.message || 'Network error'}`);
         }
     };
     
