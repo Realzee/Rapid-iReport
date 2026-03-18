@@ -210,9 +210,18 @@ const UsersPage: React.FC = () => {
                 body: JSON.stringify({ userId, role: newRole })
             });
 
+            const contentType = response.headers.get('content-type');
+            let result;
+            if (contentType && contentType.includes('application/json')) {
+                result = await response.json();
+            } else {
+                const text = await response.text();
+                console.error('Non-JSON response received from /api/update-profile:', text);
+                throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`);
+            }
+
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to update role');
+                throw new Error(result?.error || `Failed to update role (Status: ${response.status})`);
             }
 
             addToast(`User role updated successfully.`, 'success');
@@ -234,9 +243,18 @@ const UsersPage: React.FC = () => {
                 body: JSON.stringify({ userId, status: newStatus })
             });
 
+            const contentType = response.headers.get('content-type');
+            let result;
+            if (contentType && contentType.includes('application/json')) {
+                result = await response.json();
+            } else {
+                const text = await response.text();
+                console.error('Non-JSON response received from /api/update-profile:', text);
+                throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`);
+            }
+
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to update status');
+                throw new Error(result?.error || `Failed to update status (Status: ${response.status})`);
             }
 
             addToast(`User status updated to ${newStatus}.`, 'success');
@@ -258,9 +276,18 @@ const UsersPage: React.FC = () => {
                 body: JSON.stringify({ userId, company_id: newCompanyId })
             });
 
+            const contentType = response.headers.get('content-type');
+            let result;
+            if (contentType && contentType.includes('application/json')) {
+                result = await response.json();
+            } else {
+                const text = await response.text();
+                console.error('Non-JSON response received from /api/update-profile:', text);
+                throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`);
+            }
+
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to update company');
+                throw new Error(result?.error || `Failed to update company (Status: ${response.status})`);
             }
 
             addToast(`User company updated successfully.`, 'success');
@@ -306,9 +333,18 @@ const UsersPage: React.FC = () => {
                     body: JSON.stringify({ userId: id, ...updateData })
                 });
 
+                const contentType = response.headers.get('content-type');
+                let result;
+                if (contentType && contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    const text = await response.text();
+                    console.error('Non-JSON response received from /api/update-profile:', text);
+                    throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`);
+                }
+
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to update user profile');
+                    throw new Error(result?.error || `Failed to update user profile (Status: ${response.status})`);
                 }
 
                 addToast('User profile updated successfully.', 'success');
@@ -326,16 +362,19 @@ const UsersPage: React.FC = () => {
                     body: JSON.stringify({ userId: userToSave.id, password: password })
                 });
 
+                const contentType = response.headers.get("content-type");
+                let result;
+                if (contentType && contentType.includes("application/json")) {
+                    result = await response.json();
+                } else {
+                    const text = await response.text();
+                    console.error("Non-JSON response received from /api/reset-password:", text);
+                    addToast(`Profile saved, but password update failed with server error: ${response.status} ${response.statusText}.`, 'warning');
+                    return;
+                }
+
                 if (!response.ok) {
-                    const contentType = response.headers.get("content-type");
-                    if (contentType && contentType.indexOf("application/json") !== -1) {
-                        const errorData = await response.json();
-                        addToast(`Profile saved, but password update failed: ${errorData.error || 'Unknown error'}.`, 'warning');
-                    } else {
-                        const errorText = await response.text();
-                        console.error("Non-JSON error response:", errorText);
-                        addToast(`Server error: ${response.status} ${response.statusText}. Check console for details.`, 'warning');
-                    }
+                    addToast(`Profile saved, but password update failed: ${result?.error || 'Unknown error'}.`, 'warning');
                 } else {
                     addToast('User password was also updated successfully.', 'success');
                 }
@@ -362,21 +401,23 @@ const UsersPage: React.FC = () => {
                 body: JSON.stringify({ email: userToSave.email, password: password, user_metadata: user_metadata })
             });
             
-            if (!response.ok) {
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.indexOf("application/json") !== -1) {
-                    const errorData = await response.json();
-                    addToast(`Error creating user: ${errorData.error || 'Unknown error'}`, 'error');
-                } else {
-                    const errorText = await response.text();
-                    console.error("Non-JSON error response:", errorText);
-                    addToast(`Server error: ${response.status} ${response.statusText}. Check console for details.`, 'error');
-                }
+            const contentType = response.headers.get("content-type");
+            let result;
+            if (contentType && contentType.includes("application/json")) {
+                result = await response.json();
+            } else {
+                const text = await response.text();
+                console.error("Non-JSON response received from /api/create-user:", text);
+                addToast(`Server error creating user: ${response.status} ${response.statusText}. Check console for details.`, 'error');
                 return;
             }
 
-            const functionData = await response.json();
-            const newAuthUser = functionData.user;
+            if (!response.ok) {
+                addToast(`Error creating user: ${result?.error || 'Unknown error'}`, 'error');
+                return;
+            }
+
+            const newAuthUser = result.user;
             if (!newAuthUser) {
                 addToast('User creation failed to return a user object.', 'error');
                 return;
@@ -402,9 +443,18 @@ const UsersPage: React.FC = () => {
                         })
                     });
 
+                    const updateContentType = profileUpdateResponse.headers.get('content-type');
+                    let updateResult;
+                    if (updateContentType && updateContentType.includes('application/json')) {
+                        updateResult = await profileUpdateResponse.json();
+                    } else {
+                        const text = await profileUpdateResponse.text();
+                        console.error('Non-JSON response received from /api/update-profile (linking selfie):', text);
+                        throw new Error(`Server returned non-JSON response (${profileUpdateResponse.status}): ${text.substring(0, 100)}...`);
+                    }
+
                     if (!profileUpdateResponse.ok) {
-                        const errorData = await profileUpdateResponse.json();
-                        throw new Error(errorData.error || 'Failed to link selfie');
+                        throw new Error(updateResult?.error || `Failed to link selfie (Status: ${profileUpdateResponse.status})`);
                     }
 
                     addToast('User created successfully!', 'success');
@@ -428,16 +478,21 @@ const UsersPage: React.FC = () => {
                 body: JSON.stringify({ userId: selectedUser.id })
             });
 
+            const contentType = response.headers.get("content-type");
+            let result;
+            if (contentType && contentType.includes("application/json")) {
+                result = await response.json();
+            } else {
+                const text = await response.text();
+                console.error("Non-JSON response received from /api/delete-user:", text);
+                addToast(`Server error deleting user: ${response.status} ${response.statusText}. Check console for details.`, 'error');
+                setIsDeleteModalOpen(false);
+                setSelectedUser(null);
+                return;
+            }
+
             if (!response.ok) {
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.indexOf("application/json") !== -1) {
-                    const errorData = await response.json();
-                    addToast('Error deleting user: ' + (errorData.error || 'Unknown error'), 'error');
-                } else {
-                    const errorText = await response.text();
-                    console.error("Non-JSON error response:", errorText);
-                    addToast(`Server error: ${response.status} ${response.statusText}. Check console for details.`, 'error');
-                }
+                addToast('Error deleting user: ' + (result?.error || 'Unknown error'), 'error');
             } else {
                 addToast('User deleted successfully.', 'success');
                 if (currentUserProfile) {

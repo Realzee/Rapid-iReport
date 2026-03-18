@@ -391,9 +391,20 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                             updates: { responder_status: ResponderStatus.AVAILABLE }
                         }),
                     });
+
+                    const contentType = response.headers.get('content-type');
+                    let result;
+                    if (contentType && contentType.includes('application/json')) {
+                        result = await response.json();
+                    } else {
+                        const text = await response.text();
+                        console.error('Non-JSON response received from /api/update-profile (responder status update):', text);
+                        // We don't throw here to avoid breaking the main flow, but we log it
+                        result = { error: `Server returned non-JSON response (${response.status})` };
+                    }
+
                     if (!response.ok) {
-                        const errorData = await response.json();
-                        console.warn("Report status updated, but failed to update responder status:", errorData.details || errorData.message);
+                        console.warn("Report status updated, but failed to update responder status:", result?.error || `Status: ${response.status}`);
                     }
                 } catch (err) {
                     console.warn("Report status updated, but failed to update responder status (network error):", err);

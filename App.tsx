@@ -83,20 +83,34 @@ const App: React.FC = () => {
   useEffect(() => {
     let presenceInterval: number | undefined;
 
-    const setupPresence = (userId: string) => {
-        fetch('/api/update-profile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, last_seen_at: new Date().toISOString() })
-        }).catch(err => console.warn("Could not update presence:", err));
+    const setupPresence = async (userId: string) => {
+        try {
+            const response = await fetch('/api/update-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, last_seen_at: new Date().toISOString() })
+            });
+            
+            if (!response.ok) {
+                const text = await response.text();
+                console.warn(`Presence update failed with status ${response.status}: ${text.substring(0, 100)}`);
+            }
+        } catch (err) {
+            console.warn("Could not update presence:", err);
+        }
 
         presenceInterval = window.setInterval(async () => {
             try {
-                await fetch('/api/update-profile', {
+                const response = await fetch('/api/update-profile', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId, last_seen_at: new Date().toISOString() })
                 });
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.warn(`Presence interval update failed with status ${response.status}: ${text.substring(0, 100)}`);
+                }
             } catch (error) {
                 console.warn('Error updating presence interval:', error);
             }

@@ -92,10 +92,18 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
                 body: JSON.stringify({ userId: profile.id, ...formData, avatar_url: avatarUrlToUpdate })
             });
 
-            const result = await response.json();
+            const contentType = response.headers.get('content-type');
+            let result;
+            if (contentType && contentType.includes('application/json')) {
+                result = await response.json();
+            } else {
+                const text = await response.text();
+                console.error('Non-JSON response received from /api/update-profile:', text);
+                throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`);
+            }
 
             if (!response.ok) {
-                throw new Error(result.error || 'Failed to update profile');
+                throw new Error(result?.error || `Failed to update profile (Status: ${response.status})`);
             }
 
             if (result) {
