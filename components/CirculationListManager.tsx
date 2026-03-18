@@ -5,81 +5,33 @@ import { useToast } from '../contexts/ToastContext';
 import { PlusIcon, SearchIcon, AlertTriangleIcon, FilterIcon, TrashIcon, EyeIcon } from './icons';
 import ConfirmModal from './ConfirmModal';
 
-interface SoughtListManagerProps {
+interface CirculationListManagerProps {
     profile: Profile;
+    reports: VehicleReport[];
+    loading?: boolean;
     onSelectReport: (reportId: string) => void;
     onQuickAdd: () => void;
 }
 
-const SoughtListManager: React.FC<SoughtListManagerProps> = ({ profile, onSelectReport, onQuickAdd }) => {
-    const [soughtListReports, setSoughtListReports] = useState<VehicleReport[]>([]);
-    const [loading, setLoading] = useState(true);
+const CirculationListManager: React.FC<CirculationListManagerProps> = ({ profile, reports, loading = false, onSelectReport, onQuickAdd }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [reportToResolve, setReportToResolve] = useState<VehicleReport | null>(null);
     const { addToast } = useToast();
 
-    useEffect(() => {
+    const circulationListReports = useMemo(() => {
         const activeStatuses = [ReportStatus.PENDING, ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE];
-        const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
-
-        const fetchSoughtList = async () => {
-            setLoading(true);
-            
-            let allowedReporterIds: string[] | null = null;
-
-            if (!isGlobalAdmin && profile.company_id) {
-                const { data: companyUsers } = await supabase
-                    .from('profiles')
-                    .select('id')
-                    .eq('company_id', profile.company_id);
-                
-                if (companyUsers) {
-                    allowedReporterIds = companyUsers.map(u => u.id);
-                }
-            }
-
-            let query = supabase
-                .from('vehicle_reports')
-                .select('*')
-                .in('status', activeStatuses);
-            
-            if (allowedReporterIds) {
-                query = query.in('reported_by', allowedReporterIds);
-            }
-
-            const { data, error } = await query.order('reported_at', { ascending: false });
-            
-            if (error) {
-                addToast('Failed to load vehicle sought list.', 'error');
-                console.error(error);
-            } else {
-                setSoughtListReports(data as VehicleReport[]);
-            }
-            setLoading(false);
-        };
-
-        fetchSoughtList();
-
-        const channel = supabase.channel('blacklist-manager-updates')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, (payload) => {
-                 // For realtime updates, it's easier to just re-fetch if we're filtering by reported_by
-                 // since we don't know the company_id of the reporter without another query
-                 fetchSoughtList();
-            })
-            .subscribe();
-
-        return () => { supabase.removeChannel(channel); };
-    }, [addToast, profile]);
+        return reports.filter(r => activeStatuses.includes(r.status));
+    }, [reports]);
     
     const filteredReports = useMemo(() => {
         const lowercasedTerm = searchTerm.toLowerCase();
-        if (!lowercasedTerm) return soughtListReports;
-        return soughtListReports.filter(report =>
+        if (!lowercasedTerm) return circulationListReports;
+        return circulationListReports.filter(report =>
             report.license_plate.toLowerCase().includes(lowercasedTerm) ||
             (report.vehicle_make && report.vehicle_make.toLowerCase().includes(lowercasedTerm)) ||
             (report.vehicle_model && report.vehicle_model.toLowerCase().includes(lowercasedTerm))
         );
-    }, [soughtListReports, searchTerm]);
+    }, [circulationListReports, searchTerm]);
     
     const handleResolve = async () => {
         if (!reportToResolve) return;
@@ -107,8 +59,8 @@ const SoughtListManager: React.FC<SoughtListManagerProps> = ({ profile, onSelect
                             <AlertTriangleIcon className="w-6 h-6 text-yellow-500" />
                         </div>
                         <div>
-                            <h3 className="text-md font-bold leading-tight">Sought Vehicles</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{soughtListReports.length} Active</p>
+                            <h3 className="text-md font-bold leading-tight">Circulation List</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{circulationListReports.length} Active</p>
                         </div>
                     </div>
                      <div className="flex md:hidden items-center gap-2">
@@ -142,7 +94,7 @@ const SoughtListManager: React.FC<SoughtListManagerProps> = ({ profile, onSelect
                         {loading ? (
                             <div className="text-sm text-gray-500">Loading...</div>
                         ) : filteredReports.length === 0 ? (
-                            <div className="text-sm text-gray-500 text-center w-full">No active vehicles on the sought list.</div>
+                            <div className="text-sm text-gray-500 text-center w-full">No active vehicles on the circulation list.</div>
                         ) : (
                             filteredReports.map(report => (
                                 <div key={report.id} className="flex-shrink-0 w-60 bg-gray-100/50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-2 space-y-2">
@@ -167,7 +119,7 @@ const SoughtListManager: React.FC<SoughtListManagerProps> = ({ profile, onSelect
                     onClose={() => setReportToResolve(null)}
                     onConfirm={handleResolve}
                     title="Resolve Incident"
-                    message={`Are you sure you want to mark the report for vehicle <strong>${reportToResolve.license_plate}</strong> as resolved? This will remove it from the active sought list.`}
+                    message={`Are you sure you want to mark the report for vehicle <strong>${reportToResolve.license_plate}</strong> as resolved? This will remove it from the active circulation list.`}
                     confirmText="Confirm Resolution"
                     confirmVariant="primary"
                 />
@@ -176,4 +128,4 @@ const SoughtListManager: React.FC<SoughtListManagerProps> = ({ profile, onSelect
     );
 };
 
-export default SoughtListManager;
+export default CirculationListManager;

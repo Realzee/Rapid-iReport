@@ -23,8 +23,8 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
     const [isScanning, setIsScanning] = useState(false);
     const [status, setStatus] = useState<'Idle' | 'Initializing' | 'Scanning' | 'Error'>('Idle');
     const [plateHits, setPlateHits] = useState<Map<string, { report: VehicleReport, timestamp: Date }>>(new Map());
-    const [soughtList, setSoughtList] = useState<VehicleReport[]>([]);
-    const [activeTab, setActiveTab] = useState<'sought' | 'alerts'>('sought');
+    const [circulationList, setCirculationList] = useState<VehicleReport[]>([]);
+    const [activeTab, setActiveTab] = useState<'circulation' | 'alerts'>('circulation');
     
     // State for live visual feedback
     const [detections, setDetections] = useState<{ text: string; bbox: Tesseract.Bbox }[]>([]);
@@ -49,12 +49,12 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
         oscillator.stop(context.currentTime + 0.2);
     };
 
-    // Sought list management effect
+    // Circulation list management effect
     useEffect(() => {
         const activeStatuses = [ReportStatus.PENDING, ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE];
         const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 
-        const fetchSoughtList = async () => {
+        const fetchCirculationList = async () => {
             let allowedReporterIds: string[] | null = null;
 
             if (!isGlobalAdmin && profile.company_id) {
@@ -80,18 +80,18 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
             const { data, error } = await query.order('reported_at', { ascending: false });
                 
             if (error) {
-                addToast('Could not load sought list.', 'error');
+                addToast('Could not load circulation list.', 'error');
             } else {
-                setSoughtList(data as VehicleReport[]);
+                setCirculationList(data as VehicleReport[]);
             }
         };
 
-        fetchSoughtList();
+        fetchCirculationList();
 
         const channel = supabase.channel('lookout-updates')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, (payload) => {
                 // For realtime updates, just re-fetch
-                fetchSoughtList();
+                fetchCirculationList();
             })
             .subscribe();
 
@@ -223,7 +223,7 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
         const timestamp = new Date();
 
         for (const plate of plates) {
-            const matchedReport = soughtList.find(r => r.license_plate === plate);
+            const matchedReport = circulationList.find(r => r.license_plate === plate);
             if (matchedReport && !plateHits.has(plate)) {
                 newHits.push(matchedReport);
             }
@@ -252,10 +252,10 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold flex items-center gap-2">
                     <EyeIcon className="w-5 h-5 text-blue-500" />
-                    Sought List Lookout
+                    Circulation List Lookout
                 </h3>
                 <div className="text-xs font-semibold px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md">
-                    {soughtList.length} Vehicles in Sought List
+                    {circulationList.length} Vehicles in Circulation List
                 </div>
             </div>
 
@@ -353,7 +353,7 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
                         const y = d.bbox.y0 * scaleY;
                         const width = (d.bbox.x1 - d.bbox.x0) * scaleX;
                         const height = (d.bbox.y1 - d.bbox.y0) * scaleY;
-                        const isHit = plateHits.has(d.text) || soughtList.some(r => r.license_plate === d.text);
+                        const isHit = plateHits.has(d.text) || circulationList.some(r => r.license_plate === d.text);
                         const color = isHit ? '#ef4444' : '#22c55e'; // Red for hit, Green for normal
 
                         return (
@@ -405,10 +405,10 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
             <div className="mt-6">
                 <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
                     <button
-                        onClick={() => setActiveTab('sought')}
-                        className={`flex-1 py-2 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'sought' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                        onClick={() => setActiveTab('circulation')}
+                        className={`flex-1 py-2 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'circulation' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                     >
-                        Sought List
+                        Circulation List
                     </button>
                     <button
                         onClick={() => setActiveTab('alerts')}
@@ -422,12 +422,12 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
                 </div>
 
                 {/* Tab Content */}
-                {activeTab === 'sought' && (
+                {activeTab === 'circulation' && (
                     <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                        {soughtList.length === 0 ? (
-                            <p className="text-center text-gray-500 text-sm py-4">No vehicles currently in sought list.</p>
+                        {circulationList.length === 0 ? (
+                            <p className="text-center text-gray-500 text-sm py-4">No vehicles currently in circulation list.</p>
                         ) : (
-                            soughtList.map(report => (
+                            circulationList.map(report => (
                                 <div key={report.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 rounded-xl">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-2 h-10 rounded-full ${report.severity === Severity.CRITICAL ? 'bg-red-500' : report.severity === Severity.HIGH ? 'bg-orange-500' : report.severity === Severity.MEDIUM ? 'bg-yellow-500' : 'bg-blue-500'}`}></div>

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Report, Profile, Responder, ResponderStatus, UserRole, Severity, ReportStatus, CrimeReport } from '../types';
+import { Report, Profile, Responder, ResponderStatus, UserRole, Severity, ReportStatus, CrimeReport, VehicleReport } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
 import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
@@ -8,7 +8,7 @@ import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
 import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, MapIcon, ChatAlt2Icon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
-import SoughtListManager from '../components/BlacklistManager';
+import CirculationListManager from '../components/CirculationListManager';
 import { useChat } from '../contexts/ChatContext';
 import { useToast } from '../contexts/ToastContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
@@ -592,8 +592,10 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                         )}
                     </div>
                     <div className="print:hidden">
-                        <SoughtListManager 
+                        <CirculationListManager 
                             profile={profile}
+                            reports={reports.filter(r => r.type === 'vehicle') as VehicleReport[]}
+                            loading={loading}
                             onSelectReport={setSelectedReportId}
                             onQuickAdd={handleOpenQuickAddModal}
                         />
