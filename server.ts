@@ -1,4 +1,5 @@
 import express from 'express';
+console.log('Starting server.ts...');
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -177,6 +178,7 @@ app.post('/api/update-setting', async (req, res) => {
 
 // API Routes for Profile Management
 app.post('/api/update-profile', async (req, res) => {
+    console.log('POST /api/update-profile requested', { userId: req.body.userId });
     const { userId, ...dbPayload } = req.body;
     
     if (!userId) {
@@ -204,7 +206,8 @@ app.post('/api/update-profile', async (req, res) => {
 
 // Catch-all for /api that doesn't match
 app.use('/api', (req, res) => {
-    res.status(404).json({ error: `API route ${req.method} ${req.url} not found` });
+    console.log(`404 on /api: ${req.method} ${req.originalUrl}`);
+    res.status(404).json({ error: `API route ${req.method} ${req.originalUrl} not found` });
 });
 
 // Vite middleware for development or static serving for production
