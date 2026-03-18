@@ -8,7 +8,7 @@ import { NavigationIcon, CameraIcon, ScanIcon, XIcon, ChatAlt2Icon, PlusIcon } f
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import ResponderMapView from '../components/ResponderMapView';
-import ANPRScanner from '../components/ANPRScanner';
+import LookoutScanner from '../components/LookoutScanner';
 import UserReportDetail from '../components/UserReportDetail';
 import { useChat } from '../contexts/ChatContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
@@ -393,7 +393,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                     </div>
                 )}
                 
-                {isOnDuty && <ANPRScanner onReportHit={handleAnprHit} />}
+                {isOnDuty && <LookoutScanner onReportHit={handleAnprHit} />}
 
                 <div className="space-y-3">
                     <div className="flex items-center justify-between px-1">
