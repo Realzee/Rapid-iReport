@@ -593,6 +593,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                     </div>
                     <div className="print:hidden">
                         <SoughtListManager 
+                            profile={profile}
                             onSelectReport={setSelectedReportId}
                             onQuickAdd={handleOpenQuickAddModal}
                         />

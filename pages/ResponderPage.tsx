@@ -393,7 +393,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                     </div>
                 )}
                 
-                {isOnDuty && <LookoutScanner onReportHit={handleAnprHit} />}
+                {isOnDuty && <LookoutScanner profile={profile} onReportHit={handleAnprHit} />}
 
                 <div className="space-y-3">
                     <div className="flex items-center justify-between px-1">

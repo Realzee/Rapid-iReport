@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { VehicleReport, ReportStatus } from '../types';
+import { VehicleReport, ReportStatus, Severity, Profile, UserRole } from '../types';
 import { useToast } from '../contexts/ToastContext';
-import { PlusIcon, SearchIcon, AlertTriangleIcon } from './icons';
+import { PlusIcon, SearchIcon, AlertTriangleIcon, FilterIcon, TrashIcon, EyeIcon } from './icons';
 import ConfirmModal from './ConfirmModal';
 
 interface SoughtListManagerProps {
+    profile: Profile;
     onSelectReport: (reportId: string) => void;
     onQuickAdd: () => void;
 }
 
-const SoughtListManager: React.FC<SoughtListManagerProps> = ({ onSelectReport, onQuickAdd }) => {
+const SoughtListManager: React.FC<SoughtListManagerProps> = ({ profile, onSelectReport, onQuickAdd }) => {
     const [soughtListReports, setSoughtListReports] = useState<VehicleReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -19,14 +20,34 @@ const SoughtListManager: React.FC<SoughtListManagerProps> = ({ onSelectReport, o
 
     useEffect(() => {
         const activeStatuses = [ReportStatus.PENDING, ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE];
+        const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 
         const fetchSoughtList = async () => {
             setLoading(true);
-            const { data, error } = await supabase
+            
+            let allowedReporterIds: string[] | null = null;
+
+            if (!isGlobalAdmin && profile.company_id) {
+                const { data: companyUsers } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('company_id', profile.company_id);
+                
+                if (companyUsers) {
+                    allowedReporterIds = companyUsers.map(u => u.id);
+                }
+            }
+
+            let query = supabase
                 .from('vehicle_reports')
                 .select('*')
-                .in('status', activeStatuses)
-                .order('reported_at', { ascending: false });
+                .in('status', activeStatuses);
+            
+            if (allowedReporterIds) {
+                query = query.in('reported_by', allowedReporterIds);
+            }
+
+            const { data, error } = await query.order('reported_at', { ascending: false });
             
             if (error) {
                 addToast('Failed to load vehicle sought list.', 'error');
@@ -41,35 +62,14 @@ const SoughtListManager: React.FC<SoughtListManagerProps> = ({ onSelectReport, o
 
         const channel = supabase.channel('blacklist-manager-updates')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, (payload) => {
-                 setSoughtListReports(currentList => {
-                    const newReport = payload.new as VehicleReport;
-                    // FIX: Cast payload.old to inform TypeScript that it may contain an 'id' property.
-                    const oldId = (payload.old as Partial<VehicleReport>)?.id;
-                    const isNowActive = newReport && activeStatuses.includes(newReport.status);
-
-                    let updatedList;
-                    if (payload.eventType === 'INSERT' && isNowActive) {
-                        updatedList = [newReport, ...currentList];
-                    } else if (payload.eventType === 'UPDATE') {
-                        const exists = currentList.some(r => r.id === newReport.id);
-                        if (isNowActive) {
-                            updatedList = exists ? currentList.map(r => r.id === newReport.id ? newReport : r) : [newReport, ...currentList];
-                        } else {
-                            updatedList = currentList.filter(r => r.id !== newReport.id);
-                        }
-                    } else if (payload.eventType === 'DELETE') {
-                        updatedList = currentList.filter(r => r.id !== oldId);
-                    } else {
-                        updatedList = currentList;
-                    }
-                    // Ensure the list remains sorted after an update
-                    return updatedList.sort((a,b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
-                 });
+                 // For realtime updates, it's easier to just re-fetch if we're filtering by reported_by
+                 // since we don't know the company_id of the reporter without another query
+                 fetchSoughtList();
             })
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
-    }, [addToast]);
+    }, [addToast, profile]);
     
     const filteredReports = useMemo(() => {
         const lowercasedTerm = searchTerm.toLowerCase();
