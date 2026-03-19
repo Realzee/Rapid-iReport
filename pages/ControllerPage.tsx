@@ -446,6 +446,15 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             addToast('Failed to assign responder: ' + error.message, 'error');
         } else {
             addToast(`Assigned ${responder.first_name} ${responder.surname} to incident ${selectedReport.ob_number}`, 'success');
+            
+            // Log the assignment change
+            await supabase.from('assignment_logs').insert({
+                report_id: selectedReportId,
+                assigned_from: selectedReport.assigned_to || null,
+                assigned_to: responderId,
+                assigned_by: profile.id
+            });
+
             // Log the assignment
             await supabase.from('report_updates').insert({
                 report_id: selectedReportId,

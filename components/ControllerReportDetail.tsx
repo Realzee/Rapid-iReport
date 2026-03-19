@@ -214,6 +214,13 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         }
         if (selectedResponder !== (report.assigned_to || '')) {
             updatePayload.assigned_to = selectedResponder || null;
+            // Log the assignment change
+            await supabase.from('assignment_logs').insert({
+                report_id: report.id,
+                assigned_from: report.assigned_to || null,
+                assigned_to: selectedResponder || null,
+                assigned_by: profile.id
+            });
         }
 
         const { error } = await supabase.from(tableName).update(updatePayload).eq('id', report.id);
