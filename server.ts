@@ -3,6 +3,7 @@ console.log('Starting server.ts...');
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 dotenv.config();
@@ -15,7 +16,9 @@ const PORT = 3000;
 
 // Global request logger
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    const timestamp = new Date().toISOString();
+    const host = req.headers.host;
+    console.log(`[${timestamp}] ${req.method} ${req.url} (Host: ${host})`);
     next();
 });
 
@@ -40,184 +43,59 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Backend is running', timestamp: new Date().toISOString() });
 });
 
-// API Routes for User Management
-app.post('/api/create-user', async (req, res) => {
-    const { email, password, user_metadata } = req.body;
-    
-    try {
-        const { data, error } = await supabaseAdmin.auth.admin.createUser({
-            email,
-            password,
-            user_metadata,
-            email_confirm: true
-        });
-
-        if (error) throw error;
-        res.status(200).json(data);
-    } catch (error: any) {
-        console.error('Error creating user:', error);
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.post('/api/reset-password', async (req, res) => {
-    const { userId, password } = req.body;
-    
-    try {
-        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-            password
-        });
-
-        if (error) throw error;
-        res.status(200).json(data);
-    } catch (error: any) {
-        console.error('Error resetting password:', error);
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.post('/api/delete-user', async (req, res) => {
-    const { userId } = req.body;
-    
-    try {
-        const { data, error } = await supabaseAdmin.auth.admin.deleteUser(userId);
-
-        if (error) throw error;
-        res.status(200).json(data);
-    } catch (error: any) {
-        console.error('Error deleting user:', error);
-        res.status(400).json({ error: error.message });
-    }
-});
-
-// API Routes for Company Management
-app.post('/api/save-company', async (req, res) => {
-    const { id, ...dbPayload } = req.body;
-    
-    try {
-        let data, error;
-        if (id) {
-            ({ data, error } = await supabaseAdmin.from('companies').update(dbPayload).eq('id', id).select().single());
-        } else {
-            ({ data, error } = await supabaseAdmin.from('companies').insert(dbPayload).select().single());
+// Dynamic API Route Loader
+const apiDir = path.resolve(__dirname, 'api');
+if (fs.existsSync(apiDir)) {
+    console.log(`Loading API routes from ${apiDir}...`);
+    const files = fs.readdirSync(apiDir);
+    for (const file of files) {
+        if (file.endsWith('.ts') || file.endsWith('.js')) {
+            const routeName = file.replace(/\.(ts|js)$/, '');
+            const routePath = `/api/${routeName}`;
+            
+            console.log(`Registering route: ${routePath}`);
+            
+            app.all([routePath, `${routePath}/`], async (req, res) => {
+                try {
+                    const modulePath = path.resolve(apiDir, file);
+                    console.log(`[API CALL] ${req.method} ${req.url} (Matched: ${routePath})`);
+                    // Use dynamic import to load the handler
+                    // We use a query param to avoid cache in dev if needed, but tsx handles this well
+                    const { default: handler } = await import(`file://${modulePath}`);
+                    if (typeof handler === 'function') {
+                        await handler(req, res);
+                    } else {
+                        console.error(`Handler in ${file} is not a function`);
+                        res.status(500).json({ error: 'Invalid API handler' });
+                    }
+                } catch (error: any) {
+                    console.error(`Error in API route ${routePath}:`, error);
+                    res.status(500).json({ error: 'Internal Server Error', message: error.message });
+                }
+            });
         }
-
-        if (error) {
-            console.error('Supabase Error saving company:', error);
-            throw new Error(error.message || 'Database error occurred');
-        }
-        res.status(200).json(data);
-    } catch (error: any) {
-        console.error('Error saving company:', error);
-        res.status(400).json({ error: error.message });
     }
-});
-
-app.post('/api/delete-company', async (req, res) => {
-    const { id } = req.body;
-    
-    try {
-        const { error } = await supabaseAdmin.from('companies').delete().eq('id', id);
-
-        if (error) {
-            console.error('Supabase Error deleting company:', error);
-            throw new Error(error.message || 'Database error occurred');
-        }
-        res.status(200).json({ success: true });
-    } catch (error: any) {
-        console.error('Error deleting company:', error);
-        res.status(400).json({ error: error.message });
-    }
-});
-
-// API Routes for Announcements Management
-app.post('/api/save-announcement', async (req, res) => {
-    const { id, ...dbPayload } = req.body;
-    
-    try {
-        let data, error;
-        if (id) {
-            ({ data, error } = await supabaseAdmin.from('announcements').update(dbPayload).eq('id', id).select().single());
-        } else {
-            ({ data, error } = await supabaseAdmin.from('announcements').insert(dbPayload).select().single());
-        }
-
-        if (error) {
-            console.error('Supabase Error saving announcement:', error);
-            throw new Error(error.message || 'Database error occurred');
-        }
-        res.status(200).json(data);
-    } catch (error: any) {
-        console.error('Error saving announcement:', error);
-        res.status(400).json({ error: error.message });
-    }
-});
-
-app.post('/api/delete-announcement', async (req, res) => {
-    const { id } = req.body;
-    
-    try {
-        const { error } = await supabaseAdmin.from('announcements').delete().eq('id', id);
-
-        if (error) throw error;
-        res.status(200).json({ success: true });
-    } catch (error: any) {
-        console.error('Error deleting announcement:', error);
-        res.status(400).json({ error: error.message });
-    }
-});
-
-// API Routes for App Settings
-app.post('/api/update-setting', async (req, res) => {
-    const { key, value } = req.body;
-    
-    try {
-        const { data, error } = await supabaseAdmin.from('app_settings').upsert({ key, value }).select().single();
-
-        if (error) throw error;
-        res.status(200).json(data);
-    } catch (error: any) {
-        console.error('Error updating setting:', error);
-        res.status(400).json({ error: error.message });
-    }
-});
-
-// API Routes for Profile Management
-app.post('/api/update-profile', async (req, res) => {
-    console.log('POST /api/update-profile requested', { userId: req.body.userId });
-    const { userId, ...dbPayload } = req.body;
-    
-    if (!userId) {
-        return res.status(400).json({ error: 'User ID is required' });
-    }
-    
-    try {
-        const { data, error } = await supabaseAdmin
-            .from('profiles')
-            .update(dbPayload)
-            .eq('id', userId)
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Supabase Error updating profile:', error);
-            throw new Error(error.message || 'Database error occurred');
-        }
-        res.status(200).json(data);
-    } catch (error: any) {
-        console.error('Error updating profile:', error);
-        res.status(400).json({ error: error.message });
-    }
-});
+} else {
+    console.warn(`API directory not found at ${apiDir}`);
+}
 
 // Catch-all for /api that doesn't match
 app.all('/api/*', (req, res) => {
-    console.log(`[API 404] ${req.method} ${req.originalUrl}`);
+    const timestamp = new Date().toISOString();
+    console.log(`[API 404] ${req.method} ${req.originalUrl} at ${timestamp}`);
+    
+    // List available routes for debugging
+    const availableRoutes = fs.existsSync(apiDir) 
+        ? fs.readdirSync(apiDir).map(f => `/api/${f.replace(/\.(ts|js)$/, '')}`)
+        : [];
+
     res.status(404).json({ 
         error: 'API Route Not Found', 
         method: req.method,
         path: req.originalUrl,
-        message: `The requested API endpoint ${req.method} ${req.originalUrl} does not exist on this server.`
+        message: `The requested API endpoint ${req.method} ${req.originalUrl} does not exist.`,
+        availableRoutes,
+        timestamp
     });
 });
 
