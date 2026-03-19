@@ -13,6 +13,12 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3000;
 
+// Global request logger
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
+
 const supabaseUrl = process.env.SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlnbHdkd2h3cGJxYXd1bmJrenl5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODI3NTc4OSwiZXhwIjoyMDgzODUxNzg5fQ.h8tD0STrVfQ7-eSXYJmDGoGGWKoNDr4o0SmGsYy0KRo';
 
@@ -205,9 +211,14 @@ app.post('/api/update-profile', async (req, res) => {
 });
 
 // Catch-all for /api that doesn't match
-app.use('/api', (req, res) => {
-    console.log(`404 on /api: ${req.method} ${req.originalUrl}`);
-    res.status(404).json({ error: `API route ${req.method} ${req.originalUrl} not found` });
+app.all('/api/*', (req, res) => {
+    console.log(`[API 404] ${req.method} ${req.originalUrl}`);
+    res.status(404).json({ 
+        error: 'API Route Not Found', 
+        method: req.method,
+        path: req.originalUrl,
+        message: `The requested API endpoint ${req.method} ${req.originalUrl} does not exist on this server.`
+    });
 });
 
 // Vite middleware for development or static serving for production
