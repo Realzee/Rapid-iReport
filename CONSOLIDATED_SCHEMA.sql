@@ -42,8 +42,16 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     cell text,
     vehicle_reg text,
     home_address text,
+    work_address text,
     ice_no text,
     medical_aid text,
+    medical_aid_policy_number text,
+    allergies text,
+    insurance_company text,
+    insurance_policy_number text,
+    insurance_type text,
+    insurance_contact text,
+    vehicles jsonb DEFAULT '[]'::jsonb,
     psira_number text,
     created_at timestamp with time zone DEFAULT now()
 );
@@ -109,6 +117,15 @@ CREATE TABLE IF NOT EXISTS public.chat_messages (
     report_id uuid NOT NULL,
     user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     content text NOT NULL,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.assignment_logs (
+    id uuid NOT NULL DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+    report_id uuid NOT NULL,
+    assigned_from uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+    assigned_to uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+    assigned_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     created_at timestamp with time zone DEFAULT now()
 );
 
@@ -295,6 +312,13 @@ DROP POLICY IF EXISTS "Public read settings" ON public.app_settings;
 CREATE POLICY "Public read settings" ON public.app_settings FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admin manage settings" ON public.app_settings;
 CREATE POLICY "Admin manage settings" ON public.app_settings FOR ALL USING (get_user_role(auth.uid()) = 'admin');
+
+-- Assignment Logs
+ALTER TABLE public.assignment_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow staff to read assignment logs" ON public.assignment_logs;
+CREATE POLICY "Allow staff to read assignment logs" ON public.assignment_logs FOR SELECT USING (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder'));
+DROP POLICY IF EXISTS "Allow staff to insert assignment logs" ON public.assignment_logs;
+CREATE POLICY "Allow staff to insert assignment logs" ON public.assignment_logs FOR INSERT WITH CHECK (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'));
 
 -- 6. Storage Policies (Run these if you have issues with uploads)
 -- Note: These assume buckets 'avatars', 'evidence', 'company-logos', 'app-assets' exist.

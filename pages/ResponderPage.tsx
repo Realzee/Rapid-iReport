@@ -555,6 +555,12 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
         if (isResolving) {
             reportUpdatePayload.assigned_to = null;
             reportUpdatePayload.completed_at = new Date().toISOString();
+            updatePromises.push(supabase.from('assignment_logs').insert({
+                report_id: report.id,
+                assigned_from: profile.id,
+                assigned_to: null,
+                assigned_by: profile.id
+            }));
         }
     
         updatePromises.push(supabase.from(tableName).update(reportUpdatePayload).eq('id', report.id));

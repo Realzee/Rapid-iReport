@@ -141,6 +141,25 @@ ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS engine_number text;
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS cas_number text;
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS station_name text;
 
+-- Add new fields to profiles table for controllers and responders
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS work_address text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS medical_aid_policy_number text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS allergies text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS insurance_company text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS insurance_policy_number text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS insurance_type text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS insurance_contact text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS vehicles jsonb DEFAULT '[]'::jsonb;
+
+CREATE TABLE IF NOT EXISTS public.assignment_logs (
+    id uuid NOT NULL DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+    report_id uuid NOT NULL,
+    assigned_from uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+    assigned_to uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+    assigned_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at timestamp with time zone DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS public.notifications (
     id uuid NOT NULL DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
     recipient_user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,

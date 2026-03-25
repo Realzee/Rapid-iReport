@@ -78,8 +78,24 @@ export interface Profile {
   cell?: string;
   vehicle_reg?: string;
   home_address?: string;
+  work_address?: string;
   ice_no?: string;
   medical_aid?: string;
+  medical_aid_policy_number?: string;
+  allergies?: string;
+  insurance_company?: string;
+  insurance_policy_number?: string;
+  insurance_type?: string;
+  insurance_contact?: string;
+  vehicles?: {
+    make: string;
+    model: string;
+    reg: string;
+    vin: string;
+    engine_no: string;
+    tracking_co: string;
+    tracking_co_contact: string;
+  }[];
   psira_number?: string;
 }
 

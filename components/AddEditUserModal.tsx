@@ -25,8 +25,16 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
             cell: '',
             vehicle_reg: '',
             home_address: '',
+            work_address: '',
             ice_no: '',
             medical_aid: '',
+            medical_aid_policy_number: '',
+            allergies: '',
+            insurance_company: '',
+            insurance_policy_number: '',
+            insurance_type: '',
+            insurance_contact: '',
+            vehicles: [],
             psira_number: '',
         };
     }, [user]);
@@ -72,11 +80,35 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
     };
 
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         const fieldsToUppercase = ['vehicle_reg', 'psira_number'];
         const processedValue = fieldsToUppercase.includes(name) ? value.toUpperCase() : value;
         setFormData(prev => ({ ...prev, [name]: processedValue }));
+    };
+
+    const handleVehicleChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => {
+            const updatedVehicles = [...(prev.vehicles || [])];
+            updatedVehicles[index] = { ...updatedVehicles[index], [name]: value };
+            return { ...prev, vehicles: updatedVehicles };
+        });
+    };
+
+    const addVehicle = () => {
+        setFormData(prev => ({
+            ...prev,
+            vehicles: [...(prev.vehicles || []), { make: '', model: '', reg: '', vin: '', engine_no: '', tracking_co: '', tracking_co_contact: '' }]
+        }));
+    };
+
+    const removeVehicle = (index: number) => {
+        setFormData(prev => {
+            const updatedVehicles = [...(prev.vehicles || [])];
+            updatedVehicles.splice(index, 1);
+            return { ...prev, vehicles: updatedVehicles };
+        });
     };
 
     const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -208,6 +240,12 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                         <label htmlFor="home_address" className={labelClasses}>Home Address</label>
                         <input type="text" name="home_address" id="home_address" value={formData.home_address || ''} onChange={handleChange} className={inputClasses} />
                     </div>
+                    {(formData.role === UserRole.CONTROLLER || formData.role === UserRole.RESPONDER) && (
+                        <div>
+                            <label htmlFor="work_address" className={labelClasses}>Work Address</label>
+                            <input type="text" name="work_address" id="work_address" value={formData.work_address || ''} onChange={handleChange} className={inputClasses} />
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label htmlFor="vehicle_reg" className={labelClasses}>Vehicle Reg (Optional)</label>
@@ -222,6 +260,96 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                         <label htmlFor="psira_number" className={labelClasses}>PSIRA Number (Optional)</label>
                         <input type="text" name="psira_number" id="psira_number" value={formData.psira_number || ''} onChange={handleChange} className={inputClasses} />
                     </div>
+
+                    {(formData.role === UserRole.CONTROLLER || formData.role === UserRole.RESPONDER) && (
+                        <>
+                            {/* Medical Details */}
+                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Medical Details</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="medical_aid_policy_number" className={labelClasses}>Policy Number</label>
+                                        <input type="text" name="medical_aid_policy_number" id="medical_aid_policy_number" value={formData.medical_aid_policy_number || ''} onChange={handleChange} className={inputClasses} />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label htmlFor="allergies" className={labelClasses}>Allergies</label>
+                                        <textarea name="allergies" id="allergies" rows={2} value={formData.allergies || ''} onChange={handleChange} className={inputClasses} placeholder="Please stipulate any allergies" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Insurance Details */}
+                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Insurance Details</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="insurance_company" className={labelClasses}>Company Name</label>
+                                        <input type="text" name="insurance_company" id="insurance_company" value={formData.insurance_company || ''} onChange={handleChange} className={inputClasses} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="insurance_policy_number" className={labelClasses}>Policy Number</label>
+                                        <input type="text" name="insurance_policy_number" id="insurance_policy_number" value={formData.insurance_policy_number || ''} onChange={handleChange} className={inputClasses} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="insurance_type" className={labelClasses}>Type Of Insurance</label>
+                                        <input type="text" name="insurance_type" id="insurance_type" value={formData.insurance_type || ''} onChange={handleChange} className={inputClasses} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="insurance_contact" className={labelClasses}>Contact Details</label>
+                                        <input type="text" name="insurance_contact" id="insurance_contact" value={formData.insurance_contact || ''} onChange={handleChange} className={inputClasses} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Vehicle Details */}
+                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Vehicle Details</h4>
+                                    <button type="button" onClick={addVehicle} className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors">
+                                        + Add Vehicle
+                                    </button>
+                                </div>
+                                {formData.vehicles?.map((vehicle, index) => (
+                                    <div key={index} className="p-4 mb-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 relative">
+                                        <button type="button" onClick={() => removeVehicle(index)} className="absolute top-2 right-2 text-red-500 hover:text-red-700 dark:hover:text-red-400">
+                                            <XIcon className="w-5 h-5" />
+                                        </button>
+                                        <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Vehicle {index + 1}</h5>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className={labelClasses}>Make</label>
+                                                <input type="text" name="make" value={vehicle.make} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                            </div>
+                                            <div>
+                                                <label className={labelClasses}>Model</label>
+                                                <input type="text" name="model" value={vehicle.model} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                            </div>
+                                            <div>
+                                                <label className={labelClasses}>Reg</label>
+                                                <input type="text" name="reg" value={vehicle.reg} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                            </div>
+                                            <div>
+                                                <label className={labelClasses}>Chassis No (Vin)</label>
+                                                <input type="text" name="vin" value={vehicle.vin} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                            </div>
+                                            <div>
+                                                <label className={labelClasses}>Engine No</label>
+                                                <input type="text" name="engine_no" value={vehicle.engine_no} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                            </div>
+                                            <div>
+                                                <label className={labelClasses}>Tracking Co</label>
+                                                <input type="text" name="tracking_co" value={vehicle.tracking_co} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                            </div>
+                                            <div>
+                                                <label className={labelClasses}>Tracking Co Contact</label>
+                                                <input type="text" name="tracking_co_contact" value={vehicle.tracking_co_contact} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
                     <div className="pt-6 flex justify-end space-x-4">
                         <button type="button" onClick={handleClose} className="px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 transition-colors">Cancel</button>
                         <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-md hover:scale-105 transition-transform duration-300">Save</button>

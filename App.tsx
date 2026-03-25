@@ -30,6 +30,28 @@ import UserActivityPage from './pages/UserActivityPage';
 
 type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs';
 
+const isProfileComplete = (profile: Profile) => {
+    if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
+    if (profile.status !== UserStatus.APPROVED) return true;
+    
+    return !!(
+        profile.first_name &&
+        profile.surname &&
+        profile.home_address &&
+        profile.work_address &&
+        profile.cell &&
+        profile.ice_no &&
+        profile.medical_aid &&
+        profile.medical_aid_policy_number &&
+        profile.allergies &&
+        profile.insurance_company &&
+        profile.insurance_policy_number &&
+        profile.insurance_type &&
+        profile.insurance_contact &&
+        profile.vehicles && profile.vehicles.length > 0
+    );
+};
+
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -208,6 +230,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (profile) {
+      if (!isProfileComplete(profile) && view !== 'profile') {
+        setView('profile');
+        addToast("Please complete your profile details before continuing.", "warning");
+        return;
+      }
+
       if (profile.role === UserRole.CONTROLLER && view !== 'controller' && view !== 'profile') {
         setView('controller');
         return;
@@ -260,6 +288,11 @@ const App: React.FC = () => {
   }, [profile]);
 
   const handleSetView = (newView: View) => {
+    if (profile && !isProfileComplete(profile) && newView !== 'profile') {
+        addToast("Please complete your profile details before continuing.", "warning");
+        return;
+    }
+
     if (newView === 'map') {
         setIsGlobalMapModalOpen(true);
     } else {

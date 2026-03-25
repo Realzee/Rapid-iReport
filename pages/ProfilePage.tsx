@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Profile } from '../types';
+import { Profile, UserRole, UserStatus } from '../types';
 import { supabase } from '../utils/supabase';
 import { UserIcon, LockIcon, UploadCloudIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
@@ -18,8 +18,16 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         cell: profile.cell || '',
         vehicle_reg: profile.vehicle_reg || '',
         home_address: profile.home_address || '',
+        work_address: profile.work_address || '',
         ice_no: profile.ice_no || '',
         medical_aid: profile.medical_aid || '',
+        medical_aid_policy_number: profile.medical_aid_policy_number || '',
+        allergies: profile.allergies || '',
+        insurance_company: profile.insurance_company || '',
+        insurance_policy_number: profile.insurance_policy_number || '',
+        insurance_type: profile.insurance_type || '',
+        insurance_contact: profile.insurance_contact || '',
+        vehicles: profile.vehicles || [],
         psira_number: profile.psira_number || '',
     }), [profile]);
 
@@ -43,11 +51,34 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
     });
 
 
-    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         const fieldsToUppercase = ['vehicle_reg', 'psira_number'];
         const processedValue = fieldsToUppercase.includes(name) ? value.toUpperCase() : value;
         setFormData(prev => ({ ...prev, [name]: processedValue }));
+    };
+
+    const handleVehicleChange = (index: number, field: string, value: string) => {
+        setFormData(prev => {
+            const newVehicles = [...(prev.vehicles || [])];
+            newVehicles[index] = { ...newVehicles[index], [field]: value };
+            return { ...prev, vehicles: newVehicles };
+        });
+    };
+
+    const addVehicle = () => {
+        setFormData(prev => ({
+            ...prev,
+            vehicles: [...(prev.vehicles || []), { make: '', model: '', reg: '', vin: '', engine_no: '', tracking_co: '', tracking_co_contact: '' }]
+        }));
+    };
+
+    const removeVehicle = (index: number) => {
+        setFormData(prev => {
+            const newVehicles = [...(prev.vehicles || [])];
+            newVehicles.splice(index, 1);
+            return { ...prev, vehicles: newVehicles };
+        });
     };
 
     const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,6 +91,12 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
     
     const handleProfileUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if ((profile.role === UserRole.CONTROLLER || profile.role === UserRole.RESPONDER) && (!formData.vehicles || formData.vehicles.length === 0)) {
+            addToast('Please add at least one vehicle.', 'error');
+            return;
+        }
+
         setLoadingProfile(true);
 
         let avatarUrlToUpdate = profile.avatar_url;
@@ -145,6 +182,28 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
         setLoadingPassword(false);
     };
 
+    const isComplete = useMemo(() => {
+        if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
+        if (profile.status !== UserStatus.APPROVED) return true;
+        
+        return !!(
+            profile.first_name &&
+            profile.surname &&
+            profile.home_address &&
+            profile.work_address &&
+            profile.cell &&
+            profile.ice_no &&
+            profile.medical_aid &&
+            profile.medical_aid_policy_number &&
+            profile.allergies &&
+            profile.insurance_company &&
+            profile.insurance_policy_number &&
+            profile.insurance_type &&
+            profile.insurance_contact &&
+            profile.vehicles && profile.vehicles.length > 0
+        );
+    }, [profile]);
+
     const cardClasses = "bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 backdrop-blur-lg shadow-lg dark:shadow-none";
     const inputClasses = "mt-1 w-full bg-gray-100 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-700 rounded-md py-2 px-3 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition";
     const labelClasses = "block text-sm font-medium text-gray-700 dark:text-gray-300";
@@ -152,6 +211,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
 
     return (
         <div className="container mx-auto">
+             {!isComplete && (
+                 <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg shadow-sm">
+                     <h3 className="text-lg font-bold text-yellow-800 dark:text-yellow-300 mb-1">Profile Incomplete</h3>
+                     <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                         As an approved {profile.role}, you must complete all required details including Work Address, Medical Details, Insurance Details, and at least one Vehicle before you can access the rest of the system.
+                     </p>
+                 </div>
+             )}
              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3"><UserIcon className="w-8 h-8"/> My Profile</h2>
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-3 space-y-8">
@@ -206,16 +273,109 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
                                 <label htmlFor="home_address" className={labelClasses}>Home Address</label>
                                 <input id="home_address" name="home_address" type="text" value={formData.home_address} onChange={handleFormChange} required className={inputClasses} />
                             </div>
+                            {(profile.role === UserRole.CONTROLLER || profile.role === UserRole.RESPONDER) && (
+                                <div>
+                                    <label htmlFor="work_address" className={labelClasses}>Work Address</label>
+                                    <input id="work_address" name="work_address" type="text" value={formData.work_address} onChange={handleFormChange} required className={inputClasses} />
+                                </div>
+                            )}
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label htmlFor="vehicle_reg" className={labelClasses}>Vehicle Reg (N/A if none)</label>
                                     <input id="vehicle_reg" name="vehicle_reg" type="text" value={formData.vehicle_reg} onChange={handleFormChange} className={inputClasses} />
                                 </div>
                                 <div>
-                                    <label htmlFor="medical_aid" className={labelClasses}>Medical Aid (N/A if none)</label>
-                                    <input id="medical_aid" name="medical_aid" type="text" value={formData.medical_aid} onChange={handleFormChange} className={inputClasses} />
+                                    <label htmlFor="medical_aid" className={labelClasses}>Medical Aid Name (N/A if none)</label>
+                                    <input id="medical_aid" name="medical_aid" type="text" value={formData.medical_aid} onChange={handleFormChange} required={profile.role === UserRole.CONTROLLER || profile.role === UserRole.RESPONDER} className={inputClasses} />
                                 </div>
                             </div>
+                            {(profile.role === UserRole.CONTROLLER || profile.role === UserRole.RESPONDER) && (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label htmlFor="medical_aid_policy_number" className={labelClasses}>Medical Aid Policy Number</label>
+                                            <input id="medical_aid_policy_number" name="medical_aid_policy_number" type="text" value={formData.medical_aid_policy_number} onChange={handleFormChange} required className={inputClasses} />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="allergies" className={labelClasses}>Please Stipulate Any Allergies</label>
+                                            <input id="allergies" name="allergies" type="text" value={formData.allergies} onChange={handleFormChange} required className={inputClasses} />
+                                        </div>
+                                    </div>
+                                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                                        <h4 className="text-lg font-semibold mb-3">Insurance Company Details</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label htmlFor="insurance_company" className={labelClasses}>Company Name</label>
+                                                <input id="insurance_company" name="insurance_company" type="text" value={formData.insurance_company} onChange={handleFormChange} required className={inputClasses} />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="insurance_policy_number" className={labelClasses}>Policy Number</label>
+                                                <input id="insurance_policy_number" name="insurance_policy_number" type="text" value={formData.insurance_policy_number} onChange={handleFormChange} required className={inputClasses} />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="insurance_type" className={labelClasses}>Type Of Insurance</label>
+                                                <input id="insurance_type" name="insurance_type" type="text" value={formData.insurance_type} onChange={handleFormChange} required className={inputClasses} />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="insurance_contact" className={labelClasses}>Contact Details</label>
+                                                <input id="insurance_contact" name="insurance_contact" type="text" value={formData.insurance_contact} onChange={handleFormChange} required className={inputClasses} />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h4 className="text-lg font-semibold">Vehicle Details</h4>
+                                            <button type="button" onClick={addVehicle} className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 transition">
+                                                + Add Vehicle
+                                            </button>
+                                        </div>
+                                        {formData.vehicles?.length === 0 && (
+                                            <p className="text-sm text-red-500 mb-2">Please add at least one vehicle.</p>
+                                        )}
+                                        {formData.vehicles?.map((vehicle, index) => (
+                                            <div key={index} className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg mb-4 border border-gray-200 dark:border-gray-700 relative">
+                                                <button type="button" onClick={() => removeVehicle(index)} className="absolute top-2 right-2 text-red-500 hover:text-red-700">
+                                                    &times; Remove
+                                                </button>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className={labelClasses}>Make</label>
+                                                        <input type="text" value={vehicle.make} onChange={(e) => handleVehicleChange(index, 'make', e.target.value)} required className={inputClasses} />
+                                                    </div>
+                                                    <div>
+                                                        <label className={labelClasses}>Model</label>
+                                                        <input type="text" value={vehicle.model} onChange={(e) => handleVehicleChange(index, 'model', e.target.value)} required className={inputClasses} />
+                                                    </div>
+                                                    <div>
+                                                        <label className={labelClasses}>Reg</label>
+                                                        <input type="text" value={vehicle.reg} onChange={(e) => handleVehicleChange(index, 'reg', e.target.value)} required className={inputClasses} />
+                                                    </div>
+                                                    <div>
+                                                        <label className={labelClasses}>Chassis No (Vin)</label>
+                                                        <input type="text" value={vehicle.vin} onChange={(e) => handleVehicleChange(index, 'vin', e.target.value)} required className={inputClasses} />
+                                                    </div>
+                                                    <div>
+                                                        <label className={labelClasses}>Engine No</label>
+                                                        <input type="text" value={vehicle.engine_no} onChange={(e) => handleVehicleChange(index, 'engine_no', e.target.value)} required className={inputClasses} />
+                                                    </div>
+                                                    <div>
+                                                        <label className={labelClasses}>Tracking Co</label>
+                                                        <input type="text" value={vehicle.tracking_co} onChange={(e) => handleVehicleChange(index, 'tracking_co', e.target.value)} required className={inputClasses} />
+                                                    </div>
+                                                    <div>
+                                                        <label className={labelClasses}>Tracking Co Contact</label>
+                                                        <input type="text" value={vehicle.tracking_co_contact} onChange={(e) => handleVehicleChange(index, 'tracking_co_contact', e.target.value)} required className={inputClasses} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {(!formData.vehicles || formData.vehicles.length === 0) && (
+                                            <p className="text-sm text-gray-500 italic">No vehicles added.</p>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                              <div>
                                 <label htmlFor="psira_number" className={labelClasses}>PSIRA Number (Optional)</label>
                                 <input id="psira_number" name="psira_number" type="text" value={formData.psira_number} onChange={handleFormChange} className={inputClasses} />

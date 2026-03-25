@@ -90,8 +90,16 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     cell text,
     vehicle_reg text,
     home_address text,
+    work_address text,
     ice_no text,
     medical_aid text,
+    medical_aid_policy_number text,
+    allergies text,
+    insurance_company text,
+    insurance_policy_number text,
+    insurance_type text,
+    insurance_contact text,
+    vehicles jsonb DEFAULT '[]'::jsonb,
     psira_number text
 );
 
@@ -135,6 +143,15 @@ CREATE TABLE IF NOT EXISTS public.crime_reports (
     location_boundingbox real[4],
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     deleted_at timestamp with time zone
+);
+
+CREATE TABLE IF NOT EXISTS public.assignment_logs (
+    id uuid NOT NULL DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+    report_id uuid NOT NULL,
+    assigned_from uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+    assigned_to uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+    assigned_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at timestamp with time zone DEFAULT now()
 );
 
 -- 3. Utility Functions

@@ -349,6 +349,15 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             addToast("Failed to update status: " + updateError.message, 'error');
             return;
         }
+
+        if (isTerminalStatus && reportToUpdate.assigned_to) {
+            await supabase.from('assignment_logs').insert({
+                report_id: reportId,
+                assigned_from: reportToUpdate.assigned_to,
+                assigned_to: null,
+                assigned_by: profile.id
+            });
+        }
     
         await supabase.from('report_updates').insert({
             report_id: reportId,
