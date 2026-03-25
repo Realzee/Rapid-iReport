@@ -184,7 +184,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
 
     const isComplete = useMemo(() => {
         if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
-        if (profile.status !== UserStatus.APPROVED) return true;
+        if (profile.status !== UserStatus.ACTIVE) return true;
         
         return !!(
             profile.first_name &&

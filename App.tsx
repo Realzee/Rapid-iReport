@@ -32,7 +32,7 @@ type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companie
 
 const isProfileComplete = (profile: Profile) => {
     if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
-    if (profile.status !== UserStatus.APPROVED) return true;
+    if (profile.status !== UserStatus.ACTIVE) return true;
     
     return !!(
         profile.first_name &&

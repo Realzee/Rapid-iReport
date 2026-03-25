@@ -21,14 +21,13 @@ interface MapViewProps {
 }
 
 const createIncidentIcon = (report: Report, isSelected: boolean) => {
-    const severityColors: Record<Severity, string> = {
-        [Severity.CRITICAL]: '#ef4444', // red-500
-        [Severity.HIGH]: '#f97316',      // orange-500
-        [Severity.MEDIUM]: '#eab308',   // yellow-500
-        [Severity.LOW]: '#3b82f6',      // blue-500
+    const typeColors: Record<string, string> = {
+        'vehicle': '#3b82f6', // blue-500
+        'crime': '#eab308',   // yellow-500
+        'emergency': '#ef4444', // red-500
     };
 
-    const color = severityColors[report.severity] || '#6b7280'; // gray-500 fallback
+    const color = typeColors[report.type || 'crime'] || '#6b7280'; // gray-500 fallback
 
     const carSvgPath = `
         <path d="M14 16.5V14a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2.5"></path>
@@ -72,9 +71,9 @@ const createResponderIcon = (status: ResponderStatus) => {
     let pulseColorClass = '';
 
     switch (status) {
-        case ResponderStatus.AVAILABLE: colorClass = 'text-green-500'; break;
-        case ResponderStatus.EN_ROUTE: colorClass = 'text-blue-500'; pulseColorClass = 'bg-blue-400'; break;
-        case ResponderStatus.ON_SCENE: colorClass = 'text-yellow-500'; break;
+        case ResponderStatus.AVAILABLE: colorClass = 'text-emerald-500'; break;
+        case ResponderStatus.EN_ROUTE: colorClass = 'text-indigo-500'; pulseColorClass = 'bg-indigo-400'; break;
+        case ResponderStatus.ON_SCENE: colorClass = 'text-amber-500'; break;
     }
 
     const pulseHtml = pulseColorClass ? `<span class="animate-ping absolute inline-flex h-full w-full rounded-full ${pulseColorClass} opacity-75"></span>` : '';
