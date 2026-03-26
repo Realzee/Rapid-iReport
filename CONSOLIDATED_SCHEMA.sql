@@ -79,7 +79,8 @@ CREATE TABLE IF NOT EXISTS public.vehicle_reports (
     vin_number text,
     engine_number text,
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
-    deleted_at timestamp with time zone
+    deleted_at timestamp with time zone,
+    is_global boolean DEFAULT false
 );
 
 CREATE TABLE IF NOT EXISTS public.crime_reports (
@@ -101,7 +102,8 @@ CREATE TABLE IF NOT EXISTS public.crime_reports (
     cas_number text,
     station_name text,
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
-    deleted_at timestamp with time zone
+    deleted_at timestamp with time zone,
+    is_global boolean DEFAULT false
 );
 
 CREATE TABLE IF NOT EXISTS public.report_updates (
@@ -284,6 +286,16 @@ CREATE POLICY "Staff manage company reports" ON public.vehicle_reports FOR ALL U
     (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()))
 );
 
+DROP POLICY IF EXISTS "Responders manage assigned reports" ON public.vehicle_reports;
+CREATE POLICY "Responders manage assigned reports" ON public.vehicle_reports FOR ALL USING (
+    get_user_role(auth.uid()) = 'responder' AND assigned_to = auth.uid()
+);
+
+DROP POLICY IF EXISTS "Staff read global vehicle reports" ON public.vehicle_reports;
+CREATE POLICY "Staff read global vehicle reports" ON public.vehicle_reports FOR SELECT USING (
+    is_global = true AND get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder')
+);
+
 DROP POLICY IF EXISTS "Users read own crime reports" ON public.crime_reports;
 CREATE POLICY "Users read own crime reports" ON public.crime_reports FOR SELECT USING (auth.uid() = reported_by);
 DROP POLICY IF EXISTS "Users create crime reports" ON public.crime_reports;
@@ -294,12 +306,17 @@ CREATE POLICY "Staff manage company crime reports" ON public.crime_reports FOR A
     (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()))
 );
 
-CREATE POLICY "Users read own reports" ON public.crime_reports FOR SELECT USING (auth.uid() = reported_by);
-CREATE POLICY "Users create reports" ON public.crime_reports FOR INSERT WITH CHECK (auth.uid() = reported_by);
-CREATE POLICY "Staff manage company reports" ON public.crime_reports FOR ALL USING (
-    get_user_role(auth.uid()) = 'admin' OR 
-    (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()))
+DROP POLICY IF EXISTS "Responders manage assigned crime reports" ON public.crime_reports;
+CREATE POLICY "Responders manage assigned crime reports" ON public.crime_reports FOR ALL USING (
+    get_user_role(auth.uid()) = 'responder' AND assigned_to = auth.uid()
 );
+
+DROP POLICY IF EXISTS "Staff read global crime reports" ON public.crime_reports;
+CREATE POLICY "Staff read global crime reports" ON public.crime_reports FOR SELECT USING (
+    is_global = true AND get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder')
+);
+
+
 
 -- Announcements
 DROP POLICY IF EXISTS "Public read announcements" ON public.announcements;

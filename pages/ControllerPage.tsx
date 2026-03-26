@@ -114,19 +114,6 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         const fetchData = async () => {
             setLoading(true);
 
-            let allowedReporterIds: string[] | null = null;
-
-            if (!isGlobalAdmin && profile.company_id) {
-                const { data: companyUsers } = await supabase
-                    .from('profiles')
-                    .select('id')
-                    .eq('company_id', profile.company_id);
-                
-                if (companyUsers) {
-                    allowedReporterIds = companyUsers.map(u => u.id);
-                }
-            }
-
             const usersQuery = supabase.from('profiles').select('*');
             if (!isGlobalAdmin && profile.company_id) {
                 usersQuery.eq('company_id', profile.company_id);
@@ -135,12 +122,6 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             let vehicleQuery = supabase.from('vehicle_reports').select('*');
             let crimeQuery = supabase.from('crime_reports').select('*');
             let emergencyQuery = supabase.from('emergency_reports').select('*');
-
-            if (allowedReporterIds) {
-                vehicleQuery = vehicleQuery.in('reported_by', allowedReporterIds);
-                crimeQuery = crimeQuery.in('reported_by', allowedReporterIds);
-                emergencyQuery = emergencyQuery.in('reported_by', allowedReporterIds);
-            }
 
             const [
                 { data: vehicleData, error: vError },

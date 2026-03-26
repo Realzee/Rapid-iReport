@@ -4,7 +4,7 @@ import L, { LatLngBoundsExpression } from 'leaflet';
 import { Report, Responder, VehicleReport, ReportStatus, Severity, ResponderStatus, Profile } from '../types';
 import StatusBadge from './StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
-import { CheckCircleIcon, ShareIcon } from './icons';
+import { CheckCircleIcon, ShareIcon, GlobeIcon } from './icons';
 import MapStyleToggle, { MapStyle } from './MapStyleToggle';
 
 interface MapViewProps {
@@ -333,7 +333,12 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                             >
                                 <Popup>
                                     <div className="w-72">
-                                        <h3 className="font-bold text-lg mb-1">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="font-bold text-lg">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
+                                            {report.is_global && (
+                                                <GlobeIcon className="w-4 h-4 text-blue-500 flex-shrink-0" title="Global Report" />
+                                            )}
+                                        </div>
                                         <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mb-2">{report.ob_number}</p>
                                         <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{report.description}</p>
                                         <hr className="border-gray-200 dark:border-gray-600 my-2" />

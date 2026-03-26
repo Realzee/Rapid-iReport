@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { Profile, Report, VehicleReport, EmergencyReport, ReportStatus } from '../types';
-import { PlusIcon, ZapIcon, CarIcon, CrimeIcon, AlertTriangleIcon } from '../components/icons';
+import { PlusIcon, ZapIcon, CarIcon, CrimeIcon, AlertTriangleIcon, GlobeIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
 import UserReportDetail from '../components/UserReportDetail';
 import StatusBadge from '../components/StatusBadge';
@@ -151,6 +151,9 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                                             {report.type === 'vehicle' ? <CarIcon className="w-4 h-4" /> : (report.type === 'emergency' ? <AlertTriangleIcon className="w-4 h-4" /> : <CrimeIcon className="w-4 h-4" />)}
                                         </div>
                                         <h3 className="font-bold text-md truncate">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                                        {report.is_global && (
+                                            <GlobeIcon className="w-4 h-4 text-blue-500 flex-shrink-0" title="Global Report" />
+                                        )}
                                     </div>
                                     <StatusBadge status={report.status} />
                                 </div>

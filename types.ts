@@ -130,6 +130,8 @@ export interface VehicleReport {
   station_name?: string;
   vin_number?: string;
   engine_number?: string;
+  company_id?: string;
+  is_global?: boolean;
 }
 
 export interface CrimeReport {
@@ -154,6 +156,8 @@ export interface CrimeReport {
   completed_at?: string; // ISO date string
   cas_number?: string;
   station_name?: string;
+  company_id?: string;
+  is_global?: boolean;
 }
 
 export interface EmergencyReport {
@@ -184,6 +188,8 @@ export interface EmergencyReport {
   vehicle_make?: string;
   vehicle_model?: string;
   vehicle_color?: string;
+  company_id?: string;
+  is_global?: boolean;
 }
 
 export type Report = VehicleReport | CrimeReport | EmergencyReport;

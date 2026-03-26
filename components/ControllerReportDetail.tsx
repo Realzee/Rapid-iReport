@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Report, Profile, VehicleReport, EmergencyReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
-import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon, CarIcon, AlertTriangleIcon, CrimeIcon } from './icons';
+import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon } from './icons';
 import PrintableReport from './PrintableReport';
 import ReportTypeBadge from './ReportTypeBadge';
 import { useToast } from '../contexts/ToastContext';
@@ -53,6 +53,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState<ReportStatus>(report.status);
     const [selectedResponder, setSelectedResponder] = useState<string>(report.assigned_to || '');
+    const [isGlobal, setIsGlobal] = useState<boolean>(report.is_global || false);
     const [isActionLoading, setIsActionLoading] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
@@ -71,6 +72,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     useEffect(() => {
         setSelectedStatus(report.status);
         setSelectedResponder(report.assigned_to || '');
+        setIsGlobal(report.is_global || false);
 
         const fetchDetails = async () => {
             const [
@@ -200,7 +202,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         else if (report.type === 'emergency') tableName = 'emergency_reports';
         else tableName = 'crime_reports';
 
-        const updatePayload: { status?: ReportStatus; assigned_to?: string | null; completed_at?: string | null } = {};
+        const updatePayload: { status?: ReportStatus; assigned_to?: string | null; completed_at?: string | null; is_global?: boolean } = {};
         let updateContent = '';
         
         const isTerminalStatus = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED].includes(selectedStatus);
@@ -211,6 +213,10 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             if (isTerminalStatus) {
                 updatePayload.completed_at = new Date().toISOString();
             }
+        }
+        if (isGlobal !== (report.is_global || false)) {
+            updatePayload.is_global = isGlobal;
+            updateContent += `Report visibility changed to: ${isGlobal ? 'Global' : 'Company only'}. `;
         }
         if (selectedResponder !== (report.assigned_to || '')) {
             updatePayload.assigned_to = selectedResponder || null;
@@ -714,6 +720,9 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                         <div className="flex items-center gap-2 mb-1">
                             <ReportTypeBadge type={report.type as any} className="p-1.5" />
                             <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
+                            {report.is_global && (
+                                <GlobeIcon className="w-5 h-5 text-blue-500 flex-shrink-0" title="Global Report" />
+                            )}
                         </div>
                         <p className="font-mono text-sm text-gray-500 dark:text-gray-400">{report.ob_number}</p>
                     </div>
@@ -818,6 +827,16 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                                     <option value="">Unassigned</option>
                                     {responders.map(r => <option key={r.id} value={r.id}>{`${r.first_name} ${r.surname}`}</option>)}
                                 </select>
+                            </div>
+                            <div className="flex items-center gap-2 mt-4">
+                                <input 
+                                    type="checkbox" 
+                                    id="isGlobalToggle" 
+                                    checked={isGlobal} 
+                                    onChange={(e) => setIsGlobal(e.target.checked)} 
+                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label htmlFor="isGlobalToggle" className="text-sm font-medium text-gray-900 dark:text-gray-300">Share Globally (Visible to all companies)</label>
                             </div>
                         </div>
                         <div className="mt-6 flex justify-end gap-3">

@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS public.emergency_reports (
     vehicle_color text,
     "vehicle_Involved" boolean DEFAULT false,
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
-    deleted_at timestamp with time zone
+    deleted_at timestamp with time zone,
+    is_global boolean DEFAULT false
 );
 
 -- 2. Enable RLS
@@ -45,6 +46,16 @@ DROP POLICY IF EXISTS "Staff manage company emergency reports" ON public.emergen
 CREATE POLICY "Staff manage company emergency reports" ON public.emergency_reports FOR ALL USING (
     get_user_role(auth.uid()) = 'admin' OR 
     (get_user_role(auth.uid()) IN ('moderator', 'controller') AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid()))
+);
+
+DROP POLICY IF EXISTS "Responders manage assigned emergency reports" ON public.emergency_reports;
+CREATE POLICY "Responders manage assigned emergency reports" ON public.emergency_reports FOR ALL USING (
+    get_user_role(auth.uid()) = 'responder' AND assigned_to = auth.uid()
+);
+
+DROP POLICY IF EXISTS "Staff read global emergency reports" ON public.emergency_reports;
+CREATE POLICY "Staff read global emergency reports" ON public.emergency_reports FOR SELECT USING (
+    is_global = true AND get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder')
 );
 
 -- 4. Update the OB Sequence Function to include emergency reports

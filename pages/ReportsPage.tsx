@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, ReportStatus, Severity, VehicleReport, EmergencyReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus } from '../types';
 import { format } from 'date-fns';
-import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, AlertTriangleIcon } from '../components/icons';
+import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, AlertTriangleIcon, GlobeIcon } from '../components/icons';
 import ReportDetailModal from '../components/ReportDetailModal';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
@@ -262,6 +262,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                                 {report.type === 'vehicle' ? <CarIcon className="w-4 h-4 text-yellow-600" /> : (report.type === 'emergency' ? <AlertTriangleIcon className="w-4 h-4 text-orange-600" /> : <CrimeIcon className="w-4 h-4 text-red-600" />)}
                                             </div>
                                             <span className="text-sm capitalize">{report.type}</span>
+                                            {report.is_global && (
+                                                <GlobeIcon className="w-4 h-4 text-blue-500 ml-1" title="Global Report" />
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
