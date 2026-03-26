@@ -38,6 +38,7 @@ interface UserManagementTableProps {
   updatingCompanyId: string | null;
   onStatusChange: (userId: string, newStatus: UserStatus) => void;
   updatingStatusId: string | null;
+  userReportCounts?: Record<string, number>;
 }
 
 const isOnline = (lastSeen?: string): boolean => {
@@ -47,7 +48,7 @@ const isOnline = (lastSeen?: string): boolean => {
     return lastSeenDate > fiveMinutesAgo;
 };
 
-const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, companies, onEdit, onDelete, onView, currentUserProfile, onRoleChange, updatingRoleId, onCompanyChange, updatingCompanyId, onStatusChange, updatingStatusId }) => {
+const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, companies, onEdit, onDelete, onView, currentUserProfile, onRoleChange, updatingRoleId, onCompanyChange, updatingCompanyId, onStatusChange, updatingStatusId, userReportCounts = {} }) => {
     const getCompanyName = (companyId?: string) => {
         return companies.find(c => c.id === companyId)?.name || 'N/A';
     };
@@ -122,7 +123,11 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                 <p className="text-xs text-gray-500 dark:text-gray-400">Cell</p>
                                 <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{user.cell || 'N/A'}</p>
                             </div>
-                            <div className="col-span-1">
+                            <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Reports</p>
+                                <p className="font-medium text-gray-800 dark:text-gray-200">{userReportCounts[user.id] || 0}</p>
+                            </div>
+                            <div className="col-span-2">
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Company</p>
                                 {canEditUser && !isPending ? (
                                     <div className="flex items-center gap-2">
@@ -162,6 +167,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Company</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Role</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Reports</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Last Seen</th>
                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -169,7 +175,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                         {users.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                     <div className="flex flex-col items-center justify-center space-y-3">
                                         <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-full">
                                             <UsersIcon className="w-8 h-8 text-gray-400" />
@@ -262,6 +268,11 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <UserStatusBadge status={user.status} />
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                            {userReportCounts[user.id] || 0}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         {renderLastSeen(user.last_seen_at)}

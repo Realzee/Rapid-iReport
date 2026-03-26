@@ -27,6 +27,7 @@ const UsersPage: React.FC = () => {
     const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
     const [updatingCompanyId, setUpdatingCompanyId] = useState<string | null>(null);
     const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+    const [userReportCounts, setUserReportCounts] = useState<Record<string, number>>({});
 
     // Filters
     const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
@@ -123,6 +124,39 @@ const UsersPage: React.FC = () => {
         };
     }, [searchTerm]);
 
+    useEffect(() => {
+        const fetchReportCounts = async () => {
+            try {
+                const [vRes, cRes, eRes] = await Promise.all([
+                    supabase.from('vehicle_reports').select('reported_by'),
+                    supabase.from('crime_reports').select('reported_by'),
+                    supabase.from('emergency_reports').select('reported_by')
+                ]);
+
+                const counts: Record<string, number> = {};
+                
+                const processReports = (reports: any[] | null) => {
+                    if (!reports) return;
+                    reports.forEach(r => {
+                        if (r.reported_by) {
+                            counts[r.reported_by] = (counts[r.reported_by] || 0) + 1;
+                        }
+                    });
+                };
+
+                processReports(vRes.data);
+                processReports(cRes.data);
+                processReports(eRes.data);
+
+                setUserReportCounts(counts);
+            } catch (error) {
+                console.error("Error fetching report counts:", error);
+            }
+        };
+
+        fetchReportCounts();
+    }, []);
+
     const filteredUsers = useMemo(() => {
         return users.filter(user => {
             // Search Term
@@ -154,6 +188,14 @@ const UsersPage: React.FC = () => {
             suspended: users.filter(u => u.status === UserStatus.SUSPENDED).length
         };
     }, [users]);
+
+    const leaderboard = useMemo(() => {
+        return users
+            .map(u => ({ ...u, reportCount: userReportCounts[u.id] || 0 }))
+            .filter(u => u.reportCount > 0)
+            .sort((a, b) => b.reportCount - a.reportCount)
+            .slice(0, 5);
+    }, [users, userReportCounts]);
 
     const handleExportCSV = () => {
         const headers = ['ID', 'First Name', 'Surname', 'Email', 'Role', 'Status', 'Company', 'Cell', 'Last Seen'];
@@ -531,6 +573,35 @@ const UsersPage: React.FC = () => {
                  </div>
             </div>
 
+            {/* Leaderboard */}
+            {leaderboard.length > 0 && (
+                <div className="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span className="text-yellow-500">🏆</span> Top Reporters Leaderboard
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        {leaderboard.map((user, index) => (
+                            <div key={user.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+                                <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 font-bold text-sm">
+                                    #{index + 1}
+                                </div>
+                                <div className="flex-shrink-0">
+                                    <img className="h-10 w-10 rounded-full object-cover" src={user.avatar_url || `https://i.pravatar.cc/40?u=${user.id}`} alt="" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                        {user.first_name || user.surname ? `${user.first_name || ''} ${user.surname || ''}`.trim() : user.email}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {user.reportCount} reports
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <StatCard title="Total Users" value={stats.total.toString()} icon={<UsersIcon />} color="blue" />
@@ -618,6 +689,7 @@ const UsersPage: React.FC = () => {
                         updatingCompanyId={updatingCompanyId}
                         onStatusChange={handleStatusChange}
                         updatingStatusId={updatingStatusId}
+                        userReportCounts={userReportCounts}
                     />
                  )}
             </div>
