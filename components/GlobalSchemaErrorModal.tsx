@@ -166,7 +166,8 @@ CREATE OR REPLACE FUNCTION public.create_staff_notification(
     p_description text,
     p_severity text,
     p_report_id uuid,
-    p_evidence_images text[]
+    p_evidence_images text[],
+    p_company_id uuid
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -186,10 +187,16 @@ BEGIN
         v_title := 'New Incident Report';
     END IF;
 
-    -- Notify all staff (admin, moderator, controller)
+    -- Notify all staff (admin, moderator, controller) in the same company
+    -- Or if p_company_id is NULL, notify global admins (company name like '%rapid911%')
     FOR v_user_id IN 
-        SELECT id FROM public.profiles 
-        WHERE role IN ('admin', 'moderator', 'controller')
+        SELECT p.id FROM public.profiles p
+        LEFT JOIN public.companies c ON p.company_id = c.id
+        WHERE p.role IN ('admin', 'moderator', 'controller')
+        AND (
+            p.company_id = p_company_id 
+            OR (p_company_id IS NULL AND (p.company_id IS NULL OR c.name ILIKE '%rapid911%'))
+        )
     LOOP
         INSERT INTO public.notifications (
             recipient_user_id,
@@ -222,7 +229,8 @@ BEGIN
     NEW.description,
     NEW.severity::text,
     NEW.id,
-    NEW.evidence_images
+    NEW.evidence_images,
+    NEW.company_id
   );
   RETURN NEW;
 END;

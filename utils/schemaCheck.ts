@@ -70,7 +70,7 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
         // We use regprocedure with specific arguments to avoid "more than one function named" errors if overloads exist.
         try {
             const { error: funcError } = await supabase.rpc('eval', { 
-                query: "DO $$ BEGIN PERFORM 'public.create_staff_notification(text, text, text, uuid, text[])'::regprocedure; END $$;" 
+                query: "DO $$ BEGIN PERFORM 'public.create_staff_notification(text, text, text, uuid, text[], uuid)'::regprocedure; END $$;" 
             });
             
             if (funcError) {
