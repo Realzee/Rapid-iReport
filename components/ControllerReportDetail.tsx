@@ -54,6 +54,8 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
     const [selectedStatus, setSelectedStatus] = useState<ReportStatus>(report.status);
     const [selectedResponder, setSelectedResponder] = useState<string>(report.assigned_to || '');
     const [isGlobal, setIsGlobal] = useState<boolean>(report.is_global || false);
+    const [sharedWithCompanyIds, setSharedWithCompanyIds] = useState<string[]>(report.shared_with_company_ids || []);
+    const [companies, setCompanies] = useState<Company[]>([]);
     const [isActionLoading, setIsActionLoading] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
@@ -73,17 +75,23 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         setSelectedStatus(report.status);
         setSelectedResponder(report.assigned_to || '');
         setIsGlobal(report.is_global || false);
+        setSharedWithCompanyIds(report.shared_with_company_ids || []);
 
         const fetchDetails = async () => {
             const [
                 { data: updatesData, error: updatesError },
                 { data: historyData, error: historyError },
-                { data: reporterData, error: reporterError }
+                { data: reporterData, error: reporterError },
+                { data: companiesData, error: companiesError }
             ] = await Promise.all([
                 supabase.from('report_updates').select('*, profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at', { ascending: true }),
                 supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(first_name, surname), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(first_name, surname), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(first_name, surname)`).eq('report_id', report.id).order('created_at', { ascending: false }),
-                supabase.from('profiles').select('first_name, surname').eq('id', report.reported_by).maybeSingle()
+                supabase.from('profiles').select('first_name, surname').eq('id', report.reported_by).maybeSingle(),
+                supabase.from('companies').select('*').order('name')
             ]);
+
+            if (companiesError) console.error("Error fetching companies:", companiesError);
+            else setCompanies(companiesData || []);
 
             if (updatesError) console.error("Error fetching report updates:", updatesError);
             else setUpdates(updatesData?.map(u => {
@@ -202,7 +210,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         else if (report.type === 'emergency') tableName = 'emergency_reports';
         else tableName = 'crime_reports';
 
-        const updatePayload: { status?: ReportStatus; assigned_to?: string | null; completed_at?: string | null; is_global?: boolean } = {};
+        const updatePayload: { status?: ReportStatus; assigned_to?: string | null; completed_at?: string | null; is_global?: boolean; shared_with_company_ids?: string[] } = {};
         let updateContent = '';
         
         const isTerminalStatus = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED].includes(selectedStatus);
@@ -218,6 +226,15 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
             updatePayload.is_global = isGlobal;
             updateContent += `Report visibility changed to: ${isGlobal ? 'Global' : 'Company only'}. `;
         }
+        
+        // Check if shared_with_company_ids changed
+        const currentSharedIds = report.shared_with_company_ids || [];
+        const sharedIdsChanged = sharedWithCompanyIds.length !== currentSharedIds.length || !sharedWithCompanyIds.every(id => currentSharedIds.includes(id));
+        if (sharedIdsChanged) {
+            updatePayload.shared_with_company_ids = sharedWithCompanyIds;
+            updateContent += `Shared companies updated. `;
+        }
+
         if (selectedResponder !== (report.assigned_to || '')) {
             updatePayload.assigned_to = selectedResponder || null;
             // Log the assignment change
@@ -833,11 +850,34 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                                     type="checkbox" 
                                     id="isGlobalToggle" 
                                     checked={isGlobal} 
-                                    onChange={(e) => setIsGlobal(e.target.checked)} 
+                                    onChange={(e) => {
+                                        setIsGlobal(e.target.checked);
+                                        if (e.target.checked) setSharedWithCompanyIds([]);
+                                    }} 
                                     className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                                 />
                                 <label htmlFor="isGlobalToggle" className="text-sm font-medium text-gray-900 dark:text-gray-300">Share Globally (Visible to all companies)</label>
                             </div>
+                            
+                            {!isGlobal && (
+                                <div className="mt-4">
+                                    <label className="text-sm font-medium">Share with specific companies</label>
+                                    <select 
+                                        multiple 
+                                        value={sharedWithCompanyIds} 
+                                        onChange={(e) => {
+                                            const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                                            setSharedWithCompanyIds(selectedOptions);
+                                        }} 
+                                        className="w-full mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-2 px-3 h-24"
+                                    >
+                                        {companies.filter(c => c.id !== profile.company_id).map(c => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
+                                </div>
+                            )}
                         </div>
                         <div className="mt-6 flex justify-end gap-3">
                             <button onClick={() => setAssignmentModalOpen(false)} className="px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 transition-colors">Cancel</button>

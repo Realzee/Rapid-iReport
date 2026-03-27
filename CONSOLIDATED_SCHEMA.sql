@@ -80,7 +80,8 @@ CREATE TABLE IF NOT EXISTS public.vehicle_reports (
     engine_number text,
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     deleted_at timestamp with time zone,
-    is_global boolean DEFAULT false
+    is_global boolean DEFAULT false,
+    shared_with_company_ids uuid[] DEFAULT '{}'
 );
 
 CREATE TABLE IF NOT EXISTS public.crime_reports (
@@ -103,7 +104,8 @@ CREATE TABLE IF NOT EXISTS public.crime_reports (
     station_name text,
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     deleted_at timestamp with time zone,
-    is_global boolean DEFAULT false
+    is_global boolean DEFAULT false,
+    shared_with_company_ids uuid[] DEFAULT '{}'
 );
 
 CREATE TABLE IF NOT EXISTS public.report_updates (
@@ -293,7 +295,8 @@ CREATE POLICY "Responders manage assigned reports" ON public.vehicle_reports FOR
 
 DROP POLICY IF EXISTS "Staff read global vehicle reports" ON public.vehicle_reports;
 CREATE POLICY "Staff read global vehicle reports" ON public.vehicle_reports FOR SELECT USING (
-    is_global = true AND get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder')
+    (is_global = true OR (SELECT company_id FROM public.profiles WHERE id = auth.uid()) = ANY(shared_with_company_ids))
+    AND get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder')
 );
 
 DROP POLICY IF EXISTS "Users read own crime reports" ON public.crime_reports;
@@ -313,7 +316,8 @@ CREATE POLICY "Responders manage assigned crime reports" ON public.crime_reports
 
 DROP POLICY IF EXISTS "Staff read global crime reports" ON public.crime_reports;
 CREATE POLICY "Staff read global crime reports" ON public.crime_reports FOR SELECT USING (
-    is_global = true AND get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder')
+    (is_global = true OR (SELECT company_id FROM public.profiles WHERE id = auth.uid()) = ANY(shared_with_company_ids))
+    AND get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder')
 );
 
 

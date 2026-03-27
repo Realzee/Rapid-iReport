@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Profile, VehicleReport, EmergencyReport, ReportUpdate, ReportStatus, AssignmentLog } from '../types';
 import StatusBadge from './StatusBadge';
-import { MapPinIcon, EditIcon, AssignResponderIcon, ZapIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon } from './icons';
+import { MapPinIcon, EditIcon, AssignResponderIcon, ZapIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon, UsersIcon } from './icons';
 import { format, formatDistanceToNow } from 'date-fns';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
@@ -145,6 +145,9 @@ const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (re
                         <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
                         {report.is_global && (
                             <GlobeIcon className="w-5 h-5 text-blue-500 flex-shrink-0" title="Global Report" />
+                        )}
+                        {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
+                            <UsersIcon className="w-5 h-5 text-blue-500 flex-shrink-0" title="Shared with specific companies" />
                         )}
                     </div>
                     <p className="font-mono text-sm text-gray-500 dark:text-gray-400">{report.ob_number}</p>

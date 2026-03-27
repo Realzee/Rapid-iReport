@@ -132,6 +132,7 @@ export interface VehicleReport {
   engine_number?: string;
   company_id?: string;
   is_global?: boolean;
+  shared_with_company_ids?: string[];
 }
 
 export interface CrimeReport {
@@ -158,6 +159,7 @@ export interface CrimeReport {
   station_name?: string;
   company_id?: string;
   is_global?: boolean;
+  shared_with_company_ids?: string[];
 }
 
 export interface EmergencyReport {
@@ -190,6 +192,7 @@ export interface EmergencyReport {
   vehicle_color?: string;
   company_id?: string;
   is_global?: boolean;
+  shared_with_company_ids?: string[];
 }
 
 export type Report = VehicleReport | CrimeReport | EmergencyReport;

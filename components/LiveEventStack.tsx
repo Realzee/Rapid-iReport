@@ -3,7 +3,7 @@ import { Report, VehicleReport, Severity, Responder, Profile, CrimeReport } from
 import { format, differenceInMinutes } from 'date-fns';
 import StatusBadge from './StatusBadge';
 import ReportTypeBadge from './ReportTypeBadge';
-import { CameraIcon, UserIcon, ClockIcon, NavigationIcon, ChevronUpIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon } from './icons';
+import { CameraIcon, UserIcon, ClockIcon, NavigationIcon, ChevronUpIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon, UsersIcon } from './icons';
 
 const severityTagStyles: Record<Severity, string> = {
     [Severity.CRITICAL]: 'bg-red-500/10 text-red-600 dark:text-red-400',
@@ -81,6 +81,9 @@ const LiveEventItem: React.FC<{
                                     <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight truncate">{title}</p>
                                     {report.is_global && (
                                         <GlobeIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Global Report" />
+                                    )}
+                                    {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
+                                        <UsersIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Shared with specific companies" />
                                     )}
                                     {isUnviewed && (
                                         <span className="px-1.5 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded-full animate-bounce">
