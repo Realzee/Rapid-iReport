@@ -22,7 +22,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isPTTModalOpen, setIsPTTModalOpen] = useState(false);
-  const { mainLogoUrl, faviconUrl } = useSettings();
+  const { mainLogoUrl, faviconUrl, defaultLogoUrl } = useSettings();
 
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -217,7 +217,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       <div className={headerContainerClasses}>
         <div className="flex items-center justify-between h-28">
           <div className="flex items-center space-x-2">
-            <img src={profile.company?.logo_url || mainLogoUrl} alt="Company Logo" className="w-auto h-24 object-contain" />
+            <img src={profile.company?.logo_url || mainLogoUrl} alt="Company Logo" className="w-auto h-24 object-contain" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
           </div>
 
           <div className="hidden md:flex flex-col items-center">

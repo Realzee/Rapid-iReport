@@ -49,7 +49,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
     const [detailReport, setDetailReport] = useState<Report | null>(null);
     const [mapStyle, setMapStyle] = useState<MapStyle>('street');
     const { theme } = useTheme();
-    const { mainLogoUrl } = useSettings();
+    const { mainLogoUrl, defaultLogoUrl } = useSettings();
 
     const fetchData = async () => {
         const [
@@ -109,7 +109,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                 <header className="flex-shrink-0 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700/50 z-20">
                     <div className="px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <img src={mainLogoUrl} alt="Logo" className="w-auto h-14 object-contain" />
+                            <img src={mainLogoUrl} alt="Logo" className="w-auto h-14 object-contain" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
                             <h1 className="text-xl font-bold hidden sm:block">Community Safety Map</h1>
                         </div>
                         <div className="flex items-center gap-4">

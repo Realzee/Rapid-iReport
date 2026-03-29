@@ -62,3 +62,37 @@ ON CONFLICT (id) DO UPDATE SET public = true;
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('app-assets', 'app-assets', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- 5. Create comprehensive policies for the app-assets bucket
+DROP POLICY IF EXISTS "Public read access for app-assets" ON storage.objects;
+DROP POLICY IF EXISTS "Allow staff to upload app-assets" ON storage.objects;
+DROP POLICY IF EXISTS "Allow staff to update app-assets" ON storage.objects;
+DROP POLICY IF EXISTS "Allow staff to delete app-assets" ON storage.objects;
+
+CREATE POLICY "Public read access for app-assets"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'app-assets');
+
+CREATE POLICY "Allow staff to upload app-assets"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+    bucket_id = 'app-assets' AND 
+    public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')
+);
+
+CREATE POLICY "Allow staff to update app-assets"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (
+    bucket_id = 'app-assets' AND 
+    public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')
+);
+
+CREATE POLICY "Allow staff to delete app-assets"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+    bucket_id = 'app-assets' AND 
+    public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')
+);

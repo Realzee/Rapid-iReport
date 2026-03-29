@@ -15,7 +15,7 @@ interface AuthPageProps {
 const AuthPage: React.FC<AuthPageProps> = ({ onViewPublicDashboard, onViewAbout }) => {
     const [isLoginView, setIsLoginView] = useState(true);
     const [companies, setCompanies] = useState<Company[]>([]);
-    const { mainLogoUrl } = useSettings();
+    const { mainLogoUrl, defaultLogoUrl } = useSettings();
 
     useEffect(() => {
         const fetchCompanies = async () => {
@@ -40,7 +40,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewPublicDashboard, onViewAbout 
 
             <main className="flex-grow flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
                 <div className="mb-8">
-                   <img src={mainLogoUrl} alt="Rapid911 Logo" className="w-auto h-24" />
+                   <img src={mainLogoUrl} alt="Rapid911 Logo" className="w-auto h-24" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
                 </div>
 
                 <div className="w-full max-w-md p-8 space-y-8 bg-white/80 dark:bg-gray-950/60 backdrop-blur-2xl border border-gray-200 dark:border-gray-700/50 rounded-2xl shadow-2xl transition-colors duration-300 dark:ring-1 dark:ring-white/10">
@@ -64,7 +64,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewPublicDashboard, onViewAbout 
                 </p>
             </main>
             <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center gap-2">
-                <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto h-4" />
+                <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto h-4" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
                 <span>Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)</span>
             </footer>
         </div>

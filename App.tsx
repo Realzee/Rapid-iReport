@@ -64,7 +64,7 @@ const App: React.FC = () => {
   const [schemaError, setSchemaError] = useState<string | null>(null);
   const [showPublicView, setShowPublicView] = useState(false);
   const [showAboutPage, setShowAboutPage] = useState(false);
-  const { mainLogoUrl, faviconUrl } = useSettings();
+  const { mainLogoUrl, faviconUrl, defaultLogoUrl } = useSettings();
   const [isGlobalMapModalOpen, setIsGlobalMapModalOpen] = useState(false);
   const [isAnnouncementVisible, setIsAnnouncementVisible] = useState(false);
   const { addToast } = useToast();
@@ -458,7 +458,7 @@ const App: React.FC = () => {
                 {renderView()}
               </main>
               <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">
-                  <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto h-4" />
+                  <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto h-4" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
                   <span>Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)</span>
               </footer>
             </div>

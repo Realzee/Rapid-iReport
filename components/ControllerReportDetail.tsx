@@ -866,7 +866,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                                         multiple 
                                         value={sharedWithCompanyIds} 
                                         onChange={(e) => {
-                                            const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                                            const selectedOptions = Array.from(e.target.selectedOptions, (option: HTMLOptionElement) => option.value);
                                             setSharedWithCompanyIds(selectedOptions);
                                         }} 
                                         className="w-full mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-2 px-3 h-24"

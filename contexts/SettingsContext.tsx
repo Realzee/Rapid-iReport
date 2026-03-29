@@ -32,10 +32,26 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         } else if (data) {
           const settingsMap = new Map(data.map(s => [s.key, s.value]));
           // FIX: The value from Supabase can be 'unknown'. Ensure it's a string before setting state.
-          const dbLogoUrl = settingsMap.get('main_logo_url');
+          let dbLogoUrl = settingsMap.get('main_logo_url');
+          if (typeof dbLogoUrl === 'string') {
+              if (dbLogoUrl.includes('/storage/v1/object/') && !dbLogoUrl.includes('/object/public/')) {
+                  dbLogoUrl = dbLogoUrl.replace('/storage/v1/object/', '/storage/v1/object/public/');
+              }
+              if (dbLogoUrl.startsWith('yglwdwhwpbqawunbkzyy.supabase.co')) {
+                  dbLogoUrl = 'https://' + dbLogoUrl;
+              }
+          }
           setMainLogoUrl(typeof dbLogoUrl === 'string' && dbLogoUrl ? dbLogoUrl : defaultLogoUrl);
           // FIX: The value from Supabase can be 'unknown'. Ensure it's a string before setting state.
-          const dbFaviconUrl = settingsMap.get('favicon_url');
+          let dbFaviconUrl = settingsMap.get('favicon_url');
+          if (typeof dbFaviconUrl === 'string') {
+              if (dbFaviconUrl.includes('/storage/v1/object/') && !dbFaviconUrl.includes('/object/public/')) {
+                  dbFaviconUrl = dbFaviconUrl.replace('/storage/v1/object/', '/storage/v1/object/public/');
+              }
+              if (dbFaviconUrl.startsWith('yglwdwhwpbqawunbkzyy.supabase.co')) {
+                  dbFaviconUrl = 'https://' + dbFaviconUrl;
+              }
+          }
           setFaviconUrl(typeof dbFaviconUrl === 'string' && dbFaviconUrl ? dbFaviconUrl : defaultFaviconUrl);
         }
       } catch(e) {
