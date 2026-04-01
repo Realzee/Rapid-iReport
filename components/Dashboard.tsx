@@ -63,9 +63,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 .select('id')
                 .eq('company_id', profile.company_id);
             
-            if (companyUsers) {
+            if (companyUsers && companyUsers.length > 0) {
                 allowedReporterIds = companyUsers.map(u => u.id);
+            } else {
+                allowedReporterIds = [profile.id];
             }
+        } else if (!isGlobalAdmin) {
+            allowedReporterIds = [profile.id];
         }
 
         const profilesQuery = supabase.from('profiles').select('*');
@@ -402,21 +406,11 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const [showIdleReports, setShowIdleReports] = useState(false);
 
     const { liveReports, idleReports } = useMemo(() => {
-        const now = new Date();
-        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        
         const live: Report[] = [];
         const idle: Report[] = [];
         
         sortedReports.forEach((report) => {
-            const isRecent = new Date(report.reported_at) >= oneWeekAgo;
-            const isActive = ACTIVE_STATUSES.includes(report.status);
-            const isResolvedToday = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED].includes(report.status) && 
-                report.completed_at && new Date(report.completed_at) >= new Date(new Date().setHours(0,0,0,0));
-            
-            const isLiveStatus = isActive || isResolvedToday;
-
-            if (live.length < 20 && isRecent && isLiveStatus) {
+            if (live.length < 20) {
                 live.push(report);
             } else {
                 idle.push(report);
