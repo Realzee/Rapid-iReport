@@ -22,6 +22,14 @@ interface ControllerPageProps {
 
 type ControllerTab = 'events' | 'responders';
 
+const ACTIVE_STATUSES = [
+    ReportStatus.PENDING,
+    ReportStatus.ACTIVE,
+    ReportStatus.ASSIGNED,
+    ReportStatus.IN_PROGRESS,
+    ReportStatus.ON_SCENE,
+];
+
 const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportId, onInitialReportHandled }) => {
     const { requestWakeLock, releaseWakeLock } = useWakeLock();
     const [reports, setReports] = useState<Report[]>([]);
@@ -100,14 +108,6 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const [unviewedReportIds, setUnviewedReportIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
-        const activeStatuses = [
-            ReportStatus.PENDING,
-            ReportStatus.ACTIVE,
-            ReportStatus.ASSIGNED,
-            ReportStatus.IN_PROGRESS,
-            ReportStatus.ON_SCENE,
-        ];
-
         const isGlobalAdmin = profile.role === UserRole.ADMIN && 
             (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 
@@ -130,9 +130,9 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 { data: usersData, error: uError },
                 { data: companiesData, error: compError }
             ] = await Promise.all([
-                vehicleQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                crimeQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
-                emergencyQuery.in('status', activeStatuses).order('reported_at', { ascending: false }).limit(100),
+                vehicleQuery.order('reported_at', { ascending: false }).limit(500),
+                crimeQuery.order('reported_at', { ascending: false }).limit(500),
+                emergencyQuery.order('reported_at', { ascending: false }).limit(500),
                 usersQuery,
                 supabase.from('companies').select('*')
             ]);
@@ -223,30 +223,17 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             setReports(currentReports => {
                 if (payload.eventType === 'INSERT') {
                     const newReportWithMeta = { ...newReport, type: reportType };
-                    if (activeStatuses.includes(newReportWithMeta.status)) {
-                        if (currentReports.some(r => r.id === newReportWithMeta.id)) return currentReports;
-                        return [newReportWithMeta, ...currentReports];
-                    }
-                    return currentReports;
+                    if (currentReports.some(r => r.id === newReportWithMeta.id)) return currentReports;
+                    return [newReportWithMeta, ...currentReports];
                 }
                 if (payload.eventType === 'UPDATE') {
                     const updatedReport = { ...newReport, type: reportType };
                     const wasInList = currentReports.some(r => r.id === updatedReport.id);
-                    const isNowActive = activeStatuses.includes(updatedReport.status);
 
-                    if (isNowActive) {
-                        if (wasInList) {
-                            return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
-                        } else {
-                            // If it wasn't in list but now is active (e.g. status change), treat as new? 
-                            // Maybe not strictly "new" but "re-surfaced". Let's not mark unviewed for updates to avoid annoyance.
-                            return [updatedReport, ...currentReports];
-                        }
+                    if (wasInList) {
+                        return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
                     } else {
-                        if (wasInList) {
-                            return currentReports.filter(r => r.id !== updatedReport.id);
-                        }
-                        return currentReports;
+                        return [updatedReport, ...currentReports];
                     }
                 }
                 if (payload.eventType === 'DELETE') {
@@ -454,6 +441,35 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         }
     };
 
+    const [showIdleReports, setShowIdleReports] = useState(false);
+
+    const { liveReports, idleReports } = useMemo(() => {
+        const now = new Date();
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        
+        const live: Report[] = [];
+        const idle: Report[] = [];
+        
+        sortedReports.forEach((report) => {
+            const isRecent = new Date(report.reported_at) >= oneWeekAgo;
+            const isActive = ACTIVE_STATUSES.includes(report.status);
+            const isResolvedToday = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED].includes(report.status) && 
+                report.completed_at && new Date(report.completed_at) >= new Date(new Date().setHours(0,0,0,0));
+            
+            const isLiveStatus = isActive || isResolvedToday;
+
+            if (live.length < 20 && isRecent && isLiveStatus) {
+                live.push(report);
+            } else {
+                idle.push(report);
+            }
+        });
+        
+        return { liveReports: live, idleReports: idle };
+    }, [sortedReports]);
+
+    const displayReports = showIdleReports ? sortedReports : liveReports;
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-full">
@@ -506,6 +522,17 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                         
                         {activeTab === 'events' ? (
                             <>
+                                <div className="flex justify-between items-center mb-2 px-1">
+                                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                        {showIdleReports ? 'Showing all fetched reports' : 'Showing live stack (top 20)'}
+                                    </span>
+                                    <button
+                                        onClick={() => setShowIdleReports(!showIdleReports)}
+                                        className="text-xs font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                                    >
+                                        {showIdleReports ? 'Show Live Only' : 'Load Idle Reports'}
+                                    </button>
+                                </div>
                                 <button 
                                     onClick={() => setSelectedReportId(null)}
                                     disabled={!selectedReportId}
@@ -514,7 +541,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                     <MapIcon className="w-5 h-5" /> Show All Incidents
                                 </button>
                                 <LiveEventStack
-                                    reports={sortedReports}
+                                    reports={displayReports}
                                     responders={responders}
                                     onReportSelect={handleReportSelect}
                                     selectedReportId={selectedReportId}
@@ -526,7 +553,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                         ) : (
                             <ResponderStack
                                 responders={responders}
-                                reports={reports}
+                                reports={displayReports}
                                 selectedReportId={selectedReportId}
                                 selectedResponderId={selectedResponderId}
                                 onAssign={handleAssignResponder}
@@ -543,7 +570,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                             ${isDetailsVisible ? 'lg:col-span-5' : 'lg:col-span-9'}
                         `}>
                             <MapView
-                                reports={reports}
+                                reports={displayReports}
                                 responders={responders}
                                 selectedReportId={selectedReportId}
                                 selectedResponderId={selectedResponderId}

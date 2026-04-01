@@ -22,6 +22,14 @@ interface DashboardProps {
     onInitialReportHandled?: () => void;
 }
 
+const ACTIVE_STATUSES = [
+    ReportStatus.PENDING,
+    ReportStatus.ACTIVE,
+    ReportStatus.ASSIGNED,
+    ReportStatus.IN_PROGRESS,
+    ReportStatus.ON_SCENE,
+];
+
 const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onInitialReportHandled }) => {
     const [reports, setReports] = useState<Report[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
@@ -43,14 +51,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
 
     const isGlobalAdmin = profile.role === UserRole.ADMIN && 
         (profile.company?.name?.toLowerCase().includes('rapid911') || false);
-
-    const ACTIVE_STATUSES = [
-        ReportStatus.PENDING,
-        ReportStatus.ACTIVE,
-        ReportStatus.ASSIGNED,
-        ReportStatus.IN_PROGRESS,
-        ReportStatus.ON_SCENE,
-    ];
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -77,47 +77,31 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         let crimeQuery = supabase.from('crime_reports').select('*');
         let emergencyQuery = supabase.from('emergency_reports').select('*');
 
-        let resolvedVehicleQuery = supabase.from('vehicle_reports').select('*');
-        let resolvedCrimeQuery = supabase.from('crime_reports').select('*');
-        let resolvedEmergencyQuery = supabase.from('emergency_reports').select('*');
-
         if (allowedReporterIds) {
             vehicleQuery = vehicleQuery.in('reported_by', allowedReporterIds);
             crimeQuery = crimeQuery.in('reported_by', allowedReporterIds);
             emergencyQuery = emergencyQuery.in('reported_by', allowedReporterIds);
-            resolvedVehicleQuery = resolvedVehicleQuery.in('reported_by', allowedReporterIds);
-            resolvedCrimeQuery = resolvedCrimeQuery.in('reported_by', allowedReporterIds);
-            resolvedEmergencyQuery = resolvedEmergencyQuery.in('reported_by', allowedReporterIds);
         }
 
         const [
             { data: vehicleData, error: vError }, 
             { data: crimeData, error: cError },
             { data: emergencyData, error: aError },
-            { data: resolvedVehicleData, error: rvError },
-            { data: resolvedCrimeData, error: rcError },
-            { data: resolvedEmergencyData, error: reError },
             { data: usersData, error: uError },
             { data: companiesData, error: companiesError }
         ] = await Promise.all([
-            vehicleQuery.in('status', ACTIVE_STATUSES).order('reported_at', { ascending: false }).limit(100),
-            crimeQuery.in('status', ACTIVE_STATUSES).order('reported_at', { ascending: false }).limit(100),
-            emergencyQuery.in('status', ACTIVE_STATUSES).order('reported_at', { ascending: false }).limit(100),
-            resolvedVehicleQuery.in('status', [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED]).gte('completed_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
-            resolvedCrimeQuery.in('status', [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED]).gte('completed_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
-            resolvedEmergencyQuery.in('status', [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED]).gte('completed_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
+            vehicleQuery.order('reported_at', { ascending: false }).limit(500),
+            crimeQuery.order('reported_at', { ascending: false }).limit(500),
+            emergencyQuery.order('reported_at', { ascending: false }).limit(500),
             profilesQuery,
             supabase.from('companies').select('*')
         ]);
-        if (vError || cError || aError || rvError || rcError || reError || uError || companiesError) console.error('Data fetch error:', vError || cError || aError || rvError || rcError || reError || uError || companiesError);
+        if (vError || cError || aError || uError || companiesError) console.error('Data fetch error:', vError || cError || aError || uError || companiesError);
 
         const combinedReports = [
             ...(vehicleData || []).map(r => ({...r, type: 'vehicle' as const})), 
             ...(crimeData || []).map(r => ({...r, type: 'crime' as const})),
-            ...(emergencyData || []).map(r => ({...r, type: 'emergency' as const})),
-            ...(resolvedVehicleData || []).map(r => ({...r, type: 'vehicle' as const})),
-            ...(resolvedCrimeData || []).map(r => ({...r, type: 'crime' as const})),
-            ...(resolvedEmergencyData || []).map(r => ({...r, type: 'emergency' as const}))
+            ...(emergencyData || []).map(r => ({...r, type: 'emergency' as const}))
         ];
         
         // Ensure we have profiles for all reporters, even if they are outside the user's company scope
@@ -166,31 +150,20 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
 
             setReports(currentReports => {
                 if (payload.eventType === 'INSERT') {
-                    if (ACTIVE_STATUSES.includes(newReport.status)) {
-                        if (currentReports.some(r => r.id === newReport.id)) {
-                            return currentReports;
-                        }
-                        return [newReport, ...currentReports];
+                    if (currentReports.some(r => r.id === newReport.id)) {
+                        return currentReports;
                     }
-                    return currentReports;
+                    return [newReport, ...currentReports];
                 }
                 
                 if (payload.eventType === 'UPDATE') {
                     const updatedReport = { ...payload.new, type: reportType };
                     const wasInList = currentReports.some(r => r.id === updatedReport.id);
-                    const isNowActive = ACTIVE_STATUSES.includes(updatedReport.status);
 
-                    if (isNowActive) {
-                        if (wasInList) {
-                            return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
-                        } else {
-                            return [updatedReport, ...currentReports];
-                        }
+                    if (wasInList) {
+                        return currentReports.map(r => r.id === updatedReport.id ? updatedReport : r);
                     } else {
-                        if (wasInList) {
-                            return currentReports.filter(r => r.id !== updatedReport.id);
-                        }
-                        return currentReports;
+                        return [updatedReport, ...currentReports];
                     }
                 }
                 
@@ -426,6 +399,35 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     }, [reports, profile.id, addToast, fetchData]);
 
 
+    const [showIdleReports, setShowIdleReports] = useState(false);
+
+    const { liveReports, idleReports } = useMemo(() => {
+        const now = new Date();
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        
+        const live: Report[] = [];
+        const idle: Report[] = [];
+        
+        sortedReports.forEach((report) => {
+            const isRecent = new Date(report.reported_at) >= oneWeekAgo;
+            const isActive = ACTIVE_STATUSES.includes(report.status);
+            const isResolvedToday = [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED].includes(report.status) && 
+                report.completed_at && new Date(report.completed_at) >= new Date(new Date().setHours(0,0,0,0));
+            
+            const isLiveStatus = isActive || isResolvedToday;
+
+            if (live.length < 20 && isRecent && isLiveStatus) {
+                live.push(report);
+            } else {
+                idle.push(report);
+            }
+        });
+        
+        return { liveReports: live, idleReports: idle };
+    }, [sortedReports]);
+
+    const displayReports = showIdleReports ? sortedReports : liveReports;
+
     if (loading) return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
     return (
@@ -467,17 +469,28 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 </div>
             </div>
             <div className="flex flex-col lg:flex-row gap-6">
-                <div className="lg:w-[400px] lg:flex-shrink-0 lg:h-[calc(100vh-8.5rem-4.5rem-1.5rem)]">
+                <div className="lg:w-[400px] lg:flex-shrink-0 lg:h-[calc(100vh-8.5rem-4.5rem-1.5rem)] flex flex-col">
+                    <div className="flex justify-between items-center mb-2 px-1">
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            {showIdleReports ? 'Showing all fetched reports' : 'Showing live stack (top 20)'}
+                        </span>
+                        <button
+                            onClick={() => setShowIdleReports(!showIdleReports)}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                        >
+                            {showIdleReports ? 'Show Live Only' : 'Load Idle Reports'}
+                        </button>
+                    </div>
                     {selectedReport ? (
                         <ReportDetailCard report={selectedReport} onClose={() => setSelectedReportId(null)} profile={profile} onEdit={handleOpenEditReportModal} onDelete={handleOpenDeleteReportModal} onViewOnMap={() => setIsMapModalOpen(true)} allUsers={allUsers} />
                     ) : (
-                        <ReportList reports={sortedReports} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} onStatusUpdate={handleStatusUpdate} companies={companies} />
+                        <ReportList reports={displayReports} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} onStatusUpdate={handleStatusUpdate} companies={companies} />
                     )}
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="h-[60vh] lg:h-[calc(100vh-8.5rem-4.5rem-1.5rem)] lg:sticky lg:top-20">
                         <MapView 
-                            reports={reports} 
+                            reports={displayReports} 
                             responders={responders} 
                             selectedReportId={selectedReportId} 
                             profile={profile} 
