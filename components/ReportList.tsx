@@ -80,7 +80,7 @@ const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onRe
   return (
     <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-full">
         <div className="flex-shrink-0">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Live Feed</h3>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reports</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Showing {filteredReports.length} reports.</p>
             
             <div className="flex space-x-2 mb-4">

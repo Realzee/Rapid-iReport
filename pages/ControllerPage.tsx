@@ -448,7 +448,9 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         const idle: Report[] = [];
         
         sortedReports.forEach((report) => {
-            if (live.length < 20) {
+            if (report.status === ReportStatus.DELETED) {
+                idle.push(report);
+            } else if (live.length < 20) {
                 live.push(report);
             } else {
                 idle.push(report);
@@ -514,13 +516,13 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                             <>
                                 <div className="flex justify-between items-center mb-2 px-1">
                                     <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                        {showIdleReports ? 'Showing all fetched reports' : 'Showing live stack (top 20)'}
+                                        {showIdleReports ? 'Showing archives' : 'Showing live stack (top 20)'}
                                     </span>
                                     <button
                                         onClick={() => setShowIdleReports(!showIdleReports)}
                                         className="text-xs font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                                     >
-                                        {showIdleReports ? 'Show Live Only' : 'Load Idle Reports'}
+                                        {showIdleReports ? 'Show Live Only' : 'Load Archives'}
                                     </button>
                                 </div>
                                 <button 

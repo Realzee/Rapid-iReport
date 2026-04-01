@@ -410,7 +410,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         const idle: Report[] = [];
         
         sortedReports.forEach((report) => {
-            if (live.length < 20) {
+            if (report.status === ReportStatus.DELETED) {
+                idle.push(report);
+            } else if (live.length < 20) {
                 live.push(report);
             } else {
                 idle.push(report);
@@ -466,13 +468,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 <div className="lg:w-[400px] lg:flex-shrink-0 lg:h-[calc(100vh-8.5rem-4.5rem-1.5rem)] flex flex-col">
                     <div className="flex justify-between items-center mb-2 px-1">
                         <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                            {showIdleReports ? 'Showing all fetched reports' : 'Showing live stack (top 20)'}
+                            {showIdleReports ? 'Showing archives' : 'Showing live stack (top 20)'}
                         </span>
                         <button
                             onClick={() => setShowIdleReports(!showIdleReports)}
                             className="text-xs font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                         >
-                            {showIdleReports ? 'Show Live Only' : 'Load Idle Reports'}
+                            {showIdleReports ? 'Show Live Only' : 'Load Archives'}
                         </button>
                     </div>
                     {selectedReport ? (
