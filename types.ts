@@ -51,28 +51,6 @@ export enum PanicStatus {
     RESOLVED = 'resolved',
 }
 
-export enum ShiftStatus {
-    SCHEDULED = 'scheduled',
-    ACTIVE = 'active',
-    COMPLETED = 'completed',
-}
-
-export enum PanicStatus {
-    ACTIVE = 'active',
-    RESOLVED = 'resolved',
-}
-
-export enum ShiftStatus {
-    SCHEDULED = 'scheduled',
-    ACTIVE = 'active',
-    COMPLETED = 'completed',
-}
-
-export enum PanicStatus {
-    ACTIVE = 'active',
-    RESOLVED = 'resolved',
-}
-
 export enum NotificationType {
   NEW_REPORT = 'new_report',
   NEW_USER = 'new_user',
