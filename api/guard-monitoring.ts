@@ -30,7 +30,7 @@ export default async function handler(req: any, res: any) {
         }
 
         try {
-            const insertPayload = { ...payload, created_at: new Date().toISOString() };
+            const insertPayload = { ...payload };
             const { data, error } = await supabaseAdmin.from(table).insert(insertPayload).select().single();
             if (error) throw error;
             return res.status(200).json(data);
