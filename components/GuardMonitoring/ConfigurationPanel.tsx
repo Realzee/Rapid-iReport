@@ -13,13 +13,13 @@ const ConfigurationPanel: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const endpoint = `/api/add-${activeTab.slice(0, -1)}`;
+        const action = `add-${activeTab.slice(0, -1)}`;
         
         // This is a simplified payload, you might need more fields depending on the table schema
-        const payload = { name }; 
+        const payload = { action, name }; 
         
         try {
-            const response = await fetch(endpoint, {
+            const response = await fetch('/api/guard-monitoring', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
