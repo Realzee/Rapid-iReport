@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Site, Route, Checkpoint, Supervisor } from '../../types/guard_monitoring';
 
 const ConfigurationPanel: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'sites' | 'guards' | 'routes' | 'supervisors'>('sites');
@@ -10,6 +9,15 @@ const ConfigurationPanel: React.FC = () => {
         { id: 'routes', label: 'Routes' },
         { id: 'supervisors', label: 'Supervisors' },
     ] as const;
+
+    const renderForm = () => {
+        switch (activeTab) {
+            case 'sites': return <form className="space-y-2"><input placeholder="Site Name" className="w-full p-2 border rounded" /><button className="px-4 py-2 bg-blue-600 text-white rounded">Add Site</button></form>;
+            case 'guards': return <form className="space-y-2"><input placeholder="Guard Name" className="w-full p-2 border rounded" /><button className="px-4 py-2 bg-blue-600 text-white rounded">Add Guard</button></form>;
+            case 'routes': return <form className="space-y-2"><input placeholder="Route Name" className="w-full p-2 border rounded" /><button className="px-4 py-2 bg-blue-600 text-white rounded">Add Route</button></form>;
+            case 'supervisors': return <form className="space-y-2"><input placeholder="Supervisor Name" className="w-full p-2 border rounded" /><button className="px-4 py-2 bg-blue-600 text-white rounded">Add Supervisor</button></form>;
+        }
+    };
 
     return (
         <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
@@ -30,8 +38,8 @@ const ConfigurationPanel: React.FC = () => {
                 ))}
             </nav>
             <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <p className="text-gray-600 dark:text-gray-400">Manage {activeTab} here.</p>
-                {/* Add forms/tables for each entity here */}
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 capitalize">Add New {activeTab}</h3>
+                {renderForm()}
             </div>
         </div>
     );

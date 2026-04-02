@@ -50,6 +50,19 @@ const GuardStatusDashboard: React.FC<GuardStatusDashboardProps> = ({ responders 
                     <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">{counts.offDuty}</p>
                 </div>
             </div>
+            
+            <div className="mt-4">
+                <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-2">All Guards</h4>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {responders.map(r => (
+                        <div key={r.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                            <span className="text-sm text-gray-900 dark:text-white">{r.profile?.first_name} {r.profile?.surname}</span>
+                            <StatusBadge status={r.status} />
+                        </div>
+                    ))}
+                </div>
+            </div>
+
             <div className="flex gap-2 pt-2">
                 <button 
                     onClick={handlePanic}
