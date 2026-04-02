@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GuardStatusDashboard from '../components/GuardMonitoring/GuardStatusDashboard';
 import GuardMapView from '../components/GuardMonitoring/GuardMapView';
 import ConfigurationPanel from '../components/GuardMonitoring/ConfigurationPanel';
@@ -9,6 +9,20 @@ import { useResponders } from '../contexts/RespondersContext';
 const GuardMonitoringPage: React.FC = () => {
     const { responders, loading } = useResponders();
     const [activeTab, setActiveTab] = useState<'overview' | 'config' | 'reporting' | 'analytics'>('overview');
+    const [data, setData] = useState<any>({ site: [], guard: [], route: [], supervisor: [], checkpoint: [] });
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const tables = ['site', 'guard', 'route', 'supervisor', 'checkpoint'];
+            const results: any = {};
+            for (const table of tables) {
+                const response = await fetch(`/api/guard-monitoring?table=${table}`);
+                if (response.ok) results[table] = await response.json();
+            }
+            setData(results);
+        };
+        fetchData();
+    }, []);
 
     if (loading) return <div className="p-6">Loading...</div>;
 
@@ -38,6 +52,17 @@ const GuardMonitoringPage: React.FC = () => {
                         </button>
                     ))}
                 </nav>
+            </div>
+
+            <div className="grid grid-cols-5 gap-4 mb-6">
+                {Object.entries(data).map(([table, items]: [string, any]) => (
+                    <div key={table} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+                        <h3 className="font-bold capitalize mb-2">{table}s ({items.length})</h3>
+                        <ul className="text-sm">
+                            {items.map((item: any) => <li key={item.id}>{item.name || 'Unnamed'}</li>)}
+                        </ul>
+                    </div>
+                ))}
             </div>
 
             {activeTab === 'overview' && (
