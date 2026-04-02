@@ -40,6 +40,39 @@ export enum ResponderStatus {
     OFF_DUTY = 'off_duty'
 }
 
+export enum ShiftStatus {
+    SCHEDULED = 'scheduled',
+    ACTIVE = 'active',
+    COMPLETED = 'completed',
+}
+
+export enum PanicStatus {
+    ACTIVE = 'active',
+    RESOLVED = 'resolved',
+}
+
+export enum ShiftStatus {
+    SCHEDULED = 'scheduled',
+    ACTIVE = 'active',
+    COMPLETED = 'completed',
+}
+
+export enum PanicStatus {
+    ACTIVE = 'active',
+    RESOLVED = 'resolved',
+}
+
+export enum ShiftStatus {
+    SCHEDULED = 'scheduled',
+    ACTIVE = 'active',
+    COMPLETED = 'completed',
+}
+
+export enum PanicStatus {
+    ACTIVE = 'active',
+    RESOLVED = 'resolved',
+}
+
 export enum NotificationType {
   NEW_REPORT = 'new_report',
   NEW_USER = 'new_user',
@@ -126,6 +159,8 @@ export interface VehicleReport {
   deleted_by?: string; // profile id
   deleted_at?: string; // ISO date string
   completed_at?: string; // ISO date string
+  responded_at?: string; // ISO date string
+  resolved_at?: string; // ISO date string
   cas_number?: string;
   station_name?: string;
   vin_number?: string;
@@ -155,6 +190,8 @@ export interface CrimeReport {
   deleted_by?: string; // profile id
   deleted_at?: string; // ISO date string
   completed_at?: string; // ISO date string
+  responded_at?: string; // ISO date string
+  resolved_at?: string; // ISO date string
   cas_number?: string;
   station_name?: string;
   company_id?: string;
@@ -254,6 +291,60 @@ export interface AssignmentLog {
     assigned_from_name?: string | null;
     assigned_to_name?: string | null;
     assigned_by_name?: string | null;
+}
+
+export interface PanicAlert {
+    id: string;
+    responder_id: string;
+    location_coords: LocationCoords;
+    status: PanicStatus;
+    created_at: string;
+    resolved_at?: string;
+}
+
+export interface Shift {
+    id: string;
+    responder_id: string;
+    start_time: string;
+    end_time?: string;
+    status: ShiftStatus;
+    created_at: string;
+}
+
+export interface PanicAlert {
+    id: string;
+    responder_id: string;
+    location_coords: LocationCoords;
+    status: PanicStatus;
+    created_at: string;
+    resolved_at?: string;
+}
+
+export interface Shift {
+    id: string;
+    responder_id: string;
+    start_time: string;
+    end_time?: string;
+    status: ShiftStatus;
+    created_at: string;
+}
+
+export interface PanicAlert {
+    id: string;
+    responder_id: string;
+    location_coords: LocationCoords;
+    status: PanicStatus;
+    created_at: string;
+    resolved_at?: string;
+}
+
+export interface Shift {
+    id: string;
+    responder_id: string;
+    start_time: string;
+    end_time?: string;
+    status: ShiftStatus;
+    created_at: string;
 }
 
 export interface Announcement {

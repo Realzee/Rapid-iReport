@@ -15,6 +15,7 @@ import ResponderPage from './pages/ResponderPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import PublicDashboardPage from './pages/PublicDashboardPage';
 import AboutPage from './pages/AboutPage';
+import GuardMonitoringPage from './pages/GuardMonitoringPage';
 import AnnouncementsBanner from './components/AnnouncementsBanner';
 import { supabase } from './utils/supabase';
 import type { AuthSession as Session } from '@supabase/supabase-js';
@@ -24,11 +25,12 @@ import { checkDatabaseSchema } from './utils/schemaCheck';
 import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
 import { useSettings } from './contexts/SettingsContext';
 import { ChatProvider } from './contexts/ChatContext';
+import { RespondersProvider } from './contexts/RespondersContext';
 import { AlertTriangleIcon, ClockIcon } from './components/icons';
 import { useToast } from './contexts/ToastContext';
 import UserActivityPage from './pages/UserActivityPage';
 
-type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs';
+type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring';
 
 const isProfileComplete = (profile: Profile) => {
     if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
@@ -332,6 +334,7 @@ const App: React.FC = () => {
       case 'users': return <UsersPage />;
       case 'activity_logs': return <UserActivityPage />;
       case 'companies': return <CompaniesPage />;
+      case 'guard_monitoring': return <GuardMonitoringPage />;
       case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} />;
       case 'map':
       default: return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
@@ -446,22 +449,24 @@ const App: React.FC = () => {
       <div className="relative z-10">
         {profile ? (
           <ChatProvider profile={profile}>
-            <div className="flex flex-col min-h-screen">
-              <Header 
-                currentView={isGlobalMapModalOpen ? 'map' : view}
-                setView={handleSetView} 
-                profile={profile}
-                onNotificationClick={handleNotificationClick}
-              />
-              <AnnouncementsBanner onVisibilityChange={setIsAnnouncementVisible} />
-              <main className={`${mainClasses} ${mainPaddingTopClass} flex-grow flex flex-col`}>
-                {renderView()}
-              </main>
-              <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">
-                  <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto h-4" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
-                  <span>Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)</span>
-              </footer>
-            </div>
+            <RespondersProvider>
+              <div className="flex flex-col min-h-screen">
+                <Header 
+                  currentView={isGlobalMapModalOpen ? 'map' : view}
+                  setView={handleSetView} 
+                  profile={profile}
+                  onNotificationClick={handleNotificationClick}
+                />
+                <AnnouncementsBanner onVisibilityChange={setIsAnnouncementVisible} />
+                <main className={`${mainClasses} ${mainPaddingTopClass} flex-grow flex flex-col`}>
+                  {renderView()}
+                </main>
+                <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">
+                    <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto h-4" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
+                    <span>Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)</span>
+                </footer>
+              </div>
+            </RespondersProvider>
           </ChatProvider>
         ) : null}
       </div>
