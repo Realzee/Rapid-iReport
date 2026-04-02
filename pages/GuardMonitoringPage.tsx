@@ -9,11 +9,11 @@ import { useResponders } from '../contexts/RespondersContext';
 const GuardMonitoringPage: React.FC = () => {
     const { responders, loading } = useResponders();
     const [activeTab, setActiveTab] = useState<'overview' | 'config' | 'reporting' | 'analytics'>('overview');
-    const [data, setData] = useState<any>({ site: [], guard: [], route: [], supervisor: [], checkpoint: [] });
+    const [data, setData] = useState<any>({ sites: [], guards: [], routes: [], supervisors: [], checkpoints: [] });
 
     useEffect(() => {
         const fetchData = async () => {
-            const tables = ['site', 'guard', 'route', 'supervisor', 'checkpoint'];
+            const tables = ['sites', 'guards', 'routes', 'supervisors', 'checkpoints'];
             const results: any = {};
             for (const table of tables) {
                 const response = await fetch(`/api/guard-monitoring?table=${table}`);
@@ -57,9 +57,9 @@ const GuardMonitoringPage: React.FC = () => {
             <div className="grid grid-cols-5 gap-4 mb-6">
                 {Object.entries(data).map(([table, items]: [string, any]) => (
                     <div key={table} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
-                        <h3 className="font-bold capitalize mb-2">{table}s ({items.length})</h3>
+                        <h3 className="font-bold capitalize mb-2">{table} ({items?.length || 0})</h3>
                         <ul className="text-sm">
-                            {items.map((item: any) => <li key={item.id}>{item.name || 'Unnamed'}</li>)}
+                            {items?.map((item: any) => <li key={item.id}>{item.name || 'Unnamed'}</li>)}
                         </ul>
                     </div>
                 ))}

@@ -4,7 +4,7 @@ import StatusBadge from '../StatusBadge';
 
 interface GuardStatusDashboardProps {
     responders: Responder[];
-    data: { site: any[], guard: any[], route: any[], supervisor: any[], checkpoint: any[] };
+    data: { sites: any[], guards: any[], routes: any[], supervisors: any[], checkpoints: any[] };
 }
 
 const GuardStatusDashboard: React.FC<GuardStatusDashboardProps> = ({ responders, data }) => {
@@ -53,11 +53,11 @@ const GuardStatusDashboard: React.FC<GuardStatusDashboardProps> = ({ responders,
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 dark:text-gray-400">
-                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Sites: {data.site.length}</div>
-                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Guards: {data.guard.length}</div>
-                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Routes: {data.route.length}</div>
-                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Supervisors: {data.supervisor.length}</div>
-                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Checkpoints: {data.checkpoint.length}</div>
+                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Sites: {data.sites?.length || 0}</div>
+                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Guards: {data.guards?.length || 0}</div>
+                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Routes: {data.routes?.length || 0}</div>
+                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Supervisors: {data.supervisors?.length || 0}</div>
+                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Checkpoints: {data.checkpoints?.length || 0}</div>
             </div>
             
             <div className="mt-4">

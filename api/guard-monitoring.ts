@@ -7,7 +7,7 @@ export default async function handler(req: any, res: any) {
 
     if (req.method === 'GET') {
         const { table } = req.query;
-        if (!['site', 'guard', 'route', 'supervisor', 'checkpoint'].includes(table)) {
+        if (!['sites', 'guards', 'routes', 'supervisors', 'checkpoints'].includes(table)) {
             return res.status(400).json({ error: 'Invalid table' });
         }
         const { data, error } = await supabaseAdmin.from(table).select('*');
@@ -21,11 +21,11 @@ export default async function handler(req: any, res: any) {
         
         let table = '';
         switch (action) {
-            case 'add-site': table = 'site'; break;
-            case 'add-guard': table = 'guard'; break;
-            case 'add-route': table = 'route'; break;
-            case 'add-supervisor': table = 'supervisor'; break;
-            case 'add-checkpoint': table = 'checkpoint'; break;
+            case 'add-site': table = 'sites'; break;
+            case 'add-guard': table = 'guards'; break;
+            case 'add-route': table = 'routes'; break;
+            case 'add-supervisor': table = 'supervisors'; break;
+            case 'add-checkpoint': table = 'checkpoints'; break;
             default: return res.status(400).json({ error: 'Invalid action' });
         }
 
