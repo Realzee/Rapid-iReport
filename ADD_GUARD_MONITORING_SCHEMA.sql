@@ -61,17 +61,40 @@ ALTER TABLE public.supervisors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.guards ENABLE ROW LEVEL SECURITY;
 
 -- Policies
-CREATE POLICY "Enable read access for authenticated users" ON public.sites FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Enable write access for admins" ON public.sites FOR ALL TO authenticated USING (public.get_user_role(auth.uid()) = 'admin');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'sites' AND policyname = 'Enable read access for authenticated users') THEN
+        CREATE POLICY "Enable read access for authenticated users" ON public.sites FOR SELECT TO authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'sites' AND policyname = 'Enable write access for admins') THEN
+        CREATE POLICY "Enable write access for admins" ON public.sites FOR ALL TO authenticated USING (public.get_user_role(auth.uid()) = 'admin');
+    END IF;
 
-CREATE POLICY "Enable read access for authenticated users" ON public.routes FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Enable write access for admins" ON public.routes FOR ALL TO authenticated USING (public.get_user_role(auth.uid()) = 'admin');
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'routes' AND policyname = 'Enable read access for authenticated users') THEN
+        CREATE POLICY "Enable read access for authenticated users" ON public.routes FOR SELECT TO authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'routes' AND policyname = 'Enable write access for admins') THEN
+        CREATE POLICY "Enable write access for admins" ON public.routes FOR ALL TO authenticated USING (public.get_user_role(auth.uid()) = 'admin');
+    END IF;
 
-CREATE POLICY "Enable read access for authenticated users" ON public.checkpoints FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Enable write access for admins" ON public.checkpoints FOR ALL TO authenticated USING (public.get_user_role(auth.uid()) = 'admin');
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'checkpoints' AND policyname = 'Enable read access for authenticated users') THEN
+        CREATE POLICY "Enable read access for authenticated users" ON public.checkpoints FOR SELECT TO authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'checkpoints' AND policyname = 'Enable write access for admins') THEN
+        CREATE POLICY "Enable write access for admins" ON public.checkpoints FOR ALL TO authenticated USING (public.get_user_role(auth.uid()) = 'admin');
+    END IF;
 
-CREATE POLICY "Enable read access for authenticated users" ON public.supervisors FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Enable write access for admins" ON public.supervisors FOR ALL TO authenticated USING (public.get_user_role(auth.uid()) = 'admin');
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'supervisors' AND policyname = 'Enable read access for authenticated users') THEN
+        CREATE POLICY "Enable read access for authenticated users" ON public.supervisors FOR SELECT TO authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'supervisors' AND policyname = 'Enable write access for admins') THEN
+        CREATE POLICY "Enable write access for admins" ON public.supervisors FOR ALL TO authenticated USING (public.get_user_role(auth.uid()) = 'admin');
+    END IF;
 
-CREATE POLICY "Enable read access for authenticated users" ON public.guards FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Enable write access for admins" ON public.guards FOR ALL TO authenticated USING (public.get_user_role(auth.uid()) = 'admin');
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'guards' AND policyname = 'Enable read access for authenticated users') THEN
+        CREATE POLICY "Enable read access for authenticated users" ON public.guards FOR SELECT TO authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'guards' AND policyname = 'Enable write access for admins') THEN
+        CREATE POLICY "Enable write access for admins" ON public.guards FOR ALL TO authenticated USING (public.get_user_role(auth.uid()) = 'admin');
+    END IF;
+END $$;

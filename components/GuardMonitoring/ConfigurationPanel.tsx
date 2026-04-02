@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ImagePicker from './ImagePicker';
 
 interface ConfigurationPanelProps {
     sites: any[];
@@ -17,7 +18,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites }) => {
                 { name: 'address', label: 'Address', type: 'text' },
                 { name: 'contact_person', label: 'Contact Person', type: 'text' },
                 { name: 'contact_number', label: 'Contact Number', type: 'text' },
-                { name: 'logo_url', label: 'Site Logo URL', type: 'text' }
+                { name: 'logo_url', label: 'Site Logo', type: 'image' }
             ] 
         },
         { 
@@ -25,7 +26,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites }) => {
             label: 'Guards', 
             fields: [
                 { name: 'name', label: 'Guard Name', type: 'text' },
-                { name: 'profile_pic_url', label: 'Profile Pic URL', type: 'text' },
+                { name: 'profile_pic_url', label: 'Profile Pic', type: 'image' },
                 { name: 'contact_number', label: 'Contact Number', type: 'text' },
                 { name: 'psira_number', label: 'PSIRA Number', type: 'text' },
                 { name: 'psira_expiry_date', label: 'PSIRA Expiry Date', type: 'date' },
@@ -47,7 +48,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites }) => {
             label: 'Supervisors', 
             fields: [
                 { name: 'name', label: 'Supervisor Name', type: 'text' },
-                { name: 'profile_pic_url', label: 'Profile Pic URL', type: 'text' },
+                { name: 'profile_pic_url', label: 'Profile Pic', type: 'image' },
                 { name: 'contact_number', label: 'Contact Number', type: 'text' },
                 { name: 'site_id', label: 'Site', type: 'select', options: sites.map(s => ({ value: s.id, label: s.name })) }
             ] 
@@ -96,28 +97,37 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites }) => {
             <form onSubmit={handleSubmit} className="space-y-4">
                 {currentTab?.fields.map(field => (
                     <div key={field.name}>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{field.label}</label>
-                        {field.type === 'select' ? (
-                            <select
-                                className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                value={formData[field.name] || ''}
-                                onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                required
-                            >
-                                <option value="">Select Option</option>
-                                {field.options?.map(opt => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                            </select>
-                        ) : (
-                            <input 
-                                type={field.type}
-                                placeholder={field.label}
-                                className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
-                                value={formData[field.name] || ''}
-                                onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                required
+                        {field.type === 'image' ? (
+                            <ImagePicker 
+                                label={field.label}
+                                value={formData[field.name]}
+                                onChange={(val) => setFormData({ ...formData, [field.name]: val })}
                             />
+                        ) : field.type === 'select' ? (
+                            <>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{field.label}</label>
+                                <select
+                                    className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                    value={formData[field.name] || ''}
+                                    onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                >
+                                    <option value="">Select Option</option>
+                                    {field.options?.map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </select>
+                            </>
+                        ) : (
+                            <>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{field.label}</label>
+                                <input 
+                                    type={field.type}
+                                    placeholder={field.label}
+                                    className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                                    value={formData[field.name] || ''}
+                                    onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                />
+                            </>
                         )}
                     </div>
                 ))}
