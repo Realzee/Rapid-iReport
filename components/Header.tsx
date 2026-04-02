@@ -180,7 +180,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       return (
         <>
           <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>Controller</button>
-          <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>Guard Monitoring</button>
+          <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>Guarding</button>
         </>
       );
     }
@@ -194,7 +194,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       <>
         <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>Dashboard</button>
         <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>Controller</button>
-        <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>Guard Monitoring</button>
+        <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>Guarding</button>
         <button onClick={() => clickHandler('archives')} className={classGetter('archives')}>Archives</button>
         <button onClick={() => clickHandler('analytics')} className={classGetter('analytics')}>Analytics</button>
         <button onClick={() => clickHandler('map')} className={classGetter('map')}>Map</button>

@@ -36,7 +36,7 @@ const GuardMonitoringPage: React.FC = () => {
     return (
         <div className="p-6 space-y-6">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Guard Monitoring</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Guarding</h1>
                 <nav className="flex space-x-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                     {tabs.map(tab => (
                         <button
@@ -59,7 +59,13 @@ const GuardMonitoringPage: React.FC = () => {
                     <div key={table} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
                         <h3 className="font-bold capitalize mb-2">{table} ({items?.length || 0})</h3>
                         <ul className="text-sm">
-                            {items?.map((item: any) => <li key={item.id}>{item.name || 'Unnamed'}</li>)}
+                            {items?.map((item: any) => (
+                                <li key={item.id} className="flex items-center gap-2">
+                                    {item.logo_url && <img src={item.logo_url} alt="" className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" />}
+                                    {item.profile_pic_url && <img src={item.profile_pic_url} alt="" className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" />}
+                                    <span>{item.name || 'Unnamed'}</span>
+                                </li>
+                            ))}
                         </ul>
                     </div>
                 ))}
@@ -71,7 +77,7 @@ const GuardMonitoringPage: React.FC = () => {
                     <GuardMapView responders={responders} />
                 </div>
             )}
-            {activeTab === 'config' && <ConfigurationPanel />}
+            {activeTab === 'config' && <ConfigurationPanel sites={data.sites} />}
             {activeTab === 'reporting' && <ReportingPanel />}
             {activeTab === 'analytics' && <AnalyticsPanel />}
         </div>
