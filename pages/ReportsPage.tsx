@@ -55,6 +55,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
 
     const [detailModalReport, setDetailModalReport] = useState<Report | null>(null);
     const [reportToRestore, setReportToRestore] = useState<Report | null>(null);
+    const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
     const { addToast } = useToast();
 
     const [currentPage, setCurrentPage] = useState(1);
@@ -204,6 +205,32 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         setReportToRestore(null);
     };
 
+    const handleDeleteClick = (report: Report) => {
+        setReportToDelete(report);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!reportToDelete) return;
+
+        let tableName = '';
+        if (isVehicleReport(reportToDelete)) tableName = 'vehicle_reports';
+        else if (isEmergencyReport(reportToDelete)) tableName = 'emergency_reports';
+        else tableName = 'crime_reports';
+
+        const { error } = await supabase
+            .from(tableName)
+            .delete()
+            .eq('id', reportToDelete.id);
+
+        if (error) {
+            addToast(`Error deleting report: ${error.message}`, 'error');
+        } else {
+            addToast('Report permanently deleted from archives.', 'success');
+            setReports(prev => prev.filter(r => r.id !== reportToDelete!.id));
+        }
+        setReportToDelete(null);
+    };
+
     const filterInputClasses = "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500";
 
     if (loading) {
@@ -289,6 +316,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                         <div className="flex items-center justify-end space-x-4">
                                             <button onClick={() => setDetailModalReport(report)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">View</button>
                                             <button onClick={() => handleRestoreClick(report)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">Restore</button>
+                                            <button onClick={() => handleDeleteClick(report)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">Delete</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -333,6 +361,18 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                     message={`Are you sure you want to restore this report? It will be moved back to the active incident queue with a status of "Pending".`}
                     confirmText="Confirm Restore"
                     confirmVariant="primary"
+                />
+            )}
+
+            {reportToDelete && (
+                <ConfirmModal
+                    isOpen={!!reportToDelete}
+                    onClose={() => setReportToDelete(null)}
+                    onConfirm={handleConfirmDelete}
+                    title="Permanently Delete Report"
+                    message={`Are you sure you want to PERMANENTLY delete this report? This action cannot be undone and the record will be removed from the database.`}
+                    confirmText="Delete Permanently"
+                    confirmVariant="danger"
                 />
             )}
         </div>
