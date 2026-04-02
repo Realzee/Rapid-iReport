@@ -26,6 +26,7 @@ import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
 import { useSettings } from './contexts/SettingsContext';
 import { ChatProvider } from './contexts/ChatContext';
 import { RespondersProvider } from './contexts/RespondersContext';
+import { EventsProvider } from './contexts/EventsContext';
 import { AlertTriangleIcon, ClockIcon } from './components/icons';
 import { useToast } from './contexts/ToastContext';
 import UserActivityPage from './pages/UserActivityPage';
@@ -450,22 +451,24 @@ const App: React.FC = () => {
         {profile ? (
           <ChatProvider profile={profile}>
             <RespondersProvider>
-              <div className="flex flex-col min-h-screen">
-                <Header 
-                  currentView={isGlobalMapModalOpen ? 'map' : view}
-                  setView={handleSetView} 
-                  profile={profile}
-                  onNotificationClick={handleNotificationClick}
-                />
-                <AnnouncementsBanner onVisibilityChange={setIsAnnouncementVisible} />
-                <main className={`${mainClasses} ${mainPaddingTopClass} flex-grow flex flex-col`}>
-                  {renderView()}
-                </main>
-                <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">
-                    <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto h-4" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
-                    <span>Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)</span>
-                </footer>
-              </div>
+              <EventsProvider>
+                <div className="flex flex-col min-h-screen">
+                  <Header 
+                    currentView={isGlobalMapModalOpen ? 'map' : view}
+                    setView={handleSetView} 
+                    profile={profile}
+                    onNotificationClick={handleNotificationClick}
+                  />
+                  <AnnouncementsBanner onVisibilityChange={setIsAnnouncementVisible} />
+                  <main className={`${mainClasses} ${mainPaddingTopClass} flex-grow flex flex-col`}>
+                    {renderView()}
+                  </main>
+                  <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">
+                      <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto h-4" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
+                      <span>Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)</span>
+                  </footer>
+                </div>
+              </EventsProvider>
             </RespondersProvider>
           </ChatProvider>
         ) : null}
