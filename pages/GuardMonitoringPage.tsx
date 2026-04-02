@@ -67,7 +67,7 @@ const GuardMonitoringPage: React.FC = () => {
 
             {activeTab === 'overview' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <GuardStatusDashboard responders={responders} />
+                    <GuardStatusDashboard responders={responders} data={data} />
                     <GuardMapView responders={responders} />
                 </div>
             )}

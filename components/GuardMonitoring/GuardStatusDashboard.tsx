@@ -4,9 +4,10 @@ import StatusBadge from '../StatusBadge';
 
 interface GuardStatusDashboardProps {
     responders: Responder[];
+    data: { site: any[], guard: any[], route: any[], supervisor: any[], checkpoint: any[] };
 }
 
-const GuardStatusDashboard: React.FC<GuardStatusDashboardProps> = ({ responders }) => {
+const GuardStatusDashboard: React.FC<GuardStatusDashboardProps> = ({ responders, data }) => {
     const counts = {
         available: responders.filter(r => r.status === ResponderStatus.AVAILABLE).length,
         enRoute: responders.filter(r => r.status === ResponderStatus.EN_ROUTE).length,
@@ -49,6 +50,14 @@ const GuardStatusDashboard: React.FC<GuardStatusDashboardProps> = ({ responders 
                     <p className="text-sm text-gray-600 dark:text-gray-400">Off Duty</p>
                     <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">{counts.offDuty}</p>
                 </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Sites: {data.site.length}</div>
+                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Guards: {data.guard.length}</div>
+                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Routes: {data.route.length}</div>
+                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Supervisors: {data.supervisor.length}</div>
+                <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">Checkpoints: {data.checkpoint.length}</div>
             </div>
             
             <div className="mt-4">
