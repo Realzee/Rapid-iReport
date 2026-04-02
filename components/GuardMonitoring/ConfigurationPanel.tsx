@@ -17,6 +17,7 @@ const ConfigurationPanel: React.FC = () => {
         
         // This is a simplified payload, you might need more fields depending on the table schema
         const payload = { action, name }; 
+        console.log('Sending payload:', payload);
         
         try {
             const response = await fetch('/api/guard-monitoring', {
@@ -25,12 +26,16 @@ const ConfigurationPanel: React.FC = () => {
                 body: JSON.stringify(payload),
             });
             
-            if (!response.ok) throw new Error('Failed to add');
-            alert(`${activeTab.slice(0, -1)} added successfully!`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to add');
+            }
+            const data = await response.json();
+            alert(`${activeTab.slice(0, -1)} added successfully! Data: ${JSON.stringify(data)}`);
             setName('');
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert('Error adding item');
+            alert(`Error adding item: ${error.message}`);
         }
     };
 
