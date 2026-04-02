@@ -2,21 +2,20 @@ import React, { useState } from 'react';
 
 const ConfigurationPanel: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'sites' | 'guards' | 'routes' | 'supervisors'>('sites');
-    const [name, setName] = useState('');
+    const [formData, setFormData] = useState<any>({});
 
     const tabs = [
-        { id: 'sites', label: 'Sites' },
-        { id: 'guards', label: 'Guards' },
-        { id: 'routes', label: 'Routes' },
-        { id: 'supervisors', label: 'Supervisors' },
+        { id: 'sites', label: 'Sites', fields: ['name', 'location', 'boundary', 'company_id'] },
+        { id: 'guards', label: 'Guards', fields: ['profile_id', 'site_id', 'status'] },
+        { id: 'routes', label: 'Routes', fields: ['name', 'site_id'] },
+        { id: 'supervisors', label: 'Supervisors', fields: ['profile_id', 'site_id'] },
     ] as const;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const action = `add-${activeTab.slice(0, -1)}`;
         
-        // This is a simplified payload, you might need more fields depending on the table schema
-        const payload = { action, name }; 
+        const payload = { action, ...formData }; 
         console.log('Sending payload:', payload);
         
         try {
@@ -30,9 +29,8 @@ const ConfigurationPanel: React.FC = () => {
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'Failed to add');
             }
-            const data = await response.json();
-            alert(`${activeTab.slice(0, -1)} added successfully! Data: ${JSON.stringify(data)}`);
-            setName('');
+            alert(`${activeTab.slice(0, -1).charAt(0).toUpperCase() + activeTab.slice(0, -1).slice(1)} added successfully!`);
+            setFormData({});
         } catch (error: any) {
             console.error(error);
             alert(`Error adding item: ${error.message}`);
@@ -40,16 +38,22 @@ const ConfigurationPanel: React.FC = () => {
     };
 
     const renderForm = () => {
+        const currentTab = tabs.find(t => t.id === activeTab);
         return (
-            <form onSubmit={handleSubmit} className="space-y-2">
-                <input 
-                    placeholder={`${activeTab.slice(0, -1).charAt(0).toUpperCase() + activeTab.slice(0, -1).slice(1)} Name`} 
-                    className="w-full p-2 border rounded" 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                />
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                {currentTab?.fields.map(field => (
+                    <div key={field}>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">{field.replace('_', ' ')}</label>
+                        <input 
+                            placeholder={field.replace('_', ' ')}
+                            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" 
+                            value={formData[field] || ''}
+                            onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
+                            required
+                        />
+                    </div>
+                ))}
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                     Add {activeTab.slice(0, -1).charAt(0).toUpperCase() + activeTab.slice(0, -1).slice(1)}
                 </button>
             </form>
@@ -63,7 +67,7 @@ const ConfigurationPanel: React.FC = () => {
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
-                        onClick={() => { setActiveTab(tab.id); setName(''); }}
+                        onClick={() => { setActiveTab(tab.id); setFormData({}); }}
                         className={`px-3 py-1 rounded-md text-sm font-medium ${
                             activeTab === tab.id
                                 ? 'bg-blue-600 text-white'
