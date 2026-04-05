@@ -88,26 +88,19 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
 
         const fetchCirculationList = async (showLoading = false) => {
             if (showLoading) setIsRefreshing(true);
-            let allowedReporterIds: string[] | null = null;
-
-            if (!isGlobalAdmin && profile.company_id) {
-                const { data: companyUsers } = await supabase
-                    .from('profiles')
-                    .select('id')
-                    .eq('company_id', profile.company_id);
-                
-                if (companyUsers) {
-                    allowedReporterIds = companyUsers.map(u => u.id);
-                }
-            }
-
+            
             let query = supabase
                 .from('vehicle_reports')
                 .select('*')
                 .in('status', activeStatuses);
 
-            if (allowedReporterIds) {
-                query = query.in('reported_by', allowedReporterIds);
+            if (!isGlobalAdmin && profile.company_id) {
+                // Filter for reports relevant to this responder's company
+                // 1. Global reports
+                // 2. Reports from their company
+                // 3. Reports shared with their company
+                // 4. Reports assigned to them
+                query = query.or(`is_global.eq.true,company_id.eq.${profile.company_id},shared_with_company_ids.cs.{"${profile.company_id}"},assigned_to.eq.${profile.id}`);
             }
 
             const { data, error } = await query.order('reported_at', { ascending: false });

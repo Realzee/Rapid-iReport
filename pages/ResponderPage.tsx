@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, EmergencyReport, ReportUpdate, Profile as UserProfile } from '../types';
+import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, EmergencyReport, ReportUpdate, Profile as UserProfile, UserRole } from '../types';
 import { supabase } from '../utils/supabase';
 import { format, formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
@@ -9,6 +9,7 @@ import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import ResponderMapView from '../components/ResponderMapView';
 import LookoutScanner from '../components/LookoutScanner';
+import CirculationListManager from '../components/CirculationListManager';
 import UserReportDetail from '../components/UserReportDetail';
 import { useChat } from '../contexts/ChatContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
@@ -42,6 +43,7 @@ const ResponderStatusBadge: React.FC<{ status: ResponderStatus }> = ({ status })
 const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) => {
     const { requestWakeLock, releaseWakeLock } = useWakeLock();
     const [assignedReports, setAssignedReports] = useState<Report[]>([]);
+    const [circulationReports, setCirculationReports] = useState<VehicleReport[]>([]);
     const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
@@ -112,11 +114,22 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
 
     const fetchData = useCallback(async () => {
         setLoading(true);
+        const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
+
         // Fetch assigned reports OR reported by me
         const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
         const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
         const { data: aData, error: aError } = await supabase.from('emergency_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
         const { data: usersData, error: usersError } = await supabase.from('profiles').select('*').eq('company_id', profile.company_id);
+
+        // Fetch Circulation List (Active Vehicle Reports)
+        const activeStatuses = [ReportStatus.PENDING, ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE];
+        let circQuery = supabase.from('vehicle_reports').select('*').in('status', activeStatuses);
+        
+        if (!isGlobalAdmin && profile.company_id) {
+            circQuery = circQuery.or(`is_global.eq.true,company_id.eq.${profile.company_id},shared_with_company_ids.cs.{"${profile.company_id}"},assigned_to.eq.${profile.id}`);
+        }
+        const { data: circData, error: circError } = await circQuery.order('reported_at', { ascending: false });
 
         if (vError || cError || aError) console.error("Error fetching reports:", vError || cError || aError);
         else {
@@ -124,12 +137,16 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             setAssignedReports(combined);
             if (combined.length > 0 && !selectedReportId) setSelectedReportId(combined[0].id);
         }
+        
+        if (circError) console.error("Error fetching circulation list:", circError);
+        else setCirculationReports(circData || []);
+
         if(usersError) console.error("Error fetching company users:", usersError);
         else setAllUsers(usersData || []);
 
         setLoading(false);
         isInitialLoad.current = false;
-    }, [profile.id, profile.company_id, selectedReportId]);
+    }, [profile.id, profile.company_id, profile.role, profile.company?.name, selectedReportId]);
 
     useEffect(() => {
         fetchData();
@@ -463,6 +480,13 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                 {isOnDuty && <LookoutScanner profile={profile} onReportHit={handleAnprHit} />}
 
                 <div className="space-y-3">
+                    <CirculationListManager 
+                        profile={profile} 
+                        reports={circulationReports} 
+                        loading={loading}
+                        onSelectReport={(r) => setSelectedReportId(r.id)}
+                    />
+                    
                     <div className="flex items-center justify-between px-1">
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white">Dispatch Queue</h2>
                         <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold px-2 py-1 rounded-full">{assignedReports.length}</span>
