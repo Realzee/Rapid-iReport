@@ -54,78 +54,87 @@ const CirculationListManager: React.FC<CirculationListManagerProps> = ({ profile
 
     return (
         <>
-            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-3 backdrop-blur-lg shadow-lg flex flex-col md:flex-row md:items-center gap-4">
-                {/* Header/Title Section */}
-                <div className="w-full md:w-auto flex-shrink-0 flex items-center justify-between md:justify-start gap-2 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700 pb-3 md:pb-0 md:pr-4">
+            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex flex-col gap-4">
+                {/* Header Section */}
+                <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
                     <div className="flex items-center gap-2">
                         <div className="p-2 bg-yellow-500/10 rounded-lg">
                             <AlertTriangleIcon className="w-6 h-6 text-yellow-500" />
                         </div>
                         <div>
                             <h3 className="text-md font-bold leading-tight">Circulation List</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{circulationListReports.length} Active</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{circulationListReports.length} Active Vehicles</p>
                         </div>
                     </div>
-                     <div className="flex md:hidden items-center gap-2">
-                        <button onClick={onQuickAdd} className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" title="Quick Add to List">
-                            <PlusIcon className="w-4 h-4" />
-                        </button>
-                    </div>
+                    <button onClick={onQuickAdd} className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm" title="Quick Add to List">
+                        <PlusIcon className="w-4 h-4" />
+                        <span className="hidden sm:inline">Add Vehicle</span>
+                    </button>
                 </div>
 
-                {/* Main Content: Search and Scrollable List */}
-                <div className="flex-1 flex flex-col sm:flex-row items-center gap-4 min-w-0 w-full">
-                    {/* Add & Search */}
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <button onClick={onQuickAdd} className="hidden md:flex flex-shrink-0 items-center gap-1.5 px-3 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" title="Quick Add to List">
-                            <PlusIcon className="w-4 h-4" />
-                        </button>
-                        <div className="relative flex-grow sm:flex-grow-0">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon className="w-4 h-4 text-gray-400" /></div>
-                            <input 
-                                type="text" 
-                                placeholder="Search list..." 
-                                value={searchTerm} 
-                                onChange={e => setSearchTerm(e.target.value)} 
-                                className="w-full sm:w-32 bg-gray-100 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg py-2 pl-9 pr-2 text-sm focus:w-48 transition-all duration-300" 
-                            />
-                        </div>
+                {/* Search Section */}
+                <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <SearchIcon className="w-4 h-4 text-gray-400" />
                     </div>
-                    
-                    {/* Horizontal Scroll List */}
-                    <div className="flex-1 flex items-center gap-2 overflow-x-auto pb-2 -mb-2 w-full">
-                        {loading ? (
-                            <div className="text-sm text-gray-500">Loading...</div>
-                        ) : filteredReports.length === 0 ? (
-                            <div className="text-sm text-gray-500 text-center w-full">No active vehicles on the circulation list.</div>
-                        ) : (
-                            filteredReports.map(report => (
-                                <div key={report.id} className="flex-shrink-0 w-60 bg-gray-100/50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-2 space-y-2">
-                                    <div>
-                                        <p className="font-mono font-bold text-lg text-gray-800 dark:text-gray-200 truncate">{report.license_plate}</p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{report.vehicle_make} {report.vehicle_model} ({report.vehicle_color})</p>
+                    <input 
+                        type="text" 
+                        placeholder="Search by plate, make or model..." 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                        className="w-full bg-gray-100 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg py-2 pl-9 pr-4 text-sm focus:ring-2 focus:ring-blue-500/20 transition-all" 
+                    />
+                </div>
+                
+                {/* Vertical List Section */}
+                <div className="max-h-80 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+                    {loading ? (
+                        <div className="flex justify-center py-8">
+                            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                    ) : filteredReports.length === 0 ? (
+                        <div className="text-sm text-gray-500 text-center py-8 bg-gray-50 dark:bg-gray-800/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                            No active vehicles match your search.
+                        </div>
+                    ) : (
+                        filteredReports.map(report => (
+                            <div key={report.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-3 hover:border-blue-300 dark:hover:border-blue-700 transition-all group">
+                                <div className="flex justify-between items-start gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-mono font-bold text-lg text-gray-900 dark:text-white tracking-wider">{report.license_plate}</span>
+                                            <span className={`w-2 h-2 rounded-full ${report.severity === Severity.CRITICAL ? 'bg-red-500 animate-pulse' : 'bg-yellow-500'}`}></span>
+                                        </div>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                                            {report.vehicle_make} {report.vehicle_model} • {report.vehicle_color}
+                                        </p>
+                                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-tighter">
+                                            Last seen: {report.last_seen_location}
+                                        </p>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-col gap-2">
                                         <button 
                                             onClick={() => onSelectReport(report.id)} 
-                                            className="w-full px-2 py-1.5 text-xs font-semibold bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                                            className="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm transition-all"
+                                            title="View Details"
                                         >
-                                            View
+                                            <EyeIcon className="w-4 h-4" />
                                         </button>
                                         <button 
                                             onClick={() => setReportToResolve(report)} 
                                             disabled={isResolving === report.id}
-                                            className="w-full px-2 py-1.5 text-xs font-semibold bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center"
+                                            className="p-2 text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-sm transition-all disabled:opacity-50 flex items-center justify-center"
+                                            title="Mark as Resolved"
                                         >
                                             {isResolving === report.id ? (
-                                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                            ) : 'Resolve'}
+                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            ) : <TrashIcon className="w-4 h-4" />}
                                         </button>
                                     </div>
                                 </div>
-                            ))
-                        )}
-                    </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 
