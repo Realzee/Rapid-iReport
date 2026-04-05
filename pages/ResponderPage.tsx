@@ -4,7 +4,7 @@ import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, Emergenc
 import { supabase } from '../utils/supabase';
 import { format, formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
-import { NavigationIcon, CameraIcon, ScanIcon, XIcon, ChatAlt2Icon, PlusIcon } from '../components/icons';
+import { NavigationIcon, CameraIcon, ScanIcon, XIcon, ChatAlt2Icon, PlusIcon, AlertTriangleIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import ResponderMapView from '../components/ResponderMapView';
@@ -351,6 +351,45 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         }
     };
 
+    const handleSelfAssign = async (report: VehicleReport) => {
+        if (report.assigned_to === profile.id) {
+            addToast('You are already assigned to this incident.', 'info');
+            setAnprFoundReport(null);
+            return;
+        }
+
+        const { error } = await supabase
+            .from('vehicle_reports')
+            .update({ 
+                assigned_to: profile.id,
+                status: ReportStatus.ASSIGNED 
+            })
+            .eq('id', report.id);
+
+        if (error) {
+            addToast(`Failed to assign report: ${error.message}`, 'error');
+        } else {
+            addToast('Incident successfully assigned to you.', 'success');
+            // Log assignment
+            await supabase.from('assignment_logs').insert({
+                report_id: report.id,
+                assigned_from: report.assigned_to,
+                assigned_to: profile.id,
+                assigned_by: profile.id
+            });
+            // Add update
+            await supabase.from('report_updates').insert({
+                report_id: report.id,
+                user_id: profile.id,
+                content: `Responder ${profile.first_name} ${profile.surname} self-assigned via Lookout.`
+            });
+            
+            setAnprFoundReport(null);
+            setSelectedReportId(report.id);
+            fetchData();
+        }
+    };
+
 
     return (
         <>
@@ -498,13 +537,38 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
 
         {anprFoundReport && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setAnprFoundReport(null)}>
-                <div className="relative w-full max-w-lg" onClick={e => e.stopPropagation()}>
+                <div className="relative w-full max-w-lg flex flex-col gap-4" onClick={e => e.stopPropagation()}>
                     <div className="absolute -top-3 -right-3 z-10">
                         <button onClick={() => setAnprFoundReport(null)} className="p-2 bg-gray-800/80 rounded-full text-white hover:bg-gray-700 transition">
                             <XIcon className="w-5 h-5" />
                         </button>
                     </div>
-                    <UserReportDetail report={anprFoundReport} profile={profile} onEdit={() => {}} allUsers={allUsers} />
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-2xl">
+                        <div className="p-4 bg-red-600 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <AlertTriangleIcon className="w-6 h-6" />
+                                <h3 className="font-bold">LOOKOUT ALERT</h3>
+                            </div>
+                            <span className="text-xs font-mono bg-white/20 px-2 py-1 rounded">{anprFoundReport.license_plate}</span>
+                        </div>
+                        <div className="max-h-[60vh] overflow-y-auto">
+                            <UserReportDetail report={anprFoundReport} profile={profile} onEdit={() => {}} allUsers={allUsers} />
+                        </div>
+                        <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex gap-3">
+                            <button 
+                                onClick={() => setAnprFoundReport(null)}
+                                className="flex-1 py-3 px-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                            >
+                                Dismiss
+                            </button>
+                            <button 
+                                onClick={() => handleSelfAssign(anprFoundReport)}
+                                className="flex-1 py-3 px-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition"
+                            >
+                                Self-Assign
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         )}

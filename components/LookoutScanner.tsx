@@ -22,13 +22,45 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
 
     const [isScanning, setIsScanning] = useState(false);
     const [status, setStatus] = useState<'Idle' | 'Initializing' | 'Scanning' | 'Error'>('Idle');
-    const [plateHits, setPlateHits] = useState<Map<string, { report: VehicleReport, timestamp: Date }>>(new Map());
+    const [plateHits, setPlateHits] = useState<Map<string, { report: VehicleReport, timestamp: Date, isPartial?: boolean }>>(new Map());
     const [circulationList, setCirculationList] = useState<VehicleReport[]>([]);
     const [activeTab, setActiveTab] = useState<'circulation' | 'alerts'>('circulation');
+    const [isRefreshing, setIsRefreshing] = useState(false);
     
     // State for live visual feedback
     const [detections, setDetections] = useState<{ text: string; bbox: Tesseract.Bbox }[]>([]);
     const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
+
+    // Helper for fuzzy matching license plates
+    const normalizePlate = (text: string) => {
+        return text.replace(/[^A-Z0-9]/g, '')
+            .replace(/O/g, '0')
+            .replace(/I/g, '1')
+            .replace(/Z/g, '2')
+            .replace(/S/g, '5')
+            .replace(/B/g, '8')
+            .toUpperCase();
+    };
+
+    const isMatch = (detected: string, target: string) => {
+        const normDetected = normalizePlate(detected);
+        const normTarget = normalizePlate(target);
+        
+        if (normDetected === normTarget) return { match: true, partial: false };
+        
+        // Simple Levenshtein-like check for 1 character difference if length > 5
+        if (normDetected.length >= 6 && normTarget.length >= 6 && Math.abs(normDetected.length - normTarget.length) <= 1) {
+            let diffs = 0;
+            const minLen = Math.min(normDetected.length, normTarget.length);
+            for (let i = 0; i < minLen; i++) {
+                if (normDetected[i] !== normTarget[i]) diffs++;
+            }
+            diffs += Math.abs(normDetected.length - normTarget.length);
+            if (diffs <= 1) return { match: true, partial: true };
+        }
+        
+        return { match: false, partial: false };
+    };
 
     const { addToast } = useToast();
 
@@ -54,7 +86,8 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
         const activeStatuses = [ReportStatus.PENDING, ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE];
         const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 
-        const fetchCirculationList = async () => {
+        const fetchCirculationList = async (showLoading = false) => {
+            if (showLoading) setIsRefreshing(true);
             let allowedReporterIds: string[] | null = null;
 
             if (!isGlobalAdmin && profile.company_id) {
@@ -84,14 +117,15 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
             } else {
                 setCirculationList(data as VehicleReport[]);
             }
+            if (showLoading) setIsRefreshing(false);
         };
 
-        fetchCirculationList();
+        fetchCirculationList(true);
 
         const channel = supabase.channel('lookout-updates')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, (payload) => {
                 // For realtime updates, just re-fetch
-                fetchCirculationList();
+                fetchCirculationList(false);
             })
             .subscribe();
 
@@ -188,7 +222,14 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
         if (video.videoWidth > 0) {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            canvas.getContext('2d')?.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                // Draw frame
+                ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+                
+                // Optional: Basic image processing to improve OCR
+                // (e.g., grayscale or contrast boost could be added here if needed)
+            }
             
             try {
                 const result = await tesseractWorkerRef.current?.recognize(canvas);
@@ -198,7 +239,8 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
                 if (result?.data.lines) {
                     for (const line of result.data.lines) {
                         const cleanedText = line.text.replace(/[^A-Z0-9]/g, '').toUpperCase();
-                        if (/^[A-Z0-9]{5,8}$/.test(cleanedText) && line.confidence > 65) {
+                        // South African plates are usually 6-9 chars including province code
+                        if (/^[A-Z0-9]{4,10}$/.test(cleanedText) && line.confidence > 60) {
                             foundPlates.push({ text: cleanedText, bbox: line.bbox });
                             plateTexts.push(cleanedText);
                         }
@@ -219,13 +261,13 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
     };
     
     const processDetections = async (plates: string[]) => {
-        const newHits: VehicleReport[] = [];
+        const newHits: { report: VehicleReport, isPartial: boolean }[] = [];
         const timestamp = new Date();
 
         for (const plate of plates) {
-            const matchedReport = circulationList.find(r => r.license_plate === plate);
-            if (matchedReport && !plateHits.has(plate)) {
-                newHits.push(matchedReport);
+            const matchResult = circulationList.map(r => ({ report: r, ...isMatch(plate, r.license_plate) })).find(m => m.match);
+            if (matchResult && !plateHits.has(matchResult.report.license_plate)) {
+                newHits.push({ report: matchResult.report, isPartial: matchResult.partial });
             }
         }
 
@@ -233,8 +275,11 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
             playHitSound();
             setPlateHits(prev => {
                 const newMap = new Map(prev);
-                newHits.forEach(report => {
-                    if (!newMap.has(report.license_plate)) newMap.set(report.license_plate, { report, timestamp });
+                newHits.forEach(({ report, isPartial }) => {
+                    if (!newMap.has(report.license_plate)) {
+                        newMap.set(report.license_plate, { report, timestamp, isPartial });
+                        addToast(`${isPartial ? 'PARTIAL' : 'LOOKOUT'} HIT: ${report.license_plate} detected!`, isPartial ? 'info' : 'error');
+                    }
                 });
                 return newMap;
             });
@@ -244,6 +289,12 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
     
     const sortedHits = useMemo(() => Array.from(plateHits.values()).sort((a: any, b: any) => b.timestamp.getTime() - a.timestamp.getTime()), [plateHits]);
     
+    const clearAlerts = () => {
+        setPlateHits(new Map());
+        setActiveTab('circulation');
+        addToast('Alerts cleared.', 'info');
+    };
+
     const scaleX = (videoRef.current?.videoWidth || 0) > 0 ? videoDimensions.width / videoRef.current!.videoWidth : 0;
     const scaleY = (videoRef.current?.videoHeight || 0) > 0 ? videoDimensions.height / videoRef.current!.videoHeight : 0;
 
@@ -353,8 +404,10 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
                         const y = d.bbox.y0 * scaleY;
                         const width = (d.bbox.x1 - d.bbox.x0) * scaleX;
                         const height = (d.bbox.y1 - d.bbox.y0) * scaleY;
-                        const isHit = plateHits.has(d.text) || circulationList.some(r => r.license_plate === d.text);
-                        const color = isHit ? '#ef4444' : '#22c55e'; // Red for hit, Green for normal
+                        const matchInfo = circulationList.map(r => ({ report: r, ...isMatch(d.text, r.license_plate) })).find(m => m.match);
+                        const isHit = !!matchInfo;
+                        const isPartial = matchInfo?.partial;
+                        const color = isHit ? (isPartial ? '#f59e0b' : '#ef4444') : '#22c55e'; // Orange for partial, Red for hit, Green for normal
 
                         return (
                             <g key={i}>
@@ -403,22 +456,32 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
 
             {/* Tabs */}
             <div className="mt-6">
-                <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
-                    <button
-                        onClick={() => setActiveTab('circulation')}
-                        className={`flex-1 py-2 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'circulation' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                    >
-                        Circulation List
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('alerts')}
-                        className={`flex-1 py-2 font-semibold text-sm border-b-2 transition-colors flex items-center justify-center gap-2 ${activeTab === 'alerts' ? 'border-red-500 text-red-600 dark:text-red-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                    >
-                        Alerts
-                        {plateHits.size > 0 && (
-                            <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{plateHits.size}</span>
-                        )}
-                    </button>
+                <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 mb-4">
+                    <div className="flex flex-1">
+                        <button
+                            onClick={() => setActiveTab('circulation')}
+                            className={`flex-1 py-2 font-semibold text-sm border-b-2 transition-colors ${activeTab === 'circulation' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                        >
+                            Circulation List
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('alerts')}
+                            className={`flex-1 py-2 font-semibold text-sm border-b-2 transition-colors flex items-center justify-center gap-2 ${activeTab === 'alerts' ? 'border-red-500 text-red-600 dark:text-red-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                        >
+                            Alerts
+                            {plateHits.size > 0 && (
+                                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{plateHits.size}</span>
+                            )}
+                        </button>
+                    </div>
+                    {activeTab === 'alerts' && plateHits.size > 0 && (
+                        <button 
+                            onClick={clearAlerts}
+                            className="ml-4 px-2 py-1 text-[10px] font-bold text-gray-500 hover:text-red-500 transition-colors uppercase tracking-wider"
+                        >
+                            Clear All
+                        </button>
+                    )}
                 </div>
 
                 {/* Tab Content */}
@@ -450,18 +513,21 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
                         {sortedHits.length === 0 ? (
                             <p className="text-center text-gray-500 text-sm py-4">No hits detected yet.</p>
                         ) : (
-                            sortedHits.map(({ report, timestamp }) => (
-                                <div key={report.id} className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-xl">
+                            sortedHits.map(({ report, timestamp, isPartial }) => (
+                                <div key={report.id} className={`p-3 border rounded-xl ${isPartial ? 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-900/30' : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30'}`}>
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
-                                            <p className="font-mono font-bold text-lg text-red-700 dark:text-red-400">{report.license_plate}</p>
-                                            <p className="text-xs text-red-600/70 dark:text-red-400/70">Detected at {format(timestamp, 'HH:mm:ss')}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className={`font-mono font-bold text-lg ${isPartial ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-700 dark:text-red-400'}`}>{report.license_plate}</p>
+                                                {isPartial && <span className="text-[10px] font-bold bg-yellow-500 text-white px-1.5 py-0.5 rounded">PARTIAL MATCH</span>}
+                                            </div>
+                                            <p className={`text-xs ${isPartial ? 'text-yellow-600/70 dark:text-yellow-400/70' : 'text-red-600/70 dark:text-red-400/70'}`}>Detected at {format(timestamp, 'HH:mm:ss')}</p>
                                         </div>
-                                        <button onClick={() => onReportHit(report.id)} className="px-3 py-1.5 text-xs font-bold bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-sm transition-colors">
+                                        <button onClick={() => onReportHit(report.id)} className={`px-3 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-colors ${isPartial ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'}`}>
                                             View Report
                                         </button>
                                     </div>
-                                    <div className="text-sm text-red-800 dark:text-red-300">
+                                    <div className={`text-sm ${isPartial ? 'text-yellow-800 dark:text-yellow-300' : 'text-red-800 dark:text-red-300'}`}>
                                         {report.vehicle_make} {report.vehicle_model} ({report.vehicle_color})
                                     </div>
                                 </div>

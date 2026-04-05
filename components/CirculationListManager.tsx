@@ -16,6 +16,7 @@ interface CirculationListManagerProps {
 const CirculationListManager: React.FC<CirculationListManagerProps> = ({ profile, reports, loading = false, onSelectReport, onQuickAdd }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [reportToResolve, setReportToResolve] = useState<VehicleReport | null>(null);
+    const [isResolving, setIsResolving] = useState<string | null>(null);
     const { addToast } = useToast();
 
     const circulationListReports = useMemo(() => {
@@ -36,6 +37,7 @@ const CirculationListManager: React.FC<CirculationListManagerProps> = ({ profile
     const handleResolve = async () => {
         if (!reportToResolve) return;
         
+        setIsResolving(reportToResolve.id);
         const { error } = await supabase
             .from('vehicle_reports')
             .update({ status: ReportStatus.RESOLVED })
@@ -46,6 +48,7 @@ const CirculationListManager: React.FC<CirculationListManagerProps> = ({ profile
         } else {
             addToast(`Report for ${reportToResolve.license_plate} has been resolved.`, 'success');
         }
+        setIsResolving(null);
         setReportToResolve(null);
     };
 
@@ -103,8 +106,21 @@ const CirculationListManager: React.FC<CirculationListManagerProps> = ({ profile
                                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{report.vehicle_make} {report.vehicle_model} ({report.vehicle_color})</p>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <button onClick={() => onSelectReport(report.id)} className="w-full px-2 py-1 text-xs font-semibold bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">View</button>
-                                        <button onClick={() => setReportToResolve(report)} className="w-full px-2 py-1 text-xs font-semibold bg-green-600 text-white rounded-md hover:bg-green-700">Resolve</button>
+                                        <button 
+                                            onClick={() => onSelectReport(report.id)} 
+                                            className="w-full px-2 py-1.5 text-xs font-semibold bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                                        >
+                                            View
+                                        </button>
+                                        <button 
+                                            onClick={() => setReportToResolve(report)} 
+                                            disabled={isResolving === report.id}
+                                            className="w-full px-2 py-1.5 text-xs font-semibold bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center"
+                                        >
+                                            {isResolving === report.id ? (
+                                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            ) : 'Resolve'}
+                                        </button>
                                     </div>
                                 </div>
                             ))
