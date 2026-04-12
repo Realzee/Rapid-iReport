@@ -351,6 +351,17 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         };
     }, []);
     
+    const activeAssignments = useMemo(() => {
+        const activeStatuses = [
+            ReportStatus.PENDING,
+            ReportStatus.ACTIVE,
+            ReportStatus.ASSIGNED,
+            ReportStatus.IN_PROGRESS,
+            ReportStatus.ON_SCENE,
+        ];
+        return assignedReports.filter(r => activeStatuses.includes(r.status));
+    }, [assignedReports]);
+
     const selectedReport = useMemo(() => assignedReports.find(r => r.id === selectedReportId), [assignedReports, selectedReportId]);
 
     const handleAnprHit = async (reportId: string) => {
@@ -406,7 +417,6 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             fetchData();
         }
     };
-
 
     return (
         <>
@@ -489,7 +499,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                     
                     <div className="flex items-center justify-between px-1">
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white">Dispatch Queue</h2>
-                        <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold px-2 py-1 rounded-full">{assignedReports.length}</span>
+                        <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold px-2 py-1 rounded-full">{activeAssignments.length}</span>
                     </div>
                     
                     <div className="space-y-3 lg:h-[calc(100vh-32rem)] lg:overflow-y-auto pr-1 custom-scrollbar">
@@ -497,13 +507,13 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                             <div className="flex justify-center items-center h-32">
                                 <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                             </div>
-                        ) : assignedReports.length === 0 ? (
+                        ) : activeAssignments.length === 0 ? (
                             <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
                                 <p className="text-gray-500 dark:text-gray-400 text-sm">No active assignments.</p>
                                 <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Stand by for dispatch.</p>
                             </div>
                         ) : (
-                            assignedReports.map(report => (
+                            activeAssignments.map(report => (
                                 <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
                                     className={`group relative p-4 cursor-pointer rounded-xl border transition-all duration-200 ${selectedReportId === report.id 
                                         ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 shadow-md transform scale-[1.02]' 

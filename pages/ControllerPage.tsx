@@ -448,7 +448,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         const idle: Report[] = [];
         
         sortedReports.forEach((report) => {
-            if (report.status === ReportStatus.DELETED) {
+            if (!ACTIVE_STATUSES.includes(report.status)) {
                 idle.push(report);
             } else if (live.length < 20) {
                 live.push(report);
