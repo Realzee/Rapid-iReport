@@ -631,37 +631,41 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                             </div>
                             <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicle Involved</p>
-                                <p className="text-gray-900 dark:text-white">{(localReport as any).vehicle_Involved || (localReport as any).vehicle_involved ? 'Yes' : 'No'}</p>
+                                <p className="text-gray-900 dark:text-white">{(localReport as any).vehicle_involved || (localReport as any).vehicle_Involved ? 'Yes' : 'No'}</p>
                             </div>
-                            {(localReport as any).license_plate || (localReport as any).emergency_type === 'Kidnapping (taken with vehicle)' ? (
-                                <div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">License Plate</p>
-                                    <p className="text-gray-900 dark:text-white">{(localReport as any).license_plate || 'N/A'}</p>
-                                </div>
-                            ) : null}
-                            {(localReport as any).vehicle_make || (localReport as any).emergency_type === 'Kidnapping (taken with vehicle)' ? (
-                                <div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Make</p>
-                                    <p className="text-gray-900 dark:text-white">{(localReport as any).vehicle_make || 'N/A'}</p>
-                                </div>
-                            ) : null}
-                            {(localReport as any).vehicle_model || (localReport as any).emergency_type === 'Kidnapping (taken with vehicle)' ? (
-                                <div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Model</p>
-                                    <p className="text-gray-900 dark:text-white">{(localReport as any).vehicle_model || 'N/A'}</p>
-                                </div>
-                            ) : null}
-                            {(localReport as any).vehicle_color || (localReport as any).emergency_type === 'Kidnapping (taken with vehicle)' ? (
-                                <div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Color</p>
-                                    <p className="text-gray-900 dark:text-white">{(localReport as any).vehicle_color || 'N/A'}</p>
-                                </div>
-                            ) : null}
-                            {(localReport as any).vehicle_involved && (localReport as any).vehicles_involved > 0 && (
-                                <div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicles Involved</p>
-                                    <p className="text-gray-900 dark:text-white">{(localReport as any).vehicles_involved}</p>
-                                </div>
+                            {((localReport as any).vehicle_involved || (localReport as any).vehicle_Involved) && (
+                                <>
+                                    {(localReport as any).license_plate && (
+                                        <div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">License Plate</p>
+                                            <p className="text-gray-900 dark:text-white">{(localReport as any).license_plate}</p>
+                                        </div>
+                                    )}
+                                    {(localReport as any).vehicle_make && (
+                                        <div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Make</p>
+                                            <p className="text-gray-900 dark:text-white">{(localReport as any).vehicle_make}</p>
+                                        </div>
+                                    )}
+                                    {(localReport as any).vehicle_model && (
+                                        <div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Model</p>
+                                            <p className="text-gray-900 dark:text-white">{(localReport as any).vehicle_model}</p>
+                                        </div>
+                                    )}
+                                    {(localReport as any).vehicle_color && (
+                                        <div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Color</p>
+                                            <p className="text-gray-900 dark:text-white">{(localReport as any).vehicle_color}</p>
+                                        </div>
+                                    )}
+                                    {(localReport as any).vehicles_involved > 0 && (
+                                        <div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicles Involved</p>
+                                            <p className="text-gray-900 dark:text-white">{(localReport as any).vehicles_involved}</p>
+                                        </div>
+                                    )}
+                                </>
                             )}
                             <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Injuries</p>

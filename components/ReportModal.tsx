@@ -538,7 +538,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     title: formData.title,
                     emergency_type: formData.emergency_type,
                     location: formData.location || 'Unknown Location',
-                    "vehicle_Involved": formData.vehicle_involved === 'true' || formData.emergency_type === 'Kidnapping (taken with vehicle)',
+                    vehicle_involved: formData.vehicle_involved === 'true' || formData.emergency_type === 'Kidnapping (taken with vehicle)',
                     vehicles_involved: (formData.vehicle_involved === 'true' || formData.emergency_type === 'Kidnapping (taken with vehicle)') ? parseInt(formData.vehicles_involved || '1') : 0,
                     injuries_reported: formData.injuries_reported === 'true',
                     fatalities_reported: formData.fatalities_reported === 'true',
@@ -729,10 +729,10 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     </select>
                                 </div>
                             </div>
-                            {(formData.emergency_type === 'Kidnapping (taken with vehicle)' || formData.emergency_type === 'Multi-vehicle Collision') && (
+                            {(formData.vehicle_involved === 'true' || formData.emergency_type === 'Kidnapping (taken with vehicle)' || formData.emergency_type === 'Multi-vehicle Collision') && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
                                     <div className="md:col-span-2 text-sm font-bold text-blue-800 dark:text-blue-300 mb-1 flex items-center gap-2">
-                                        <CarIcon className="w-4 h-4" /> Vehicle Details
+                                        <CarIcon className="w-4 h-4" /> Vehicle Details {formData.vehicles_involved > 1 ? '(Primary Vehicle)' : ''}
                                     </div>
                                     <div><label htmlFor="license_plate" className={labelClasses}>License Plate</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} className={inputClasses} /></div>
                                     <div><label htmlFor="vehicle_make" className={labelClasses}>Vehicle Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} className={inputClasses} list="makes-list" /></div>
@@ -748,10 +748,15 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                         <option value="true">Yes</option>
                                     </select>
                                 </div>
-                                {formData.vehicle_involved === 'true' && (
+                                {(formData.vehicle_involved === 'true' || formData.emergency_type === 'Multi-vehicle Collision') && (
                                     <div>
                                         <label htmlFor="vehicles_involved" className={labelClasses}>Number of Vehicles</label>
-                                        <input type="number" name="vehicles_involved" id="vehicles_involved" value={formData.vehicles_involved || '1'} onChange={handleChange} min="1" className={inputClasses} />
+                                        <select name="vehicles_involved" id="vehicles_involved" value={formData.vehicles_involved || '1'} onChange={handleChange} className={inputClasses}>
+                                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                                                <option key={num} value={num}>{num}</option>
+                                            ))}
+                                            <option value="11">More than 10</option>
+                                        </select>
                                     </div>
                                 )}
                             </div>
