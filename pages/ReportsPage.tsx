@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, ReportStatus, Severity, VehicleReport, EmergencyReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus } from '../types';
+import { Report, ReportStatus, Severity, VehicleReport, EmergencyReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus, Company } from '../types';
 import { format } from 'date-fns';
 import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, AlertTriangleIcon, GlobeIcon, UsersIcon } from '../components/icons';
 import ReportDetailModal from '../components/ReportDetailModal';
@@ -18,7 +18,14 @@ const severityStyles: Record<Severity, string> = {
     [Severity.LOW]: 'bg-green-500/20 text-green-400 border-green-500/30',
 };
 
-type SortKey = keyof VehicleReport | keyof CrimeReport | keyof EmergencyReport | 'type' | 'reported_by_name' | 'deleted_by_name' | 'achieved_at';
+const severityOrder: Record<Severity, number> = {
+    [Severity.CRITICAL]: 0,
+    [Severity.HIGH]: 1,
+    [Severity.MEDIUM]: 2,
+    [Severity.LOW]: 3,
+};
+
+type SortKey = keyof VehicleReport | keyof CrimeReport | keyof EmergencyReport | 'type' | 'reported_by_name' | 'deleted_by_name' | 'achieved_at' | 'company_name';
 
 const SortableHeader: React.FC<{
     label: string;
@@ -43,6 +50,7 @@ interface ReportsPageProps {
 const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const [reports, setReports] = useState<(Report & {type: 'vehicle' | 'crime' | 'emergency'})[]>([]);
     const [users, setUsers] = useState<Profile[]>([]);
+    const [companies, setCompanies] = useState<Company[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -99,6 +107,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 ] as (Report & {type: 'vehicle' | 'crime' | 'emergency'})[];
                 setReports(combined);
                 setUsers(usersData || []);
+                setCompanies(companiesData || []);
                 const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
                 setResponders((respondersData || []).map(p => ({
                     id: p.id,
@@ -115,6 +124,11 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     }, [profile]);
 
     const userMap = useMemo(() => new Map(users.map(u => [u.id, `${u.first_name} ${u.surname}`])), [users]);
+    const companyMap = useMemo(() => new Map(companies.map(c => [c.id, c.name])), [companies]);
+
+    const isGlobalAdmin = useMemo(() => 
+        profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false),
+    [profile]);
 
     const processedReports = useMemo(() => {
         let filtered = reports
@@ -122,7 +136,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 ...r,
                 achieved_at: r.status === ReportStatus.DELETED ? r.deleted_at : r.completed_at,
                 reported_by_name: userMap.get(r.reported_by) || 'Unknown',
-                deleted_by_name: userMap.get(r.deleted_by || '') || 'N/A'
+                deleted_by_name: userMap.get(r.deleted_by || '') || 'N/A',
+                company_name: companyMap.get(r.company_id || '') || 'N/A'
             }))
             .filter(report => {
                 const searchMatch = searchTerm === '' ||
@@ -140,8 +155,15 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         
         if (sortConfig !== null) {
             filtered.sort((a: any, b: any) => {
-                const aValue = a[sortConfig.key];
-                const bValue = b[sortConfig.key];
+                let aValue = a[sortConfig.key];
+                let bValue = b[sortConfig.key];
+
+                // Logical sorting for severity
+                if (sortConfig.key === 'severity') {
+                    aValue = severityOrder[a.severity as Severity] ?? 99;
+                    bValue = severityOrder[b.severity as Severity] ?? 99;
+                }
+
                 if (aValue === null || aValue === undefined) return 1;
                 if (bValue === null || bValue === undefined) return -1;
                 if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
@@ -272,6 +294,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                             <tr>
                                 <SortableHeader label="Type" sortKey="type" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="OB Number / Title" sortKey="ob_number" sortConfig={sortConfig} onSort={handleSort} />
+                                {isGlobalAdmin && <SortableHeader label="Company" sortKey="company_name" sortConfig={sortConfig} onSort={handleSort} />}
                                 <SortableHeader label="Severity" sortKey="severity" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Reported At" sortKey="reported_at" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Reported By" sortKey="reported_by_name" sortConfig={sortConfig} onSort={handleSort} />
@@ -301,6 +324,11 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                         <div className="text-sm font-medium text-gray-900 dark:text-white">{isVehicleReport(report) ? report.license_plate : report.title}</div>
                                         <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</div>
                                     </td>
+                                    {isGlobalAdmin && (
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                            {(report as any).company_name}
+                                        </td>
+                                    )}
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className={`inline-block px-3 py-1 text-xs font-bold rounded-full capitalize border ${severityStyles[report.severity]}`}>
                                             {report.severity}
