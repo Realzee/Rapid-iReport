@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import Tesseract from 'tesseract.js';
+import { createWorker } from 'tesseract.js';
+import type { Worker, Bbox } from 'tesseract.js';
 import { supabase } from '../utils/supabase';
 import { VehicleReport, ReportStatus, Severity, UserRole } from '../types';
 import { useToast } from '../contexts/ToastContext';
@@ -17,7 +18,7 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
     const streamRef = useRef<MediaStream | null>(null);
     const scanIntervalRef = useRef<number | null>(null);
     const recognitionInProgress = useRef(false);
-    const tesseractWorkerRef = useRef<Tesseract.Worker | null>(null);
+    const tesseractWorkerRef = useRef<Worker | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
 
     const [isScanning, setIsScanning] = useState(false);
@@ -28,7 +29,7 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
     const [isRefreshing, setIsRefreshing] = useState(false);
     
     // State for live visual feedback
-    const [detections, setDetections] = useState<{ text: string; bbox: Tesseract.Bbox }[]>([]);
+    const [detections, setDetections] = useState<{ text: string; bbox: Bbox }[]>([]);
     const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
 
     // Helper for fuzzy matching license plates
@@ -161,7 +162,7 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
         // Init OCR
         if (!tesseractWorkerRef.current) {
             try {
-                const worker = await Tesseract.createWorker('eng');
+                const worker = await createWorker('eng');
                 await worker.setParameters({ tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' });
                 tesseractWorkerRef.current = worker;
             } catch (err) {
@@ -226,7 +227,7 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
             
             try {
                 const result = await tesseractWorkerRef.current?.recognize(canvas);
-                const foundPlates: { text: string; bbox: Tesseract.Bbox }[] = [];
+                const foundPlates: { text: string; bbox: Bbox }[] = [];
                 const plateTexts: string[] = [];
     
                 if (result?.data.lines) {

@@ -44,7 +44,14 @@ const TimelineItem: React.FC<{
 );
 
 
-const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]; profile: Profile; allUsers: Profile[]; onEdit: (report: Report) => void }> = ({ report, responders, profile, allUsers, onEdit }) => {
+const ControllerReportDetail: React.FC<{ 
+    report: Report; 
+    responders: Responder[]; 
+    profile: Profile; 
+    allUsers: Profile[]; 
+    onEdit: (report: Report) => void;
+    onRefresh?: () => void;
+}> = ({ report, responders, profile, allUsers, onEdit, onRefresh }) => {
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
     const [assignmentHistory, setAssignmentHistory] = useState<AssignmentLog[]>([]);
     const [reporter, setReporter] = useState<Profile | null>(null);
@@ -256,6 +263,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
                 await supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: updateContent });
             }
             logUserAction(profile.id, 'UPDATE_REPORT_STATUS', `Updated report ${report.id} (${report.ob_number}). Status: ${selectedStatus}, Responder: ${selectedResponder || 'None'}`);
+            if (onRefresh) onRefresh();
         }
         setIsActionLoading(false);
         setAssignmentModalOpen(false);
@@ -274,6 +282,7 @@ const ControllerReportDetail: React.FC<{ report: Report; responders: Responder[]
         else {
             addToast('Report successfully moved to archives.', 'success');
             logUserAction(profile.id, 'DELETE_REPORT', `Deleted report ${report.id} (${report.ob_number})`);
+            if (onRefresh) onRefresh();
         }
     };
 

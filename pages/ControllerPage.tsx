@@ -107,76 +107,76 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
 
     const [unviewedReportIds, setUnviewedReportIds] = useState<Set<string>>(new Set());
 
-    useEffect(() => {
-        const isGlobalAdmin = profile.role === UserRole.ADMIN && 
-            (profile.company?.name?.toLowerCase().includes('rapid911') || false);
+    const isGlobalAdmin = useMemo(() => profile.role === UserRole.ADMIN && 
+        (profile.company?.name?.toLowerCase().includes('rapid911') || false), [profile]);
 
-        const fetchData = async () => {
-            setLoading(true);
+    const fetchData = async () => {
+        setLoading(true);
 
-            const usersQuery = supabase.from('profiles').select('*');
-            if (!isGlobalAdmin && profile.company_id) {
-                usersQuery.eq('company_id', profile.company_id);
-            }
+        const usersQuery = supabase.from('profiles').select('*');
+        if (!isGlobalAdmin && profile.company_id) {
+            usersQuery.eq('company_id', profile.company_id);
+        }
 
-            let vehicleQuery = supabase.from('vehicle_reports').select('*');
-            let crimeQuery = supabase.from('crime_reports').select('*');
-            let emergencyQuery = supabase.from('emergency_reports').select('*');
+        let vehicleQuery = supabase.from('vehicle_reports').select('*');
+        let crimeQuery = supabase.from('crime_reports').select('*');
+        let emergencyQuery = supabase.from('emergency_reports').select('*');
 
-            const [
-                { data: vehicleData, error: vError },
-                { data: crimeData, error: cError },
-                { data: emergencyData, error: aError },
-                { data: usersData, error: uError },
-                { data: companiesData, error: compError }
-            ] = await Promise.all([
-                vehicleQuery.order('reported_at', { ascending: false }).limit(500),
-                crimeQuery.order('reported_at', { ascending: false }).limit(500),
-                emergencyQuery.order('reported_at', { ascending: false }).limit(500),
-                usersQuery,
-                supabase.from('companies').select('*')
-            ]);
+        const [
+            { data: vehicleData, error: vError },
+            { data: crimeData, error: cError },
+            { data: emergencyData, error: aError },
+            { data: usersData, error: uError },
+            { data: companiesData, error: compError }
+        ] = await Promise.all([
+            vehicleQuery.order('reported_at', { ascending: false }).limit(500),
+            crimeQuery.order('reported_at', { ascending: false }).limit(500),
+            emergencyQuery.order('reported_at', { ascending: false }).limit(500),
+            usersQuery,
+            supabase.from('companies').select('*')
+        ]);
 
-            if (vError) console.error('Error fetching vehicle reports:', vError);
-            if (cError) console.error('Error fetching crime reports:', cError);
-            if (aError) console.error('Error fetching emergency reports:', aError);
-            if (uError) console.error('Error fetching users:', uError);
-            if (compError) console.error('Error fetching companies:', compError);
+        if (vError) console.error('Error fetching vehicle reports:', vError);
+        if (cError) console.error('Error fetching crime reports:', cError);
+        if (aError) console.error('Error fetching emergency reports:', aError);
+        if (uError) console.error('Error fetching users:', uError);
+        if (compError) console.error('Error fetching companies:', compError);
 
-            const combinedReports = [
-                ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
-                ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
-                ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' })),
-            ];
+        const combinedReports = [
+            ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
+            ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
+            ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' })),
+        ];
 
-            // Ensure we have profiles for all reporters
-            const reporterIds = Array.from(new Set(combinedReports.map(r => r.reported_by)));
-            const loadedUserIds = new Set((usersData || []).map(u => u.id));
-            const missingReporterIds = reporterIds.filter(id => !loadedUserIds.has(id));
-            
-            setReports(combinedReports);
+        // Ensure we have profiles for all reporters
+        const reporterIds = Array.from(new Set(combinedReports.map(r => r.reported_by)));
+        const loadedUserIds = new Set((usersData || []).map(u => u.id));
+        const missingReporterIds = reporterIds.filter(id => !loadedUserIds.has(id));
+        
+        setReports(combinedReports);
 
-            const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
-            
-            let additionalProfiles: Profile[] = [];
-            if (missingReporterIds.length > 0) {
-                 const { data: missingProfiles } = await supabase.from('profiles').select('*').in('id', missingReporterIds);
-                 if (missingProfiles) additionalProfiles = missingProfiles.map(u => ({
-                    ...u,
-                    company: u.company_id ? companiesMap.get(u.company_id) : undefined
-                }));
-            }
-
-            const usersWithCompany = (usersData || []).map(u => ({
+        const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
+        
+        let additionalProfiles: Profile[] = [];
+        if (missingReporterIds.length > 0) {
+             const { data: missingProfiles } = await supabase.from('profiles').select('*').in('id', missingReporterIds);
+             if (missingProfiles) additionalProfiles = missingProfiles.map(u => ({
                 ...u,
                 company: u.company_id ? companiesMap.get(u.company_id) : undefined
             }));
+        }
 
-            setAllUsers([...usersWithCompany, ...additionalProfiles]);
-            setLoading(false);
-            isInitialLoad.current = false;
-        };
+        const usersWithCompany = (usersData || []).map(u => ({
+            ...u,
+            company: u.company_id ? companiesMap.get(u.company_id) : undefined
+        }));
 
+        setAllUsers([...usersWithCompany, ...additionalProfiles]);
+        setLoading(false);
+        isInitialLoad.current = false;
+    };
+
+    useEffect(() => {
         fetchData();
 
         const handleReportChange = async (payload: any) => {
@@ -591,6 +591,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                         profile={profile}
                                         allUsers={allUsers}
                                         onEdit={handleEditReport}
+                                        onRefresh={fetchData}
                                     />
                                 ) : (
                                     <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden min-h-[40vh]">
@@ -615,14 +616,14 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 isOpen={isReportModalOpen}
                 onClose={() => setIsReportModalOpen(false)}
                 reportToEdit={reportToEdit}
-                onReportSubmitted={() => window.location.reload()}
+                onReportSubmitted={fetchData}
             />
              <ReportModal
                 isOpen={isQuickAddModalOpen}
                 onClose={() => setIsQuickAddModalOpen(false)}
                 reportToEdit={null}
                 isQuickAdd={true}
-                onReportSubmitted={() => window.location.reload()}
+                onReportSubmitted={fetchData}
             />
         </>
     );

@@ -69,57 +69,58 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(15);
 
+    const fetchData = async () => {
+        setLoading(true);
+
+        const usersQuery = supabase.from('profiles').select('*');
+        const respondersQuery = supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER);
+        const terminalStatuses = [ReportStatus.RESOLVED, ReportStatus.REJECTED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.DELETED];
+
+        if (profile.role !== UserRole.ADMIN && profile.company_id) {
+            usersQuery.eq('company_id', profile.company_id);
+            respondersQuery.eq('company_id', profile.company_id);
+        }
+
+        const [
+            { data: vehicleData, error: vError },
+            { data: crimeData, error: cError },
+            { data: emergencyData, error: aError },
+            { data: usersData, error: uError },
+            { data: respondersData, error: rError },
+            { data: companiesData, error: compError }
+        ] = await Promise.all([
+            supabase.from('vehicle_reports').select('*').in('status', terminalStatuses),
+            supabase.from('crime_reports').select('*').in('status', terminalStatuses),
+            supabase.from('emergency_reports').select('*').in('status', terminalStatuses),
+            usersQuery,
+            respondersQuery,
+            supabase.from('companies').select('*')
+        ]);
+
+        if (vError || cError || aError || uError || rError || compError) console.error("Error fetching data:", vError || cError || aError || uError || rError || compError);
+        else {
+            const combined = [
+                ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
+                ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
+                ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' }))
+            ] as (Report & {type: 'vehicle' | 'crime' | 'emergency'})[];
+            setReports(combined);
+            setUsers(usersData || []);
+            setCompanies(companiesData || []);
+            const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
+            setResponders((respondersData || []).map(p => ({
+                id: p.id,
+                first_name: p.first_name,
+                surname: p.surname,
+                status: p.responder_status || ResponderStatus.OFF_DUTY,
+                location_coords: p.location_coords || undefined,
+                company_logo_url: p.company_id ? companiesMap.get(p.company_id)?.logo_url : undefined,
+            })));
+        }
+        setLoading(false);
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-
-            const usersQuery = supabase.from('profiles').select('*');
-            const respondersQuery = supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER);
-            const terminalStatuses = [ReportStatus.RESOLVED, ReportStatus.REJECTED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.DELETED];
-
-            if (profile.role !== UserRole.ADMIN && profile.company_id) {
-                usersQuery.eq('company_id', profile.company_id);
-                respondersQuery.eq('company_id', profile.company_id);
-            }
-
-            const [
-                { data: vehicleData, error: vError },
-                { data: crimeData, error: cError },
-                { data: emergencyData, error: aError },
-                { data: usersData, error: uError },
-                { data: respondersData, error: rError },
-                { data: companiesData, error: compError }
-            ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*').in('status', terminalStatuses),
-                supabase.from('crime_reports').select('*').in('status', terminalStatuses),
-                supabase.from('emergency_reports').select('*').in('status', terminalStatuses),
-                usersQuery,
-                respondersQuery,
-                supabase.from('companies').select('*')
-            ]);
-
-            if (vError || cError || aError || uError || rError || compError) console.error("Error fetching data:", vError || cError || aError || uError || rError || compError);
-            else {
-                const combined = [
-                    ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
-                    ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
-                    ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' }))
-                ] as (Report & {type: 'vehicle' | 'crime' | 'emergency'})[];
-                setReports(combined);
-                setUsers(usersData || []);
-                setCompanies(companiesData || []);
-                const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
-                setResponders((respondersData || []).map(p => ({
-                    id: p.id,
-                    first_name: p.first_name,
-                    surname: p.surname,
-                    status: p.responder_status || ResponderStatus.OFF_DUTY,
-                    location_coords: p.location_coords || undefined,
-                    company_logo_url: p.company_id ? companiesMap.get(p.company_id)?.logo_url : undefined,
-                })));
-            }
-            setLoading(false);
-        };
         fetchData();
     }, [profile]);
 
@@ -261,8 +262,15 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
 
     return (
         <div className="container mx-auto">
-             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Incident Archives</h2>
-             <p className="text-gray-500 dark:text-gray-400 mb-6">This section contains all resolved, recovered, closed, and deleted reports for historical record-keeping.</p>
+             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                <div>
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Incident Archives</h2>
+                    <p className="text-gray-500 dark:text-gray-400">This section contains all resolved, recovered, closed, and deleted reports for historical record-keeping.</p>
+                </div>
+                <button onClick={fetchData} className="mt-4 md:mt-0 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                    Refresh Archives
+                </button>
+             </div>
              
              <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -378,6 +386,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 responders={responders}
                 profile={profile}
                 allUsers={users}
+                onRefresh={fetchData}
             />
 
             {reportToRestore && (

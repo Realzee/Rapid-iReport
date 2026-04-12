@@ -19,50 +19,51 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
 
+    const fetchMyData = async () => {
+        setLoading(true);
+
+        // RLS now handles company-level filtering, so we can fetch all reports the user has access to.
+        const reportPromises = [
+            supabase.from('vehicle_reports').select('*').neq('status', ReportStatus.DELETED),
+            supabase.from('crime_reports').select('*').neq('status', ReportStatus.DELETED),
+            supabase.from('emergency_reports').select('*').neq('status', ReportStatus.DELETED)
+        ];
+
+        const usersPromise = profile.company_id 
+            ? supabase.from('profiles').select('*').eq('company_id', profile.company_id)
+            : Promise.resolve({ data: [profile], error: null });
+        
+        const [
+            { data: vData, error: vError }, 
+            { data: cData, error: cError },
+            { data: aData, error: aError },
+            { data: usersData, error: uError }
+        ] = await Promise.all([...reportPromises, usersPromise]);
+        
+        if (vError || cError || aError) {
+            console.error("Error fetching user reports:", vError || cError || aError);
+        } else {
+            const combined = [
+                ...(vData || []).map(r => ({ ...r, type: 'vehicle' as const })),
+                ...(cData || []).map(r => ({ ...r, type: 'crime' as const })),
+                ...(aData || []).map(r => ({ ...r, type: 'emergency' as const }))
+            ].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+            setMyReports(combined);
+            if (combined.length > 0 && !selectedReportId) {
+                setSelectedReportId(combined[0].id);
+            }
+        }
+
+        if (uError) {
+             console.error("Error fetching company users:", uError);
+        } else {
+             setCompanyUsers(usersData as Profile[] || [profile]);
+        }
+
+        setLoading(false);
+    };
+
     useEffect(() => {
-        const fetchMyData = async () => {
-            setLoading(true);
-
-            // RLS now handles company-level filtering, so we can fetch all reports the user has access to.
-            const reportPromises = [
-                supabase.from('vehicle_reports').select('*').neq('status', ReportStatus.DELETED),
-                supabase.from('crime_reports').select('*').neq('status', ReportStatus.DELETED),
-                supabase.from('emergency_reports').select('*').neq('status', ReportStatus.DELETED)
-            ];
-
-            const usersPromise = profile.company_id 
-                ? supabase.from('profiles').select('*').eq('company_id', profile.company_id)
-                : Promise.resolve({ data: [profile], error: null });
-            
-            const [
-                { data: vData, error: vError }, 
-                { data: cData, error: cError },
-                { data: aData, error: aError },
-                { data: usersData, error: uError }
-            ] = await Promise.all([...reportPromises, usersPromise]);
-            
-            if (vError || cError || aError) {
-                console.error("Error fetching user reports:", vError || cError || aError);
-            } else {
-                const combined = [
-                    ...(vData || []).map(r => ({ ...r, type: 'vehicle' as const })),
-                    ...(cData || []).map(r => ({ ...r, type: 'crime' as const })),
-                    ...(aData || []).map(r => ({ ...r, type: 'emergency' as const }))
-                ].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
-                setMyReports(combined);
-                if (combined.length > 0 && !selectedReportId) {
-                    setSelectedReportId(combined[0].id);
-                }
-            }
-
-            if (uError) {
-                 console.error("Error fetching company users:", uError);
-            } else {
-                 setCompanyUsers(usersData as Profile[] || [profile]);
-            }
-
-            setLoading(false);
-        };
         fetchMyData();
     }, [profile.id, profile.company_id, selectedReportId]);
 
@@ -167,14 +168,19 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                     </div>
 
                     <div className="lg:col-span-2 lg:sticky lg:top-24">
-                        {selectedReport ? <UserReportDetail key={selectedReport.id} report={selectedReport} profile={profile} onEdit={handleOpenEditReport} allUsers={companyUsers} /> : 
+                        {selectedReport ? <UserReportDetail key={selectedReport.id} report={selectedReport} profile={profile} onEdit={handleOpenEditReport} allUsers={companyUsers} onRefresh={fetchMyData} /> : 
                         <div className="h-full bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center min-h-[50vh]">
                             <p className="text-gray-500 dark:text-gray-400">Select a report to view details.</p>
                         </div>}
                     </div>
                 </div>
             )}
-            <ReportModal isOpen={isReportModalOpen} onClose={handleCloseModal} reportToEdit={reportToEdit} />
+            <ReportModal 
+                isOpen={isReportModalOpen} 
+                onClose={handleCloseModal} 
+                reportToEdit={reportToEdit} 
+                onReportSubmitted={fetchMyData}
+            />
         </>
     );
 };

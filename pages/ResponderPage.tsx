@@ -203,6 +203,52 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             }
         };
 
+        const handleCirculationUpdate = (payload: any) => {
+            const newReport = payload.new as VehicleReport;
+            const oldReport = payload.old as VehicleReport;
+            const eventType = payload.eventType;
+
+            const activeStatuses = [ReportStatus.PENDING, ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE];
+            
+            const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
+            const isRelevant = (report: VehicleReport) => {
+                if (isGlobalAdmin) return true;
+                if (report.is_global) return true;
+                if (report.company_id === profile.company_id) return true;
+                if (report.shared_with_company_ids?.includes(profile.company_id!)) return true;
+                if (report.assigned_to === profile.id) return true;
+                return false;
+            };
+
+            setCirculationReports(prev => {
+                if (eventType === 'DELETE') {
+                    return prev.filter(r => r.id !== oldReport.id);
+                }
+
+                if (eventType === 'INSERT') {
+                    if (activeStatuses.includes(newReport.status) && isRelevant(newReport)) {
+                        if (prev.some(r => r.id === newReport.id)) return prev;
+                        return [newReport, ...prev].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+                    }
+                    return prev;
+                }
+
+                if (eventType === 'UPDATE') {
+                    const wasInList = prev.some(r => r.id === newReport.id);
+                    const shouldBeInList = activeStatuses.includes(newReport.status) && isRelevant(newReport);
+
+                    if (wasInList && !shouldBeInList) {
+                        return prev.filter(r => r.id !== newReport.id);
+                    } else if (!wasInList && shouldBeInList) {
+                        return [newReport, ...prev].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+                    } else if (wasInList && shouldBeInList) {
+                        return prev.map(r => r.id === newReport.id ? newReport : r);
+                    }
+                }
+                return prev;
+            });
+        };
+
         const channel = supabase.channel(`responder-reports-${profile.id}`)
             // Listen for changes where assigned_to is us
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `assigned_to=eq.${profile.id}` }, handleUpsert)
@@ -212,8 +258,11 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
-            
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, handlePotentialUnassignmentOrDelete)
+            // Listen for all changes to handle unassignments, deletions, and circulation updates
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, (payload) => {
+                handlePotentialUnassignmentOrDelete(payload);
+                handleCirculationUpdate(payload);
+            })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handlePotentialUnassignmentOrDelete)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, handlePotentialUnassignmentOrDelete)
             .subscribe();
@@ -362,7 +411,10 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         return assignedReports.filter(r => activeStatuses.includes(r.status));
     }, [assignedReports]);
 
-    const selectedReport = useMemo(() => assignedReports.find(r => r.id === selectedReportId), [assignedReports, selectedReportId]);
+    const selectedReport = useMemo(() => 
+        assignedReports.find(r => r.id === selectedReportId) || 
+        circulationReports.find(r => r.id === selectedReportId), 
+    [assignedReports, circulationReports, selectedReportId]);
 
     const handleAnprHit = async (reportId: string) => {
         const { data, error } = await supabase
@@ -379,15 +431,17 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         }
     };
 
-    const handleSelfAssign = async (report: VehicleReport) => {
+    const handleSelfAssign = async (report: Report) => {
         if (report.assigned_to === profile.id) {
             addToast('You are already assigned to this incident.', 'info');
             setAnprFoundReport(null);
             return;
         }
 
+        const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
+
         const { error } = await supabase
-            .from('vehicle_reports')
+            .from(tableName)
             .update({ 
                 assigned_to: profile.id,
                 status: ReportStatus.ASSIGNED 
@@ -409,7 +463,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             await supabase.from('report_updates').insert({
                 report_id: report.id,
                 user_id: profile.id,
-                content: `Responder ${profile.first_name} ${profile.surname} self-assigned via Lookout.`
+                content: `Responder ${profile.first_name} ${profile.surname} self-assigned to this incident.`
             });
             
             setAnprFoundReport(null);
@@ -494,7 +548,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                         profile={profile} 
                         reports={circulationReports} 
                         loading={loading}
-                        onSelectReport={(r) => setSelectedReportId(r.id)}
+                        onSelectReport={setSelectedReportId}
                     />
                     
                     <div className="flex items-center justify-between px-1">
@@ -554,7 +608,14 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                 </div>
                 
                 {selectedReport ? (
-                    <ResponderReportDetail key={selectedReport.id} report={selectedReport} profile={profile} allUsers={allUsers} fetchData={fetchData} />
+                    <ResponderReportDetail 
+                        key={selectedReport.id} 
+                        report={selectedReport} 
+                        profile={profile} 
+                        allUsers={allUsers} 
+                        fetchData={fetchData} 
+                        onSelfAssign={() => handleSelfAssign(selectedReport)}
+                    />
                 ) : (
                     <div className="h-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-8 flex flex-col items-center justify-center text-center shadow-sm">
                         <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
@@ -586,7 +647,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                             <span className="text-xs font-mono bg-white/20 px-2 py-1 rounded">{anprFoundReport.license_plate}</span>
                         </div>
                         <div className="max-h-[60vh] overflow-y-auto">
-                            <UserReportDetail report={anprFoundReport} profile={profile} onEdit={() => {}} allUsers={allUsers} />
+                            <UserReportDetail report={anprFoundReport} profile={profile} onEdit={() => {}} allUsers={allUsers} onRefresh={fetchData} />
                         </div>
                         <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex gap-3">
                             <button 
@@ -611,13 +672,14 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             isOpen={isReportModalOpen}
             onClose={() => setIsReportModalOpen(false)}
             reportToEdit={null}
+            onReportSubmitted={fetchData}
         />
 
         </>
     );
 };
 
-const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUsers: Profile[], fetchData: () => Promise<void> }> = ({ report, profile, allUsers, fetchData }) => {
+const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUsers: Profile[], fetchData: () => Promise<void>, onSelfAssign: () => void }> = ({ report, profile, allUsers, fetchData, onSelfAssign }) => {
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
     const [newUpdate, setNewUpdate] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -627,6 +689,8 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
     const { addToast } = useToast();
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, confirmText: string, confirmVariant: 'danger' | 'primary' } | null>(null);
     const { openChat } = useChat();
+
+    const isAssignedToMe = report.assigned_to === profile.id;
 
     useEffect(() => {
         const fetchUpdates = async () => { 
@@ -672,8 +736,9 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
         } else if (isResolving) {
             const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
             const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+            const { count: emergencyCount } = await supabase.from('emergency_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
             
-            const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0);
+            const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0) || (emergencyCount !== null && emergencyCount > 0);
             if (!hasOtherActiveAssignments) {
                 newResponderStatus = ResponderStatus.AVAILABLE;
             }
@@ -721,8 +786,9 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
 
                     const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
                     const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+                    const { count: emergencyCount } = await supabase.from('emergency_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
 
-                    const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0);
+                    const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0) || (emergencyCount !== null && emergencyCount > 0);
                     if (!hasOtherActiveAssignments) {
                         updatePromises.push(fetch('/api/update-profile', {
                             method: 'POST',
@@ -796,54 +862,62 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                             <ChatAlt2Icon className="w-4 h-4" />
                             Live Chat
                         </button>
-                        <button onClick={handleStandDown} disabled={isTerminalStatus || !!isActionLoading} className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors font-medium text-sm disabled:opacity-50">
-                            {isActionLoading === 'stand_down' ? <Spinner /> : 'Stand Down'}
-                        </button>
+                        {isAssignedToMe ? (
+                            <button onClick={handleStandDown} disabled={isTerminalStatus || !!isActionLoading} className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors font-medium text-sm disabled:opacity-50">
+                                {isActionLoading === 'stand_down' ? <Spinner /> : 'Stand Down'}
+                            </button>
+                        ) : (
+                            <button onClick={onSelfAssign} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold text-sm shadow-lg shadow-blue-600/20">
+                                Self-Assign Incident
+                            </button>
+                        )}
                     </div>
                 </div>
 
                 {/* Primary Action Bar */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <button 
-                        onClick={() => handleStatusUpdate(ReportStatus.IN_PROGRESS)} 
-                        disabled={isTerminalStatus || !!isActionLoading || report.status === ReportStatus.IN_PROGRESS} 
-                        className={`py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2
-                            ${report.status === ReportStatus.IN_PROGRESS 
-                                ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-600 ring-offset-2 dark:ring-offset-gray-900' 
-                                : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40'}`}
-                    >
-                        {isActionLoading === ReportStatus.IN_PROGRESS ? <Spinner /> : 'En Route'}
-                    </button>
-                    
-                    <button 
-                        onClick={() => handleStatusUpdate(ReportStatus.ON_SCENE)} 
-                        disabled={isTerminalStatus || !!isActionLoading || report.status === ReportStatus.ON_SCENE} 
-                        className={`py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2
-                            ${report.status === ReportStatus.ON_SCENE 
-                                ? 'bg-yellow-500 text-white shadow-md ring-2 ring-yellow-500 ring-offset-2 dark:ring-offset-gray-900' 
-                                : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/40'}`}
-                    >
-                        {isActionLoading === ReportStatus.ON_SCENE ? <Spinner /> : 'On Scene'}
-                    </button>
-                    
-                    <button 
-                        onClick={() => handleStatusUpdate(ReportStatus.RESOLVED)} 
-                        disabled={isTerminalStatus || !!isActionLoading} 
-                        className="py-3 px-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2"
-                    >
-                        {isActionLoading === ReportStatus.RESOLVED ? <Spinner /> : 'Resolve'}
-                    </button>
-                    
-                    {isVehicleReport(report) && (
+                {isAssignedToMe && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <button 
-                            onClick={() => handleStatusUpdate(ReportStatus.RECOVERED)} 
-                            disabled={isTerminalStatus || !!isActionLoading} 
-                            className="py-3 px-4 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/40 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                            onClick={() => handleStatusUpdate(ReportStatus.IN_PROGRESS)} 
+                            disabled={isTerminalStatus || !!isActionLoading || report.status === ReportStatus.IN_PROGRESS} 
+                            className={`py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2
+                                ${report.status === ReportStatus.IN_PROGRESS 
+                                    ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-600 ring-offset-2 dark:ring-offset-gray-900' 
+                                    : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40'}`}
                         >
-                            {isActionLoading === ReportStatus.RECOVERED ? <Spinner /> : 'Recovered'}
+                            {isActionLoading === ReportStatus.IN_PROGRESS ? <Spinner /> : 'En Route'}
                         </button>
-                    )}
-                </div>
+                        
+                        <button 
+                            onClick={() => handleStatusUpdate(ReportStatus.ON_SCENE)} 
+                            disabled={isTerminalStatus || !!isActionLoading || report.status === ReportStatus.ON_SCENE} 
+                            className={`py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2
+                                ${report.status === ReportStatus.ON_SCENE 
+                                    ? 'bg-yellow-500 text-white shadow-md ring-2 ring-yellow-500 ring-offset-2 dark:ring-offset-gray-900' 
+                                    : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/40'}`}
+                        >
+                            {isActionLoading === ReportStatus.ON_SCENE ? <Spinner /> : 'On Scene'}
+                        </button>
+                        
+                        <button 
+                            onClick={() => handleStatusUpdate(ReportStatus.RESOLVED)} 
+                            disabled={isTerminalStatus || !!isActionLoading} 
+                            className="py-3 px-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                        >
+                            {isActionLoading === ReportStatus.RESOLVED ? <Spinner /> : 'Resolve'}
+                        </button>
+                        
+                        {isVehicleReport(report) && (
+                            <button 
+                                onClick={() => handleStatusUpdate(ReportStatus.RECOVERED)} 
+                                disabled={isTerminalStatus || !!isActionLoading} 
+                                className="py-3 px-4 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/40 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                            >
+                                {isActionLoading === ReportStatus.RECOVERED ? <Spinner /> : 'Recovered'}
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Content Grid */}
@@ -931,11 +1005,13 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                     <div>
                         <div className="flex items-center justify-between mb-3">
                             <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Evidence</h4>
-                            <label htmlFor="evidence-upload" className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer flex items-center gap-1">
-                                <CameraIcon className="w-3 h-3" />
-                                {isUploading ? "Uploading..." : "Add Photo"}
-                                <input id="evidence-upload" type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" disabled={isUploading} />
-                            </label>
+                            {isAssignedToMe && (
+                                <label htmlFor="evidence-upload" className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer flex items-center gap-1">
+                                    <CameraIcon className="w-3 h-3" />
+                                    {isUploading ? "Uploading..." : "Add Photo"}
+                                    <input id="evidence-upload" type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" disabled={isUploading} />
+                                </label>
+                            )}
                         </div>
                         
                         {report.evidence_images && report.evidence_images.length > 0 ? (
@@ -984,22 +1060,24 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                         )}
                     </div>
                     
-                    <form onSubmit={handlePostUpdate} className="flex gap-2">
-                        <input 
-                            type="text" 
-                            value={newUpdate} 
-                            onChange={e => setNewUpdate(e.target.value)} 
-                            placeholder="Type an update..." 
-                            className="flex-grow bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all" 
-                        />
-                        <button 
-                            type="submit" 
-                            disabled={isSubmitting || !newUpdate.trim()} 
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                            Post
-                        </button>
-                    </form>
+                    {isAssignedToMe && (
+                        <form onSubmit={handlePostUpdate} className="flex gap-2">
+                            <input 
+                                type="text" 
+                                value={newUpdate} 
+                                onChange={e => setNewUpdate(e.target.value)} 
+                                placeholder="Type an update..." 
+                                className="flex-grow bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all" 
+                            />
+                            <button 
+                                type="submit" 
+                                disabled={isSubmitting || !newUpdate.trim()} 
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Post
+                            </button>
+                        </form>
+                    )}
                 </div>
             </div>
         </div>

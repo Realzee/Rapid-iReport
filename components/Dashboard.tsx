@@ -496,7 +496,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                     </div>
                 </div>
             </div>
-            <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} reportToEdit={reportToEdit} onReportSubmitted={() => window.location.reload()} />
+            <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} reportToEdit={reportToEdit} onReportSubmitted={fetchData} />
             <ArchiveReportModal isOpen={!!reportToDelete} onClose={() => setReportToDelete(null)} onConfirm={confirmDeleteReport} reportIdentifier={reportToDelete ? (reportToDelete.type === 'vehicle' ? (reportToDelete as any).license_plate : reportToDelete.title) : ''} />
             <MapModal isOpen={isMapModalOpen} onClose={() => setIsMapModalOpen(false)} report={selectedReport} />
         </div>

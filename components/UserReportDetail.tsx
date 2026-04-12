@@ -43,7 +43,13 @@ const TimelineItem: React.FC<{
 );
 
 
-const UserReportDetail: React.FC<{ report: Report, profile: Profile, onEdit: (report: Report) => void, allUsers: Profile[] }> = ({ report, profile, onEdit, allUsers }) => {
+const UserReportDetail: React.FC<{ 
+    report: Report, 
+    profile: Profile, 
+    onEdit: (report: Report) => void, 
+    allUsers: Profile[],
+    onRefresh?: () => void
+}> = ({ report, profile, onEdit, allUsers, onRefresh }) => {
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
     const [assignmentHistory, setAssignmentHistory] = useState<AssignmentLog[]>([]);
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
