@@ -727,7 +727,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             </div>
             {canManageReport && (
                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 grid grid-cols-2 gap-3">
-                    <button onClick={() => onEdit(localReport)} disabled={isTerminalStatus} className="flex items-center justify-center gap-2 btn-primary text-sm">
+                    <button onClick={() => onEdit(localReport)} className="flex items-center justify-center gap-2 btn-primary text-sm">
                         <EditIcon className="w-5 h-5"/> Edit
                     </button>
                     <button onClick={() => onDelete(localReport)} disabled={isTerminalStatus} className="flex items-center justify-center gap-2 btn-danger text-sm">

@@ -5,6 +5,7 @@ import { Report, ReportStatus, Severity, VehicleReport, EmergencyReport, CrimeRe
 import { format } from 'date-fns';
 import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, AlertTriangleIcon, GlobeIcon, UsersIcon } from '../components/icons';
 import ReportDetailModal from '../components/ReportDetailModal';
+import ReportModal from '../components/ReportModal';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 
@@ -62,6 +63,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' } | null>({ key: 'reported_at', direction: 'descending' });
 
     const [detailModalReport, setDetailModalReport] = useState<Report | null>(null);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
     const [reportToRestore, setReportToRestore] = useState<Report | null>(null);
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
     const { addToast } = useToast();
@@ -204,6 +207,12 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     
     const handleRestoreClick = (report: Report) => {
         setReportToRestore(report);
+    };
+
+    const handleEditClick = (report: Report) => {
+        setReportToEdit(report);
+        setIsReportModalOpen(true);
+        setDetailModalReport(null); // Close detail modal if open
     };
 
     const handleConfirmRestore = async () => {
@@ -387,6 +396,14 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 profile={profile}
                 allUsers={users}
                 onRefresh={fetchData}
+                onEdit={handleEditClick}
+            />
+
+            <ReportModal
+                isOpen={isReportModalOpen}
+                onClose={() => setIsReportModalOpen(false)}
+                reportToEdit={reportToEdit}
+                onReportSubmitted={fetchData}
             />
 
             {reportToRestore && (
