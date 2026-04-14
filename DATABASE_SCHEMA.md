@@ -145,6 +145,17 @@ ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS station_name text;
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
 
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS vehicle_involved boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS vehicles_involved integer DEFAULT 0;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS license_plate text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS vehicle_make text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS vehicle_model text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS vehicle_color text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS injuries_reported boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS fatalities_reported boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+
 -- Add new fields to profiles table for controllers and responders
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS work_address text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS medical_aid_policy_number text;
