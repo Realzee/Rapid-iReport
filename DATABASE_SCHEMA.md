@@ -138,8 +138,12 @@ ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS cas_number text;
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS station_name text;
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS vin_number text;
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS engine_number text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS cas_number text;
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS station_name text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
 
 -- Add new fields to profiles table for controllers and responders
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS work_address text;
