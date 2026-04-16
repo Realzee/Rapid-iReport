@@ -32,8 +32,10 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
             const { data, error } = await dbQuery.order('reported_at', { ascending: false }).limit(100);
 
             if (error) throw error;
-            setResults(data as VehicleReport[]);
-            if (data.length === 0) {
+            
+            const reportsWithType = (data || []).map(r => ({ ...r, type: 'vehicle' as const }));
+            setResults(reportsWithType as VehicleReport[]);
+            if (reportsWithType.length === 0) {
                 addToast('No vehicles found matching that query.', 'info');
             }
         } catch (error: any) {

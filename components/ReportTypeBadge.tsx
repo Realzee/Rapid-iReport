@@ -32,7 +32,7 @@ const typeStyles = {
 };
 
 const ReportTypeBadge: React.FC<ReportTypeBadgeProps> = ({ type, className = '', showText = true }) => {
-  const style = typeStyles[type];
+  const style = typeStyles[type] || typeStyles['vehicle']; // default to vehicle to prevent crashes on undefined
   const Icon = style.icon;
 
   return (
