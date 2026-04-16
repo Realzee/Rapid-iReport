@@ -146,6 +146,11 @@ export interface VehicleReport {
   company_id?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];
+  cos_name?: string;
+  cos_contact_number?: string;
+  io_name?: string;
+  io_contact?: string;
+  has_tracker?: boolean;
 }
 
 export interface CrimeReport {

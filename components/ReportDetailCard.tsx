@@ -623,6 +623,36 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                             <p className="text-gray-900 dark:text-white">{(localReport as any).engine_number}</p>
                         </div>
                     )}
+                    {localReport.type === 'vehicle' && (localReport as any).cos_name && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">COS Name</p>
+                            <p className="text-gray-900 dark:text-white">{(localReport as any).cos_name}</p>
+                        </div>
+                    )}
+                    {localReport.type === 'vehicle' && (localReport as any).cos_contact_number && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">COS Contact</p>
+                            <p className="text-gray-900 dark:text-white">{(localReport as any).cos_contact_number}</p>
+                        </div>
+                    )}
+                    {localReport.type === 'vehicle' && (localReport as any).io_name && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">IO Name</p>
+                            <p className="text-gray-900 dark:text-white">{(localReport as any).io_name}</p>
+                        </div>
+                    )}
+                    {localReport.type === 'vehicle' && (localReport as any).io_contact && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">IO Contact</p>
+                            <p className="text-gray-900 dark:text-white">{(localReport as any).io_contact}</p>
+                        </div>
+                    )}
+                    {localReport.type === 'vehicle' && (localReport as any).has_tracker !== undefined && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Tracker</p>
+                            <p className="text-gray-900 dark:text-white">{(localReport as any).has_tracker ? 'Yes' : 'No'}</p>
+                        </div>
+                    )}
                     {localReport.type === 'emergency' && (
                         <>
                             <div>

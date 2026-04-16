@@ -30,8 +30,9 @@ import { EventsProvider } from './contexts/EventsContext';
 import { AlertTriangleIcon, ClockIcon } from './components/icons';
 import { useToast } from './contexts/ToastContext';
 import UserActivityPage from './pages/UserActivityPage';
+import GlobalSearchPage from './pages/GlobalSearchPage';
 
-type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring';
+type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search';
 
 const isProfileComplete = (profile: Profile) => {
     if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
@@ -316,21 +317,26 @@ const App: React.FC = () => {
     }
     
     if (profile.role === UserRole.USER) {
+        if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
         return view === 'profile'
             ? <ProfilePage profile={profile} setProfile={setProfile} />
             : <UserDashboardPage profile={profile} />;
     }
     
     if (profile.role === UserRole.CONTROLLER) {
+      if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
       return view === 'profile'
           ? <ProfilePage profile={profile} setProfile={setProfile} />
           : <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
     }
     
+    const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
+
     switch(view) {
       case 'dashboard': return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
       case 'controller': return <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
       case 'archives': return <ReportsPage profile={profile} />;
+      case 'global_search': return <GlobalSearchPage profile={profile} isGlobalAdmin={isGlobalAdmin} />;
       case 'analytics': return <AnalyticsPage />;
       case 'users': return <UsersPage />;
       case 'activity_logs': return <UserActivityPage />;

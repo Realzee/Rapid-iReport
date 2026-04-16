@@ -140,6 +140,12 @@ ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS vin_number text;
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS engine_number text;
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS cos_name text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS cos_contact_number text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS io_name text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS io_contact text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS has_tracker boolean DEFAULT false;
+
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS cas_number text;
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS station_name text;
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;

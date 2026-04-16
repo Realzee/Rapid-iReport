@@ -165,14 +165,19 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   };
 
   const NavLinks: React.FC<{mobile?: boolean}> = ({ mobile = false}) => {
-    const clickHandler = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring') => mobile ? handleMobileLinkClick(view) : setView(view);
+    const clickHandler = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search') => mobile ? handleMobileLinkClick(view as any) : setView(view as any);
     const classGetter = mobile ? mobileNavLinkClasses : navLinkClasses;
 
     if (profile.role === UserRole.USER) {
       return (
-        <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>
-          My Reports
-        </button>
+        <>
+          <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>
+            My Reports
+          </button>
+          <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>
+            Global Search
+          </button>
+        </>
       );
     }
 
@@ -181,6 +186,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         <>
           <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>Controller</button>
           <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>Guarding</button>
+          <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>Global Search</button>
         </>
       );
     }
@@ -196,6 +202,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>Controller</button>
         <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>Guarding</button>
         <button onClick={() => clickHandler('archives')} className={classGetter('archives')}>Archives</button>
+        <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>Global Search</button>
         <button onClick={() => clickHandler('analytics')} className={classGetter('analytics')}>Analytics</button>
         <button onClick={() => clickHandler('map')} className={classGetter('map')}>Map</button>
         {canAccessAdminPages && (
