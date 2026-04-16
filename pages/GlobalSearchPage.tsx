@@ -74,7 +74,11 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
                         has_tracker: item.tracker && item.tracker.toLowerCase() !== 'unknown' ? true : false,
                         status: item.recovered ? ReportStatus.RECOVERED : ReportStatus.ACTIVE,
                         severity: 'high' as any,
-                        reported_at: item.date_of_incident ? new Date(item.date_of_incident).toISOString() : new Date().toISOString(),
+                        reported_at: (() => {
+                            if (!item.date_of_incident) return new Date().toISOString();
+                            const d = new Date(item.date_of_incident);
+                            return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+                        })(),
                         reported_by: 'system',
                         is_legacy: true,
                         type: 'vehicle' as const
