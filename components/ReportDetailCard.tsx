@@ -36,6 +36,11 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
     useEffect(() => {
         const fetchLatestReport = async () => {
+            // Do not attempt to dynamically load fresh data if this is a mapped legacy report from the old PHP system
+            if ((localReport as any).is_legacy || localReport.id.startsWith('legacy-')) {
+                return;
+            }
+            
             const tableName = localReport.type === 'vehicle' ? 'vehicle_reports' : (localReport.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
             const { data, error } = await supabase
                 .from(tableName)
@@ -569,7 +574,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Status</p>
-                        {canUpdateStatus ? (
+                        {canUpdateStatus && !(localReport as any).is_legacy && !localReport.id.startsWith('legacy-') ? (
                              <select
                                 value={localReport.status}
                                 onChange={handleStatusChange}
@@ -755,7 +760,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     <span>{isGeneratingBolo ? 'Generating...' : 'BOLO Card'}</span>
                 </button>
             </div>
-            {canManageReport && (
+            {canManageReport && !(localReport as any).is_legacy && !localReport.id.startsWith('legacy-') && (
                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 grid grid-cols-2 gap-3">
                     <button onClick={() => onEdit(localReport)} className="flex items-center justify-center gap-2 btn-primary text-sm">
                         <EditIcon className="w-5 h-5"/> Edit

@@ -18,35 +18,80 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
 
         setLoading(true);
         try {
-            // Use the Postgres function (RPC) with SECURITY DEFINER to bypass RLS and search the entire database
-            const { data, error } = await supabase.rpc('global_vehicle_search', {
-                search_term: query
-            });
+            // Race the internal search and the legacy external search
+            const [supabaseResult, legacyResult] = await Promise.allSettled([
+                supabase.rpc('global_vehicle_search', { search_term: query }).then(res => {
+                    if (res.error) throw res.error;
+                    return res.data;
+                }),
+                fetch('/api/legacySearch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                }).then(res => {
+                    if (!res.ok) throw new Error('Legacy search failed');
+                    return res.json();
+                })
+            ]);
 
-            if (error) {
+            let mergedResults: VehicleReport[] = [];
+
+            // Process Supabase internal results
+            if (supabaseResult.status === 'fulfilled' && supabaseResult.value) {
+                mergedResults = [...mergedResults, ...supabaseResult.value.map(r => ({ ...r, type: 'vehicle' as const }))];
+            } else if (supabaseResult.status === 'rejected') {
+                console.error("Supabase RPC failed. Attempting fallback...");
                 // Fallback to standard query if RPC doesn't exist yet
                 let dbQuery = supabase.from('vehicle_reports').select('*');
                 dbQuery = dbQuery.or(`license_plate.ilike.%${query}%,cas_number.ilike.%${query}%,vin_number.ilike.%${query}%,engine_number.ilike.%${query}%,ob_number.ilike.%${query}%,vehicle_make.ilike.%${query}%,vehicle_model.ilike.%${query}%`);
-                
                 const fallbackResult = await dbQuery.order('reported_at', { ascending: false }).limit(100);
-                if (fallbackResult.error) throw fallbackResult.error;
-                
-                const reportsWithType = (fallbackResult.data || []).map(r => ({ ...r, type: 'vehicle' as const }));
-                setResults(reportsWithType as VehicleReport[]);
-                if (reportsWithType.length === 0) {
-                    addToast('No vehicles found matching that query.', 'info');
+                if (fallbackResult.data) {
+                    mergedResults = [...mergedResults, ...fallbackResult.data.map((r: any) => ({ ...r, type: 'vehicle' as const }))];
                 }
-                return;
             }
-            
-            const reportsWithType = (data || []).map(r => ({ ...r, type: 'vehicle' as const }));
-            setResults(reportsWithType as VehicleReport[]);
-            if (reportsWithType.length === 0) {
-                addToast('No vehicles found matching that query.', 'info');
+
+            // Process legacy system results
+            if (legacyResult.status === 'fulfilled' && legacyResult.value && legacyResult.value.data) {
+                const legacyItems = legacyResult.value.data.map((item: any) => {
+                    const obMatch = item.reason?.match(/OB NUMBER:\s*(.*?)\)/i);
+                    const parsedOb = obMatch ? obMatch[1] : `LEG-OBS-${item.id}`;
+                    
+                    return {
+                        id: `legacy-${item.id}`,
+                        ob_number: parsedOb,
+                        license_plate: item.vehicle_registration || '',
+                        vehicle_make: item.make || '',
+                        vehicle_model: item.model || '',
+                        vehicle_color: item.color || '',
+                        last_seen_location: item.station_reported_at || 'Unknown Location',
+                        description: `[LEGACY SYSTEM REPORT]\n${item.reason || ''}`,
+                        cas_number: item.case_number || '',
+                        station_name: item.station_reported_at || '',
+                        cos_name: item.cos_name || '',
+                        cos_contact_number: item.cos_contact_number || '',
+                        io_name: item.io_name || '',
+                        io_contact: item.io_contact || '',
+                        has_tracker: item.tracker && item.tracker.toLowerCase() !== 'unknown' ? true : false,
+                        status: item.recovered ? ReportStatus.RECOVERED : ReportStatus.ACTIVE,
+                        severity: 'high' as any,
+                        reported_at: item.date_of_incident ? new Date(item.date_of_incident).toISOString() : new Date().toISOString(),
+                        reported_by: 'system',
+                        is_legacy: true,
+                        type: 'vehicle' as const
+                    };
+                });
+                mergedResults = [...mergedResults, ...legacyItems];
+            } else if (legacyResult.status === 'rejected') {
+                console.error("Legacy search API failed:", legacyResult.reason);
+            }
+
+            setResults(mergedResults as VehicleReport[]);
+            if (mergedResults.length === 0) {
+                addToast('No vehicles found matching that query across platforms.', 'info');
             }
         } catch (error: any) {
             console.error('Search error:', error);
-            addToast('Error performing search. The application database might need the RPC update.', 'error');
+            addToast('Error performing search.', 'error');
         } finally {
             setLoading(false);
         }
@@ -115,7 +160,14 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
                                 {results.map((report) => (
                                     <tr key={report.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                         <td className="px-4 py-3">
-                                            <div className="font-bold text-gray-900 dark:text-white">{report.license_plate}</div>
+                                            <div className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                                {report.license_plate}
+                                                {(report as any).is_legacy && (
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
+                                                        LEGACY DB
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div className="text-gray-500 dark:text-gray-400">{report.vehicle_make} {report.vehicle_model}</div>
                                         </td>
                                         <td className="px-4 py-3 text-gray-900 dark:text-white capitalize">{report.vehicle_color}</td>
