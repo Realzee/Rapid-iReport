@@ -58,7 +58,7 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
             if (supabaseResult.status === 'fulfilled' && supabaseResult.value) {
                 mergedResults = [...mergedResults, ...supabaseResult.value.map(r => ({ ...r, type: 'vehicle' as const }))];
             } else if (supabaseResult.status === 'rejected') {
-                console.error("Supabase RPC failed. Attempting fallback...");
+                console.log("Global search RPC not installed, using fallback standard query...");
                 // Fallback to standard query if RPC doesn't exist yet
                 let dbQuery = supabase.from('vehicle_reports').select('*');
                 dbQuery = dbQuery.or(`license_plate.ilike.%${query}%,cas_number.ilike.%${query}%,vin_number.ilike.%${query}%,engine_number.ilike.%${query}%,ob_number.ilike.%${query}%,vehicle_make.ilike.%${query}%,vehicle_model.ilike.%${query}%`);
