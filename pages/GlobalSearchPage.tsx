@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { VehicleReport, ReportStatus } from '../types';
 import { useToast } from '../contexts/ToastContext';
