@@ -13,6 +13,24 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
     const { addToast } = useToast();
     const [selectedReport, setSelectedReport] = useState<VehicleReport | null>(null);
 
+    const [totalVehicles, setTotalVehicles] = useState<number | null>(null);
+
+    useEffect(() => {
+        // Fetch total global vehicle count
+        const fetchTotalCount = async () => {
+            try {
+                const res = await fetch('/api/legacyCount');
+                if (res.ok) {
+                    const data = await res.json();
+                    setTotalVehicles(data.total);
+                }
+            } catch (err) {
+                console.error("Failed to fetch total vehicles count:", err);
+            }
+        };
+        fetchTotalCount();
+    }, []);
+
     const handleSearch = useCallback(async () => {
         if (!query.trim()) return;
 
@@ -113,6 +131,12 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
                         Search vehicle reports by Registration, Make, Model, or Case Number.
                     </p>
                 </div>
+                {totalVehicles !== null && (
+                    <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-lg flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Database Records</span>
+                        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{totalVehicles.toLocaleString()}</span>
+                    </div>
+                )}
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
