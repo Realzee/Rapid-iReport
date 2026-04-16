@@ -85,6 +85,11 @@ const ControllerReportDetail: React.FC<{
         setSharedWithCompanyIds(report.shared_with_company_ids || []);
 
         const fetchDetails = async () => {
+            // Check if it's a legacy record and skip relational fetches since they will fail UUID checks
+            if ((report as any).is_legacy || report.id.startsWith('legacy-') || report.reported_by === 'system') {
+                return;
+            }
+
             const [
                 { data: updatesData, error: updatesError },
                 { data: historyData, error: historyError },
@@ -127,6 +132,11 @@ const ControllerReportDetail: React.FC<{
         };
         
         fetchDetails();
+
+        // Check if it's a legacy record to skip channels
+        if ((report as any).is_legacy || report.id.startsWith('legacy-')) {
+            return;
+        }
 
         const updatesChannel = supabase
             .channel(`report-updates-${report.id}`)
@@ -822,23 +832,23 @@ const ControllerReportDetail: React.FC<{
                 {(report as any).cas_number && <DetailField label="CAS Number"><p className="text-gray-800 dark:text-gray-200">{(report as any).cas_number}</p></DetailField>}
                 {(report as any).station_name && <DetailField label="Station"><p className="text-gray-800 dark:text-gray-200">{(report as any).station_name}</p></DetailField>}
             </div>
-
+            
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 space-y-3 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm -mx-4 px-4 pb-2 sticky bottom-0">
                  <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => openChat(report)} className="w-full py-2 px-4 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition disabled:opacity-50">Open Live Chat</button>
-                    <button onClick={() => setAssignmentModalOpen(true)} disabled={!canManageReport || isTerminalStatus} className="w-full py-2 px-4 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 transition disabled:opacity-50 disabled:cursor-not-allowed">Manage Status</button>
+                    <button onClick={() => setAssignmentModalOpen(true)} disabled={!canManageReport || isTerminalStatus || (report as any).is_legacy || report.id.startsWith('legacy-')} className="w-full py-2 px-4 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 transition disabled:opacity-50 disabled:cursor-not-allowed">Manage Status</button>
                 </div>
                  <div className="grid grid-cols-3 gap-3">
                      <button onClick={() => window.print()} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold"><PrintIcon className="w-5 h-5"/> Print</button>
                      <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold"><WhatsappIcon className="w-5 h-5"/> Share</button>
                      <button onClick={() => generateBoloImage('download')} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50"><DownloadIcon className="w-5 h-5"/> BOLO</button>
                  </div>
-                 {canManageReport && (
+                 {canManageReport && !(report as any).is_legacy && !report.id.startsWith('legacy-') && (
                     <div className="grid grid-cols-2 gap-3">
                         <button onClick={() => onEdit(report)} className="w-full flex items-center justify-center gap-2 py-2 bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-700 dark:text-yellow-400 font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Edit Details</button>
                         <button onClick={() => setDeleteModalOpen(true)} disabled={isTerminalStatus} className="w-full flex items-center justify-center gap-2 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-700 dark:text-red-400 font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-5 h-5"/> Delete</button>
                     </div>
-                 )}
+                )}
             </div>
 
             {assignmentModalOpen && (

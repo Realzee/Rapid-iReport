@@ -73,6 +73,9 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
     useEffect(() => {
         const fetchReporter = async () => {
+            if ((localReport as any).is_legacy || localReport.id.startsWith('legacy-') || localReport.reported_by === 'system') {
+                return;
+            }
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
