@@ -18,20 +18,26 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
 
         setLoading(true);
         try {
-            let dbQuery = supabase.from('vehicle_reports').select('*');
+            // Use the Postgres function (RPC) with SECURITY DEFINER to bypass RLS and search the entire database
+            const { data, error } = await supabase.rpc('global_vehicle_search', {
+                search_term: query
+            });
 
-            // Constructing a search that covers license plate, cas_number, vin_number, engine_number, vehicle_make, vehicle_model
-            // and ob_number since it acts as a global lookup.
-            dbQuery = dbQuery.or(`license_plate.ilike.%${query}%,cas_number.ilike.%${query}%,vin_number.ilike.%${query}%,engine_number.ilike.%${query}%,ob_number.ilike.%${query}%,vehicle_make.ilike.%${query}%,vehicle_model.ilike.%${query}%`);
-
-            // Admins can see specific scopes
-            if (!isGlobalAdmin && profile.company_id) {
-                dbQuery = dbQuery.eq('company_id', profile.company_id);
+            if (error) {
+                // Fallback to standard query if RPC doesn't exist yet
+                let dbQuery = supabase.from('vehicle_reports').select('*');
+                dbQuery = dbQuery.or(`license_plate.ilike.%${query}%,cas_number.ilike.%${query}%,vin_number.ilike.%${query}%,engine_number.ilike.%${query}%,ob_number.ilike.%${query}%,vehicle_make.ilike.%${query}%,vehicle_model.ilike.%${query}%`);
+                
+                const fallbackResult = await dbQuery.order('reported_at', { ascending: false }).limit(100);
+                if (fallbackResult.error) throw fallbackResult.error;
+                
+                const reportsWithType = (fallbackResult.data || []).map(r => ({ ...r, type: 'vehicle' as const }));
+                setResults(reportsWithType as VehicleReport[]);
+                if (reportsWithType.length === 0) {
+                    addToast('No vehicles found matching that query.', 'info');
+                }
+                return;
             }
-
-            const { data, error } = await dbQuery.order('reported_at', { ascending: false }).limit(100);
-
-            if (error) throw error;
             
             const reportsWithType = (data || []).map(r => ({ ...r, type: 'vehicle' as const }));
             setResults(reportsWithType as VehicleReport[]);
@@ -40,11 +46,11 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
             }
         } catch (error: any) {
             console.error('Search error:', error);
-            addToast('Error performing search.', 'error');
+            addToast('Error performing search. The application database might need the RPC update.', 'error');
         } finally {
             setLoading(false);
         }
-    }, [query, isGlobalAdmin, profile.company_id, addToast]);
+    }, [query, addToast]);
 
     return (
         <div className="space-y-6">
