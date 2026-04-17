@@ -174,87 +174,73 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
                             Found <span className="font-bold text-gray-900 dark:text-white">{results.length}</span> matching records
                         </span>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
-                            <thead className="bg-gray-50 dark:bg-gray-800/50">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reg / Make / Model</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Color</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Details</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">COS Info</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Case / Station</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">IO Info</th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                {results.map((report) => (
-                                    <tr key={report.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                        <td className="px-4 py-3">
-                                            <div className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                                {report.license_plate}
-                                                {(report as any).is_legacy && (
-                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
-                                                        LEGACY DB
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="text-gray-500 dark:text-gray-400">{report.vehicle_make} {report.vehicle_model}</div>
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-900 dark:text-white capitalize">{report.vehicle_color}</td>
-                                        <td className="px-4 py-3 text-gray-500 dark:text-gray-400 max-w-xs truncate" title={report.description}>
-                                            {report.description}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="text-gray-900 dark:text-white">{report.cos_name || '-'}</div>
-                                            <div className="text-xs text-gray-500 dark:text-gray-400">{report.cos_contact_number || '-'}</div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="text-gray-900 dark:text-white">{report.cas_number || '-'}</div>
-                                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                                <MapPinIcon className="w-3 h-3" />
-                                                {report.station_name || '-'}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="text-gray-900 dark:text-white">{report.io_name || '-'}</div>
-                                            <div className="text-xs text-gray-500 dark:text-gray-400">{report.io_contact || '-'}</div>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <div className="flex flex-col items-center gap-1">
-                                                {report.status === ReportStatus.RECOVERED ? (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                                                        <CheckCircleIcon className="w-3 h-3 mr-1" /> Recovered
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 capitalize">
-                                                        {report.status.replace('_', ' ')}
-                                                    </span>
-                                                )}
-                                                {report.has_tracker && (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                                                        Has Tracker
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                            {format(new Date(report.reported_at), 'MMM d, yyyy HH:mm')}
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <button 
-                                                onClick={() => setSelectedReport(report)}
-                                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-                                            >
-                                                View
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 bg-gray-50 dark:bg-gray-800/20">
+                        {results.map((report) => (
+                            <div 
+                                key={report.id} 
+                                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col" 
+                                onClick={() => setSelectedReport(report)}
+                            >
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex-1 min-w-0 pr-2">
+                                       <div className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2 truncate">
+                                           {report.license_plate || 'Unknown Reg'}
+                                           {(report as any).is_legacy && (
+                                               <span className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
+                                                   LEGACY DB
+                                               </span>
+                                           )}
+                                       </div>
+                                       <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                                           {report.vehicle_make} {report.vehicle_model} {report.vehicle_color ? `• ${report.vehicle_color}` : ''}
+                                       </div>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                         {report.status === ReportStatus.RECOVERED ? (
+                                             <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">
+                                                 <CheckCircleIcon className="w-3 h-3 mr-1" /> Recovered
+                                             </span>
+                                         ) : (
+                                             <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 capitalize border border-gray-200 dark:border-gray-600">
+                                                 {report.status.replace('_', ' ')}
+                                             </span>
+                                         )}
+                                         {report.has_tracker && (
+                                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                                                 Has Tracker
+                                             </span>
+                                         )}
+                                    </div>
+                                </div>
+
+                                <div className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3 min-h-[2.5rem] flex-grow">
+                                    {report.description || 'No description provided.'}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg border border-gray-100 dark:border-gray-700/50">
+                                    <div className="truncate pr-2 border-r border-gray-200 dark:border-gray-700">
+                                        <span className="block font-semibold text-gray-700 dark:text-gray-300 text-[10px] uppercase tracking-wider mb-0.5">COS</span>
+                                        <div className="truncate">{report.cos_name || '-'}</div>
+                                        <div className="truncate">{report.cos_contact_number || '-'}</div>
+                                    </div>
+                                    <div className="truncate pl-1">
+                                        <span className="block font-semibold text-gray-700 dark:text-gray-300 text-[10px] uppercase tracking-wider mb-0.5">IO</span>
+                                        <div className="truncate">{report.io_name || '-'}</div>
+                                        <div className="truncate">{report.io_contact || '-'}</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-between items-end mt-auto pt-3 border-t border-gray-100 dark:border-gray-700">
+                                    <div className="text-xs text-gray-500 dark:text-gray-400 flex flex-col min-w-0 pr-2">
+                                         <span className="font-semibold text-gray-700 dark:text-gray-300 truncate">{report.cas_number || 'No CAS'}</span>
+                                         <span className="flex items-center gap-1 truncate"><MapPinIcon className="w-3 h-3 flex-shrink-0"/> <span className="truncate">{report.station_name || 'N/A'}</span></span>
+                                    </div>
+                                    <div className="text-xs text-gray-400 dark:text-gray-500 font-medium flex-shrink-0 whitespace-nowrap">
+                                         {report.reported_at ? format(new Date(report.reported_at), 'MMM d, yyyy') : 'Unknown Date'}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
