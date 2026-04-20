@@ -14,6 +14,47 @@
   --color-primary-700: #b91c1c;
   --color-primary-800: #991b1b;
   --color-primary-900: #7f1d1d;
+  
+  --color-matrix-green: #00ff41;
+  --color-matrix-dark: #003b00;
+  --color-matrix-bg: #0d0208;
+}
+
+@layer base {
+  .matrix {
+    --color-gray-50: #003b00;
+    --color-gray-100: #003b00;
+    --color-gray-200: #003b00;
+    --color-gray-300: #008f11;
+    --color-gray-400: #00ff41;
+    --color-gray-500: #00ff41;
+    --color-gray-600: #00ff41;
+    --color-gray-700: #00ff41;
+    --color-gray-800: #00ff41;
+    --color-gray-900: #0d0208;
+    
+    --color-primary-500: #00ff41;
+    --color-primary-600: #008f11;
+    
+    background-color: var(--color-matrix-bg);
+    color: var(--color-matrix-green);
+    font-family: var(--font-mono);
+  }
+
+  .matrix input, .matrix select, .matrix textarea {
+    background-color: var(--color-matrix-bg) !important;
+    border-color: var(--color-matrix-green) !important;
+    color: var(--color-matrix-green) !important;
+    box-shadow: 0 0 5px var(--color-matrix-green);
+  }
+
+  .matrix .bg-white, .matrix .bg-gray-50, .matrix .bg-gray-100 {
+    background-color: var(--color-matrix-bg) !important;
+  }
+
+  .matrix .border, .matrix .border-gray-200, .matrix .border-gray-100 {
+    border-color: var(--color-matrix-dark) !important;
+  }
 }
 
 @layer components {
@@ -36,28 +77,46 @@
   .btn-danger {
     @apply bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
   }
+
+  .matrix .btn-primary {
+    @apply bg-transparent border border-matrix-green text-matrix-green hover:bg-matrix-green/20 shadow-[0_0_10px_rgba(0,255,65,0.5)];
+  }
+
+  .matrix .card, .matrix [class*="bg-white"] {
+    @apply bg-black/80 border border-matrix-dark shadow-[0_0_15px_rgba(0,59,0,0.3)];
+  }
 }
 
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Matrix Rain Animation Background */
+.matrix-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+  display: none;
+  background: black;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+.matrix .matrix-bg {
+  display: block;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.5);
-  border-radius: 20px;
+.matrix-line {
+  position: absolute;
+  top: -100px;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, #00ff41);
+  animation: matrix-rain linear infinite;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(107, 114, 128, 0.8);
+@keyframes matrix-rain {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(100vh); }
 }
 
-/* Map Marker Pulse Animation */
 @keyframes pulse-ring {
   0% {
     transform: scale(0.33);
@@ -80,7 +139,41 @@
   animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }
 
+.matrix .pulse-ring-animation::before {
+  background-color: rgba(0, 255, 65, 0.6);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 20px;
+}
+
+.matrix .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 255, 65, 0.3);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(107, 114, 128, 0.8);
+}
+
+.matrix .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 255, 65, 0.6);
+}
+
 /* Leaflet Map Fixes */
 .leaflet-container {
   z-index: 0;
+}
+
+.matrix .leaflet-container {
+  filter: hue-rotate(90deg) brightness(0.4) contrast(1.2) invert(1);
 }

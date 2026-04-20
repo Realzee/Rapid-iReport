@@ -31,6 +31,8 @@ import { AlertTriangleIcon, ClockIcon } from './components/icons';
 import { useToast } from './contexts/ToastContext';
 import UserActivityPage from './pages/UserActivityPage';
 import GlobalSearchPage from './pages/GlobalSearchPage';
+import { useTheme } from './contexts/ThemeContext';
+import MatrixRain from './components/MatrixRain';
 
 type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search';
 
@@ -72,6 +74,7 @@ const App: React.FC = () => {
   const [isGlobalMapModalOpen, setIsGlobalMapModalOpen] = useState(false);
   const [isAnnouncementVisible, setIsAnnouncementVisible] = useState(false);
   const { addToast } = useToast();
+  const { theme } = useTheme();
 
   useEffect(() => {
     const runSchemaCheck = async () => {
@@ -446,10 +449,11 @@ const App: React.FC = () => {
     : `container mx-auto px-4 sm:px-6 lg:px-8 pb-8 ${isUserView ? 'max-w-7xl' : ''}`;
 
   return (
-    <div className="min-h-screen relative overflow-x-hidden">
-      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white via-gray-50 to-white dark:from-black dark:via-gray-900/60 dark:to-black z-0 transition-all duration-500 ease-in-out print:hidden"></div>
-      <div className="absolute top-[20%] left-[10%] w-72 h-72 bg-blue-400/30 dark:bg-blue-400/60 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse print:hidden" style={{ animationDuration: '8s' }}></div>
-      <div className="absolute bottom-[5%] right-[5%] w-96 h-96 bg-indigo-400/30 dark:bg-indigo-600/60 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse print:hidden" style={{ animationDuration: '10s' }}></div>
+    <div className={`min-h-screen relative overflow-x-hidden ${theme === 'matrix' ? 'matrix' : ''}`}>
+      <MatrixRain />
+      <div className={`absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white via-gray-50 to-white dark:from-black dark:via-gray-900/60 dark:to-black z-0 transition-all duration-500 ease-in-out print:hidden ${theme === 'matrix' ? 'hidden' : ''}`}></div>
+      <div className={`absolute top-[20%] left-[10%] w-72 h-72 bg-blue-400/30 dark:bg-blue-400/60 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse print:hidden ${theme === 'matrix' ? 'hidden' : ''}`} style={{ animationDuration: '8s' }}></div>
+      <div className={`absolute bottom-[5%] right-[5%] w-96 h-96 bg-indigo-400/30 dark:bg-indigo-600/60 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse print:hidden ${theme === 'matrix' ? 'hidden' : ''}`} style={{ animationDuration: '10s' }}></div>
       
       <ToastContainer />
 
