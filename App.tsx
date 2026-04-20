@@ -442,7 +442,7 @@ const App: React.FC = () => {
   const isFullWidthView = view === 'controller' || profile?.role === UserRole.RESPONDER;
   const isUserView = profile?.role === UserRole.USER;
   
-  const mainPaddingTopClass = isAnnouncementVisible ? 'pt-48' : 'pt-32';
+  const mainPaddingTopClass = isAnnouncementVisible ? 'pt-52' : 'pt-36';
 
   const mainClasses = isFullWidthView
     ? `pb-8 px-4 sm:px-6 lg:px-8`
