@@ -18,7 +18,7 @@ const MatrixRain: React.FC = () => {
         let height = (canvas.height = window.innerHeight);
 
         const columns = Math.floor(width / 20);
-        const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$+-*/=%\"'#&_(),.;:?!\\|{}<>[]^~";
+        const characters = "アァカサタナハマヤャラワガザダバパイィキシチニヒミリギジヂビピウゥクスツヌフムユュルグズヅブプエェケセテネヘメレゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         const charArray = characters.split("");
         const drops: number[] = [];
 
@@ -29,14 +29,28 @@ const MatrixRain: React.FC = () => {
         let frameId: number;
 
         const draw = () => {
-            ctx.fillStyle = "rgba(13, 2, 8, 0.1)";
+            ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
             ctx.fillRect(0, 0, width, height);
 
-            ctx.fillStyle = "#00FF41";
-            ctx.font = "15px monospace";
+            ctx.font = "18px monospace";
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = "#00FF41";
 
             for (let i = 0; i < drops.length; i++) {
                 const text = charArray[Math.floor(Math.random() * charArray.length)];
+                
+                // Head of the rain is brighter
+                if (Math.random() > 0.98) {
+                    ctx.fillStyle = "#fff";
+                    ctx.shadowBlur = 15;
+                } else if (Math.random() > 0.9) {
+                    ctx.fillStyle = "#00FF41";
+                    ctx.shadowBlur = 10;
+                } else {
+                    ctx.fillStyle = "#009928";
+                    ctx.shadowBlur = 2;
+                }
+
                 ctx.fillText(text, i * 20, drops[i] * 20);
 
                 if (drops[i] * 20 > height && Math.random() > 0.975) {
@@ -69,8 +83,8 @@ const MatrixRain: React.FC = () => {
     return (
         <canvas
             ref={canvasRef}
-            className="fixed inset-0 z-[-1] pointer-events-none opacity-20"
-            style={{ filter: 'blur(0.5px)' }}
+            className="fixed inset-0 z-[-1] pointer-events-none opacity-50"
+            style={{ filter: 'blur(0.2px)' }}
         />
     );
 };

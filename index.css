@@ -178,6 +178,14 @@
   filter: grayscale(1) invert(0.9) brightness(0.6) contrast(1.5);
 }
 
+.matrix header {
+  background-color: rgba(0, 2, 8, 0.8) !important;
+  border-bottom-color: var(--color-matrix-dark) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
 .matrix header img {
-  filter: drop-shadow(0 0 12px rgba(0, 255, 65, 0.6));
+  height: 7rem !important; /* Matches h-28 */
+  width: auto !important;
+  filter: drop-shadow(0 0 15px rgba(0, 255, 65, 0.6)) brightness(1.1);
 }
