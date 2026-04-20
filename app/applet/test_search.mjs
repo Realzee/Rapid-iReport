@@ -10,13 +10,20 @@ async function test() {
     });
 
     const html = await legacyRes.text();
-    const tableStart = html.indexOf('<table');
-    const tableEnd = html.indexOf('</table>');
-    if (tableStart !== -1 && tableEnd !== -1) {
-        console.log(html.substring(tableStart, tableEnd + 8));
-    } else {
-        console.log("No table found");
-        console.log(html.substring(0, 2000));
+    const results = [];
+    const regex = /data-entry='(\{[\s\S]*?\})'/g;
+    let match;
+
+    while ((match = regex.exec(html)) !== null) {
+        try {
+            console.log("MATCH FOUND", match[1]);
+            const rawJsonStr = match[1].replace(/&quot;/g, '"');
+            const row = JSON.parse(rawJsonStr);
+            results.push(row);
+        } catch (e) {
+            console.error("PARSE FAILED", e);
+        }
     }
+    console.log("RESULTS EXTRACTED:", results.length);
 }
 test();

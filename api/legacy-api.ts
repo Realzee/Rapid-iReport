@@ -54,12 +54,14 @@ export default async function handler(req: Request, res: Response) {
             const html = await legacyRes.text();
             const results = [];
             
-            const regex = /data-entry='(\{.*?\})'/g;
+            const regex = /data-entry='(\{[\s\S]*?\})'/g;
             let match;
 
             while ((match = regex.exec(html)) !== null) {
                 try {
-                    const row = JSON.parse(match[1]);
+                    // Fix potential HTML encoded issues just in case
+                    const rawJsonStr = match[1].replace(/&quot;/g, '"');
+                    const row = JSON.parse(rawJsonStr);
                     // Only add if we haven't seen this ID yet to prevent duplicates if data-entry appears on both View and Edit buttons
                     if (!results.find(r => r.id === `legacy-${row.id}`)) {
                             const recoveredVal = String(row.recovered || '').trim().toLowerCase();

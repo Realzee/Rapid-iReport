@@ -40,20 +40,15 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
         try {
             // Race the internal search and the legacy external search
             const [supabaseResult, legacyResult] = await Promise.allSettled([
-                supabase.rpc('global_vehicle_search', { search_term: query }).then(async (res) => {
-                    if (res.error) {
-                         console.warn("RPC global_vehicle_search failed (possibly 404), falling back to standard ilike query...", res.error);
-                         // Fallback query across important fields
-                         const { data, error } = await supabase
-                            .from('vehicle_reports')
-                            .select('*')
-                            .or(`license_plate.ilike.%${query}%,vehicle_make.ilike.%${query}%,vehicle_model.ilike.%${query}%,cas_number.ilike.%${query}%`);
-                         
-                         if (error) throw error;
-                         return data;
-                    }
-                    return res.data;
-                }),
+                (async () => {
+                    const { data, error } = await supabase
+                       .from('vehicle_reports')
+                       .select('*')
+                       .or(`license_plate.ilike.%${query}%,vehicle_make.ilike.%${query}%,vehicle_model.ilike.%${query}%,cas_number.ilike.%${query}%`);
+                    
+                    if (error) throw error;
+                    return data;
+                })(),
                 fetch('/api/legacy-api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -81,30 +76,32 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
             }
 
             // Process legacy system results
-            if (legacyResult.status === 'fulfilled' && legacyResult.value && legacyResult.value.data) {
-                const legacyItems = legacyResult.value.data.map((item: any) => {
-                    const obMatch = item.reason?.match(/OB NUMBER:\s*(.*?)\)/i);
+            if (legacyResult.status === 'fulfilled' && legacyResult.value) {
+                const legacyDataArray = Array.isArray(legacyResult.value) ? legacyResult.value : (legacyResult.value.data || []);
+                const legacyItems = legacyDataArray.map((item: any) => {
+                    const obMatch = item.reason?.match(/OB NUMBER:\s*(.*?)\)/i) || item.description?.match(/OB NUMBER:\s*(.*?)\)/i);
                     const parsedOb = obMatch ? obMatch[1] : `LEG-OBS-${item.id}`;
                     
                     return {
-                        id: `legacy-${item.id}`,
+                        id: String(item.id).startsWith('legacy-') ? item.id : `legacy-${item.id}`,
                         ob_number: parsedOb,
-                        license_plate: item.vehicle_registration || '',
-                        vehicle_make: item.make || '',
-                        vehicle_model: item.model || '',
-                        vehicle_color: item.color || '',
-                        last_seen_location: item.station_reported_at || 'Unknown Location',
-                        description: `[LEGACY SYSTEM REPORT]\n${item.reason || ''}`,
-                        cas_number: item.case_number || '',
-                        station_name: item.station_reported_at || '',
-                        cos_name: item.cos_name || '',
+                        license_plate: item.vehicle_registration || item.license_plate || '',
+                        vehicle_make: item.make || item.vehicle_make || '',
+                        vehicle_model: item.model || item.vehicle_model || '',
+                        vehicle_color: item.color || item.vehicle_color || '',
+                        last_seen_location: item.station_reported_at || item.station_name || 'Unknown Location',
+                        description: `[LEGACY SYSTEM REPORT]\n${item.reason || item.description || ''}`,
+                        cas_number: item.case_number || item.cas_number || '',
+                        station_name: item.station_reported_at || item.station_name || '',
+                        cos_name: item.cos_name || item.cos_name || '',
                         cos_contact_number: item.cos_contact_number || '',
                         io_name: item.io_name || '',
                         io_contact: item.io_contact || '',
-                        has_tracker: item.tracker && item.tracker.toLowerCase() !== 'unknown' ? true : false,
-                        status: item.recovered ? ReportStatus.RECOVERED : ReportStatus.ACTIVE,
+                        has_tracker: typeof item.has_tracker === 'boolean' ? item.has_tracker : (item.tracker && item.tracker.toLowerCase() !== 'unknown' ? true : false),
+                        status: item.status ? (item.status.toUpperCase() === 'RECOVERED' ? ReportStatus.RECOVERED : ReportStatus.ACTIVE) : (item.recovered ? ReportStatus.RECOVERED : ReportStatus.ACTIVE),
                         severity: 'high' as any,
                         reported_at: (() => {
+                            if (item.reported_at) return item.reported_at;
                             if (!item.date_of_incident) return new Date().toISOString();
                             const d = new Date(item.date_of_incident);
                             return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
