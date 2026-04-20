@@ -39,10 +39,10 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
         setError(null);
 
         try {
-            const res = await fetch('/api/addLegacyReport', {
+            const res = await fetch('/api/legacy-api', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({ action: 'add', ...formData })
             });
 
             if (!res.ok) {

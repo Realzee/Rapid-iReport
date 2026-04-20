@@ -176,7 +176,7 @@ const CompaniesPage: React.FC = () => {
 
             let savedCompany: Company | null = null;
             
-            const response = await fetch('/api/save-company', {
+            const response = await fetch('/api/companies', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...companyData, logo_url: finalLogoUrl })
@@ -226,8 +226,8 @@ const CompaniesPage: React.FC = () => {
                     }
                 }
 
-                const response = await fetch('/api/delete-company', {
-                    method: 'POST',
+                const response = await fetch('/api/companies', {
+                    method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: selectedCompany.id })
                 });
@@ -487,7 +487,7 @@ const CompaniesPage: React.FC = () => {
                 image_url: finalImageUrl,
             };
 
-            const response = await fetch('/api/save-announcement', {
+            const response = await fetch('/api/announcements', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...dbPayload, id: announcementData.id })
@@ -532,8 +532,8 @@ const CompaniesPage: React.FC = () => {
                         await supabase.storage.from('app-assets').remove([filePath]);
                     }
                 }
-                const response = await fetch('/api/delete-announcement', {
-                    method: 'POST',
+                const response = await fetch('/api/announcements', {
+                    method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: announcementToDelete.id })
                 });

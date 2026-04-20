@@ -437,10 +437,10 @@ const UsersPage: React.FC = () => {
             delete user_metadata.id;
             delete user_metadata.email;
             
-            const response = await fetch('/api/create-user', {
+            const response = await fetch('/api/admin-users', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: userToSave.email, password: password, user_metadata: user_metadata })
+                body: JSON.stringify({ email: userToSave.email, password: password, profileData: user_metadata })
             });
             
             const contentType = response.headers.get("content-type");
@@ -514,10 +514,10 @@ const UsersPage: React.FC = () => {
 
     const confirmDeleteUser = useCallback(async () => {
         if (selectedUser) {
-            const response = await fetch('/api/delete-user', {
-                method: 'POST',
+            const response = await fetch('/api/admin-users', {
+                method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: selectedUser.id })
+                body: JSON.stringify({ id: selectedUser.id })
             });
 
             const contentType = response.headers.get("content-type");

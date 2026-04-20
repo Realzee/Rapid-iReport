@@ -21,7 +21,7 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
         // Fetch total global vehicle count
         const fetchTotalCount = async () => {
             try {
-                const res = await fetch('/api/legacyCount');
+                const res = await fetch('/api/legacy-api?action=count');
                 if (res.ok) {
                     const data = await res.json();
                     setTotalVehicles(data.total);
@@ -44,10 +44,10 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
                     if (res.error) throw res.error;
                     return res.data;
                 }),
-                fetch('/api/legacySearch', {
+                fetch('/api/legacy-api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query })
+                    body: JSON.stringify({ action: 'search', query })
                 }).then(res => {
                     if (!res.ok) throw new Error('Legacy search failed');
                     return res.json();
