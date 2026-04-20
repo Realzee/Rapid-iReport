@@ -40,8 +40,18 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
         try {
             // Race the internal search and the legacy external search
             const [supabaseResult, legacyResult] = await Promise.allSettled([
-                supabase.rpc('global_vehicle_search', { search_term: query }).then(res => {
-                    if (res.error) throw res.error;
+                supabase.rpc('global_vehicle_search', { search_term: query }).then(async (res) => {
+                    if (res.error) {
+                         console.warn("RPC global_vehicle_search failed (possibly 404), falling back to standard ilike query...", res.error);
+                         // Fallback query across important fields
+                         const { data, error } = await supabase
+                            .from('vehicle_reports')
+                            .select('*')
+                            .or(`license_plate.ilike.%${query}%,vehicle_make.ilike.%${query}%,vehicle_model.ilike.%${query}%,cas_number.ilike.%${query}%`);
+                         
+                         if (error) throw error;
+                         return data;
+                    }
                     return res.data;
                 }),
                 fetch('/api/legacy-api', {

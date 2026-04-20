@@ -54,31 +54,38 @@ export default async function handler(req: Request, res: Response) {
             const html = await legacyRes.text();
             const results = [];
             
-            const regex = /<tr>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td.*?<\/td>\s*<\/tr>/g;
+            const regex = /data-entry='(\{.*?\})'/g;
             let match;
 
             while ((match = regex.exec(html)) !== null) {
-                if (match[1].includes('REGISTRATION')) continue; // Skip header
-                results.push({
-                    id: `legacy-${Math.random().toString(36).substring(7)}`,
-                    license_plate: match[1].trim(),
-                    vehicle_make: match[2].trim(),
-                    vehicle_model: match[3].trim(),
-                    vehicle_color: match[4].trim(),
-                    description: match[5].trim(),
-                    cos_name: match[6].trim(),
-                    cos_contact_number: match[7].trim(),
-                    cas_number: match[8].trim(),
-                    station_name: match[9].trim(),
-                    io_name: match[10].trim(),
-                    io_contact: match[11].trim(),
-                    status: match[12].trim().toLowerCase() === 'yes' ? 'RECOVERED' : 'STOLEN',
-                    has_tracker: match[13].trim().toLowerCase() === 'yes',
-                    reported_at: match[14].trim() || new Date().toISOString(),
-                    reported_by: 'system',
-                    is_legacy: true,
-                    type: 'vehicle'
-                });
+                try {
+                    const row = JSON.parse(match[1]);
+                    // Only add if we haven't seen this ID yet to prevent duplicates if data-entry appears on both View and Edit buttons
+                    if (!results.find(r => r.id === `legacy-${row.id}`)) {
+                        results.push({
+                            id: `legacy-${row.id}`,
+                            license_plate: row.vehicle_registration || '',
+                            vehicle_make: row.make || '',
+                            vehicle_model: row.model || '',
+                            vehicle_color: row.color || '',
+                            description: row.reason || '',
+                            cos_name: row.cos_name || '',
+                            cos_contact_number: row.cos_contact_number || '',
+                            cas_number: row.case_number || '',
+                            station_name: row.station_reported_at || '',
+                            io_name: row.io_name || '',
+                            io_contact: row.io_contact || '',
+                            status: String(row.recovered).toLowerCase() === 'yes' ? 'RECOVERED' : 'STOLEN',
+                            has_tracker: String(row.tracker).toLowerCase() === 'yes',
+                            reported_at: row.date_of_incident || new Date().toISOString(),
+                            reported_by: 'system',
+                            is_legacy: true,
+                            type: 'vehicle'
+                        });
+                    }
+                } catch (e) {
+                    console.error("Failed to parse row JSON", e);
+                }
             }
 
             res.status(200).json(results);
