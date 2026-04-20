@@ -5,28 +5,68 @@ interface AddLegacyReportModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    report?: any; // If provided, we are in Edit mode
 }
 
-const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onClose, onSuccess }) => {
+const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onClose, onSuccess, report }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const [formData, setFormData] = useState({
-        vehicle_registration: '',
-        make: '',
-        model: '',
-        color: '',
-        reason: '',
-        cos_name: '',
-        cos_contact_number: '',
-        case_number: '',
-        station_reported_at: '',
-        io_name: '',
-        io_contact: '',
-        recovered: '',
-        tracker: '',
-        date_of_incident: ''
+        vehicle_registration: report?.license_plate || '',
+        make: report?.vehicle_make || '',
+        model: report?.vehicle_model || '',
+        color: report?.vehicle_color || '',
+        reason: report?.description?.replace('[LEGACY SYSTEM REPORT]\n', '') || '',
+        cos_name: report?.cos_name || '',
+        cos_contact_number: report?.cos_contact_number || '',
+        case_number: report?.cas_number || '',
+        station_reported_at: report?.station_name || '',
+        io_name: report?.io_name || '',
+        io_contact: report?.io_contact || '',
+        recovered: report?.status === 'recovered' ? 'Yes' : 'No',
+        tracker: report?.has_tracker ? 'Yes' : 'No',
+        date_of_incident: report?.reported_at ? new Date(report.reported_at).toISOString().split('T')[0] : ''
     });
+
+    // Reset form when report changes
+    React.useEffect(() => {
+        if (report) {
+            setFormData({
+                vehicle_registration: report.license_plate || '',
+                make: report.vehicle_make || '',
+                model: report.vehicle_model || '',
+                color: report.vehicle_color || '',
+                reason: report.description?.replace('[LEGACY SYSTEM REPORT]\n', '') || '',
+                cos_name: report.cos_name || '',
+                cos_contact_number: report.cos_contact_number || '',
+                case_number: report.cas_number || '',
+                station_reported_at: report.station_name || '',
+                io_name: report.io_name || '',
+                io_contact: report.io_contact || '',
+                recovered: report.status === 'recovered' ? 'Yes' : 'No',
+                tracker: report.has_tracker ? 'Yes' : 'No',
+                date_of_incident: report.reported_at ? new Date(report.reported_at).toISOString().split('T')[0] : ''
+            });
+        } else {
+            setFormData({
+                vehicle_registration: '',
+                make: '',
+                model: '',
+                color: '',
+                reason: '',
+                cos_name: '',
+                cos_contact_number: '',
+                case_number: '',
+                station_reported_at: '',
+                io_name: '',
+                io_contact: '',
+                recovered: '',
+                tracker: '',
+                date_of_incident: ''
+            });
+        }
+    }, [report]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -39,15 +79,18 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
         setError(null);
 
         try {
+            const action = report ? 'edit' : 'add';
+            const payload = report ? { ...formData, id: report.id } : formData;
+
             const res = await fetch('/api/legacy-api', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'add', ...formData })
+                body: JSON.stringify({ action, ...payload })
             });
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.message || 'Failed to submit report');
+                throw new Error(data.message || `Failed to ${action} report`);
             }
 
             onSuccess();
@@ -65,7 +108,9 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm sm:p-6">
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
                 <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-900 z-10">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add New Legacy Vehicle Log</h2>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                        {report ? 'Edit' : 'Add New'} Legacy Vehicle Log
+                    </h2>
                     <button
                         onClick={onClose}
                         className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"

@@ -281,6 +281,29 @@ const ControllerReportDetail: React.FC<{
 
     const confirmDeleteReport = async () => {
         setDeleteModalOpen(false);
+        setIsActionLoading(true);
+
+        if ((report as any).is_legacy || report.id.startsWith('legacy-')) {
+            try {
+                const res = await fetch('/api/legacy-api', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'delete', id: report.id })
+                });
+                
+                if (!res.ok) throw new Error('Legacy delete failed');
+                
+                addToast('Legacy report successfully deleted.', 'success');
+                logUserAction(profile.id, 'DELETE_LEGACY_REPORT', `Deleted legacy report ${report.id}`);
+                if (onRefresh) onRefresh();
+            } catch (err: any) {
+                addToast(`Error deleting legacy report: ${err.message}`, 'error');
+            } finally {
+                setIsActionLoading(false);
+            }
+            return;
+        }
+
         const tableName = report.type === 'vehicle' ? 'vehicle_reports' : (report.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
         const { error } = await supabase.from(tableName).update({ 
             status: ReportStatus.DELETED,
@@ -294,6 +317,7 @@ const ControllerReportDetail: React.FC<{
             logUserAction(profile.id, 'DELETE_REPORT', `Deleted report ${report.id} (${report.ob_number})`);
             if (onRefresh) onRefresh();
         }
+        setIsActionLoading(false);
     };
 
     const handleShareWhatsApp = () => {
@@ -841,12 +865,12 @@ const ControllerReportDetail: React.FC<{
                  <div className="grid grid-cols-3 gap-3">
                      <button onClick={() => window.print()} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold"><PrintIcon className="w-5 h-5"/> Print</button>
                      <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold"><WhatsappIcon className="w-5 h-5"/> Share</button>
-                     <button onClick={() => generateBoloImage('download')} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50"><DownloadIcon className="w-5 h-5"/> BOLO</button>
+                     <button onClick={() => generateBoloImage('download')} disabled={isGeneratingBolo || isActionLoading} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50"><DownloadIcon className="w-5 h-5"/> BOLO</button>
                  </div>
-                 {canManageReport && !(report as any).is_legacy && !report.id.startsWith('legacy-') && (
+                 {canManageReport && (
                     <div className="grid grid-cols-2 gap-3">
-                        <button onClick={() => onEdit(report)} className="w-full flex items-center justify-center gap-2 py-2 bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-700 dark:text-yellow-400 font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Edit Details</button>
-                        <button onClick={() => setDeleteModalOpen(true)} disabled={isTerminalStatus} className="w-full flex items-center justify-center gap-2 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-700 dark:text-red-400 font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-5 h-5"/> Delete</button>
+                        <button onClick={() => onEdit(report)} disabled={isActionLoading} className="w-full flex items-center justify-center gap-2 py-2 bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-700 dark:text-yellow-400 font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Edit Details</button>
+                        <button onClick={() => setDeleteModalOpen(true)} disabled={isTerminalStatus || isActionLoading} className="w-full flex items-center justify-center gap-2 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-700 dark:text-red-400 font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"><TrashIcon className="w-5 h-5"/> Delete</button>
                     </div>
                 )}
             </div>

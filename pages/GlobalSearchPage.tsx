@@ -14,6 +14,7 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
     const { addToast } = useToast();
     const [selectedReport, setSelectedReport] = useState<VehicleReport | null>(null);
     const [showLegacyAdd, setShowLegacyAdd] = useState(false);
+    const [editingLegacyReport, setEditingLegacyReport] = useState<VehicleReport | null>(null);
 
     const [totalVehicles, setTotalVehicles] = useState<number | null>(null);
 
@@ -127,6 +128,15 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
             setLoading(false);
         }
     }, [query, addToast]);
+
+    const handleEditReport = (report: VehicleReport) => {
+        if ((report as any).is_legacy || report.id.startsWith('legacy-')) {
+            setEditingLegacyReport(report);
+            setSelectedReport(null);
+        } else {
+            addToast('Editing internal reports is not supported from this page yet.', 'info');
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -280,14 +290,19 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
                     allUsers={[]}
                     profile={profile as any}
                     onRefresh={handleSearch}
+                    onEdit={handleEditReport as any}
                 />
             )}
 
             <AddLegacyReportModal
-                isOpen={showLegacyAdd}
-                onClose={() => setShowLegacyAdd(false)}
+                isOpen={showLegacyAdd || !!editingLegacyReport}
+                onClose={() => {
+                    setShowLegacyAdd(false);
+                    setEditingLegacyReport(null);
+                }}
+                report={editingLegacyReport}
                 onSuccess={() => {
-                    addToast('Vehicle successfully added to Legacy Database!', 'success');
+                    addToast(editingLegacyReport ? 'Vehicle successfully updated in Legacy Database!' : 'Vehicle successfully added to Legacy Database!', 'success');
                     handleSearch(); // Refresh search if a user is actively searching
                 }}
             />

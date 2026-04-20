@@ -140,5 +140,66 @@ export default async function handler(req: Request, res: Response) {
         return;
     }
 
+    if (action === 'edit' && req.method === 'POST') {
+        try {
+            const data = req.body;
+            const rawId = String(data.id).startsWith('legacy-') ? data.id.replace('legacy-', '') : data.id;
+
+            const formData = new URLSearchParams();
+            formData.append('edit-id', rawId);
+            formData.append('edit-vehicle_registration', data.vehicle_registration || '');
+            formData.append('edit-make', data.make || '');
+            formData.append('edit-model', data.model || '');
+            formData.append('edit-color', data.color || '');
+            formData.append('edit-reason', data.reason || '');
+            formData.append('edit-cos_name', data.cos_name || '');
+            formData.append('edit-cos_contact_number', data.cos_contact_number || '');
+            formData.append('edit-case_number', data.case_number || '');
+            formData.append('edit-station_reported_at', data.station_reported_at || '');
+            formData.append('edit-io_name', data.io_name || '');
+            formData.append('edit-io_contact', data.io_contact || '');
+            formData.append('edit-recovered', data.recovered || '');
+            formData.append('edit-tracker', data.tracker || '');
+            formData.append('edit-date_of_incident', data.date_of_incident || '');
+            formData.append('submit-edit', '');
+
+            const legacyRes = await fetch('https://rapidreportingsa.co.za/WORKING/ob.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            });
+
+            if (!legacyRes.ok) throw new Error(`Legacy system status: ${legacyRes.status}`);
+
+            res.status(200).json({ success: true, message: 'Updated successfully in legacy database' });
+        } catch (error: any) {
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+        return;
+    }
+
+    if (action === 'delete' && req.method === 'POST') {
+        try {
+            const { id } = req.body;
+            const rawId = String(id).startsWith('legacy-') ? id.replace('legacy-', '') : id;
+
+            const formData = new URLSearchParams();
+            formData.append('delete-id', rawId);
+
+            const legacyRes = await fetch('https://rapidreportingsa.co.za/WORKING/ob.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            });
+
+            if (!legacyRes.ok) throw new Error(`Legacy system status: ${legacyRes.status}`);
+
+            res.status(200).json({ success: true, message: 'Deleted successfully from legacy database' });
+        } catch (error: any) {
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+        return;
+    }
+
     return res.status(404).json({ error: 'Action not found' });
 }
