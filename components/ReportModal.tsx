@@ -80,31 +80,49 @@ const reverseGeocode = async (coords: LocationCoords): Promise<string> => {
     }
 }
 
-const parseGoogleMapsUrl = (url: string): LocationCoords | null => {
+const parseLocationInput = (input: string): LocationCoords | null => {
     try {
-        // Regex to match lat,lng in google maps URLs
-        const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
-        const match = url.match(regex);
-        if (match && match[1] && match[2]) {
-            const lat = parseFloat(match[1]);
-            const lng = parseFloat(match[2]);
-            if (!isNaN(lat) && !isNaN(lng)) {
+        // 1. Try parsing as lat, lng coordinates (allow optional decimals)
+        const coordRegex = /(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)/;
+        const coordMatch = input.match(coordRegex);
+        if (coordMatch && coordMatch[1] && coordMatch[2]) {
+            const lat = parseFloat(coordMatch[1]);
+            const lng = parseFloat(coordMatch[2]);
+            if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
                 return { lat, lng };
             }
+        }
+
+        // 2. Try parsing Google Maps URL formats (allow optional decimals)
+        // Format: @lat,lng
+        const atRegex = /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/;
+        const atMatch = input.match(atRegex);
+        if (atMatch && atMatch[1] && atMatch[2]) {
+            return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
         }
         
-        // Example: https://www.google.com/maps/place/48.8566,2.3522
-        const regex2 = /place\/(-?\d+\.\d+),(-?\d+\.\d+)/;
-        const match2 = url.match(regex2);
-        if (match2 && match2[1] && match2[2]) {
-            const lat = parseFloat(match2[1]);
-            const lng = parseFloat(match2[2]);
-            if (!isNaN(lat) && !isNaN(lng)) {
-                return { lat, lng };
-            }
+        // Format: place/lat,lng
+        const placeRegex = /place\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/;
+        const placeMatch = input.match(placeRegex);
+        if (placeMatch && placeMatch[1] && placeMatch[2]) {
+            return { lat: parseFloat(placeMatch[1]), lng: parseFloat(placeMatch[2]) };
+        }
+
+        // Format: query=lat,lng
+        const queryRegex = /[?&]q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/;
+        const queryMatch = input.match(queryRegex);
+        if (queryMatch && queryMatch[1] && queryMatch[2]) {
+            return { lat: parseFloat(queryMatch[1]), lng: parseFloat(queryMatch[2]) };
+        }
+
+        // Format: ll=lat,lng
+        const llRegex = /[?&]ll=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/;
+        const llMatch = input.match(llRegex);
+        if (llMatch && llMatch[1] && llMatch[2]) {
+            return { lat: parseFloat(llMatch[1]), lng: parseFloat(llMatch[2]) };
         }
     } catch (e) {
-        console.error("Error parsing Google Maps URL:", e);
+        console.error("Error parsing location input:", e);
     }
     
     return null;
@@ -428,14 +446,26 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         const processedValue = fieldsToUppercase.includes(name) ? value.toUpperCase() : value;
 
         if (name === 'map_link') {
-            const coords = parseGoogleMapsUrl(value);
+            const coords = parseLocationInput(value);
             if (coords) {
-                setFormData({ ...formData, map_link: value, location: 'Coordinates from map link', location_coords: coords, location_boundary: null, location_boundingbox: null });
+                setFormData({ ...formData, map_link: value, location: 'Fetching location...', location_coords: coords, location_boundary: null, location_boundingbox: null });
+                reverseGeocode(coords).then(address => {
+                    setFormData(prev => ({ ...prev, location: address }));
+                });
             } else {
                 setFormData({ ...formData, map_link: value });
             }
         } else if (name === 'location') {
-            setFormData({ ...formData, location: processedValue, location_coords: null, location_boundary: null, location_boundingbox: null });
+            const coords = parseLocationInput(value);
+            if (coords) {
+                // If it's coordinates, we immediately update coords and reverse geocode for a better display name
+                setFormData({ ...formData, location: 'Fetching location...', location_coords: coords, location_boundary: null, location_boundingbox: null });
+                reverseGeocode(coords).then(address => {
+                    setFormData(prev => ({ ...prev, location: address }));
+                });
+            } else {
+                setFormData({ ...formData, location: processedValue, location_coords: null, location_boundary: null, location_boundingbox: null });
+            }
         } else if (name === 'station_name') {
             setFormData({ ...formData, station_name: processedValue });
             if (processedValue.length >= 2) {
