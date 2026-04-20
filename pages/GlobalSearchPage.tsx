@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { SearchIcon, CarIcon, MapPinIcon, CheckCircleIcon } from '../components/icons';
 import { format } from 'date-fns';
 import ReportDetailModal from '../components/ReportDetailModal';
+import AddLegacyReportModal from '../components/AddLegacyReportModal';
 
 const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ profile, isGlobalAdmin }) => {
     const [query, setQuery] = useState('');
@@ -12,6 +13,7 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
     const [loading, setLoading] = useState(false);
     const { addToast } = useToast();
     const [selectedReport, setSelectedReport] = useState<VehicleReport | null>(null);
+    const [showLegacyAdd, setShowLegacyAdd] = useState(false);
 
     const [totalVehicles, setTotalVehicles] = useState<number | null>(null);
 
@@ -140,6 +142,18 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+                <div className="flex flex-col sm:flex-row gap-4 mb-4 justify-between items-center bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-100 dark:border-red-900/30">
+                    <div className="text-sm text-red-800 dark:text-red-400 font-medium">
+                        Need to register a new vehicle into the legacy system?
+                    </div>
+                    <button
+                        onClick={() => setShowLegacyAdd(true)}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors whitespace-nowrap text-sm shadow-sm flex items-center gap-2"
+                    >
+                        <CarIcon className="w-4 h-4" />
+                        ADD NEW LEGACY ENTRY
+                    </button>
+                </div>
                 <form 
                     onSubmit={(e) => { e.preventDefault(); handleSearch(); }}
                     className="flex items-center gap-2"
@@ -256,6 +270,15 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
                     onRefresh={handleSearch}
                 />
             )}
+
+            <AddLegacyReportModal
+                isOpen={showLegacyAdd}
+                onClose={() => setShowLegacyAdd(false)}
+                onSuccess={() => {
+                    addToast('Vehicle successfully added to Legacy Database!', 'success');
+                    handleSearch(); // Refresh search if a user is actively searching
+                }}
+            />
         </div>
     );
 };
