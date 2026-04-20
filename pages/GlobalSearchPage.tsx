@@ -29,25 +29,23 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
             }
         };
         fetchTotalCount();
-        handleSearch(); // Trigger an initial blank search to retrieve all latest DB records
-    }, []); // Empty dependency array so it strictly runs 1 time on mount
-
-    // To prevent the lint error and infinite loops, we can separate the initial load logic
-    // but the above works fine in Vite typically, or we can use handleSearch without putting it in dep array by ignoring lint or extracting logic.
+    }, []);
 
     const handleSearch = useCallback(async () => {
+        if (!query.trim()) return;
+
         setLoading(true);
         try {
             // Race the internal search and the legacy external search
             const [supabaseResult, legacyResult] = await Promise.allSettled([
-                supabase.rpc('global_vehicle_search', { search_term: query.trim() }).then(res => {
+                supabase.rpc('global_vehicle_search', { search_term: query }).then(res => {
                     if (res.error) throw res.error;
                     return res.data;
                 }),
                 fetch('/api/legacySearch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: query.trim() }) // Send empty string if empty
+                    body: JSON.stringify({ query })
                 }).then(res => {
                     if (!res.ok) throw new Error('Legacy search failed');
                     return res.json();
