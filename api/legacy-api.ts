@@ -62,26 +62,29 @@ export default async function handler(req: Request, res: Response) {
                     const row = JSON.parse(match[1]);
                     // Only add if we haven't seen this ID yet to prevent duplicates if data-entry appears on both View and Edit buttons
                     if (!results.find(r => r.id === `legacy-${row.id}`)) {
-                        results.push({
-                            id: `legacy-${row.id}`,
-                            license_plate: row.vehicle_registration || '',
-                            vehicle_make: row.make || '',
-                            vehicle_model: row.model || '',
-                            vehicle_color: row.color || '',
-                            description: row.reason || '',
-                            cos_name: row.cos_name || '',
-                            cos_contact_number: row.cos_contact_number || '',
-                            cas_number: row.case_number || '',
-                            station_name: row.station_reported_at || '',
-                            io_name: row.io_name || '',
-                            io_contact: row.io_contact || '',
-                            status: String(row.recovered).toLowerCase() === 'yes' ? 'RECOVERED' : 'STOLEN',
-                            has_tracker: String(row.tracker).toLowerCase() === 'yes',
-                            reported_at: row.date_of_incident || new Date().toISOString(),
-                            reported_by: 'system',
-                            is_legacy: true,
-                            type: 'vehicle'
-                        });
+                            const recoveredVal = String(row.recovered || '').trim().toLowerCase();
+                            const isRecovered = ['yes', 'recovered', 'true', 'y', '1'].includes(recoveredVal);
+                            
+                            results.push({
+                                id: `legacy-${row.id}`,
+                                license_plate: row.vehicle_registration || '',
+                                vehicle_make: row.make || '',
+                                vehicle_model: row.model || '',
+                                vehicle_color: row.color || '',
+                                description: row.reason || '',
+                                cos_name: row.cos_name || '',
+                                cos_contact_number: row.cos_contact_number || '',
+                                cas_number: row.case_number || '',
+                                station_name: row.station_reported_at || '',
+                                io_name: row.io_name || '',
+                                io_contact: row.io_contact || '',
+                                status: isRecovered ? 'recovered' : 'stolen',
+                                has_tracker: String(row.tracker).toLowerCase() === 'yes',
+                                reported_at: row.date_of_incident || new Date().toISOString(),
+                                reported_by: 'system',
+                                is_legacy: true,
+                                type: 'vehicle'
+                            });
                     }
                 } catch (e) {
                     console.error("Failed to parse row JSON", e);
