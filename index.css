@@ -22,19 +22,19 @@
 
 @layer base {
   .matrix {
-    --color-gray-50: #003b00;
-    --color-gray-100: #003b00;
-    --color-gray-200: #003b00;
-    --color-gray-300: #008f11;
-    --color-gray-400: #00ff41;
-    --color-gray-500: #00ff41;
-    --color-gray-600: #00ff41;
-    --color-gray-700: #00ff41;
-    --color-gray-800: #00ff41;
+    --color-gray-50: #e0ffee;
+    --color-gray-100: #00ff41;
+    --color-gray-200: #00dd3a;
+    --color-gray-300: #00bb31;
+    --color-gray-400: #009928;
+    --color-gray-500: #00771f;
+    --color-gray-600: #005516;
+    --color-gray-700: #00330d;
+    --color-gray-800: #002209;
     --color-gray-900: #0d0208;
     
     --color-primary-500: #00ff41;
-    --color-primary-600: #008f11;
+    --color-primary-600: #00dd3a;
     
     background-color: var(--color-matrix-bg);
     color: var(--color-matrix-green);
@@ -175,5 +175,6 @@
 }
 
 .matrix .leaflet-container {
-  filter: hue-rotate(90deg) brightness(0.4) contrast(1.2) invert(1);
+  filter: invert(1) hue-rotate(100deg) brightness(0.2) contrast(2) saturate(2);
+  background-color: #000 !important;
 }
