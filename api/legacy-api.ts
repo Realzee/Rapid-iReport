@@ -82,7 +82,11 @@ export default async function handler(req: Request, res: Response) {
                                 io_contact: row.io_contact || '',
                                 status: isRecovered ? 'recovered' : 'stolen',
                                 has_tracker: String(row.tracker).toLowerCase() === 'yes',
-                                reported_at: row.date_of_incident || new Date().toISOString(),
+                                reported_at: (() => {
+                                    if (!row.date_of_incident) return new Date().toISOString();
+                                    const d = new Date(row.date_of_incident);
+                                    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+                                })(),
                                 reported_by: 'system',
                                 is_legacy: true,
                                 type: 'vehicle'

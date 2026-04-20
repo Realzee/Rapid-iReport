@@ -101,9 +101,9 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
                         status: item.status ? (item.status.toUpperCase() === 'RECOVERED' ? ReportStatus.RECOVERED : ReportStatus.ACTIVE) : (item.recovered ? ReportStatus.RECOVERED : ReportStatus.ACTIVE),
                         severity: 'high' as any,
                         reported_at: (() => {
-                            if (item.reported_at) return item.reported_at;
-                            if (!item.date_of_incident) return new Date().toISOString();
-                            const d = new Date(item.date_of_incident);
+                            const rawDate = item.reported_at || item.date_of_incident;
+                            if (!rawDate) return new Date().toISOString();
+                            const d = new Date(rawDate);
                             return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
                         })(),
                         reported_by: 'system',
@@ -257,7 +257,12 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
                                          <span className="flex items-center gap-1 truncate"><MapPinIcon className="w-3 h-3 flex-shrink-0"/> <span className="truncate">{report.station_name || 'N/A'}</span></span>
                                     </div>
                                     <div className="text-xs text-gray-400 dark:text-gray-500 font-medium flex-shrink-0 whitespace-nowrap">
-                                         {report.reported_at ? format(new Date(report.reported_at), 'MMM d, yyyy') : 'Unknown Date'}
+                                         {(() => {
+                                             if (!report.reported_at) return 'Unknown Date';
+                                             const d = new Date(report.reported_at);
+                                             if (isNaN(d.getTime())) return 'Invalid Date';
+                                             return format(d, 'MMM d, yyyy');
+                                         })()}
                                     </div>
                                 </div>
                             </div>
