@@ -22,8 +22,8 @@ export default async function handler(req: Request, res: Response) {
         try {
             const legacyRes = await fetch('https://rapidreportingsa.co.za/WORKING/ob.php');
             const html = await legacyRes.text();
-            // Look for "Total Entries:" followed by any optional HTML tags and whitespaces, then the number (including potential commas)
-            const countMatch = html.match(/Total Entries:.*?([\d,]+)/is);
+            // Look for "TOTAL RECORDS:" or "Total Entries:" followed by any optional HTML tags and whitespaces, then the number (including potential commas)
+            const countMatch = html.match(/(?:TOTAL RECORDS|Total Entries).*?([\d,]+)/is);
             if (countMatch && countMatch[1]) {
                 legacyCount = parseInt(countMatch[1].replace(/,/g, ''), 10);
             }
