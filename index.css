@@ -212,8 +212,11 @@
   backdrop-filter: blur(12px) !important;
 }
 
-.matrix header img {
-  height: 7rem !important; /* Matches h-28 */
-  width: auto !important;
+.matrix header .main-logo {
   filter: drop-shadow(0 0 15px rgba(0, 255, 65, 0.6)) brightness(1.1);
+}
+
+.matrix header img.rounded-full {
+  border-color: var(--color-matrix-green) !important;
+  box-shadow: 0 0 12px rgba(0, 255, 65, 0.5);
 }
