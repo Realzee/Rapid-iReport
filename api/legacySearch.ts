@@ -6,13 +6,14 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const { query } = req.body;
-    if (!query) {
+    // We allow empty queries to retrieve the latest default legacy results
+    if (query === undefined) {
         return res.json({ data: [] });
     }
 
     try {
         const params = new URLSearchParams();
-        params.append('search', query);
+        params.append('search', query || '');
         params.append('submit-search', 'Search');
 
         const response = await fetch('https://rapidreportingsa.co.za/WORKING/ob.php', {

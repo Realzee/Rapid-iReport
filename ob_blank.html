@@ -1,0 +1,643 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vehicle Observation Book</title>
+    <style>
+        body { font-family: Arial; background: black; color: white; margin: 0; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 2px solid #ff0000; }
+        header img { max-width: 300px; }
+        .entry-count { background: #333; padding: 10px; border-radius: 5px; border: 1px solid red; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
+        th, td { border: 1px solid #333; padding: 8px; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        th { background: #eee; color: black; }
+        .btn-main { background: red; color: white; padding: 10px; width: 100%; border: none; font-weight: bold; cursor: pointer; margin: 10px 0; }
+        .popup { background: #111; position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; overflow-y: scroll; padding: 20px; box-sizing: border-box; z-index: 100; border: 2px solid #ff0000; }
+        label { display: block; margin-top: 10px; color: #ff0000; font-size: 11px; font-weight: bold; }
+        input { width: 100%; padding: 10px; background: #000; color: #fff; border: 1px solid #444; text-transform: uppercase; box-sizing: border-box; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <img src="https://i.postimg.cc/gkLqLVFg/Rapid-Reporting-Logo-Rect.png" alt="Logo">
+    <div class="entry-count">TOTAL RECORDS: 8196</div>
+</header>
+
+<div style="padding: 15px;">
+    <form method="post">
+        <input type="text" name="search" placeholder="SEARCH REG / CASE / DETAILS / LOCATION..." style="margin-bottom: 5px;">
+        <button type="submit" name="submit-search" class="btn-main" style="background: #222;">EXECUTE SEARCH</button>
+    </form>
+    
+    <button id="add-entry-button" class="btn-main">ADD NEW VEHICLE ENTRY</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>REGISTRATION</th><th>MAKE</th><th>MODEL</th><th>COLOR</th><th>DETAILS</th>
+                <th>COS NAME</th><th>CONTACT</th><th>CASE NO</th><th>STATION</th>
+                <th>IO NAME</th><th>IO CONTACT</th><th>RECOVERY</th><th>TRACKER</th><th>DATE</th>
+                <th>ACTIONS</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>HY05STGP</td>
+                <td>AUDI</td>
+                <td>UNKNOWN</td>
+                <td>WHITE</td>
+                <td>VIN: WAUZZZ8V6FA158778 | ENGINE: CZC253134 | YEAR: 2022</td>
+                <td></td>
+                <td></td>
+                <td>TBA</td>
+                <td>ITSOSENG HEBRON</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>2026-04-18</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10524","entry_text":"WHITE AUDI ST\r\nHY05STGP\r\nHIJACKED FROM THE OWNER AT PHASE 03 ITSOSENG ERASMUS HEBRON AREA 2026\/04\/18","entry_date":null,"vehicle_registration":"HY05STGP","make":"AUDI","model":"UNKNOWN","color":"WHITE","reason":"VIN: WAUZZZ8V6FA158778 | ENGINE: CZC253134 | YEAR: 2022","cos_name":null,"cos_contact_number":null,"case_number":"TBA","station_reported_at":"ITSOSENG HEBRON","io_name":"","io_contact":"","recovered":"","tracker":null,"date_of_incident":"2026-04-18"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10524","entry_text":"WHITE AUDI ST\r\nHY05STGP\r\nHIJACKED FROM THE OWNER AT PHASE 03 ITSOSENG ERASMUS HEBRON AREA 2026\/04\/18","entry_date":null,"vehicle_registration":"HY05STGP","make":"AUDI","model":"UNKNOWN","color":"WHITE","reason":"VIN: WAUZZZ8V6FA158778 | ENGINE: CZC253134 | YEAR: 2022","cos_name":null,"cos_contact_number":null,"case_number":"TBA","station_reported_at":"ITSOSENG HEBRON","io_name":"","io_contact":"","recovered":"","tracker":null,"date_of_incident":"2026-04-18"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10524">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>MX28RMGP</td>
+                <td>HERO</td>
+                <td>ECO150</td>
+                <td>BLUE</td>
+                <td>HIJACKED</td>
+                <td>RAPID REPORTING PLATFORM</td>
+                <td>+27846910111</td>
+                <td>BOLO</td>
+                <td>BOLO</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>YES (CNSW)</td>
+                <td>2026-04-18</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10523","entry_text":null,"entry_date":null,"vehicle_registration":"MX28RMGP","make":"HERO","model":"ECO150","color":"BLUE","reason":"HIJACKED","cos_name":"RAPID REPORTING PLATFORM","cos_contact_number":"+27846910111","case_number":"BOLO","station_reported_at":"BOLO","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"YES (CNSW)","date_of_incident":"2026-04-18"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10523","entry_text":null,"entry_date":null,"vehicle_registration":"MX28RMGP","make":"HERO","model":"ECO150","color":"BLUE","reason":"HIJACKED","cos_name":"RAPID REPORTING PLATFORM","cos_contact_number":"+27846910111","case_number":"BOLO","station_reported_at":"BOLO","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"YES (CNSW)","date_of_incident":"2026-04-18"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10523">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>FKC102EC</td>
+                <td>TOYOTA </td>
+                <td>FORTUNER</td>
+                <td>WHITE</td>
+                <td>HIJACKED , ENG: 1KD7937205, VIN: AHTYZ59G908009905</td>
+                <td>RAPID REPORTING PLATFORM</td>
+                <td>+27846910111</td>
+                <td>BOLO</td>
+                <td>BOLO</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>YES (CNSW)</td>
+                <td>2026-04-18</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10522","entry_text":null,"entry_date":null,"vehicle_registration":"FKC102EC","make":"TOYOTA ","model":"FORTUNER","color":"WHITE","reason":"HIJACKED , ENG: 1KD7937205, VIN: AHTYZ59G908009905","cos_name":"RAPID REPORTING PLATFORM","cos_contact_number":"+27846910111","case_number":"BOLO","station_reported_at":"BOLO","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"YES (CNSW)","date_of_incident":"2026-04-18"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10522","entry_text":null,"entry_date":null,"vehicle_registration":"FKC102EC","make":"TOYOTA ","model":"FORTUNER","color":"WHITE","reason":"HIJACKED , ENG: 1KD7937205, VIN: AHTYZ59G908009905","cos_name":"RAPID REPORTING PLATFORM","cos_contact_number":"+27846910111","case_number":"BOLO","station_reported_at":"BOLO","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"YES (CNSW)","date_of_incident":"2026-04-18"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10522">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>CF42366</td>
+                <td>HYUNDAI</td>
+                <td>H100</td>
+                <td>WHITE</td>
+                <td>STOLEN (OB NUMBER: 00023/04/2026)</td>
+                <td>RAPID REPORTING</td>
+                <td>27846910111</td>
+                <td>000620/04/2026</td>
+                <td>KRAAIFONTEIN</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>UNKNOWN</td>
+                <td>2026-04-17</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10507","entry_text":null,"entry_date":null,"vehicle_registration":"CF42366","make":"HYUNDAI","model":"H100","color":"WHITE","reason":"STOLEN (OB NUMBER: 00023\/04\/2026)","cos_name":"RAPID REPORTING","cos_contact_number":"27846910111","case_number":"000620\/04\/2026","station_reported_at":"KRAAIFONTEIN","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2026-04-17"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10507","entry_text":null,"entry_date":null,"vehicle_registration":"CF42366","make":"HYUNDAI","model":"H100","color":"WHITE","reason":"STOLEN (OB NUMBER: 00023\/04\/2026)","cos_name":"RAPID REPORTING","cos_contact_number":"27846910111","case_number":"000620\/04\/2026","station_reported_at":"KRAAIFONTEIN","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2026-04-17"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10507">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>CAA134574</td>
+                <td>BIGBOY</td>
+                <td>MOTORCYCLE</td>
+                <td>WHITE</td>
+                <td>STOLEN (OB NUMBER: 00021/04/2026)</td>
+                <td>RAPID REPORTING</td>
+                <td>+27846910111</td>
+                <td>00075/07/2025</td>
+                <td>MOWBRAY</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>UNKNOWN</td>
+                <td>2025-07-27</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10506","entry_text":null,"entry_date":null,"vehicle_registration":"CAA134574","make":"BIGBOY","model":"MOTORCYCLE","color":"WHITE","reason":"STOLEN (OB NUMBER: 00021\/04\/2026)","cos_name":"RAPID REPORTING","cos_contact_number":"+27846910111","case_number":"00075\/07\/2025","station_reported_at":"MOWBRAY","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2025-07-27"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10506","entry_text":null,"entry_date":null,"vehicle_registration":"CAA134574","make":"BIGBOY","model":"MOTORCYCLE","color":"WHITE","reason":"STOLEN (OB NUMBER: 00021\/04\/2026)","cos_name":"RAPID REPORTING","cos_contact_number":"+27846910111","case_number":"00075\/07\/2025","station_reported_at":"MOWBRAY","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2025-07-27"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10506">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>TEBZA01GP</td>
+                <td>TOYOTA</td>
+                <td>COROLLA</td>
+                <td>GREEN</td>
+                <td>HIJACKED IVORY PARK (OB NUMBER: 00003/04/2026)</td>
+                <td>RAPID REPORTING PLATFORM</td>
+                <td>+27846910111</td>
+                <td>00508/10/2011</td>
+                <td>IVORY PARK</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>UNKNOWN</td>
+                <td>2011-10-13</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10505","entry_text":null,"entry_date":null,"vehicle_registration":"TEBZA01GP","make":"TOYOTA","model":"COROLLA","color":"GREEN","reason":"HIJACKED IVORY PARK (OB NUMBER: 00003\/04\/2026)","cos_name":"RAPID REPORTING PLATFORM","cos_contact_number":"+27846910111","case_number":"00508\/10\/2011","station_reported_at":"IVORY PARK","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2011-10-13"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10505","entry_text":null,"entry_date":null,"vehicle_registration":"TEBZA01GP","make":"TOYOTA","model":"COROLLA","color":"GREEN","reason":"HIJACKED IVORY PARK (OB NUMBER: 00003\/04\/2026)","cos_name":"RAPID REPORTING PLATFORM","cos_contact_number":"+27846910111","case_number":"00508\/10\/2011","station_reported_at":"IVORY PARK","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2011-10-13"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10505">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>KX97ZMGP</td>
+                <td>TOYOTA</td>
+                <td>LAND CRUISER</td>
+                <td>SILVER</td>
+                <td>STOLEN LENASIA X3 (OB NUMBER: 00016/03/2026)</td>
+                <td>RAPID REPORTING PLATFORM</td>
+                <td>+27846910111</td>
+                <td>00001/04/2026</td>
+                <td>LENASIA</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>UNKNOWN</td>
+                <td>2026-03-31</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10504","entry_text":null,"entry_date":null,"vehicle_registration":"KX97ZMGP","make":"TOYOTA","model":"LAND CRUISER","color":"SILVER","reason":"STOLEN LENASIA X3 (OB NUMBER: 00016\/03\/2026)","cos_name":"RAPID REPORTING PLATFORM","cos_contact_number":"+27846910111","case_number":"00001\/04\/2026","station_reported_at":"LENASIA","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2026-03-31"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10504","entry_text":null,"entry_date":null,"vehicle_registration":"KX97ZMGP","make":"TOYOTA","model":"LAND CRUISER","color":"SILVER","reason":"STOLEN LENASIA X3 (OB NUMBER: 00016\/03\/2026)","cos_name":"RAPID REPORTING PLATFORM","cos_contact_number":"+27846910111","case_number":"00001\/04\/2026","station_reported_at":"LENASIA","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2026-03-31"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10504">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>CY15524</td>
+                <td>VOLKSWAGEN</td>
+                <td>POLO SEDAN</td>
+                <td>WHITE</td>
+                <td>HIJACKED</td>
+                <td>RAPID 911</td>
+                <td>+27846910111</td>
+                <td>00044/07/2025</td>
+                <td>PHILIPPI</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>RECOVERED</td>
+                <td>RECOVERED</td>
+                <td>2025-07-04</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10503","entry_text":null,"entry_date":null,"vehicle_registration":"CY15524","make":"VOLKSWAGEN","model":"POLO SEDAN","color":"WHITE","reason":"HIJACKED","cos_name":"RAPID 911","cos_contact_number":"+27846910111","case_number":"00044\/07\/2025","station_reported_at":"PHILIPPI","io_name":"SAPS","io_contact":"10111","recovered":"RECOVERED","tracker":"RECOVERED","date_of_incident":"2025-07-04"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10503","entry_text":null,"entry_date":null,"vehicle_registration":"CY15524","make":"VOLKSWAGEN","model":"POLO SEDAN","color":"WHITE","reason":"HIJACKED","cos_name":"RAPID 911","cos_contact_number":"+27846910111","case_number":"00044\/07\/2025","station_reported_at":"PHILIPPI","io_name":"SAPS","io_contact":"10111","recovered":"RECOVERED","tracker":"RECOVERED","date_of_incident":"2025-07-04"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10503">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>DLX080EC</td>
+                <td>FORD</td>
+                <td>SEDAN / HATCH</td>
+                <td>UNKNOWN</td>
+                <td>HIJACKED</td>
+                <td>RAPID 911</td>
+                <td>+27846910111</td>
+                <td>00224/01/2026</td>
+                <td>MOUNT ROAD</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>UNKNOWN</td>
+                <td>2026-01-14</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10502","entry_text":null,"entry_date":null,"vehicle_registration":"DLX080EC","make":"FORD","model":"SEDAN \/ HATCH","color":"UNKNOWN","reason":"HIJACKED","cos_name":"RAPID 911","cos_contact_number":"+27846910111","case_number":"00224\/01\/2026","station_reported_at":"MOUNT ROAD","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2026-01-14"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10502","entry_text":null,"entry_date":null,"vehicle_registration":"DLX080EC","make":"FORD","model":"SEDAN \/ HATCH","color":"UNKNOWN","reason":"HIJACKED","cos_name":"RAPID 911","cos_contact_number":"+27846910111","case_number":"00224\/01\/2026","station_reported_at":"MOUNT ROAD","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2026-01-14"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10502">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>FGS409EC</td>
+                <td>ISUZU</td>
+                <td>KB</td>
+                <td>WHITE</td>
+                <td>HIJACKED</td>
+                <td>RAPID 911</td>
+                <td>+27846910111</td>
+                <td>00185/04/2022</td>
+                <td>BETHELSDORP</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>UNKNOWN</td>
+                <td>2022-04-20</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10501","entry_text":null,"entry_date":null,"vehicle_registration":"FGS409EC","make":"ISUZU","model":"KB","color":"WHITE","reason":"HIJACKED","cos_name":"RAPID 911","cos_contact_number":"+27846910111","case_number":"00185\/04\/2022","station_reported_at":"BETHELSDORP","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2022-04-20"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10501","entry_text":null,"entry_date":null,"vehicle_registration":"FGS409EC","make":"ISUZU","model":"KB","color":"WHITE","reason":"HIJACKED","cos_name":"RAPID 911","cos_contact_number":"+27846910111","case_number":"00185\/04\/2022","station_reported_at":"BETHELSDORP","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2022-04-20"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10501">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>CAA242611</td>
+                <td>TOYOTA</td>
+                <td>SEDAN / HATCH</td>
+                <td>UNKNOWN</td>
+                <td>THEFT</td>
+                <td>RAPID 911</td>
+                <td>+27846910111</td>
+                <td>00214/07/2023</td>
+                <td>MITCHELLS PLAIN</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>UNKNOWN</td>
+                <td>0000-00-00</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10500","entry_text":null,"entry_date":null,"vehicle_registration":"CAA242611","make":"TOYOTA","model":"SEDAN \/ HATCH","color":"UNKNOWN","reason":"THEFT","cos_name":"RAPID 911","cos_contact_number":"+27846910111","case_number":"00214\/07\/2023","station_reported_at":"MITCHELLS PLAIN","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"0000-00-00"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10500","entry_text":null,"entry_date":null,"vehicle_registration":"CAA242611","make":"TOYOTA","model":"SEDAN \/ HATCH","color":"UNKNOWN","reason":"THEFT","cos_name":"RAPID 911","cos_contact_number":"+27846910111","case_number":"00214\/07\/2023","station_reported_at":"MITCHELLS PLAIN","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"0000-00-00"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10500">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>KGF635EC</td>
+                <td>FORD</td>
+                <td>RANGER D/CAB</td>
+                <td>WHITE</td>
+                <td>HIJACKED LINGELETHU</td>
+                <td>RAPID 911</td>
+                <td>+27846910111</td>
+                <td>00050/07/2025</td>
+                <td>LINGELETHU WEST</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>UNKNOWN</td>
+                <td>2025-07-05</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10499","entry_text":null,"entry_date":null,"vehicle_registration":"KGF635EC","make":"FORD","model":"RANGER D\/CAB","color":"WHITE","reason":"HIJACKED LINGELETHU","cos_name":"RAPID 911","cos_contact_number":"+27846910111","case_number":"00050\/07\/2025","station_reported_at":"LINGELETHU WEST","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2025-07-05"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10499","entry_text":null,"entry_date":null,"vehicle_registration":"KGF635EC","make":"FORD","model":"RANGER D\/CAB","color":"WHITE","reason":"HIJACKED LINGELETHU","cos_name":"RAPID 911","cos_contact_number":"+27846910111","case_number":"00050\/07\/2025","station_reported_at":"LINGELETHU WEST","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2025-07-05"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10499">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>LP34JFGP</td>
+                <td>TOYOTA</td>
+                <td>AVANZA / RUMION</td>
+                <td>WHITE</td>
+                <td>HIJACKED MAYIBUYE RIETVALLEI PRETORIA (OB NUMBER: 00016/02/2026)</td>
+                <td>RAPID 911</td>
+                <td>27846910111</td>
+                <td>00181/02/2026</td>
+                <td>FLORIDA</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>UNKNOWN</td>
+                <td>2026-02-11</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10498","entry_text":null,"entry_date":null,"vehicle_registration":"LP34JFGP","make":"TOYOTA","model":"AVANZA \/ RUMION","color":"WHITE","reason":"HIJACKED MAYIBUYE RIETVALLEI PRETORIA (OB NUMBER: 00016\/02\/2026)","cos_name":"RAPID 911","cos_contact_number":"27846910111","case_number":"00181\/02\/2026","station_reported_at":"FLORIDA","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2026-02-11"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10498","entry_text":null,"entry_date":null,"vehicle_registration":"LP34JFGP","make":"TOYOTA","model":"AVANZA \/ RUMION","color":"WHITE","reason":"HIJACKED MAYIBUYE RIETVALLEI PRETORIA (OB NUMBER: 00016\/02\/2026)","cos_name":"RAPID 911","cos_contact_number":"27846910111","case_number":"00181\/02\/2026","station_reported_at":"FLORIDA","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2026-02-11"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10498">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>CJ338901</td>
+                <td>FORD</td>
+                <td>BANTUM</td>
+                <td>WHITE</td>
+                <td>STOLEN</td>
+                <td>I-REPORT</td>
+                <td>+27846910111</td>
+                <td>00049/02/2026</td>
+                <td>BELLVILLE</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>NONE</td>
+                <td>2026-02-04</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10497","entry_text":null,"entry_date":null,"vehicle_registration":"CJ338901","make":"FORD","model":"BANTUM","color":"WHITE","reason":"STOLEN","cos_name":"I-REPORT","cos_contact_number":"+27846910111","case_number":"00049\/02\/2026","station_reported_at":"BELLVILLE","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"NONE","date_of_incident":"2026-02-04"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10497","entry_text":null,"entry_date":null,"vehicle_registration":"CJ338901","make":"FORD","model":"BANTUM","color":"WHITE","reason":"STOLEN","cos_name":"I-REPORT","cos_contact_number":"+27846910111","case_number":"00049\/02\/2026","station_reported_at":"BELLVILLE","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"NONE","date_of_incident":"2026-02-04"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10497">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>CY141779</td>
+                <td>VOLKSWAGEN</td>
+                <td>POLO  VIVO</td>
+                <td>SILVER</td>
+                <td>STOLEN  ROB: 00008/02/2026</td>
+                <td>I-REPORT</td>
+                <td>+27846910111</td>
+                <td>00026/02/2026</td>
+                <td>KENSINGTON</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>NONE</td>
+                <td>2026-02-05</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10496","entry_text":null,"entry_date":null,"vehicle_registration":"CY141779","make":"VOLKSWAGEN","model":"POLO  VIVO","color":"SILVER","reason":"STOLEN  ROB: 00008\/02\/2026","cos_name":"I-REPORT","cos_contact_number":"+27846910111","case_number":"00026\/02\/2026","station_reported_at":"KENSINGTON","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"NONE","date_of_incident":"2026-02-05"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10496","entry_text":null,"entry_date":null,"vehicle_registration":"CY141779","make":"VOLKSWAGEN","model":"POLO  VIVO","color":"SILVER","reason":"STOLEN  ROB: 00008\/02\/2026","cos_name":"I-REPORT","cos_contact_number":"+27846910111","case_number":"00026\/02\/2026","station_reported_at":"KENSINGTON","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"NONE","date_of_incident":"2026-02-05"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10496">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>CAA567930</td>
+                <td>ISUZU</td>
+                <td>D-MAX</td>
+                <td>WHITE</td>
+                <td>HIJACKED MANGO STREET DELFT (OB NUMBER: 00004/02/2026)</td>
+                <td>RAPID - IREPORT</td>
+                <td>27846910111</td>
+                <td>RECOVERED</td>
+                <td>RECOVERED</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>RECOVERED</td>
+                <td>CTRACK</td>
+                <td>2026-02-03</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10495","entry_text":null,"entry_date":null,"vehicle_registration":"CAA567930","make":"ISUZU","model":"D-MAX","color":"WHITE","reason":"HIJACKED MANGO STREET DELFT (OB NUMBER: 00004\/02\/2026)","cos_name":"RAPID - IREPORT","cos_contact_number":"27846910111","case_number":"RECOVERED","station_reported_at":"RECOVERED","io_name":"SAPS","io_contact":"10111","recovered":"RECOVERED","tracker":"CTRACK","date_of_incident":"2026-02-03"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10495","entry_text":null,"entry_date":null,"vehicle_registration":"CAA567930","make":"ISUZU","model":"D-MAX","color":"WHITE","reason":"HIJACKED MANGO STREET DELFT (OB NUMBER: 00004\/02\/2026)","cos_name":"RAPID - IREPORT","cos_contact_number":"27846910111","case_number":"RECOVERED","station_reported_at":"RECOVERED","io_name":"SAPS","io_contact":"10111","recovered":"RECOVERED","tracker":"CTRACK","date_of_incident":"2026-02-03"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10495">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>BP10HPZN</td>
+                <td>TOYOTA</td>
+                <td>QUANTUM</td>
+                <td>WHITE</td>
+                <td>HIJACKED (OB NUMBER: 00001/01/2026)</td>
+                <td>RAPID 911</td>
+                <td>27846910111</td>
+                <td>00033/01/2026</td>
+                <td>CATO MANOR</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>UNKNOWN</td>
+                <td>2026-01-03</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10494","entry_text":null,"entry_date":null,"vehicle_registration":"BP10HPZN","make":"TOYOTA","model":"QUANTUM","color":"WHITE","reason":"HIJACKED (OB NUMBER: 00001\/01\/2026)","cos_name":"RAPID 911","cos_contact_number":"27846910111","case_number":"00033\/01\/2026","station_reported_at":"CATO MANOR","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2026-01-03"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10494","entry_text":null,"entry_date":null,"vehicle_registration":"BP10HPZN","make":"TOYOTA","model":"QUANTUM","color":"WHITE","reason":"HIJACKED (OB NUMBER: 00001\/01\/2026)","cos_name":"RAPID 911","cos_contact_number":"27846910111","case_number":"00033\/01\/2026","station_reported_at":"CATO MANOR","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2026-01-03"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10494">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>DF70CRZN</td>
+                <td>VOLKSWAGEN</td>
+                <td>POLO</td>
+                <td>WHITE</td>
+                <td>USED IN COMMISSION OF A CRIME  ALC THEFT (OB NUMBER: 00015/12/2025)</td>
+                <td>RAPID 911</td>
+                <td>27846910111</td>
+                <td>POSSIBLE CLONE NO CASE NUMBER AS YET</td>
+                <td> MOUNT EDGECOMBE</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>UNKNOWN</td>
+                <td>2025-12-17</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10493","entry_text":null,"entry_date":null,"vehicle_registration":"DF70CRZN","make":"VOLKSWAGEN","model":"POLO","color":"WHITE","reason":"USED IN COMMISSION OF A CRIME  ALC THEFT (OB NUMBER: 00015\/12\/2025)","cos_name":"RAPID 911","cos_contact_number":"27846910111","case_number":"POSSIBLE CLONE NO CASE NUMBER AS YET","station_reported_at":" MOUNT EDGECOMBE","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2025-12-17"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10493","entry_text":null,"entry_date":null,"vehicle_registration":"DF70CRZN","make":"VOLKSWAGEN","model":"POLO","color":"WHITE","reason":"USED IN COMMISSION OF A CRIME  ALC THEFT (OB NUMBER: 00015\/12\/2025)","cos_name":"RAPID 911","cos_contact_number":"27846910111","case_number":"POSSIBLE CLONE NO CASE NUMBER AS YET","station_reported_at":" MOUNT EDGECOMBE","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2025-12-17"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10493">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>CW57MBGP (INCORRECT)</td>
+                <td>TOYOTA</td>
+                <td>ETIOS</td>
+                <td>SILVER</td>
+                <td>VEHICLE STOLEN FROM 209 ELSTON AVE BENONI (OB NUMBER: 00014/12/2025)</td>
+                <td>RAPID 911</td>
+                <td>27846910111</td>
+                <td>NEGATIVE</td>
+                <td>WAITING</td>
+                <td>UNKNOWN</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>UNKNOWN</td>
+                <td>2025-12-17</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10492","entry_text":null,"entry_date":null,"vehicle_registration":"CW57MBGP (INCORRECT)","make":"TOYOTA","model":"ETIOS","color":"SILVER","reason":"VEHICLE STOLEN FROM 209 ELSTON AVE BENONI (OB NUMBER: 00014\/12\/2025)","cos_name":"RAPID 911","cos_contact_number":"27846910111","case_number":"NEGATIVE","station_reported_at":"WAITING","io_name":"UNKNOWN","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2025-12-17"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10492","entry_text":null,"entry_date":null,"vehicle_registration":"CW57MBGP (INCORRECT)","make":"TOYOTA","model":"ETIOS","color":"SILVER","reason":"VEHICLE STOLEN FROM 209 ELSTON AVE BENONI (OB NUMBER: 00014\/12\/2025)","cos_name":"RAPID 911","cos_contact_number":"27846910111","case_number":"NEGATIVE","station_reported_at":"WAITING","io_name":"UNKNOWN","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2025-12-17"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10492">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr><tr>
+                <td>KS94MKGP</td>
+                <td>NISSAN</td>
+                <td>NAVARA</td>
+                <td>GREY</td>
+                <td>HIJACKED THERESO ST NELMAPIUS (OB NUMBER: 00010/12/2025)</td>
+                <td>RAPID 911</td>
+                <td>27846910111</td>
+                <td>00188/12/2025</td>
+                <td>SILVERTON</td>
+                <td>SAPS</td>
+                <td>10111</td>
+                <td>R MCD NAT</td>
+                <td>UNKNOWN</td>
+                <td>2025-12-10</td>
+                <td>
+                    <button class="view-entry" data-entry='{"id":"10491","entry_text":null,"entry_date":null,"vehicle_registration":"KS94MKGP","make":"NISSAN","model":"NAVARA","color":"GREY","reason":"HIJACKED THERESO ST NELMAPIUS (OB NUMBER: 00010\/12\/2025)","cos_name":"RAPID 911","cos_contact_number":"27846910111","case_number":"00188\/12\/2025","station_reported_at":"SILVERTON","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2025-12-10"}' type="button" style="background:#444; color:white; border:none; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">VIEW</button>
+                    <button class="edit-entry" data-entry='{"id":"10491","entry_text":null,"entry_date":null,"vehicle_registration":"KS94MKGP","make":"NISSAN","model":"NAVARA","color":"GREY","reason":"HIJACKED THERESO ST NELMAPIUS (OB NUMBER: 00010\/12\/2025)","cos_name":"RAPID 911","cos_contact_number":"27846910111","case_number":"00188\/12\/2025","station_reported_at":"SILVERTON","io_name":"SAPS","io_contact":"10111","recovered":"R MCD NAT","tracker":"UNKNOWN","date_of_incident":"2025-12-10"}' type="button" style="background:#222; color:white; border:1px solid #444; padding:5px; margin-bottom:2px; cursor:pointer; width:100%;">EDIT</button>
+                    <form method="post" onsubmit="return confirm('ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THIS ENTRY?');">
+                        <input type="hidden" name="delete-id" value="10491">
+                        <button type="submit" style="background:darkred; color:white; border:none; padding:5px; cursor:pointer; width:100%;">DELETE</button>
+                    </form>
+                </td>
+            </tr>        </tbody>
+    </table>
+</div>
+
+<div id="add-entry-popup" class="popup">
+    <h2 style="color:red;">NEW VEHICLE LOG</h2>
+    <form method="post">
+                    <label>VEHICLE REGISTRATION</label>
+            <input type="text" name="add-vehicle_registration" required>
+                    <label>MAKE</label>
+            <input type="text" name="add-make" required>
+                    <label>MODEL</label>
+            <input type="text" name="add-model" required>
+                    <label>COLOR</label>
+            <input type="text" name="add-color" required>
+                    <label>REASON</label>
+            <input type="text" name="add-reason" required>
+                    <label>COS NAME</label>
+            <input type="text" name="add-cos_name" required>
+                    <label>COS CONTACT NUMBER</label>
+            <input type="text" name="add-cos_contact_number" required>
+                    <label>CASE NUMBER</label>
+            <input type="text" name="add-case_number" required>
+                    <label>STATION REPORTED AT</label>
+            <input type="text" name="add-station_reported_at" required>
+                    <label>IO NAME</label>
+            <input type="text" name="add-io_name" required>
+                    <label>IO CONTACT</label>
+            <input type="text" name="add-io_contact" required>
+                    <label>RECOVERED</label>
+            <input type="text" name="add-recovered" required>
+                    <label>TRACKER</label>
+            <input type="text" name="add-tracker" required>
+                    <label>DATE OF INCIDENT</label>
+            <input type="text" name="add-date_of_incident" required>
+                <button type="submit" name="submit-add" class="btn-main">SAVE ENTRY</button>
+        <button type="button" class="btn-main" style="background:#444" onclick="document.getElementById('add-entry-popup').style.display='none'">CANCEL</button>
+    </form>
+</div>
+
+<div id="edit-form" class="popup">
+    <h2 style="color:red;">UPDATE VEHICLE RECORD</h2>
+    <form method="post">
+        <input type="hidden" name="edit-id" id="edit-id">
+                    <label>VEHICLE REGISTRATION</label>
+            <input type="text" name="edit-vehicle_registration" id="edit-vehicle_registration" required>
+                    <label>MAKE</label>
+            <input type="text" name="edit-make" id="edit-make" required>
+                    <label>MODEL</label>
+            <input type="text" name="edit-model" id="edit-model" required>
+                    <label>COLOR</label>
+            <input type="text" name="edit-color" id="edit-color" required>
+                    <label>REASON</label>
+            <input type="text" name="edit-reason" id="edit-reason" required>
+                    <label>COS NAME</label>
+            <input type="text" name="edit-cos_name" id="edit-cos_name" required>
+                    <label>COS CONTACT NUMBER</label>
+            <input type="text" name="edit-cos_contact_number" id="edit-cos_contact_number" required>
+                    <label>CASE NUMBER</label>
+            <input type="text" name="edit-case_number" id="edit-case_number" required>
+                    <label>STATION REPORTED AT</label>
+            <input type="text" name="edit-station_reported_at" id="edit-station_reported_at" required>
+                    <label>IO NAME</label>
+            <input type="text" name="edit-io_name" id="edit-io_name" required>
+                    <label>IO CONTACT</label>
+            <input type="text" name="edit-io_contact" id="edit-io_contact" required>
+                    <label>RECOVERED</label>
+            <input type="text" name="edit-recovered" id="edit-recovered" required>
+                    <label>TRACKER</label>
+            <input type="text" name="edit-tracker" id="edit-tracker" required>
+                    <label>DATE OF INCIDENT</label>
+            <input type="text" name="edit-date_of_incident" id="edit-date_of_incident" required>
+                <button type="submit" name="submit-edit" class="btn-main">UPDATE RECORD</button>
+        <button type="button" class="btn-main" style="background:#444" onclick="document.getElementById('edit-form').style.display='none'">CANCEL</button>
+    </form>
+</div>
+
+<div id="view-form" class="popup">
+    <h2 style="color:white;">FULL VEHICLE DOSSIER</h2>
+            <label>VEHICLE REGISTRATION</label>
+        <input type="text" id="view-vehicle_registration" readonly style="border-color: #222; color: #aaa;">
+            <label>MAKE</label>
+        <input type="text" id="view-make" readonly style="border-color: #222; color: #aaa;">
+            <label>MODEL</label>
+        <input type="text" id="view-model" readonly style="border-color: #222; color: #aaa;">
+            <label>COLOR</label>
+        <input type="text" id="view-color" readonly style="border-color: #222; color: #aaa;">
+            <label>REASON</label>
+        <input type="text" id="view-reason" readonly style="border-color: #222; color: #aaa;">
+            <label>COS NAME</label>
+        <input type="text" id="view-cos_name" readonly style="border-color: #222; color: #aaa;">
+            <label>COS CONTACT NUMBER</label>
+        <input type="text" id="view-cos_contact_number" readonly style="border-color: #222; color: #aaa;">
+            <label>CASE NUMBER</label>
+        <input type="text" id="view-case_number" readonly style="border-color: #222; color: #aaa;">
+            <label>STATION REPORTED AT</label>
+        <input type="text" id="view-station_reported_at" readonly style="border-color: #222; color: #aaa;">
+            <label>IO NAME</label>
+        <input type="text" id="view-io_name" readonly style="border-color: #222; color: #aaa;">
+            <label>IO CONTACT</label>
+        <input type="text" id="view-io_contact" readonly style="border-color: #222; color: #aaa;">
+            <label>RECOVERED</label>
+        <input type="text" id="view-recovered" readonly style="border-color: #222; color: #aaa;">
+            <label>TRACKER</label>
+        <input type="text" id="view-tracker" readonly style="border-color: #222; color: #aaa;">
+            <label>DATE OF INCIDENT</label>
+        <input type="text" id="view-date_of_incident" readonly style="border-color: #222; color: #aaa;">
+        <button type="button" class="btn-main" onclick="document.getElementById('view-form').style.display='none'">CLOSE DOSSIER</button>
+</div>
+
+<script>
+    // Popup Controls
+    document.getElementById('add-entry-button').onclick = () => document.getElementById('add-entry-popup').style.display = 'block';
+
+    document.querySelectorAll('.edit-entry').forEach(btn => {
+        btn.onclick = () => {
+            const entry = JSON.parse(btn.getAttribute('data-entry'));
+            document.getElementById('edit-id').value = entry.id;
+            Object.keys(entry).forEach(key => {
+                if(document.getElementById('edit-'+key)) document.getElementById('edit-'+key).value = entry[key];
+            });
+            document.getElementById('edit-form').style.display = 'block';
+        };
+    });
+
+    document.querySelectorAll('.view-entry').forEach(btn => {
+        btn.onclick = () => {
+            const entry = JSON.parse(btn.getAttribute('data-entry'));
+            Object.keys(entry).forEach(key => {
+                if(document.getElementById('view-'+key)) document.getElementById('view-'+key).value = entry[key];
+            });
+            document.getElementById('view-form').style.display = 'block';
+        };
+    });
+</script>
+
+</body>
+</html>
