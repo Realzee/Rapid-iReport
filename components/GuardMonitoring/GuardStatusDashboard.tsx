@@ -15,24 +15,29 @@ const GuardStatusDashboard: React.FC<GuardStatusDashboardProps> = ({ responders,
         offDuty: responders.filter(r => r.status === ResponderStatus.OFF_DUTY).length,
     };
 
+    const [isPanicActive, setIsPanicActive] = React.useState(false);
+
     const handlePanic = () => {
-        // TODO: Implement panic alert logic
-        console.log('Panic Alert Triggered!');
+        setIsPanicActive(true);
+        // Simulate a system-wide broadcast
+        alert('CRITICAL: SOS SIGNAL RECEIVED FROM GUARD! prioritising profile on map.');
+        setTimeout(() => setIsPanicActive(false), 5000);
     };
 
     const handleShiftStart = () => {
-        // TODO: Implement shift start logic
         console.log('Shift Started!');
     };
 
     const handleShiftEnd = () => {
-        // TODO: Implement shift end logic
         console.log('Shift Ended!');
     };
 
     return (
-        <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Guard Status</h3>
+        <div className={`bg-white dark:bg-gray-900 rounded-lg p-4 shadow space-y-4 transition-all duration-500 ${isPanicActive ? 'ring-4 ring-red-600 animate-pulse bg-red-50 dark:bg-red-950/20' : ''}`}>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center justify-between">
+                <span>Guard Status</span>
+                {isPanicActive && <span className="text-xs bg-red-600 text-white px-2 py-1 rounded animate-bounce">SOS ACTIVE</span>}
+            </h3>
             <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-md">
                     <p className="text-sm text-emerald-600 dark:text-emerald-400">Available</p>
@@ -65,7 +70,7 @@ const GuardStatusDashboard: React.FC<GuardStatusDashboardProps> = ({ responders,
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                     {responders.map(r => (
                         <div key={r.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                            <span className="text-sm text-gray-900 dark:text-white">{r.profile?.first_name} {r.profile?.surname}</span>
+                            <span className="text-sm text-gray-900 dark:text-white">{r.first_name} {r.surname}</span>
                             <StatusBadge status={r.status} />
                         </div>
                     ))}

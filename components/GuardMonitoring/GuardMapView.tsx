@@ -5,6 +5,7 @@ import { Responder, ResponderStatus } from '../../types';
 
 interface GuardMapViewProps {
     responders: Responder[];
+    sites?: any[];
 }
 
 const createResponderIcon = (status: ResponderStatus) => {
@@ -32,7 +33,23 @@ const createResponderIcon = (status: ResponderStatus) => {
     });
 };
 
-const GuardMapView: React.FC<GuardMapViewProps> = ({ responders }) => {
+const createSiteIcon = () => {
+    const iconHtml = `
+        <div class="flex items-center justify-center w-8 h-8 bg-blue-600 rounded-full border-2 border-white shadow-lg text-white">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+        </div>
+    `;
+    return new L.DivIcon({
+        html: iconHtml,
+        className: '',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+    });
+};
+
+const GuardMapView: React.FC<GuardMapViewProps> = ({ responders, sites = [] }) => {
     return (
         <div className="h-[500px] w-full rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow">
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
@@ -40,6 +57,28 @@ const GuardMapView: React.FC<GuardMapViewProps> = ({ responders }) => {
                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
+                
+                {/* Sites and Geofences */}
+                {sites.map(site => (
+                    <React.Fragment key={site.id}>
+                        {site.location && (
+                            <Marker
+                                position={[site.location.lat, site.location.lng]}
+                                icon={createSiteIcon()}
+                            >
+                                <Popup>
+                                    <div className="p-1">
+                                        <h4 className="font-bold">{site.name}</h4>
+                                        <p className="text-xs text-gray-600">{site.address}</p>
+                                    </div>
+                                </Popup>
+                            </Marker>
+                        )}
+                        {/* If site has a boundary (GeoJSON), we could render it here with <GeoJSON data={site.boundary} /> */}
+                    </React.Fragment>
+                ))}
+
+                {/* Responders (Guards) */}
                 {responders.map(responder => (
                     responder.location_coords && (
                         <Marker

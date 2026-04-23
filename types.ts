@@ -240,6 +240,49 @@ export interface ChatMessage {
   };
 }
 
+export interface Site {
+    id: string;
+    name: string;
+    address?: string;
+    contact_person?: string;
+    contact_number?: string;
+    logo_url?: string;
+    location?: LocationCoords;
+    boundary?: any; // GeoJSON
+    company_id: string;
+}
+
+export interface Guard {
+    id: string;
+    name: string;
+    profile_pic_url?: string;
+    contact_number?: string;
+    psira_number?: string;
+    psira_expiry_date?: string;
+    next_of_kin_contact?: string;
+    profile_id?: string;
+    site_id?: string;
+    status: 'on_duty' | 'off_duty' | 'panic';
+}
+
+export interface PatrolLog {
+    id: string;
+    site_id: string;
+    guard_id: string;
+    checkpoint_id: string;
+    scanned_at: string;
+    location_coords: LocationCoords;
+    verification_status: 'valid' | 'invalid';
+}
+
+export interface GuardHeartbeat {
+    id: string;
+    guard_id: string;
+    timestamp: string;
+    location_coords: LocationCoords;
+    status: 'ok' | 'welfare_check_pending' | 'panic';
+}
+
 export interface ReportUpdate {
   id: string;
   report_id: string;
