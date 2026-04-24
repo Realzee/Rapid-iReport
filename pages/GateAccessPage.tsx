@@ -182,8 +182,11 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
             // Check for errors in results
             results.forEach((res, index) => {
                 if (res.error) {
-                    console.error("Error in access log / alert creation:", res.error);
-                    throw new Error(res.error.message);
+                    console.error(`Error in access log / alert creation (index ${index}):`, res.error);
+                    const errorMessage = typeof res.error === 'object' && res.error !== null && 'message' in res.error 
+                        ? (res.error as any).message 
+                        : JSON.stringify(res.error);
+                    throw new Error(errorMessage);
                 }
             });
 
