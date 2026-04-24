@@ -206,7 +206,7 @@ const UserReportDetail: React.FC<{
                      <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</p>
                 </div>
 
-                {((report as any).license_plate || (report as any).vehicle_make || (report as any).vehicle_model || (report as any).vehicle_color || (report as any).vin_number || (report as any).engine_number) && (
+                {((report as any).license_plate || (report as any).vehicle_make || (report as any).vehicle_model || (report as any).vehicle_color || (report as any).vin_number || (report as any).engine_number || (report as any).circulation_number) && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm">
                         {(report as any).license_plate && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">License Plate</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).license_plate}</p></div>}
                         {(report as any).vehicle_make && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicle Make</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).vehicle_make}</p></div>}
@@ -214,6 +214,7 @@ const UserReportDetail: React.FC<{
                         {(report as any).vehicle_color && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicle Color</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).vehicle_color}</p></div>}
                         {(report as any).vin_number && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">VIN</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).vin_number}</p></div>}
                         {(report as any).engine_number && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Engine</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).engine_number}</p></div>}
+                        {(report as any).circulation_number && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Circulation Num</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).circulation_number}</p></div>}
                         {(report as any).cos_name && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">COS Name</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).cos_name}</p></div>}
                         {(report as any).cos_contact_number && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">COS Contact</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).cos_contact_number}</p></div>}
                         {(report as any).io_name && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">IO Name</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).io_name}</p></div>}
@@ -240,6 +241,15 @@ const UserReportDetail: React.FC<{
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Fatalities</p>
                             <p className="font-semibold text-gray-900 dark:text-white">{(report as any).fatalities_reported ? 'Yes' : 'No'}</p>
                         </div>
+                    </div>
+                )}
+
+                {report.type === 'crime' && (
+                    <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm">
+                        <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">CIT Success</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).cit_success ? 'Yes' : 'No'}</p></div>
+                        <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Arrests</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).arrests || 0}</p></div>
+                        <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Guns Recovered</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).guns_recovered || 0}</p></div>
+                        <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Guns Stolen</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).guns_stolen || 0}</p></div>
                     </div>
                 )}
                 

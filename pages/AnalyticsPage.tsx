@@ -19,7 +19,7 @@ import StatCard from '../components/StatCard';
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
 
-type ReportType = 'summary' | 'trends' | 'severity' | 'status' | 'time' | 'hotspots';
+type ReportType = 'summary' | 'trends' | 'severity' | 'status' | 'time' | 'hotspots' | 'crime_results';
 type DateRange = '7days' | '30days' | '90days' | 'all';
 
 const COLORS = ['#3B82F6', '#EF4444', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899'];
@@ -149,6 +149,7 @@ const AnalyticsPage: React.FC = () => {
             case 'status': return <StatusReport reports={filteredReports} theme={theme} />;
             case 'time': return <TimeAnalysisReport reports={filteredReports} theme={theme} />;
             case 'hotspots': return <HotspotsReport reports={filteredReports} />;
+            case 'crime_results': return <CrimePerformanceReport reports={filteredReports} />;
             default: return null;
         }
     };
@@ -160,6 +161,7 @@ const AnalyticsPage: React.FC = () => {
         { id: 'status', name: 'Status Breakdown', icon: CheckCircleIcon },
         { id: 'time', name: 'Time Analysis', icon: Calendar },
         { id: 'hotspots', name: 'Top Hotspots', icon: MapIcon },
+        { id: 'crime_results', name: 'Crime Results', icon: CrimeIcon },
     ];
 
     return (
@@ -231,10 +233,21 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
     const totalReports = reports.length;
     const vehicleReports = reports.filter(r => isVehicleReport(r)).length;
     const emergencyReports = reports.filter(r => isEmergencyReport(r)).length;
-    const crimeReports = totalReports - vehicleReports - emergencyReports;
+    const crimeReportsList = reports.filter(r => r.type === 'crime');
+    const crimeReportsCount = crimeReportsList.length;
     const resolved = reports.filter(r => r.status === ReportStatus.RESOLVED || r.status === ReportStatus.RECOVERED).length;
     const pending = reports.filter(r => r.status === ReportStatus.PENDING).length;
     
+    // Calculate crime specific stats for summary
+    const crimeStats = useMemo(() => {
+        return crimeReportsList.reduce((acc, r: any) => {
+            if (r.cit_success) acc.citSuccess++;
+            acc.arrests += (r.arrests || 0);
+            acc.gunsRecovered += (r.guns_recovered || 0);
+            return acc;
+        }, { citSuccess: 0, arrests: 0, gunsRecovered: 0 });
+    }, [crimeReportsList]);
+
     // Calculate resolution rate
     const resolutionRate = totalReports > 0 ? Math.round((resolved / totalReports) * 100) : 0;
 
@@ -260,18 +273,37 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
     }, [reports]);
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div>
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Key Performance Indicators</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard title="Total Reports" value={totalReports.toString()} icon={<ZapIcon />} color="blue" />
                     <StatCard title="Vehicle Incidents" value={vehicleReports.toString()} icon={<CarIcon />} color="yellow" />
-                    <StatCard title="Emergency Reports" value={emergencyReports.toString()} icon={<AlertTriangleIcon />} color="orange" />
-                    <StatCard title="Crime Incidents" value={crimeReports.toString()} icon={<CrimeIcon />} color="red" />
-                    <StatCard title="Resolved Cases" value={resolved.toString()} icon={<CheckCircleIcon />} color="green" />
-                    <StatCard title="Pending Review" value={pending.toString()} icon={<ClipboardCheckIcon />} color="purple" />
-                    <StatCard title="Resolution Rate" value={`${resolutionRate}%`} icon={<ChartBarIcon />} color="indigo" />
-                    <StatCard title="Avg. Resolution Time" value={avgResponseTime} icon={<ClockIcon />} color="cyan" />
+                    <StatCard title="Crime Incidents" value={crimeReportsCount.toString()} icon={<CrimeIcon />} color="red" />
+                    <StatCard title="Emergency" value={emergencyReports.toString()} icon={<AlertTriangleIcon />} color="orange" />
+                </div>
+            </div>
+
+            <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Operational Success</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatCard title="Arrests" value={crimeStats.arrests.toString()} icon={<CheckCircleIcon />} color="green" />
+                    <StatCard title="CIT Success" value={crimeStats.citSuccess.toString()} icon={<ChartBarIcon />} color="indigo" />
+                    <StatCard title="Guns Recovered" value={crimeStats.gunsRecovered.toString()} icon={<ZapIcon />} color="teal" />
+                    <StatCard title="Resolution Rate" value={`${resolutionRate}%`} icon={<ChartPieIcon />} color="purple" />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Avg. Resolution Time</p>
+                    <p className="text-3xl font-black text-gray-900 dark:text-white mt-1">{avgResponseTime}</p>
+                    <p className="text-xs text-gray-400 mt-2">Time from incident report to case closure.</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Pending Review</p>
+                    <p className="text-3xl font-black text-gray-900 dark:text-white mt-1">{pending}</p>
+                    <p className="text-xs text-gray-400 mt-2">Active reports currently awaiting investigation.</p>
                 </div>
             </div>
         </div>
@@ -613,6 +645,72 @@ const HotspotsReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
                         No location data available for the selected period.
                     </div>
                 )}
+            </div>
+        </div>
+    );
+};
+
+const CrimePerformanceReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
+    const crimeReports = reports.filter(r => r.type === 'crime');
+    
+    const stats = useMemo(() => {
+        return crimeReports.reduce((acc, r: any) => {
+            if (r.cit_success) acc.citSuccess++;
+            acc.arrests += (r.arrests || 0);
+            acc.gunsRecovered += (r.guns_recovered || 0);
+            acc.gunsStolen += (r.guns_stolen || 0);
+            return acc;
+        }, { citSuccess: 0, arrests: 0, gunsRecovered: 0, gunsStolen: 0 });
+    }, [crimeReports]);
+
+    const data = [
+        { name: 'Arrests', value: stats.arrests, color: '#3B82F6' },
+        { name: 'Guns Recovered', value: stats.gunsRecovered, color: '#10B981' },
+        { name: 'Guns Stolen', value: stats.gunsStolen, color: '#EF4444' },
+    ];
+
+    return (
+        <div className="space-y-8 animate-in fade-in duration-500">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Crime Results Analysis</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-5 rounded-2xl border border-blue-100 dark:border-blue-800 shadow-sm">
+                    <p className="text-xs text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider mb-1">CIT Successes</p>
+                    <p className="text-4xl font-black text-blue-700 dark:text-blue-200">{stats.citSuccess}</p>
+                </div>
+                <div className="bg-green-50 dark:bg-green-900/30 p-5 rounded-2xl border border-green-100 dark:border-green-800 shadow-sm">
+                    <p className="text-xs text-green-600 dark:text-green-400 font-bold uppercase tracking-wider mb-1">Total Arrests</p>
+                    <p className="text-4xl font-black text-green-700 dark:text-green-200">{stats.arrests}</p>
+                </div>
+                <div className="bg-teal-50 dark:bg-teal-900/30 p-5 rounded-2xl border border-teal-100 dark:border-teal-800 shadow-sm">
+                    <p className="text-xs text-teal-600 dark:text-teal-400 font-bold uppercase tracking-wider mb-1">Guns Recovered</p>
+                    <p className="text-4xl font-black text-teal-700 dark:text-teal-200">{stats.gunsRecovered}</p>
+                </div>
+                <div className="bg-red-50 dark:bg-red-900/30 p-5 rounded-2xl border border-red-100 dark:border-red-800 shadow-sm">
+                    <p className="text-xs text-red-600 dark:text-red-400 font-bold uppercase tracking-wider mb-1">Guns Stolen</p>
+                    <p className="text-4xl font-black text-red-700 dark:text-red-200">{stats.gunsStolen}</p>
+                </div>
+            </div>
+
+            <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-200 dark:border-gray-700">
+                <h4 className="text-lg font-bold mb-6">Metrics Comparison</h4>
+                <div className="h-[400px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip 
+                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} 
+                            />
+                            <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={60}>
+                                {data.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
         </div>
     );

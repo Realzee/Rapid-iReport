@@ -16,6 +16,7 @@ import UserDashboardPage from './pages/UserDashboardPage';
 import PublicDashboardPage from './pages/PublicDashboardPage';
 import AboutPage from './pages/AboutPage';
 import GuardMonitoringPage from './pages/GuardMonitoringPage';
+import GateAccessPage from './pages/GateAccessPage';
 import AnnouncementsBanner from './components/AnnouncementsBanner';
 import { supabase } from './utils/supabase';
 import type { AuthSession as Session } from '@supabase/supabase-js';
@@ -34,7 +35,7 @@ import GlobalSearchPage from './pages/GlobalSearchPage';
 import { useTheme } from './contexts/ThemeContext';
 import MatrixRain from './components/MatrixRain';
 
-type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search';
+type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access';
 
 const isProfileComplete = (profile: Profile) => {
     if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
@@ -345,6 +346,7 @@ const App: React.FC = () => {
       case 'activity_logs': return <UserActivityPage />;
       case 'companies': return <CompaniesPage />;
       case 'guard_monitoring': return <GuardMonitoringPage />;
+      case 'gate_access': return <GateAccessPage profile={profile} />;
       case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} />;
       case 'map':
       default: return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;

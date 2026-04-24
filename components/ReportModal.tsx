@@ -559,6 +559,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     station_name: formData.station_name,
                     vin_number: formData.vin_number,
                     engine_number: formData.engine_number,
+                    circulation_number: formData.circulation_number,
                 };
             } else if (reportType === 'emergency') {
                 // Exclude location_boundary and location_boundingbox for emergency reports as the table might not support them yet
@@ -585,6 +586,10 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     location: formData.location || 'Unknown Location',
                     cas_number: formData.cas_number,
                     station_name: formData.station_name,
+                    cit_success: formData.cit_success === 'true',
+                    arrests: parseInt(formData.arrests || '0'),
+                    guns_recovered: parseInt(formData.guns_recovered || '0'),
+                    guns_stolen: parseInt(formData.guns_stolen || '0'),
                 };
             }
 
@@ -715,6 +720,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" /></div>
                             <div><label htmlFor="vin_number" className={labelClasses}>VIN Number</label><input type="text" name="vin_number" id="vin_number" value={formData.vin_number || ''} onChange={handleChange} className={inputClasses} /></div>
                             <div><label htmlFor="engine_number" className={labelClasses}>Engine Number</label><input type="text" name="engine_number" id="engine_number" value={formData.engine_number || ''} onChange={handleChange} className={inputClasses} /></div>
+                            <div><label htmlFor="circulation_number" className={labelClasses}>Circulation Number</label><input type="text" name="circulation_number" id="circulation_number" value={formData.circulation_number || ''} onChange={handleChange} className={inputClasses} /></div>
                             <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
                             <div>
                                 <label htmlFor="station_name" className={labelClasses}>Station Name</label>
@@ -833,6 +839,31 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                             ))}
                                         </div>
                                     )}
+                                </div>
+                            </div>
+
+                            <div className="md:col-span-2 border-t border-gray-100 dark:border-gray-800 pt-4 mt-2">
+                                <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Crime Results</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="cit_success" className={labelClasses}>CIT Success?</label>
+                                        <select name="cit_success" id="cit_success" value={formData.cit_success || 'false'} onChange={handleChange} className={inputClasses}>
+                                            <option value="false">No</option>
+                                            <option value="true">Yes</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="arrests" className={labelClasses}>Number of Arrests</label>
+                                        <input type="number" name="arrests" id="arrests" value={formData.arrests || 0} onChange={handleChange} className={inputClasses} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="guns_recovered" className={labelClasses}>Guns Recovered</label>
+                                        <input type="number" name="guns_recovered" id="guns_recovered" value={formData.guns_recovered || 0} onChange={handleChange} className={inputClasses} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="guns_stolen" className={labelClasses}>Guns Stolen</label>
+                                        <input type="number" name="guns_stolen" id="guns_stolen" value={formData.guns_stolen || 0} onChange={handleChange} className={inputClasses} />
+                                    </div>
                                 </div>
                             </div>
                         </div>

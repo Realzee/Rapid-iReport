@@ -6,6 +6,7 @@ import StatusBadge from './StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon, ShareIcon, GlobeIcon, UsersIcon } from './icons';
 import MapStyleToggle, { MapStyle } from './MapStyleToggle';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface MapViewProps {
   reports: Report[];
@@ -40,16 +41,16 @@ const createIncidentIcon = (report: Report, isSelected: boolean) => {
     
     const iconSvgPath = report.type === 'vehicle' ? carSvgPath : (report.type === 'emergency' ? emergencySvgPath : crimeSvgPath);
 
-    const size = isSelected ? 48 : 36;
-    const scale = isSelected ? 1.1 : 1;
-    const shadowFilter = `drop-shadow(0 4px 6px rgba(0,0,0,0.4))`;
-    const glowFilter = isSelected ? `drop-shadow(0 0 8px ${color})` : '';
+    const size = isSelected ? 52 : 40;
+    const scale = isSelected ? 1.15 : 1;
+    const shadowFilter = `drop-shadow(0 0 3px rgba(255,255,255,1)) drop-shadow(0 4px 6px rgba(0,0,0,0.5))`;
+    const glowFilter = isSelected ? `drop-shadow(0 0 12px ${color})` : '';
     
     const iconHtml = `
         <div style="width: ${size}px; height: ${size}px; display: flex; justify-content: center; align-items: center; transform: scale(${scale}); transition: transform 0.2s ease-out;">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 100%; height: 100%; filter: ${shadowFilter} ${glowFilter}; transition: filter 0.2s ease-out;">
-                <path fill="${color}" stroke="#ffffff" stroke-width="1" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path>
-                <g transform="translate(4, 3) scale(0.7)" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path fill="${color}" stroke="#ffffff" stroke-width="1.5" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path>
+                <g transform="translate(4, 3) scale(0.7)" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     ${iconSvgPath}
                 </g>
             </svg>
@@ -194,6 +195,7 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
 const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, selectedResponderId, profile, onReportSelect, onResponderSelect, onAssignResponder, allUsers, activeTab }) => {
     const [copiedReportId, setCopiedReportId] = useState<string | null>(null);
     const [mapStyle, setMapStyle] = useState<MapStyle>('street');
+    const { theme } = useTheme();
 
     const handleShareReport = (reportId: string) => {
         navigator.clipboard.writeText(`https://rapid-ireport.app/report/${reportId}`).then(() => {
@@ -206,7 +208,9 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
     const selectedResponder = responders.find(r => r.id === selectedResponderId);
 
     const streetTile = {
-        url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+        url: theme === 'dark' 
+            ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     };
     const satelliteTile = {

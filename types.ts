@@ -151,6 +151,7 @@ export interface VehicleReport {
   io_name?: string;
   io_contact?: string;
   has_tracker?: boolean;
+  circulation_number?: string;
 }
 
 export interface CrimeReport {
@@ -180,6 +181,25 @@ export interface CrimeReport {
   company_id?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];
+  cit_success?: boolean;
+  arrests?: number;
+  guns_recovered?: number;
+  guns_stolen?: number;
+}
+
+export interface GateAccessLog {
+    id: string;
+    license_plate: string;
+    vehicle_make?: string;
+    vehicle_model?: string;
+    vehicle_color?: string;
+    gate_name?: string;
+    direction: 'entry' | 'exit';
+    logged_by: string;
+    company_id: string;
+    created_at: string;
+    is_wanted: boolean;
+    wanted_report_id?: string;
 }
 
 export interface EmergencyReport {
