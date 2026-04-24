@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
-import { Profile, GateAccessLog, VehicleReport, ReportStatus } from '../types';
+import { Profile, GateAccessLog, VehicleReport, ReportStatus, Severity } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { SearchIcon, ScanIcon, LogOutIcon, LogInIcon, AlertTriangleIcon, CarIcon, ClockIcon, HistoryIcon, MapPinIcon, ChartBarIcon } from '../components/icons';
 import { format } from 'date-fns';
@@ -137,16 +137,46 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
             wanted_report_id: scanResult.wantedReport?.id || null
         };
 
-        const { error } = await supabase.from('gate_access_logs').insert(logData);
+        try {
+            const promises: Promise<any>[] = [supabase.from('gate_access_logs').insert(logData)];
 
-        if (error) {
-            addToast('Failed to log access: ' + error.message, 'error');
-        } else {
+            if (logData.is_wanted) {
+                const alertReport = {
+                    title: `WANTED VEHICLE DETECTED AT ${logData.gate_name.toUpperCase()}`,
+                    description: `WANTED VEHICLE DETECTED: A wanted vehicle with license plate ${scanResult.plate} has been scanned at ${logData.gate_name} moving ${direction.toUpperCase()}. ${scanResult.wantedReport ? `Original report OB: ${scanResult.wantedReport.ob_number}` : ''}. IMMEDIATE ATTENTION REQUIRED.`,
+                    crime_type: 'WANTED_VEHICLE_ALERT',
+                    severity: Severity.CRITICAL,
+                    status: ReportStatus.ACTIVE,
+                    reported_by: profile.id,
+                    reported_at: new Date().toISOString(),
+                    location: logData.gate_name,
+                    ob_number: `WNTD-${Math.floor(1000 + Math.random() * 9000)}-${scanResult.plate.substring(0, 4)}`,
+                    company_id: profile.company_id
+                };
+                promises.push(supabase.from('crime_reports').insert(alertReport));
+            }
+
+            const results = await Promise.all(promises);
+            
+            // Check for errors in results
+            results.forEach((res, index) => {
+                if (res.error) {
+                    console.error("Error in access log / alert creation:", res.error);
+                    throw new Error(res.error.message);
+                }
+            });
+
             addToast(`Successfully logged ${direction} for ${scanResult.plate}`, 'success');
+            if (logData.is_wanted) {
+                addToast('Alert dispatched to Control Room!', 'warning');
+            }
             logUserAction(profile.id, 'LOG_GATE_ACCESS', `${direction.toUpperCase()} logged for ${scanResult.plate} at ${logData.gate_name}`);
             setScanResult(null);
             setPlate('');
+        } catch (error: any) {
+            addToast('Failed to log access: ' + error.message, 'error');
         }
+
         setIsSubmitting(false);
     };
 
