@@ -85,7 +85,7 @@ const AnnouncementsBanner: React.FC<AnnouncementsBannerProps> = ({ onVisibilityC
     const animationStyle = { animation: `marquee ${animationDuration}s linear infinite` };
     
     return (
-        <div className={`fixed top-20 left-0 right-0 z-40 bg-gray-100/50 dark:bg-gray-900/50 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800/50 text-gray-800 dark:text-gray-200 overflow-hidden py-2 print:hidden h-16 flex items-center relative`}>
+        <div className={`fixed top-16 left-0 right-0 z-40 bg-gray-100/50 dark:bg-gray-900/50 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800/50 text-gray-800 dark:text-gray-200 overflow-hidden py-2 print:hidden h-14 flex items-center relative`}>
             <div className={`flex w-max`} style={animationStyle}>
                 {duplicatedAnnouncements.map((announcement, index) => (
                     <div key={`${announcement.id}-${index}`} className="mx-2">

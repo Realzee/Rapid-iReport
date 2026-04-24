@@ -226,12 +226,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     <>
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700/50 transition-colors duration-300 print:hidden">
       <div className={headerContainerClasses}>
-          <div className="flex items-center justify-between min-h-[4.5rem] py-1">
+          <div className="flex items-center justify-between min-h-[4rem] py-0.5">
           <div className="flex items-center space-x-3 flex-shrink-0">
             <img 
               src={profile.company?.logo_url || mainLogoUrl} 
               alt="Company Logo" 
-              className="main-logo w-auto h-10 sm:h-14 object-contain transition-all duration-300" 
+              className="main-logo w-auto h-8 sm:h-12 object-contain transition-all duration-300" 
               onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} 
             />
           </div>
