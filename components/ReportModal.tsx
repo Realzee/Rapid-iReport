@@ -298,6 +298,45 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             if (userError || !user) throw new Error("User not authenticated");
 
+            // Check for existing license plate if vehicle or emergency report
+            const licensePlateToCheck = formData.license_plate?.trim().toUpperCase();
+            if (licensePlateToCheck && (reportType === 'vehicle' || reportType === 'emergency')) {
+                const isNewPlate = !reportToEdit || (reportToEdit as any).license_plate?.trim().toUpperCase() !== licensePlateToCheck;
+                
+                if (isNewPlate) {
+                    const [{ data: vRecord }, { data: eRecord }] = await Promise.all([
+                        supabase.from('vehicle_reports')
+                            .select('ob_number, status')
+                            .eq('license_plate', licensePlateToCheck)
+                            .neq('status', ReportStatus.DELETED)
+                            .limit(1)
+                            .maybeSingle(),
+                        supabase.from('emergency_reports')
+                            .select('ob_number, emergency_type')
+                            .eq('license_plate', licensePlateToCheck)
+                            .limit(1)
+                            .maybeSingle()
+                    ]);
+
+                    if (vRecord || eRecord) {
+                        const existingOb = vRecord?.ob_number || (eRecord as any)?.ob_number;
+                        const existingType = vRecord ? 'Vehicle' : 'Emergency';
+                        const existingStatus = vRecord ? ` (${vRecord.status})` : '';
+                        
+                        const confirmed = window.confirm(
+                            `WARNING: A ${existingType} report with license plate ${licensePlateToCheck} already exists.\n` +
+                            `OB Number: ${existingOb}${existingStatus}\n\n` +
+                            `Are you sure you want to proceed?`
+                        );
+                        
+                        if (!confirmed) {
+                            setLoading(false);
+                            return;
+                        }
+                    }
+                }
+            }
+
             const newImageUrls: string[] = [];
             const reportId = reportToEdit?.id || crypto.randomUUID();
 

@@ -236,14 +236,14 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
             />
           </div>
 
-          <div className="hidden lg:flex flex-col items-center justify-center flex-grow px-2 overflow-hidden">
-            <nav className="flex items-center space-x-1">
+          <div className="hidden md:flex flex-col items-center justify-center flex-grow px-2 overflow-hidden">
+            <nav className="flex items-center space-x-1 overflow-x-auto no-scrollbar max-w-full">
                 <NavLinks />
             </nav>
           </div>
           
           <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
-            <div className="hidden sm:block scale-75 xl:scale-90 origin-right mr-2">
+            <div className="hidden lg:block scale-75 xl:scale-90 origin-right mr-1">
               <LedClock />
             </div>
             <ThemeToggle />
@@ -275,7 +275,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
                   alt="User Avatar"
                   className="w-8 h-8 lg:w-9 lg:h-9 rounded-full border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 transition"
                 />
-                <span className="hidden xl:inline text-gray-900 dark:text-white text-sm font-medium truncate max-w-[120px]">{`${profile.first_name} ${profile.surname}`}</span>
+                <span className="hidden sm:inline text-gray-900 dark:text-white text-xs lg:text-sm font-medium truncate max-w-[60px] lg:max-w-[120px]">{`${profile.first_name} ${profile.surname}`}</span>
                 <ChevronDownIcon className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               {dropdownOpen && (

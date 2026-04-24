@@ -214,7 +214,16 @@
 
 .matrix header .main-logo {
   filter: drop-shadow(0 0 15px rgba(0, 255, 65, 0.4));
-  height: 4rem !important; /* sm:h-16 parity */
+  height: 3.5rem !important; /* sm:h-14 parity */
+}
+
+/* Utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 .matrix header [class*="text-"] {
