@@ -226,37 +226,37 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     <>
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700/50 transition-colors duration-300 print:hidden">
       <div className={headerContainerClasses}>
-        <div className="flex items-center justify-between min-h-[5rem] py-2">
-          <div className="flex items-center space-x-2 flex-shrink-0">
+          <div className="flex items-center justify-between min-h-[4.5rem] py-1">
+          <div className="flex items-center space-x-3 flex-shrink-0">
             <img 
               src={profile.company?.logo_url || mainLogoUrl} 
               alt="Company Logo" 
-              className="main-logo w-auto h-12 sm:h-16 object-contain transition-all duration-300" 
+              className="main-logo w-auto h-10 sm:h-14 object-contain transition-all duration-300" 
               onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} 
             />
           </div>
 
-          <div className="hidden md:flex flex-col items-center justify-center flex-grow px-4">
-            <nav className="flex items-center space-x-1 mb-1">
+          <div className="hidden lg:flex flex-col items-center justify-center flex-grow px-2 overflow-hidden">
+            <nav className="flex items-center space-x-1">
                 <NavLinks />
             </nav>
-            <div className="scale-90 origin-top">
-              <LedClock />
-            </div>
           </div>
           
-          <div className="flex items-center space-x-4 flex-shrink-0">
+          <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+            <div className="hidden sm:block scale-75 xl:scale-90 origin-right mr-2">
+              <LedClock />
+            </div>
             <ThemeToggle />
             {profile.company_id && (
                 <button onClick={() => setIsPTTModalOpen(true)} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300" title="Push-to-Talk">
-                  <RadioTowerIcon className="w-6 h-6" />
+                  <RadioTowerIcon className="w-5 h-5 sm:w-6 h-6" />
                 </button>
             )}
             <div ref={notificationsRef} className="relative">
                 <button onClick={toggleNotifications} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300">
-                  <BellIcon className="w-6 h-6" />
+                  <BellIcon className="w-5 h-5 sm:w-6 h-6" />
                   {unreadCount > 0 && (
-                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full text-xs flex items-center justify-center text-white">{unreadCount}</span>
+                     <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-600 rounded-full text-[10px] flex items-center justify-center text-white">{unreadCount}</span>
                   )}
                 </button>
                  {isNotificationsOpen && (
@@ -268,15 +268,15 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
                     />
                 )}
             </div>
-            <div ref={profileRef} className="hidden sm:flex relative">
+            <div ref={profileRef} className="flex relative items-center">
               <button onClick={toggleUserDropdown} className="flex items-center space-x-1 lg:space-x-2">
                 <img 
                   src={profile.avatar_url || `https://i.pravatar.cc/40?u=${profile.id}`} 
                   alt="User Avatar"
-                  className="w-8 h-8 lg:w-10 lg:h-10 rounded-full border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 transition"
+                  className="w-8 h-8 lg:w-9 lg:h-9 rounded-full border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 transition"
                 />
-                <span className="hidden lg:inline text-gray-900 dark:text-white text-sm lg:text-base font-medium truncate max-w-[100px] lg:max-w-none">{`${profile.first_name} ${profile.surname}`}</span>
-                <ChevronDownIcon className={`w-4 h-4 lg:w-5 lg:h-5 text-gray-500 dark:text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                <span className="hidden xl:inline text-gray-900 dark:text-white text-sm font-medium truncate max-w-[120px]">{`${profile.first_name} ${profile.surname}`}</span>
+                <ChevronDownIcon className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               {dropdownOpen && (
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white/90 dark:bg-gray-800/80 backdrop-blur-lg rounded-xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 py-1">
