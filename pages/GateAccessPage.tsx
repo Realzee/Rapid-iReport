@@ -39,7 +39,7 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 *,
                 wanted_report:vehicle_reports(*)
             `)
-            .order('timestamp', { ascending: false })
+            .order('created_at', { ascending: false })
             .limit(50);
 
         if (error) {
@@ -93,7 +93,7 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
             direction,
             logged_by: profile.id,
             company_id: profile.company_id,
-            timestamp: new Date().toISOString(),
+            created_at: new Date().toISOString(),
             is_wanted: !!scanResult.wantedReport,
             wanted_report_id: scanResult.wantedReport?.id || null
         };
@@ -295,7 +295,7 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 text-right tabular-nums">
-                                                    {format(new Date(log.timestamp), 'HH:mm:ss')}
+                                                    {format(new Date(log.created_at), 'HH:mm:ss')}
                                                 </td>
                                             </tr>
                                         ))}

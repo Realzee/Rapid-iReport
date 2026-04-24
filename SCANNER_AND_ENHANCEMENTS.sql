@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.gate_access_logs (
     company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL,
     created_at timestamp with time zone DEFAULT now(),
     is_wanted boolean DEFAULT false,
-    wanted_report_id uuid -- Link to the report if wanted
+    wanted_report_id uuid REFERENCES public.vehicle_reports(id) ON DELETE SET NULL
 );
 
 ALTER TABLE public.gate_access_logs ENABLE ROW LEVEL SECURITY;
