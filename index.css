@@ -207,18 +207,18 @@
 }
 
 .matrix header {
-  background-color: rgba(0, 0, 0, 0.8) !important;
+  background-color: rgba(0, 0, 0, 0.9) !important;
   border-bottom-color: var(--color-matrix-dark) !important;
-  backdrop-filter: blur(16px) !important;
-  font-family: var(--font-sans) !important;
+  backdrop-filter: blur(20px) !important;
 }
 
 .matrix header .main-logo {
   filter: drop-shadow(0 0 15px rgba(0, 255, 65, 0.4));
+  height: 4rem !important; /* sm:h-16 parity */
 }
 
 .matrix header [class*="text-"] {
-  font-family: var(--font-sans) !important;
+  font-family: inherit !important;
 }
 
 .matrix header .led-clock-container * {

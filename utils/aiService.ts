@@ -1,7 +1,19 @@
 
 import { GoogleGenAI } from '@google/genai';
 
-const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+// Lazy initialization or just use the pattern from the skill
+const getAI = () => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+        return null;
+    }
+    try {
+        return new GoogleGenAI({ apiKey });
+    } catch (e) {
+        console.error("Failed to initialize Gemini AI:", e);
+        return null;
+    }
+};
 
 export interface RecoveryInsight {
     vehicleType: string;
@@ -13,6 +25,12 @@ export interface RecoveryInsight {
 
 export const getRecoveryInsights = async (recoveredReports: any[]): Promise<RecoveryInsight[]> => {
     if (recoveredReports.length === 0) return [];
+
+    const ai = getAI();
+    if (!ai) {
+        console.warn('Gemini AI is not configured. Returning empty insights.');
+        return [];
+    }
 
     const reportData = recoveredReports.map(r => ({
         make: r.vehicle_make,
@@ -40,17 +58,25 @@ export const getRecoveryInsights = async (recoveredReports: any[]): Promise<Reco
     `;
 
     try {
-        const response = await client.models.generateContent({
-            model: "gemini-2.0-flash",
-            contents: [{ role: 'user', parts: [{ text: prompt }] }]
+        const response = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            config: {
+                responseMimeType: "application/json"
+            }
         });
         
-        const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const text = response.text || '';
         const jsonMatch = text.match(/\[.*\]/s);
         if (jsonMatch) {
             return JSON.parse(jsonMatch[0]);
         }
-        return [];
+        // If responseMimeType: "application/json" worked perfectly, it might just be the array
+        try {
+            return JSON.parse(text);
+        } catch {
+            return [];
+        }
     } catch (error) {
         console.error("AI Insights Error:", error);
         return [];

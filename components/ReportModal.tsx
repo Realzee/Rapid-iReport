@@ -6,7 +6,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport, EmergencyReport } from '../types';
-import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon } from '../components/icons';
+import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon, CheckCircleIcon } from '../components/icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
 import { sapsStations } from '../data/policeStations';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
@@ -345,6 +345,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             if (reportType === 'vehicle') {
                 reportData = {
                     ...commonData,
+                    status: formData.status || (reportToEdit ? reportToEdit.status : ReportStatus.ACTIVE),
                     license_plate: formData.license_plate,
                     vehicle_make: formData.vehicle_make,
                     vehicle_model: formData.vehicle_model,
@@ -355,6 +356,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     vin_number: formData.vin_number,
                     engine_number: formData.engine_number,
                     circulation_number: formData.circulation_number,
+                    recovered_location_coords: (formData as any).recovered_location_coords,
+                    recovered_at: (formData as any).recovered_at,
                 };
             } else if (reportType === 'emergency') {
                 // Exclude location_boundary and location_boundingbox for emergency reports as the table might not support them yet
@@ -540,6 +543,49 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     )}
                                 </div>
                             </div>
+                            {reportToEdit && (
+                                <div className="md:col-span-2">
+                                    <label htmlFor="status" className={labelClasses}>Report Status</label>
+                                    <select name="status" id="status" value={formData.status} onChange={handleChange} className={inputClasses}>
+                                        {Object.values(ReportStatus).filter(s => s !== ReportStatus.DELETED).map(s => (
+                                            <option key={s} value={s}>{s.replace(/_/g, ' ').toUpperCase()}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            {formData.status === ReportStatus.RECOVERED && (
+                                <div className="md:col-span-2 bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-100 dark:border-green-800 space-y-4">
+                                    <h4 className="text-sm font-bold text-green-800 dark:text-green-300 flex items-center gap-2">
+                                        <CheckCircleIcon className="w-4 h-4" />
+                                        Recovery Details
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-green-700 dark:text-green-400 mb-1 uppercase">Recovery Date & Time</label>
+                                            <input
+                                                type="datetime-local"
+                                                name="recovered_at"
+                                                value={(formData as any).recovered_at || new Date().toISOString().slice(0, 16)}
+                                                onChange={handleChange}
+                                                className="w-full bg-white dark:bg-gray-900 border border-green-200 dark:border-green-800 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-green-700 dark:text-green-400 mb-1 uppercase">Recovery Location (Pindrop)</label>
+                                            <LocationPicker 
+                                                onLocationSelect={(coords) => {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        recovered_location_coords: coords
+                                                    } as any));
+                                                }}
+                                                initialCoords={(formData as any).recovered_location_coords}
+                                                placeholder="Select recovery location..."
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ) : reportType === 'emergency' ? (
                         <div className="space-y-4">
