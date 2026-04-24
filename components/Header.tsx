@@ -268,15 +268,15 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
                     />
                 )}
             </div>
-            <div ref={profileRef} className="hidden md:flex relative">
-              <button onClick={toggleUserDropdown} className="flex items-center space-x-2">
+            <div ref={profileRef} className="hidden sm:flex relative">
+              <button onClick={toggleUserDropdown} className="flex items-center space-x-1 lg:space-x-2">
                 <img 
                   src={profile.avatar_url || `https://i.pravatar.cc/40?u=${profile.id}`} 
                   alt="User Avatar"
-                  className="w-10 h-10 rounded-full border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 transition"
+                  className="w-8 h-8 lg:w-10 lg:h-10 rounded-full border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 transition"
                 />
-                <span className="hidden sm:inline text-gray-900 dark:text-white">{`${profile.first_name} ${profile.surname}`}</span>
-                <ChevronDownIcon className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                <span className="hidden lg:inline text-gray-900 dark:text-white text-sm lg:text-base font-medium truncate max-w-[100px] lg:max-w-none">{`${profile.first_name} ${profile.surname}`}</span>
+                <ChevronDownIcon className={`w-4 h-4 lg:w-5 lg:h-5 text-gray-500 dark:text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               {dropdownOpen && (
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white/90 dark:bg-gray-800/80 backdrop-blur-lg rounded-xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 py-1">
@@ -297,7 +297,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       </div>
       
       {/* Mobile Menu */}
-      <div className={`md:hidden absolute top-20 left-0 right-0 bg-white/95 dark:bg-gray-950/95 backdrop-blur-md shadow-lg transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-y-0' : '-translate-y-[150%]'}`}>
+      <div className={`md:hidden absolute top-full left-0 right-0 bg-white/95 dark:bg-gray-950/95 backdrop-blur-md shadow-lg transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-y-0' : '-translate-y-[150%]'}`}>
           <nav className="flex flex-col p-4 space-y-2">
             <NavLinks mobile={true} />
             <div className="border-t border-gray-200 dark:border-gray-700 my-2 pt-2 space-y-2">
