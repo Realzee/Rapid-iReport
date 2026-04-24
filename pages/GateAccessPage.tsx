@@ -158,7 +158,23 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                     ob_number: `WNTD-${Math.floor(1000 + Math.random() * 9000)}-${scanResult.plate.substring(0, 4)}`,
                     company_id: profile.company_id
                 };
-                promises.push(supabase.from('crime_reports').insert(alertReport));
+                
+                // Insert and get the created report ID to add a timeline update
+                const { data: createdReport, error: reportError } = await supabase
+                    .from('crime_reports')
+                    .insert(alertReport)
+                    .select('id')
+                    .single();
+                
+                if (reportError) throw reportError;
+                
+                if (createdReport) {
+                    promises.push(supabase.from('report_updates').insert({
+                        report_id: createdReport.id,
+                        user_id: profile.id,
+                        content: `Wanted vehicle detected: ${scanResult.plate} at ${logData.gate_name}`
+                    }));
+                }
             }
 
             const results = await Promise.all(promises);
