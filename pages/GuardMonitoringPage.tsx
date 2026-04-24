@@ -4,11 +4,17 @@ import GuardMapView from '../components/GuardMonitoring/GuardMapView';
 import ConfigurationPanel from '../components/GuardMonitoring/ConfigurationPanel';
 import ReportingPanel from '../components/GuardMonitoring/ReportingPanel';
 import AnalyticsPanel from '../components/GuardMonitoring/AnalyticsPanel';
+import GateAccessPage from './GateAccessPage';
 import { useResponders } from '../contexts/RespondersContext';
+import { Profile } from '../types';
 
-const GuardMonitoringPage: React.FC = () => {
+interface GuardMonitoringPageProps {
+    profile: Profile;
+}
+
+const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) => {
     const { responders, loading } = useResponders();
-    const [activeTab, setActiveTab] = useState<'overview' | 'config' | 'reporting' | 'analytics'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'config' | 'reporting' | 'analytics' | 'gate_access'>('gate_access');
     const [data, setData] = useState<any>({ sites: [], guards: [], routes: [], supervisors: [], checkpoints: [] });
 
     useEffect(() => {
@@ -27,6 +33,7 @@ const GuardMonitoringPage: React.FC = () => {
     if (loading) return <div className="p-6">Loading...</div>;
 
     const tabs = [
+        { id: 'gate_access', label: 'Gate Access Control' },
         { id: 'overview', label: 'Overview' },
         { id: 'config', label: 'Configuration' },
         { id: 'reporting', label: 'Reporting' },
@@ -71,6 +78,7 @@ const GuardMonitoringPage: React.FC = () => {
                 ))}
             </div>
 
+            {activeTab === 'gate_access' && <GateAccessPage profile={profile} />}
             {activeTab === 'overview' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <GuardStatusDashboard responders={responders} data={data} />

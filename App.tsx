@@ -345,7 +345,7 @@ const App: React.FC = () => {
       case 'users': return <UsersPage />;
       case 'activity_logs': return <UserActivityPage />;
       case 'companies': return <CompaniesPage />;
-      case 'guard_monitoring': return <GuardMonitoringPage />;
+      case 'guard_monitoring': return <GuardMonitoringPage profile={profile} />;
       case 'gate_access': return <GateAccessPage profile={profile} />;
       case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />;
       case 'map':
@@ -444,7 +444,7 @@ const App: React.FC = () => {
   const isFullWidthView = view === 'controller' || profile?.role === UserRole.RESPONDER;
   const isUserView = profile?.role === UserRole.USER;
   
-  const mainPaddingTopClass = isAnnouncementVisible ? 'pt-[112px]' : 'pt-[60px]';
+  const mainPaddingTopClass = isAnnouncementVisible ? 'pt-[100px]' : 'pt-[64px]';
 
   const mainClasses = isFullWidthView
     ? `pb-8 px-4 sm:px-6 lg:px-8`

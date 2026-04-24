@@ -15,6 +15,7 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
     const [isScanning, setIsScanning] = useState(false);
     const [scanResult, setScanResult] = useState<{ plate: string; wantedReport?: VehicleReport } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isFixedLocation, setIsFixedLocation] = useState(false);
     const { addToast } = useToast();
 
     useEffect(() => {
@@ -26,10 +27,46 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
             })
             .subscribe();
 
+        const fetchAllocatedSite = async () => {
+             try {
+                // Check if guard first
+                const { data: guardData, error: guardError } = await supabase
+                    .from('guards')
+                    .select('site_id, sites(name)')
+                    .eq('profile_id', profile.id)
+                    .single();
+                
+                if (guardData?.sites && (guardData.sites as any).name) {
+                    setGateName((guardData.sites as any).name);
+                    setIsFixedLocation(true);
+                    return;
+                }
+
+                // Check if supervisor
+                const { data: supData, error: supError } = await supabase
+                    .from('supervisors')
+                    .select('site_id, sites(name)')
+                    .eq('profile_id', profile.id)
+                    .single();
+                
+                if (supData?.sites && (supData.sites as any).name) {
+                    setGateName((supData.sites as any).name);
+                    setIsFixedLocation(true);
+                }
+
+             } catch (err) {
+                console.error("Error fetching allocated site:", err);
+             }
+        };
+
+        if (profile.id) {
+            fetchAllocatedSite();
+        }
+
         return () => {
             supabase.removeChannel(subscription);
         };
-    }, []);
+    }, [profile.id]);
 
     const fetchRecentLogs = async () => {
         setLoading(true);
@@ -159,7 +196,8 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                                         value={gateName}
                                         onChange={(e) => setGateName(e.target.value)}
                                         placeholder="Main Entrance"
-                                        className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                                        readOnly={isFixedLocation}
+                                        className={`w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none ${isFixedLocation ? 'opacity-70 cursor-not-allowed' : ''}`}
                                     />
                                     <MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 </div>

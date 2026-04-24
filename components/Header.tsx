@@ -186,7 +186,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         <>
           <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>Controller</button>
           <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>Guarding</button>
-          <button onClick={() => clickHandler('gate_access')} className={classGetter('gate_access')}>Gate Access</button>
           <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>Global Search</button>
         </>
       );
@@ -202,7 +201,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>Dashboard</button>
         <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>Controller</button>
         <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>Guarding</button>
-        <button onClick={() => clickHandler('gate_access')} className={classGetter('gate_access')}>Gate Access</button>
         <button onClick={() => clickHandler('archives')} className={classGetter('archives')}>Archives</button>
         <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>Global Search</button>
         <button onClick={() => clickHandler('analytics')} className={classGetter('analytics')}>Analytics</button>
