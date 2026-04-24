@@ -209,11 +209,20 @@
 .matrix header {
   background-color: rgba(0, 0, 0, 0.8) !important;
   border-bottom-color: var(--color-matrix-dark) !important;
-  backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(16px) !important;
+  font-family: var(--font-sans) !important;
 }
 
 .matrix header .main-logo {
-  filter: drop-shadow(0 0 15px rgba(0, 255, 65, 0.6)) brightness(1.1);
+  filter: drop-shadow(0 0 15px rgba(0, 255, 65, 0.4));
+}
+
+.matrix header [class*="text-"] {
+  font-family: var(--font-sans) !important;
+}
+
+.matrix header .led-clock-container * {
+  font-family: var(--font-mono) !important;
 }
 
 .matrix header img.rounded-full {
