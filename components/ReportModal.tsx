@@ -4,6 +4,7 @@
  * @description Modal for creating and editing vehicle or crime reports.
  */
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../utils/supabase';
 import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport, EmergencyReport } from '../types';
 import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon, CheckCircleIcon } from '../components/icons';
@@ -75,6 +76,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
+    const [duplicateInfo, setDuplicateInfo] = useState<{
+        type: string;
+        obNumber: string;
+        status?: string;
+        licensePlate: string;
+    } | null>(null);
     const [isMapVisible, setMapVisible] = useState(false);
     const { addToast } = useToast();
     
@@ -289,7 +296,41 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         return vehicleModelsByMake[make] || [];
     }, [formData.vehicle_make]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const checkDuplicates = async () => {
+        const licensePlateToCheck = formData.license_plate?.trim().toUpperCase();
+        if (licensePlateToCheck && (reportType === 'vehicle' || reportType === 'emergency')) {
+            const isNewPlate = !reportToEdit || (reportToEdit as any).license_plate?.trim().toUpperCase() !== licensePlateToCheck;
+            
+            if (isNewPlate) {
+                const [{ data: vRecord }, { data: eRecord }] = await Promise.all([
+                    supabase.from('vehicle_reports')
+                        .select('ob_number, status')
+                        .eq('license_plate', licensePlateToCheck)
+                        .neq('status', ReportStatus.DELETED)
+                        .limit(1)
+                        .maybeSingle(),
+                    supabase.from('emergency_reports')
+                        .select('ob_number, emergency_type')
+                        .eq('license_plate', licensePlateToCheck)
+                        .limit(1)
+                        .maybeSingle()
+                ]);
+
+                if (vRecord || eRecord) {
+                    setDuplicateInfo({
+                        type: vRecord ? 'Vehicle' : 'Emergency',
+                        obNumber: vRecord?.ob_number || (eRecord as any)?.ob_number,
+                        status: vRecord?.status,
+                        licensePlate: licensePlateToCheck
+                    });
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    const handleSubmit = async (e: React.FormEvent, skipDuplicateCheck = false) => {
         e.preventDefault();
         setLoading(true);
 
@@ -298,42 +339,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             if (userError || !user) throw new Error("User not authenticated");
 
-            // Check for existing license plate if vehicle or emergency report
-            const licensePlateToCheck = formData.license_plate?.trim().toUpperCase();
-            if (licensePlateToCheck && (reportType === 'vehicle' || reportType === 'emergency')) {
-                const isNewPlate = !reportToEdit || (reportToEdit as any).license_plate?.trim().toUpperCase() !== licensePlateToCheck;
-                
-                if (isNewPlate) {
-                    const [{ data: vRecord }, { data: eRecord }] = await Promise.all([
-                        supabase.from('vehicle_reports')
-                            .select('ob_number, status')
-                            .eq('license_plate', licensePlateToCheck)
-                            .neq('status', ReportStatus.DELETED)
-                            .limit(1)
-                            .maybeSingle(),
-                        supabase.from('emergency_reports')
-                            .select('ob_number, emergency_type')
-                            .eq('license_plate', licensePlateToCheck)
-                            .limit(1)
-                            .maybeSingle()
-                    ]);
-
-                    if (vRecord || eRecord) {
-                        const existingOb = vRecord?.ob_number || (eRecord as any)?.ob_number;
-                        const existingType = vRecord ? 'Vehicle' : 'Emergency';
-                        const existingStatus = vRecord ? ` (${vRecord.status})` : '';
-                        
-                        const confirmed = window.confirm(
-                            `WARNING: A ${existingType} report with license plate ${licensePlateToCheck} already exists.\n` +
-                            `OB Number: ${existingOb}${existingStatus}\n\n` +
-                            `Are you sure you want to proceed?`
-                        );
-                        
-                        if (!confirmed) {
-                            setLoading(false);
-                            return;
-                        }
-                    }
+            // Check for existing license plate if not skipped
+            if (!skipDuplicateCheck) {
+                const hasDuplicate = await checkDuplicates();
+                if (hasDuplicate) {
+                    setLoading(false);
+                    return;
                 }
             }
 
@@ -850,6 +861,71 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     {vehicleColors.map(color => <option key={color} value={color} />)}
                 </datalist>
             </div>
+
+            <AnimatePresence>
+                {duplicateInfo && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-yellow-200 dark:border-yellow-900/50"
+                        >
+                            <div className="flex items-center gap-3 text-yellow-600 dark:text-yellow-400 mb-4">
+                                <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
+                                    <AlertTriangleIcon className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-xl font-bold">Duplicate Plate Detected</h3>
+                            </div>
+                            
+                            <div className="bg-yellow-50 dark:bg-yellow-900/10 border-l-4 border-yellow-500 p-4 mb-6">
+                                <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+                                    A <span className="font-bold text-black dark:text-white">{duplicateInfo.type}</span> report with license plate 
+                                    <span className="font-bold text-black dark:text-white"> {duplicateInfo.licensePlate} </span> 
+                                    already exists in the system.
+                                </p>
+                                <div className="mt-3 flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                    <div className="flex justify-between">
+                                        <span>OB Number:</span>
+                                        <span className="font-mono font-bold text-gray-700 dark:text-gray-200">{duplicateInfo.obNumber}</span>
+                                    </div>
+                                    {duplicateInfo.status && (
+                                        <div className="flex justify-between">
+                                            <span>Status:</span>
+                                            <span className="font-bold uppercase text-yellow-600 dark:text-yellow-500">{duplicateInfo.status}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 italic">
+                                Adding multiple reports for the same registration might create confusion. Are you sure you want to proceed with this new entry?
+                            </p>
+
+                            <div className="flex gap-3">
+                                <button 
+                                    type="button"
+                                    onClick={() => setDuplicateInfo(null)}
+                                    className="flex-1 py-3 px-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={(e) => {
+                                        setDuplicateInfo(null);
+                                        // @ts-ignore
+                                        handleSubmit({ ...e, preventDefault: () => {} }, true);
+                                    }}
+                                    className="flex-1 py-3 px-4 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold shadow-lg shadow-yellow-500/20 transition-all flex items-center justify-center gap-2"
+                                >
+                                    Proceed Anyway
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
