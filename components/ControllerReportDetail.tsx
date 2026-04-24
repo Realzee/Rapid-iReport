@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Report, Profile, VehicleReport, EmergencyReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole } from '../types';
+import { Report, Profile, VehicleReport, EmergencyReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole, LocationCoords } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
 import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon } from './icons';
@@ -13,6 +13,10 @@ import { useChat } from '../contexts/ChatContext';
 import ImagePreviewModal from './ImagePreviewModal';
 import { useSettings } from '../contexts/SettingsContext';
 import { logUserAction } from '../utils/logger';
+import { LocationPicker } from './LocationPicker';
+import { getRecoveryInsights, RecoveryInsight } from '../utils/aiService';
+import { BrainIcon, MapPinIcon as LuMapPinIcon, HistoryIcon } from 'lucide-react';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 
 const DetailField: React.FC<{ label: string, children: React.ReactNode, className?: string }> = ({ label, children, className }) => (
     <div className={className}>
@@ -68,6 +72,11 @@ const ControllerReportDetail: React.FC<{
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const [isTimelineVisible, setIsTimelineVisible] = useState(true);
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+    const [recoveredCoords, setRecoveredCoords] = useState<LocationCoords | null>((report as any).recovered_location_coords || null);
+    const [recoveredAddress, setRecoveredAddress] = useState<string>('');
+    const [recoveredAt, setRecoveredAt] = useState<string>((report as any).recovered_at || new Date().toISOString().slice(0, 16));
+    const [aiInsights, setAiInsights] = useState<RecoveryInsight[] | null>(null);
+    const [isLoadingInsights, setIsLoadingInsights] = useState(false);
     const { addToast } = useToast();
     const { openChat } = useChat();
     const { mainLogoUrl } = useSettings();
@@ -132,6 +141,11 @@ const ControllerReportDetail: React.FC<{
         };
         
         fetchDetails();
+        
+        // Fetch AI insights if it's a vehicle report
+        if (report.type === 'vehicle' && !aiInsights) {
+           handleFetchAIInsights();
+        }
 
         // Check if it's a legacy record to skip channels
         if ((report as any).is_legacy || report.id.startsWith('legacy-')) {
@@ -219,6 +233,27 @@ const ControllerReportDetail: React.FC<{
         setIsSubmittingUpdate(false);
     };
 
+    const handleFetchAIInsights = async () => {
+        setIsLoadingInsights(true);
+        try {
+            // Get last 50 recovered vehicle reports for context
+            const { data: recoveredData } = await supabase
+                .from('vehicle_reports')
+                .select('*')
+                .eq('report_status', 'recovered')
+                .limit(50);
+            
+            if (recoveredData) {
+                const insights = await getRecoveryInsights(recoveredData);
+                setAiInsights(insights);
+            }
+        } catch (error) {
+            console.error("Failed to fetch AI insights:", error);
+        } finally {
+            setIsLoadingInsights(false);
+        }
+    };
+
     const handleAssignmentUpdate = async () => {
         setIsActionLoading(true);
 
@@ -250,6 +285,12 @@ const ControllerReportDetail: React.FC<{
         if (sharedIdsChanged) {
             updatePayload.shared_with_company_ids = sharedWithCompanyIds;
             updateContent += `Shared companies updated. `;
+        }
+
+        if (selectedStatus === ReportStatus.RECOVERED && report.type === 'vehicle') {
+            (updatePayload as any).recovered_location_coords = recoveredCoords;
+            (updatePayload as any).recovered_at = recoveredAt;
+            updateContent += `Recovery details updated. `;
         }
 
         if (selectedResponder !== (report.assigned_to || '')) {
@@ -842,6 +883,104 @@ const ControllerReportDetail: React.FC<{
                         {(report as any).has_tracker !== undefined && <DetailField label="Tracker">{(report as any).has_tracker ? 'Yes' : 'No'}</DetailField>}
                     </div>
                 )}
+
+                {report.status === ReportStatus.RECOVERED && (report as any).recovered_location_coords && (
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg space-y-2">
+                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400 font-bold text-sm">
+                            <CheckCircleIcon className="w-4 h-4" />
+                            <span>Recovery Information</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <DetailField label="Recovered At">
+                                {format(new Date((report as any).recovered_at || report.updated_at), 'PPPp')}
+                            </DetailField>
+                            <DetailField label="Recovery Coords">
+                                {(report as any).recovered_location_coords.lat.toFixed(4)}, {(report as any).recovered_location_coords.lng.toFixed(4)}
+                            </DetailField>
+                        </div>
+                        <div className="h-32 w-full rounded-md overflow-hidden border border-green-200 dark:border-green-800">
+                             <MapContainer 
+                                center={[(report as any).recovered_location_coords.lat, (report as any).recovered_location_coords.lng]} 
+                                zoom={15} 
+                                style={{ height: '100%', width: '100%' }}
+                                dragging={false}
+                                touchZoom={false}
+                                scrollWheelZoom={false}
+                                doubleClickZoom={false}
+                                boxZoom={false}
+                                keyboard={false}
+                                zoomControl={false}
+                            >
+                                <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+                                <Marker position={[(report as any).recovered_location_coords.lat, (report as any).recovered_location_coords.lng]} />
+                            </MapContainer>
+                        </div>
+                    </div>
+                )}
+
+                {report.type === 'vehicle' && report.status !== ReportStatus.RECOVERED && (
+                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-bold">
+                                <BrainIcon className="w-5 h-5" />
+                                <span>AI Recovery Insights</span>
+                            </div>
+                            {isLoadingInsights && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>}
+                        </div>
+                        
+                        {aiInsights ? (
+                            <div className="space-y-3">
+                                {aiInsights.filter(insight => 
+                                    insight.vehicleType.toLowerCase().includes((report as any).vehicle_make?.toLowerCase() || '') ||
+                                    (report as any).vehicle_make?.toLowerCase().includes(insight.vehicleType.toLowerCase())
+                                ).map((insight, idx) => (
+                                    <div key={idx} className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                                insight.confidence === 'High' ? 'bg-green-100 text-green-700' : 
+                                                insight.confidence === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'
+                                            }`}>
+                                                {insight.confidence} Confidence
+                                            </span>
+                                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Targeting: {insight.vehicleType}</span>
+                                        </div>
+                                        <p className="text-sm font-medium text-blue-900 dark:text-blue-200">Likely Area: {insight.likelyRecoveryArea}</p>
+                                        <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed italic">"{insight.reasoning}"</p>
+                                        
+                                        {insight.hotspots.length > 0 && (
+                                            <div className="pt-1 flex flex-wrap gap-2">
+                                                {insight.hotspots.map((h, i) => (
+                                                    <div key={i} className="flex items-center gap-1 bg-white/50 dark:bg-black/20 px-2 py-1 rounded text-[10px] text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                                        <LuMapPinIcon className="w-3 h-3" />
+                                                        <span>{h.description}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                {aiInsights.filter(insight => 
+                                    insight.vehicleType.toLowerCase().includes((report as any).vehicle_make?.toLowerCase() || '') ||
+                                    (report as any).vehicle_make?.toLowerCase().includes(insight.vehicleType.toLowerCase())
+                                ).length === 0 && (
+                                    <p className="text-xs text-gray-500 italic">No specific patterns identified for this vehicle type yet. AI is still learning from recovery data.</p>
+                                )}
+                            </div>
+                        ) : !isLoadingInsights && (
+                            <button 
+                                onClick={handleFetchAIInsights}
+                                className="w-full py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors"
+                            >
+                                Generate AI Insights
+                            </button>
+                        )}
+                        
+                        <div className="flex items-center gap-2 text-[10px] text-blue-600/60 dark:text-blue-400/60 uppercase font-bold tracking-widest pt-1 border-t border-blue-200/50 dark:border-blue-800/50">
+                            <HistoryIcon className="w-3 h-3" />
+                            <span>Based on last 50 recoveries</span>
+                        </div>
+                    </div>
+                )}
                 
                 {report.type === 'emergency' && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
@@ -889,13 +1028,48 @@ const ControllerReportDetail: React.FC<{
                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setAssignmentModalOpen(false)}>
                     <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
                         <h4 className="text-lg font-bold mb-4">Manage Incident</h4>
-                        <div className="space-y-4">
+                        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
                             <div>
                                 <label className="text-sm font-medium">Status</label>
                                 <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value as ReportStatus)} className="w-full mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-2 px-3">
                                     {Object.values(ReportStatus).filter(s => s !== 'deleted').map(s => <option key={s} value={s} className="capitalize">{s.replace(/_/g, ' ')}</option>)}
                                 </select>
                             </div>
+
+                            {selectedStatus === ReportStatus.RECOVERED && report.type === 'vehicle' && (
+                                <div className="space-y-4 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold mb-2">
+                                        <LuMapPinIcon className="w-4 h-4" />
+                                        <span>Recovery Details</span>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Recovery Location
+                                        </label>
+                                        <LocationPicker 
+                                            initialCoords={recoveredCoords} 
+                                            onLocationChange={(coords, address) => {
+                                                setRecoveredCoords(coords);
+                                                setRecoveredAddress(address);
+                                            }}
+                                            height="200px"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1 truncate">{recoveredAddress || 'Click map to select location'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Recovery Date & Time
+                                        </label>
+                                        <input 
+                                            type="datetime-local" 
+                                            value={recoveredAt} 
+                                            onChange={(e) => setRecoveredAt(e.target.value)}
+                                            className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-2 px-3 focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="text-sm font-medium">Assign Responder</label>
                                  <select value={selectedResponder} onChange={(e) => setSelectedResponder(e.target.value)} className="w-full mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-2 px-3">

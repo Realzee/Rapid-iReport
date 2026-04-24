@@ -11,7 +11,7 @@ import { updateFaviconBadge, updateDocumentTitle, playNotificationSound } from '
 
 interface HeaderProps {
     currentView: string;
-    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring') => void;
+    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search') => void;
     profile: Profile;
     onNotificationClick: (notification: Notification) => void;
 }
@@ -130,7 +130,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     setMobileMenuOpen(false);
   };
 
-  const handleMobileLinkClick = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring') => {
+  const handleMobileLinkClick = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search') => {
       setView(view);
       setMobileMenuOpen(false);
   }
@@ -165,7 +165,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   };
 
   const NavLinks: React.FC<{mobile?: boolean}> = ({ mobile = false}) => {
-    const clickHandler = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search') => mobile ? handleMobileLinkClick(view as any) : setView(view as any);
+    const clickHandler = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access') => mobile ? handleMobileLinkClick(view as any) : setView(view as any);
     const classGetter = mobile ? mobileNavLinkClasses : navLinkClasses;
 
     if (profile.role === UserRole.USER) {

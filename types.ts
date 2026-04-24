@@ -152,6 +152,8 @@ export interface VehicleReport {
   io_contact?: string;
   has_tracker?: boolean;
   circulation_number?: string;
+  recovered_location_coords?: LocationCoords;
+  recovered_at?: string; // ISO date string
 }
 
 export interface CrimeReport {
