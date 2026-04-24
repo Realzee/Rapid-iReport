@@ -17,7 +17,7 @@
   
   --color-matrix-green: #00ff41;
   --color-matrix-dark: #003b00;
-  --color-matrix-bg: #0d0208;
+  --color-matrix-bg: #000000;
 }
 
 @layer base {
@@ -31,7 +31,7 @@
     --color-gray-600: #005516;
     --color-gray-700: #00330d;
     --color-gray-800: #002209;
-    --color-gray-900: #0d0208;
+    --color-gray-900: #000000;
     
     --color-primary-500: #00ff41;
     --color-primary-600: #00dd3a;
@@ -48,7 +48,7 @@
     box-shadow: 0 0 5px var(--color-matrix-green);
   }
 
-  .matrix .bg-white, .matrix .bg-gray-50, .matrix .bg-gray-100 {
+  .matrix .bg-white, .matrix .bg-gray-50, .matrix .bg-gray-100, .matrix .bg-gray-800, .matrix .bg-gray-900 {
     background-color: var(--color-matrix-bg) !important;
   }
 
@@ -83,7 +83,7 @@
   }
 
   .matrix .card, .matrix [class*="bg-white"] {
-    @apply bg-black/80 border border-matrix-dark shadow-[0_0_15px_rgba(0,59,0,0.3)];
+    @apply bg-black border border-matrix-dark shadow-[0_0_15px_rgba(0,59,0,0.3)];
   }
 }
 
@@ -187,7 +187,7 @@
 }
 
 .matrix .leaflet-popup-content-wrapper, .matrix .leaflet-popup-tip {
-  background-color: #0d0208 !important;
+  background-color: #000000 !important;
   color: #00ff41 !important;
   border: 1px solid #003b00;
   box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
@@ -197,7 +197,7 @@
 .matrix .leaflet-control-zoom-out,
 .matrix .leaflet-control-attribution,
 .matrix .leaflet-bar a {
-  background-color: #0d0208 !important;
+  background-color: #000000 !important;
   color: #00ff41 !important;
   border-color: #003b00 !important;
 }
@@ -207,7 +207,7 @@
 }
 
 .matrix header {
-  background-color: rgba(0, 2, 8, 0.8) !important;
+  background-color: rgba(0, 0, 0, 0.8) !important;
   border-bottom-color: var(--color-matrix-dark) !important;
   backdrop-filter: blur(12px) !important;
 }
