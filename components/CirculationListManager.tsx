@@ -103,7 +103,10 @@ const CirculationListManager: React.FC<CirculationListManagerProps> = ({ profile
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="font-mono font-bold text-lg text-gray-900 dark:text-white tracking-wider">{report.license_plate}</span>
-                                            <span className={`w-2 h-2 rounded-full ${report.severity === Severity.CRITICAL ? 'bg-red-500 animate-pulse' : 'bg-yellow-500'}`}></span>
+                                            <span className={`w-2 h-2 rounded-full ${report.is_wanted ? 'bg-red-600 animate-pulse' : (report.severity === Severity.CRITICAL ? 'bg-red-500 animate-pulse' : 'bg-yellow-500')}`}></span>
+                                            {report.is_wanted && (
+                                                <span className="text-[10px] font-black bg-red-600 text-white px-1.5 py-0.5 rounded">WANTED</span>
+                                            )}
                                         </div>
                                         <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
                                             {report.vehicle_make} {report.vehicle_model} • {report.vehicle_color}

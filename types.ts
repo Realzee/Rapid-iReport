@@ -154,6 +154,8 @@ export interface VehicleReport {
   circulation_number?: string;
   recovered_location_coords?: LocationCoords;
   recovered_at?: string; // ISO date string
+  is_wanted?: boolean;
+  wanted_report_id?: string;
 }
 
 export interface CrimeReport {

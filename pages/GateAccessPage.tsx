@@ -141,6 +141,11 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
             const promises: Promise<any>[] = [supabase.from('gate_access_logs').insert(logData)];
 
             if (logData.is_wanted) {
+                // Mark vehicle report as wanted
+                if (scanResult.wantedReport) {
+                    promises.push(supabase.from('vehicle_reports').update({ is_wanted: true }).eq('id', scanResult.wantedReport.id));
+                }
+                
                 const alertReport = {
                     title: `WANTED VEHICLE DETECTED AT ${logData.gate_name.toUpperCase()}`,
                     description: `WANTED VEHICLE DETECTED: A wanted vehicle with license plate ${scanResult.plate} has been scanned at ${logData.gate_name} moving ${direction.toUpperCase()}. ${scanResult.wantedReport ? `Original report OB: ${scanResult.wantedReport.ob_number}` : ''}. IMMEDIATE ATTENTION REQUIRED.`,
