@@ -115,7 +115,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   }, []);
 
   const navLinkClasses = (view: string) => 
-      `relative text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors duration-300 px-3 py-2 rounded-md ${
+      `relative text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors duration-300 px-3 py-2 rounded-md whitespace-nowrap flex-shrink-0 ${
         currentView === view ? 'bg-gray-200 dark:bg-gray-700/50 text-black dark:text-white' : ''
       }`;
       
@@ -236,8 +236,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
             />
           </div>
 
-          <div className="hidden md:flex flex-col items-center justify-center flex-grow px-2 overflow-hidden">
-            <nav className="flex items-center space-x-1 overflow-x-auto no-scrollbar max-w-full">
+          <div className="hidden md:flex flex-col items-center justify-center flex-grow px-2 overflow-hidden mx-4 relative group">
+            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white dark:from-gray-950 to-transparent z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-gray-950 to-transparent z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <nav className="flex items-center space-x-1 overflow-x-auto no-scrollbar max-w-full w-full justify-start lg:justify-center px-4">
                 <NavLinks />
             </nav>
           </div>
