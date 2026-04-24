@@ -316,21 +316,21 @@ const App: React.FC = () => {
 
     if (profile.role === UserRole.RESPONDER) {
         return view === 'profile' 
-            ? <ProfilePage profile={profile} setProfile={setProfile} />
+            ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
             : <ResponderPage profile={profile} setProfile={setProfile} />;
     }
     
     if (profile.role === UserRole.USER) {
         if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
         return view === 'profile'
-            ? <ProfilePage profile={profile} setProfile={setProfile} />
+            ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
             : <UserDashboardPage profile={profile} />;
     }
     
     if (profile.role === UserRole.CONTROLLER) {
       if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
       return view === 'profile'
-          ? <ProfilePage profile={profile} setProfile={setProfile} />
+          ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
           : <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
     }
     
@@ -347,7 +347,7 @@ const App: React.FC = () => {
       case 'companies': return <CompaniesPage />;
       case 'guard_monitoring': return <GuardMonitoringPage />;
       case 'gate_access': return <GateAccessPage profile={profile} />;
-      case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} />;
+      case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />;
       case 'map':
       default: return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
     }
@@ -444,7 +444,7 @@ const App: React.FC = () => {
   const isFullWidthView = view === 'controller' || profile?.role === UserRole.RESPONDER;
   const isUserView = profile?.role === UserRole.USER;
   
-  const mainPaddingTopClass = isAnnouncementVisible ? 'pt-32' : 'pt-[72px]';
+  const mainPaddingTopClass = isAnnouncementVisible ? 'pt-[112px]' : 'pt-[60px]';
 
   const mainClasses = isFullWidthView
     ? `pb-8 px-4 sm:px-6 lg:px-8`

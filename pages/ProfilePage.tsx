@@ -8,9 +8,10 @@ import { useFormPersistence } from '../useFormPersistence';
 interface ProfilePageProps {
   profile: Profile;
   setProfile: (profile: Profile) => void;
+  onCancel?: () => void;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
+const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile, onCancel }) => {
     
     const initialData = useMemo(() => ({
         first_name: profile.first_name || '',
@@ -380,10 +381,19 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile }) => {
                                 <label htmlFor="psira_number" className={labelClasses}>PSIRA Number (Optional)</label>
                                 <input id="psira_number" name="psira_number" type="text" value={formData.psira_number} onChange={handleFormChange} className={inputClasses} />
                             </div>
-                            <div className="pt-2">
+                            <div className="pt-2 flex gap-4">
                                 <button type="submit" disabled={loadingProfile} className={buttonClasses}>
                                     {loadingProfile ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Update Profile'}
                                 </button>
+                                {onCancel && (
+                                    <button 
+                                        type="button" 
+                                        onClick={onCancel}
+                                        className="w-full flex justify-center py-2.5 px-4 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                    >
+                                        Exit without Saving
+                                    </button>
+                                )}
                             </div>
                          </form>
                     </div>
