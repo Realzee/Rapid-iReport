@@ -273,7 +273,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         <div className="container mx-auto">
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Incident Archives</h2>
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-3">
+                        <HistoryIcon className="w-8 h-8 text-blue-600" /> Incident Archives
+                    </h2>
                     <p className="text-gray-500 dark:text-gray-400">This section contains all resolved, recovered, closed, and deleted reports for historical record-keeping.</p>
                 </div>
                 <button onClick={fetchData} className="mt-4 md:mt-0 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">

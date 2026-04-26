@@ -208,11 +208,11 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
         <div className="space-y-6 max-w-6xl mx-auto w-full px-4 py-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                         <ScanIcon className="w-8 h-8 text-blue-600" />
                         Gate Access Control
                     </h2>
-                    <p className="text-gray-500 dark:text-gray-400">Scan license plates and manage complex entries/exits</p>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Scan license plates and manage complex entries/exits</p>
                 </div>
             </div>
 
