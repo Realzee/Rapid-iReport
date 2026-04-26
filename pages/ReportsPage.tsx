@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, ReportStatus, Severity, VehicleReport, EmergencyReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus, Company } from '../types';
 import { format } from 'date-fns';
-import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, AlertTriangleIcon, GlobeIcon, UsersIcon } from '../components/icons';
+import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, AlertTriangleIcon, GlobeIcon, UsersIcon, HistoryIcon } from '../components/icons';
 import ReportDetailModal from '../components/ReportDetailModal';
 import ReportModal from '../components/ReportModal';
 import { useToast } from '../contexts/ToastContext';

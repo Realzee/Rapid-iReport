@@ -6,7 +6,7 @@ import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
 import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
-import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, MapIcon, ChatAlt2Icon } from '../components/icons';
+import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, MapIcon, ChatAlt2Icon, RadioTowerIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
 import CirculationListManager from '../components/CirculationListManager';
 import { useChat } from '../contexts/ChatContext';
