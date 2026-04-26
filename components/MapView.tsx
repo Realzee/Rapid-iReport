@@ -237,27 +237,29 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
         dashArray: '5, 5'
     };
 
-    const highRiskStyle = {
-        fillColor: '#EF4444',
-        fillOpacity: 0.4,
-        color: '#B91C1C',
-        weight: 2,
+    const getHighRiskStyle = (feature: any) => {
+        const intensity = feature.properties.intensity;
+        switch (intensity) {
+            case 'very-high':
+                return { fillColor: '#B91C1C', fillOpacity: 0.6, color: '#991B1B', weight: 1 };
+            case 'high':
+                return { fillColor: '#F97316', fillOpacity: 0.6, color: '#C2410C', weight: 1 };
+            default:
+                return { fillColor: '#EF4444', fillOpacity: 0.4, color: '#B91C1C', weight: 2 };
+        }
     };
 
-    // Placeholder data for high-risk areas (approximate centroids/shapes near JHB Central)
+    // Placeholder data for high-risk areas (approximate centroids/shapes for demo)
     const highRiskPolygons = {
         type: "FeatureCollection",
         features: [
-            {
-                type: "Feature",
-                geometry: {
-                    type: "Polygon",
-                    coordinates: [[
-                        [-26.195, 28.035], [-26.195, 28.055], [-26.215, 28.055], [-26.215, 28.035], [-26.195, 28.035]
-                    ]]
-                },
-                properties: { name: "High Risk Area" }
-            }
+            // VERY HIGH
+            { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.195, 28.035], [-26.195, 28.055], [-26.215, 28.055], [-26.215, 28.035], [-26.195, 28.035]]] }, properties: { name: "JHB Central / Hillbrow", intensity: "very-high" } },
+            { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.10, 28.08], [-26.10, 28.12], [-26.13, 28.12], [-26.13, 28.08], [-26.10, 28.08]]] }, properties: { name: "Alexandra", intensity: "very-high" } },
+            { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.25, 27.85], [-26.25, 27.90], [-26.30, 27.90], [-26.30, 27.85], [-26.25, 27.85]]] }, properties: { name: "Soweto Cluster", intensity: "very-high" } },
+            // HIGH
+            { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.16, 27.85], [-26.16, 27.90], [-26.20, 27.90], [-26.20, 27.85], [-26.16, 27.85]]] }, properties: { name: "Roodepoort", intensity: "high" } },
+            { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.30, 27.95], [-26.30, 28.00], [-26.35, 28.00], [-26.35, 27.95], [-26.30, 27.95]]] }, properties: { name: "Lenasia/Eldorado", intensity: "high" } }
         ]
     };
 
@@ -284,7 +286,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 <MapFocusController reports={reports} selectedReport={selectedReport} responders={responders} selectedResponder={selectedResponder} selectedResponderId={selectedResponderId} activeTab={activeTab} />
                 
                 {showHighRiskAreas && (
-                    <GeoJSON data={highRiskPolygons as any} style={highRiskStyle} />
+                    <GeoJSON data={highRiskPolygons as any} style={getHighRiskStyle as any} />
                 )}
 
                 {responders.map(responder => (
