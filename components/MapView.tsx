@@ -19,6 +19,7 @@ interface MapViewProps {
   onAssignResponder?: (responderId: string) => void;
   allUsers: Profile[];
   activeTab?: 'events' | 'responders';
+  showHighRiskAreas?: boolean;
 }
 
 const createIncidentIcon = (report: Report, isSelected: boolean) => {
@@ -192,7 +193,7 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
     return null;
 };
 
-const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, selectedResponderId, profile, onReportSelect, onResponderSelect, onAssignResponder, allUsers, activeTab }) => {
+const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId, selectedResponderId, profile, onReportSelect, onResponderSelect, onAssignResponder, allUsers, activeTab, showHighRiskAreas }) => {
     const [copiedReportId, setCopiedReportId] = useState<string | null>(null);
     const [mapStyle, setMapStyle] = useState<MapStyle>('street');
     const { theme } = useTheme();
@@ -236,6 +237,30 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
         dashArray: '5, 5'
     };
 
+    const highRiskStyle = {
+        fillColor: '#EF4444',
+        fillOpacity: 0.4,
+        color: '#B91C1C',
+        weight: 2,
+    };
+
+    // Placeholder data for high-risk areas (approximate centroids/shapes near JHB Central)
+    const highRiskPolygons = {
+        type: "FeatureCollection",
+        features: [
+            {
+                type: "Feature",
+                geometry: {
+                    type: "Polygon",
+                    coordinates: [[
+                        [-26.195, 28.035], [-26.195, 28.055], [-26.215, 28.055], [-26.215, 28.035], [-26.195, 28.035]
+                    ]]
+                },
+                properties: { name: "High Risk Area" }
+            }
+        ]
+    };
+
     return (
         <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none relative">
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
@@ -257,6 +282,10 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                     </>
                 )}
                 <MapFocusController reports={reports} selectedReport={selectedReport} responders={responders} selectedResponder={selectedResponder} selectedResponderId={selectedResponderId} activeTab={activeTab} />
+                
+                {showHighRiskAreas && (
+                    <GeoJSON data={highRiskPolygons as any} style={highRiskStyle} />
+                )}
 
                 {responders.map(responder => (
                     responder.location_coords && 

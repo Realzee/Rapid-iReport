@@ -442,6 +442,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     };
 
     const [showIdleReports, setShowIdleReports] = useState(false);
+    const [showHighRiskAreas, setShowHighRiskAreas] = useState(false);
 
     const { liveReports, idleReports } = useMemo(() => {
         const live: Report[] = [];
@@ -487,6 +488,13 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                     <p className="text-gray-500 dark:text-gray-400 mt-1">Real-time incident management and dispatch.</p>
                 </div>
                 <div className="mt-4 md:mt-0 flex items-center gap-4">
+                    <button
+                        onClick={() => setShowHighRiskAreas(!showHighRiskAreas)}
+                        className={`px-4 py-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border ${showHighRiskAreas ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} font-bold rounded-xl shadow-lg transition-all duration-300 flex items-center space-x-2`}
+                    >
+                        <MapIcon className={`w-5 h-5 ${showHighRiskAreas ? 'text-red-600' : 'text-gray-500'}`} />
+                        <span>{showHighRiskAreas ? 'Hide Risk Areas' : 'Show Risk Areas'}</span>
+                    </button>
                     <button
                         onClick={() => openChat(CONTROLLER_CHANNEL_REPORT)}
                         className="px-6 py-3.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold rounded-xl shadow-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-2"
@@ -574,6 +582,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 onAssignResponder={handleAssignResponder}
                                 allUsers={allUsers}
                                 activeTab={activeTab}
+                                showHighRiskAreas={showHighRiskAreas}
                             />
                             <button
                                 onClick={() => setIsDetailsVisible(!isDetailsVisible)}
