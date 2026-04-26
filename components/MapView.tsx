@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { CheckCircleIcon, ShareIcon, GlobeIcon, UsersIcon } from './icons';
 import MapStyleToggle, { MapStyle } from './MapStyleToggle';
 import { useTheme } from '../contexts/ThemeContext';
+import { booleanPointInPolygon, point } from '@turf/turf';
 
 interface MapViewProps {
   reports: Report[];
@@ -22,14 +23,32 @@ interface MapViewProps {
   showHighRiskAreas?: boolean;
 }
 
-const createIncidentIcon = (report: Report, isSelected: boolean) => {
+const HIGH_RISK_POLYGONS = {
+    type: "FeatureCollection",
+    features: [
+        // VERY HIGH
+        { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.195, 28.035], [-26.195, 28.055], [-26.215, 28.055], [-26.215, 28.035], [-26.195, 28.035]]] }, properties: { name: "JHB Central / Hillbrow", intensity: "very-high" } },
+        { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.10, 28.08], [-26.10, 28.12], [-26.13, 28.12], [-26.13, 28.08], [-26.10, 28.08]]] }, properties: { name: "Alexandra", intensity: "very-high" } },
+        { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.25, 27.85], [-26.25, 27.90], [-26.30, 27.90], [-26.30, 27.85], [-26.25, 27.85]]] }, properties: { name: "Soweto Cluster", intensity: "very-high" } },
+        // HIGH
+        { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.16, 27.85], [-26.16, 27.90], [-26.20, 27.90], [-26.20, 27.85], [-26.16, 27.85]]] }, properties: { name: "Roodepoort", intensity: "high" } },
+        { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.30, 27.95], [-26.30, 28.00], [-26.35, 28.00], [-26.35, 27.95], [-26.30, 27.95]]] }, properties: { name: "Lenasia/Eldorado", intensity: "high" } }
+    ]
+};
+
+const isInsideHighRisk = (coords: { lat: number; lng: number }): boolean => {
+    const pt = point([coords.lng, coords.lat]);
+    return HIGH_RISK_POLYGONS.features.some(feature => booleanPointInPolygon(pt, feature as any));
+};
+
+const createIncidentIcon = (report: Report, isSelected: boolean, isInHighRisk: boolean) => {
     const typeColors: Record<string, string> = {
         'vehicle': '#3b82f6', // blue-500
         'crime': '#eab308',   // yellow-500
         'emergency': '#ef4444', // red-500
     };
 
-    const color = typeColors[report.type || 'crime'] || '#6b7280'; // gray-500 fallback
+    const color = isInHighRisk ? '#DC2626' : (typeColors[report.type || 'crime'] || '#6b7280'); // gray-500 fallback
 
     const carSvgPath = `
         <path d="M14 16.5V14a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2.5"></path>
@@ -42,10 +61,10 @@ const createIncidentIcon = (report: Report, isSelected: boolean) => {
     
     const iconSvgPath = report.type === 'vehicle' ? carSvgPath : (report.type === 'emergency' ? emergencySvgPath : crimeSvgPath);
 
-    const size = isSelected ? 52 : 40;
-    const scale = isSelected ? 1.15 : 1;
+    const size = isSelected ? 52 : (isInHighRisk ? 48 : 40);
+    const scale = isSelected ? 1.15 : (isInHighRisk ? 1.1 : 1);
     const shadowFilter = `drop-shadow(0 0 3px rgba(255,255,255,1)) drop-shadow(0 4px 6px rgba(0,0,0,0.5))`;
-    const glowFilter = isSelected ? `drop-shadow(0 0 12px ${color})` : '';
+    const glowFilter = isSelected ? `drop-shadow(0 0 12px ${color})` : (isInHighRisk ? `drop-shadow(0 0 8px #EF4444)` : '');
     
     const iconHtml = `
         <div style="width: ${size}px; height: ${size}px; display: flex; justify-content: center; align-items: center; transform: scale(${scale}); transition: transform 0.2s ease-out;">
@@ -68,12 +87,12 @@ const createIncidentIcon = (report: Report, isSelected: boolean) => {
 };
 
 
-const createResponderIcon = (status: ResponderStatus) => {
+const createResponderIcon = (status: ResponderStatus, isInHighRisk: boolean) => {
     let colorClass = 'text-gray-500'; // Off-duty (fallback)
     let pulseColorClass = '';
 
     switch (status) {
-        case ResponderStatus.AVAILABLE: colorClass = 'text-emerald-500'; break;
+        case ResponderStatus.AVAILABLE: colorClass = isInHighRisk ? 'text-red-500' : 'text-emerald-500'; break;
         case ResponderStatus.EN_ROUTE: colorClass = 'text-indigo-500'; pulseColorClass = 'bg-indigo-400'; break;
         case ResponderStatus.ON_SCENE: colorClass = 'text-amber-500'; break;
     }
@@ -249,20 +268,6 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
         }
     };
 
-    // Placeholder data for high-risk areas (approximate centroids/shapes for demo)
-    const highRiskPolygons = {
-        type: "FeatureCollection",
-        features: [
-            // VERY HIGH
-            { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.195, 28.035], [-26.195, 28.055], [-26.215, 28.055], [-26.215, 28.035], [-26.195, 28.035]]] }, properties: { name: "JHB Central / Hillbrow", intensity: "very-high" } },
-            { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.10, 28.08], [-26.10, 28.12], [-26.13, 28.12], [-26.13, 28.08], [-26.10, 28.08]]] }, properties: { name: "Alexandra", intensity: "very-high" } },
-            { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.25, 27.85], [-26.25, 27.90], [-26.30, 27.90], [-26.30, 27.85], [-26.25, 27.85]]] }, properties: { name: "Soweto Cluster", intensity: "very-high" } },
-            // HIGH
-            { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.16, 27.85], [-26.16, 27.90], [-26.20, 27.90], [-26.20, 27.85], [-26.16, 27.85]]] }, properties: { name: "Roodepoort", intensity: "high" } },
-            { type: "Feature", geometry: { type: "Polygon", coordinates: [[[-26.30, 27.95], [-26.30, 28.00], [-26.35, 28.00], [-26.35, 27.95], [-26.30, 27.95]]] }, properties: { name: "Lenasia/Eldorado", intensity: "high" } }
-        ]
-    };
-
     return (
         <div className="h-full w-full rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-gray-700/50 shadow-lg dark:shadow-none relative">
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}>
@@ -286,18 +291,18 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 <MapFocusController reports={reports} selectedReport={selectedReport} responders={responders} selectedResponder={selectedResponder} selectedResponderId={selectedResponderId} activeTab={activeTab} />
                 
                 {showHighRiskAreas && (
-                    <GeoJSON data={highRiskPolygons as any} style={getHighRiskStyle as any} />
+                    <GeoJSON data={HIGH_RISK_POLYGONS as any} style={getHighRiskStyle as any} />
                 )}
 
                 {responders.map(responder => (
                     responder.location_coords && 
                     typeof responder.location_coords.lat === 'number' && !isNaN(responder.location_coords.lat) &&
                     typeof responder.location_coords.lng === 'number' && !isNaN(responder.location_coords.lng) && (
-                        <Marker
-                            key={`responder-${responder.id}`}
-                            position={[responder.location_coords.lat, responder.location_coords.lng]}
-                            icon={createResponderIcon(responder.status)}
-                            zIndexOffset={100}
+                            <Marker
+                                key={`responder-${responder.id}`}
+                                position={[responder.location_coords.lat, responder.location_coords.lng]}
+                                icon={createResponderIcon(responder.status, isInsideHighRisk(responder.location_coords))}
+                                zIndexOffset={100}
                             eventHandlers={{
                                 click: () => onResponderSelect?.(responder.id)
                             }}
@@ -354,7 +359,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                             )}
                             <Marker
                                 position={[report.location_coords.lat, report.location_coords.lng]}
-                                icon={createIncidentIcon(report, isSelected)}
+                                icon={createIncidentIcon(report, isSelected, isInsideHighRisk(report.location_coords))}
                                 zIndexOffset={isSelected ? 1000 : 0}
                                 eventHandlers={{
                                     click: () => {
