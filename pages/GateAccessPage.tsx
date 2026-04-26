@@ -34,26 +34,32 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 // Check if guard first
                 const { data: guardData, error: guardError } = await supabase
                     .from('guards')
-                    .select('site_id, sites(name)')
+                    .select('site_id')
                     .eq('profile_id', profile.id)
                     .single();
                 
-                if (guardData?.sites && (guardData.sites as any).name) {
-                    setGateName((guardData.sites as any).name);
-                    setIsFixedLocation(true);
-                    return;
+                if (guardData?.site_id) {
+                    const { data: siteData } = await supabase.from('sites').select('name').eq('id', guardData.site_id).single();
+                    if (siteData?.name) {
+                        setGateName(siteData.name);
+                        setIsFixedLocation(true);
+                        return;
+                    }
                 }
 
                 // Check if supervisor
                 const { data: supData, error: supError } = await supabase
                     .from('supervisors')
-                    .select('site_id, sites(name)')
+                    .select('site_id')
                     .eq('profile_id', profile.id)
                     .single();
                 
-                if (supData?.sites && (supData.sites as any).name) {
-                    setGateName((supData.sites as any).name);
-                    setIsFixedLocation(true);
+                if (supData?.site_id) {
+                    const { data: siteData } = await supabase.from('sites').select('name').eq('id', supData.site_id).single();
+                    if (siteData?.name) {
+                        setGateName(siteData.name);
+                        setIsFixedLocation(true);
+                    }
                 }
 
              } catch (err) {

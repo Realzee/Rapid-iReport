@@ -119,6 +119,8 @@ const MapFocusController: React.FC<{ report: Report | null, responderProfile: Pr
         const isValid = (coords: { lat: number, lng: number } | undefined | null) => 
             coords && typeof coords.lat === 'number' && !isNaN(coords.lat) && typeof coords.lng === 'number' && !isNaN(coords.lng);
 
+        if (!map) return; // Prevent errors if map is gone
+
         if (isValid(reportCoords) && isValid(responderCoords)) {
             map.flyToBounds([
                 [responderCoords!.lat, responderCoords!.lng],
