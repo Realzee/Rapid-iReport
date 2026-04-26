@@ -52,9 +52,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const [selectedResponderId, setSelectedResponderId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<ControllerTab>('events');
     const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
-        const hasDraft = !!localStorage.getItem('new-report');
-        const wasOpen = localStorage.getItem('controller_report_modal_open') === 'true';
-        return hasDraft || wasOpen;
+        return !!localStorage.getItem('new-report') || localStorage.getItem('controller_report_modal_open') === 'true';
     });
 
     useEffect(() => {
@@ -62,7 +60,23 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     }, [isReportModalOpen]);
 
     const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
-    const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
+    const [reportToEdit, setReportToEdit] = useState<Report | null>(() => {
+        const savedId = localStorage.getItem('editing-report-id');
+        return null;
+    });
+
+    useEffect(() => {
+        const savedId = localStorage.getItem('editing-report-id');
+        if (savedId && reports.length > 0) {
+            const report = reports.find(r => r.id === savedId);
+            if (report) {
+                setReportToEdit(report);
+                setIsReportModalOpen(true);
+            } else {
+                localStorage.removeItem('editing-report-id');
+            }
+        }
+    }, [reports]);
     const [isDetailsVisible, setIsDetailsVisible] = useState(true);
     const { openChat } = useChat();
     const { addToast } = useToast();
@@ -389,7 +403,14 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
 
     const handleEditReport = (report: Report) => {
         setReportToEdit(report);
+        localStorage.setItem('editing-report-id', report.id);
         setIsReportModalOpen(true);
+    };
+
+    const handleCloseReportModal = () => {
+        setIsReportModalOpen(false);
+        setReportToEdit(null);
+        localStorage.removeItem('editing-report-id');
     };
 
     const selectedReport = useMemo(() => {
@@ -627,7 +648,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             </div>
             <ReportModal
                 isOpen={isReportModalOpen}
-                onClose={() => setIsReportModalOpen(false)}
+                onClose={handleCloseReportModal}
                 reportToEdit={reportToEdit}
                 onReportSubmitted={fetchData}
             />

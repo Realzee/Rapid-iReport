@@ -19,7 +19,23 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
     const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
         return !!localStorage.getItem('new-report');
     });
-    const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
+    const [reportToEdit, setReportToEdit] = useState<Report | null>(() => {
+        const savedId = localStorage.getItem('editing-report-id');
+        return null; // Don't hydrate directly, do it in useEffect
+    });
+
+    useEffect(() => {
+        const savedId = localStorage.getItem('editing-report-id');
+        if (savedId && myReports.length > 0) {
+            const report = myReports.find(r => r.id === savedId);
+            if (report) {
+                setReportToEdit(report);
+                setIsReportModalOpen(true);
+            } else {
+                localStorage.removeItem('editing-report-id');
+            }
+        }
+    }, [myReports]);
 
     const fetchMyData = async () => {
         setLoading(true);
@@ -114,12 +130,14 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
     
     const handleOpenEditReport = (report: Report) => {
         setReportToEdit(report);
+        localStorage.setItem('editing-report-id', report.id);
         setIsReportModalOpen(true);
     };
 
     const handleCloseModal = () => {
         setIsReportModalOpen(false);
         setReportToEdit(null);
+        localStorage.removeItem('editing-report-id');
     };
 
     if (loading) {

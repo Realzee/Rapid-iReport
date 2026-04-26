@@ -66,7 +66,23 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
         return !!localStorage.getItem('new-report');
     });
-    const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
+    const [reportToEdit, setReportToEdit] = useState<Report | null>(() => {
+        const savedId = localStorage.getItem('editing-report-id');
+        return null;
+    });
+
+    useEffect(() => {
+        const savedId = localStorage.getItem('editing-report-id');
+        if (savedId && reports.length > 0) {
+            const report = reports.find(r => r.id === savedId);
+            if (report) {
+                setReportToEdit(report);
+                setIsReportModalOpen(true);
+            } else {
+                localStorage.removeItem('editing-report-id');
+            }
+        }
+    }, [reports]);
     const [reportToRestore, setReportToRestore] = useState<Report | null>(null);
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
     const { addToast } = useToast();
@@ -213,8 +229,15 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
 
     const handleEditClick = (report: Report) => {
         setReportToEdit(report);
+        localStorage.setItem('editing-report-id', report.id);
         setIsReportModalOpen(true);
         setDetailModalReport(null); // Close detail modal if open
+    };
+
+    const handleCloseReportModal = () => {
+        setIsReportModalOpen(false);
+        setReportToEdit(null);
+        localStorage.removeItem('editing-report-id');
     };
 
     const handleConfirmRestore = async () => {
@@ -405,7 +428,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
 
             <ReportModal
                 isOpen={isReportModalOpen}
-                onClose={() => setIsReportModalOpen(false)}
+                onClose={handleCloseReportModal}
                 reportToEdit={reportToEdit}
                 onReportSubmitted={fetchData}
             />
