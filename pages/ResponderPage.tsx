@@ -48,7 +48,9 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
-        return localStorage.getItem('responder_report_modal_open') === 'true';
+        const hasDraft = !!localStorage.getItem('new-report');
+        const wasOpen = localStorage.getItem('responder_report_modal_open') === 'true';
+        return hasDraft || wasOpen;
     });
     
     useEffect(() => {

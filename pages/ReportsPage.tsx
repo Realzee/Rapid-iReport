@@ -63,7 +63,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' } | null>({ key: 'reported_at', direction: 'descending' });
 
     const [detailModalReport, setDetailModalReport] = useState<Report | null>(null);
-    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
+        return !!localStorage.getItem('new-report');
+    });
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
     const [reportToRestore, setReportToRestore] = useState<Report | null>(null);
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);

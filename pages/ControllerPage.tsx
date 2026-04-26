@@ -52,7 +52,9 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const [selectedResponderId, setSelectedResponderId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<ControllerTab>('events');
     const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
-        return localStorage.getItem('controller_report_modal_open') === 'true';
+        const hasDraft = !!localStorage.getItem('new-report');
+        const wasOpen = localStorage.getItem('controller_report_modal_open') === 'true';
+        return hasDraft || wasOpen;
     });
 
     useEffect(() => {

@@ -16,7 +16,9 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
     const [companyUsers, setCompanyUsers] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
-    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
+        return !!localStorage.getItem('new-report');
+    });
     const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
 
     const fetchMyData = async () => {
