@@ -240,7 +240,7 @@ const ControllerReportDetail: React.FC<{
             const { data: recoveredData } = await supabase
                 .from('vehicle_reports')
                 .select('*')
-                .eq('report_status', 'recovered')
+                .eq('status', 'recovered')
                 .limit(50);
             
             if (recoveredData) {
