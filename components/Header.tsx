@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, memo } from 'react';
-import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, RadioTowerIcon } from './icons';
+import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, GlobeIcon, RadioTowerIcon, BuildingIcon, HistoryIcon, SearchIcon, ChartBarIcon, MapIcon, UsersIcon, ClipboardCheckIcon, ScanIcon } from './icons';
 import { Profile, UserRole, Notification } from '../types';
 import { supabase } from '../utils/supabase';
 import { useSettings } from '../contexts/SettingsContext';
@@ -172,10 +172,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       return (
         <>
           <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>
-            My Reports
+            <GlobeIcon className="w-4 h-4 mr-2" /> My Reports
           </button>
           <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>
-            Global Search
+            <SearchIcon className="w-4 h-4 mr-2" /> Global Search
           </button>
         </>
       );
@@ -184,32 +184,58 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     if (profile.role === UserRole.CONTROLLER) {
       return (
         <>
-          <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>Controller</button>
-          <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>Guarding</button>
-          <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>Global Search</button>
+          <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>
+            <RadioTowerIcon className="w-4 h-4 mr-2" /> Controller
+          </button>
+          <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>
+            <BuildingIcon className="w-4 h-4 mr-2" /> Guarding
+          </button>
+          <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>
+            <SearchIcon className="w-4 h-4 mr-2" /> Global Search
+          </button>
         </>
       );
     }
 
     if (profile.role === UserRole.RESPONDER) {
-      return null; // Responders do not have main navigation items.
+      return null;
     }
   
     // For Admin/Moderator
     return (
       <>
-        <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>Dashboard</button>
-        <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>Controller</button>
-        <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>Guarding</button>
-        <button onClick={() => clickHandler('archives')} className={classGetter('archives')}>Archives</button>
-        <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>Global Search</button>
-        <button onClick={() => clickHandler('analytics')} className={classGetter('analytics')}>Analytics</button>
-        <button onClick={() => clickHandler('map')} className={classGetter('map')}>Map</button>
+        <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>
+          <GlobeIcon className="w-4 h-4 mr-2" /> Dashboard
+        </button>
+        <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>
+          <RadioTowerIcon className="w-4 h-4 mr-2" /> Controller
+        </button>
+        <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>
+          <BuildingIcon className="w-4 h-4 mr-2" /> Guarding
+        </button>
+        <button onClick={() => clickHandler('archives')} className={classGetter('archives')}>
+          <HistoryIcon className="w-4 h-4 mr-2" /> Archives
+        </button>
+        <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>
+          <SearchIcon className="w-4 h-4 mr-2" /> Global Search
+        </button>
+        <button onClick={() => clickHandler('analytics')} className={classGetter('analytics')}>
+          <ChartBarIcon className="w-4 h-4 mr-2" /> Analytics
+        </button>
+        <button onClick={() => clickHandler('map')} className={classGetter('map')}>
+          <MapIcon className="w-4 h-4 mr-2" /> Map
+        </button>
         {canAccessAdminPages && (
           <>
-            <button onClick={() => clickHandler('users')} className={classGetter('users')}>Users</button>
-            <button onClick={() => clickHandler('activity_logs')} className={classGetter('activity_logs')}>Logs</button>
-            <button onClick={() => clickHandler('companies')} className={classGetter('companies')}>Settings</button>
+            <button onClick={() => clickHandler('users')} className={classGetter('users')}>
+              <UsersIcon className="w-4 h-4 mr-2" /> Users
+            </button>
+            <button onClick={() => clickHandler('activity_logs')} className={classGetter('activity_logs')}>
+              <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Logs
+            </button>
+            <button onClick={() => clickHandler('companies')} className={classGetter('companies')}>
+              <BuildingIcon className="w-4 h-4 mr-2" /> Settings
+            </button>
           </>
         )}
       </>

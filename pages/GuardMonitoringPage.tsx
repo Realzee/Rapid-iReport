@@ -7,6 +7,7 @@ import AnalyticsPanel from '../components/GuardMonitoring/AnalyticsPanel';
 import GateAccessPage from './GateAccessPage';
 import { useResponders } from '../contexts/RespondersContext';
 import { Profile } from '../types';
+import { ScanIcon, MapIcon, BuildingIcon, ClipboardCheckIcon, ChartBarIcon } from '../components/icons';
 
 interface GuardMonitoringPageProps {
     profile: Profile;
@@ -33,11 +34,11 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
     if (loading) return <div className="p-6">Loading...</div>;
 
     const tabs = [
-        { id: 'gate_access', label: 'Gate Access Control' },
-        { id: 'overview', label: 'Overview' },
-        { id: 'config', label: 'Configuration' },
-        { id: 'reporting', label: 'Reporting' },
-        { id: 'analytics', label: 'Analytics' },
+        { id: 'gate_access', label: 'Gate Access Control', icon: ScanIcon },
+        { id: 'overview', label: 'Overview', icon: MapIcon },
+        { id: 'config', label: 'Configuration', icon: BuildingIcon },
+        { id: 'reporting', label: 'Reporting', icon: ClipboardCheckIcon },
+        { id: 'analytics', label: 'Analytics', icon: ChartBarIcon },
     ] as const;
 
     return (
@@ -49,12 +50,13 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                                 activeTab === tab.id
                                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow'
                                     : 'text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                             }`}
                         >
+                            <tab.icon className="w-4 h-4" />
                             {tab.label}
                         </button>
                     ))}
