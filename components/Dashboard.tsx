@@ -40,10 +40,26 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-    const [reportToEdit, setReportToEdit] = useState<Report | null>(null);
+    const [reportToEdit, setReportToEdit] = useState<Report | null>(() => {
+        const savedId = localStorage.getItem('editing-report-id');
+        return null;
+    });
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
     const { addToast } = useToast();
     const { openChat } = useChat();
+
+    useEffect(() => {
+        const savedId = localStorage.getItem('editing-report-id');
+        if (savedId && reports.length > 0) {
+            const report = reports.find(r => r.id === savedId);
+            if (report) {
+                setReportToEdit(report);
+                setIsReportModalOpen(true);
+            } else {
+                localStorage.removeItem('editing-report-id');
+            }
+        }
+    }, [reports]);
 
     useEffect(() => {
         allUsersRef.current = allUsers;
@@ -279,7 +295,16 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const selectedReport = useMemo(() => reports.find(r => r.id === selectedReportId), [reports, selectedReportId]);
     
     const handleOpenNewReportModal = useCallback(() => { setReportToEdit(null); setIsReportModalOpen(true); }, []);
-    const handleOpenEditReportModal = useCallback((report: Report) => { setReportToEdit(report); setIsReportModalOpen(true); }, []);
+    const handleOpenEditReportModal = useCallback((report: Report) => {
+        setReportToEdit(report);
+        localStorage.setItem('editing-report-id', report.id);
+        setIsReportModalOpen(true);
+    }, []);
+    const handleCloseReportModal = useCallback(() => {
+        setIsReportModalOpen(false);
+        setReportToEdit(null);
+        localStorage.removeItem('editing-report-id');
+    }, []);
     const handleOpenDeleteReportModal = useCallback((report: Report) => setReportToDelete(report), []);
     
     const confirmDeleteReport = useCallback(async () => {
@@ -496,7 +521,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                     </div>
                 </div>
             </div>
-            <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} reportToEdit={reportToEdit} onReportSubmitted={fetchData} />
+            <ReportModal isOpen={isReportModalOpen} onClose={handleCloseReportModal} reportToEdit={reportToEdit} onReportSubmitted={fetchData} />
             <ArchiveReportModal isOpen={!!reportToDelete} onClose={() => setReportToDelete(null)} onConfirm={confirmDeleteReport} reportIdentifier={reportToDelete ? (reportToDelete.type === 'vehicle' ? (reportToDelete as any).license_plate : reportToDelete.title) : ''} />
             <MapModal isOpen={isMapModalOpen} onClose={() => setIsMapModalOpen(false)} report={selectedReport} />
         </div>
