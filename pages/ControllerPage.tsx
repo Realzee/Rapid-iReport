@@ -478,10 +478,12 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         }`;
 
     return (
-        <>
+        <div className="container mx-auto px-4 py-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 print:hidden">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Live Controller</h2>
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                        <RadioTowerIcon className="w-8 h-8 text-blue-600"/> Live Controller
+                    </h2>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">Real-time incident management and dispatch.</p>
                 </div>
                 <div className="mt-4 md:mt-0 flex items-center gap-4">
@@ -625,7 +627,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 isQuickAdd={true}
                 onReportSubmitted={fetchData}
             />
-        </>
+        </div>
     );
 };
 

@@ -561,10 +561,12 @@ const CompaniesPage: React.FC = () => {
 
 
     return (
-        <div className="container mx-auto space-y-8">
+        <div className="container mx-auto px-4 py-6 space-y-8">
             {currentUserProfile?.role === UserRole.ADMIN && (
                 <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 backdrop-blur-lg shadow-lg">
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Global Branding</h3>
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+                        <DatabaseIcon className="w-7 h-7 text-blue-600" /> Global Branding
+                    </h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-12">
                         {/* Logo Section */}
                         <div>
