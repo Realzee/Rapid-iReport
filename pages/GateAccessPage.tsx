@@ -144,12 +144,18 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
         };
 
         try {
-            const promises: Promise<any>[] = [supabase.from('gate_access_logs').insert(logData)];
+            const promises: any[] = [
+                supabase.from('gate_access_logs').insert(logData)
+            ];
 
             if (logData.is_wanted) {
                 // Mark vehicle report as wanted
                 if (scanResult.wantedReport) {
-                    promises.push(supabase.from('vehicle_reports').update({ is_wanted: true }).eq('id', scanResult.wantedReport.id));
+                    promises.push(
+                        supabase.from('vehicle_reports')
+                            .update({ is_wanted: true })
+                            .eq('id', scanResult.wantedReport.id)
+                    );
                 }
                 
                 const alertReport = {
@@ -175,11 +181,14 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 if (reportError) throw reportError;
                 
                 if (createdReport) {
-                    promises.push(supabase.from('report_updates').insert({
-                        report_id: createdReport.id,
-                        user_id: profile.id,
-                        content: `Wanted vehicle detected: ${scanResult.plate} at ${logData.gate_name}`
-                    }));
+                    promises.push(
+                        supabase.from('report_updates')
+                            .insert({
+                                report_id: createdReport.id,
+                                user_id: profile.id,
+                                content: `Wanted vehicle detected: ${scanResult.plate} at ${logData.gate_name}`
+                            })
+                    );
                 }
             }
 
