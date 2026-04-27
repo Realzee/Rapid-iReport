@@ -83,6 +83,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         licensePlate: string;
     } | null>(null);
     const [isMapVisible, setMapVisible] = useState(false);
+    const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
     const { addToast } = useToast();
     
     // Address suggestion state
@@ -136,9 +137,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     
     const handleClose = () => {
         if (isDirty) {
-            if (window.confirm("You have unsaved changes. Are you sure you want to close? Your draft will be saved for next time.")) {
-                onClose();
-            }
+            setIsConfirmCloseOpen(true);
         } else {
             clearDraft();
             onClose();
@@ -863,8 +862,58 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             </div>
 
             <AnimatePresence>
+                {isConfirmCloseOpen && (
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-gray-200 dark:border-gray-700"
+                        >
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Unsaved Changes</h3>
+                            <p className="text-gray-600 dark:text-gray-400 mb-6">
+                                You have unsaved changes. Would you like to save this as a draft for later, or discard your changes?
+                            </p>
+
+                            <div className="flex flex-col gap-3">
+                                <button 
+                                    type="button"
+                                    onClick={() => {
+                                        setIsConfirmCloseOpen(false);
+                                        onClose();
+                                    }}
+                                    className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all"
+                                >
+                                    Save Draft
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => {
+                                        clearDraft();
+                                        setIsConfirmCloseOpen(false);
+                                        onClose();
+                                    }}
+                                    className="w-full py-3 px-4 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-bold hover:bg-red-200 dark:hover:bg-red-900/50 transition-all"
+                                >
+                                    Discard Draft
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsConfirmCloseOpen(false)}
+                                    className="w-full py-3 px-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold transition-all"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
                 {duplicateInfo && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+
                         <motion.div 
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
