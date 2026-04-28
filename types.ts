@@ -4,6 +4,7 @@ export enum UserRole {
   MODERATOR = 'moderator',
   CONTROLLER = 'controller',
   RESPONDER = 'responder',
+  GUARD = 'guard',
   USER = 'user',
 }
 

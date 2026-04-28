@@ -12,6 +12,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import ProfilePage from './pages/ProfilePage';
 import ControllerPage from './pages/ControllerPage';
 import ResponderPage from './pages/ResponderPage';
+import GuardDashboardPage from './pages/GuardDashboardPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import PublicDashboardPage from './pages/PublicDashboardPage';
 import AboutPage from './pages/AboutPage';
@@ -318,6 +319,12 @@ const App: React.FC = () => {
         return view === 'profile' 
             ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
             : <ResponderPage profile={profile} setProfile={setProfile} />;
+    }
+
+    if (profile.role === UserRole.GUARD) {
+        return view === 'profile' 
+            ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
+            : <GuardDashboardPage profile={profile} />;
     }
     
     if (profile.role === UserRole.USER) {

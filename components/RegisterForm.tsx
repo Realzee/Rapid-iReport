@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { UserIcon, MailIcon, LockIcon, UploadCloudIcon, BuildingIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
-import { Company } from '../types';
+import { Company, UserRole } from '../types';
 
 interface RegisterFormProps {
   onSwitchToLogin: () => void;
@@ -24,6 +24,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState('');
+  const [role, setRole] = useState(UserRole.USER);
   
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
@@ -67,6 +68,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
                 medical_aid: medicalAid || null,
                 psira_number: psiraNumber || null,
                 company_id: companyId,
+                role: role,
             }
         }
     });
@@ -161,25 +163,44 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
               </div>
             </div>
         </div>
-         <div>
-          <label htmlFor="company_id_reg" className={labelClasses}>Company</label>
-          <div className={inputContainerClasses}>
-            <div className={iconClasses}><BuildingIcon className="w-5 h-5 text-gray-400" /></div>
-            <select
-                id="company_id_reg"
-                name="companyId"
-                required
-                value={companyId}
-                onChange={(e) => setCompanyId(e.target.value)}
-                className={inputClasses}
-            >
-                <option value="" disabled>Select your company...</option>
-                {companies.map(company => (
-                    <option key={company.id} value={company.id}>{company.name}</option>
-                ))}
-            </select>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="company_id_reg" className={labelClasses}>Company</label>
+              <div className={inputContainerClasses}>
+                <div className={iconClasses}><BuildingIcon className="w-5 h-5 text-gray-400" /></div>
+                <select
+                    id="company_id_reg"
+                    name="companyId"
+                    required
+                    value={companyId}
+                    onChange={(e) => setCompanyId(e.target.value)}
+                    className={inputClasses}
+                >
+                    <option value="" disabled>Select your company...</option>
+                    {companies.map(company => (
+                        <option key={company.id} value={company.id}>{company.name}</option>
+                    ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label htmlFor="role_reg" className={labelClasses}>Role</label>
+              <div className={inputContainerClasses}>
+                <select
+                    id="role_reg"
+                    name="role"
+                    required
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as UserRole)}
+                    className={`${inputClasses} !pl-3`}
+                >
+                    <option value={UserRole.USER}>User</option>
+                    <option value={UserRole.GUARD}>Guard</option>
+                    <option value={UserRole.RESPONDER}>Responder</option>
+                </select>
+              </div>
+            </div>
           </div>
-        </div>
         <div>
           <label htmlFor="email_reg" className={labelClasses}>Email Address</label>
           <div className={inputContainerClasses}>
