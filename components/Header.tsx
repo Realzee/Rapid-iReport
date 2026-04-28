@@ -165,7 +165,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   };
 
   const NavLinks: React.FC<{mobile?: boolean}> = ({ mobile = false}) => {
-    const clickHandler = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access') => mobile ? handleMobileLinkClick(view as any) : setView(view as any);
+    const clickHandler = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'attendance') => mobile ? handleMobileLinkClick(view as any) : setView(view as any);
     const classGetter = mobile ? mobileNavLinkClasses : navLinkClasses;
 
     if (profile.role === UserRole.USER) {
@@ -200,6 +200,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
           <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>
             <BuildingIcon className="w-4 h-4 mr-2" /> Guarding
           </button>
+          <button onClick={() => clickHandler('attendance')} className={classGetter('attendance')}>
+            <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Attendance
+          </button>
           <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>
             <SearchIcon className="w-4 h-4 mr-2" /> Global Search
           </button>
@@ -222,6 +225,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         </button>
         <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>
           <BuildingIcon className="w-4 h-4 mr-2" /> Guarding
+        </button>
+        <button onClick={() => clickHandler('attendance')} className={classGetter('attendance')}>
+          <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Attendance
         </button>
         <button onClick={() => clickHandler('archives')} className={classGetter('archives')}>
           <HistoryIcon className="w-4 h-4 mr-2" /> Archives

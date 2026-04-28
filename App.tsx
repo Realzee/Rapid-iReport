@@ -13,6 +13,7 @@ import ProfilePage from './pages/ProfilePage';
 import ControllerPage from './pages/ControllerPage';
 import ResponderPage from './pages/ResponderPage';
 import GuardDashboardPage from './pages/GuardDashboardPage';
+import AttendancePage from './pages/AttendancePage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import PublicDashboardPage from './pages/PublicDashboardPage';
 import AboutPage from './pages/AboutPage';
@@ -336,6 +337,7 @@ const App: React.FC = () => {
     
     if (profile.role === UserRole.CONTROLLER) {
       if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
+      if (view === 'attendance') return <AttendancePage />;
       return view === 'profile'
           ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
           : <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
@@ -347,6 +349,7 @@ const App: React.FC = () => {
       case 'dashboard': return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
       case 'controller': return <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
       case 'archives': return <ReportsPage profile={profile} />;
+      case 'attendance': return <AttendancePage />;
       case 'global_search': return <GlobalSearchPage profile={profile} isGlobalAdmin={isGlobalAdmin} />;
       case 'analytics': return <AnalyticsPage />;
       case 'users': return <UsersPage />;

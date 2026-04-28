@@ -20,9 +20,15 @@ const GuardDashboardPage: React.FC<GuardDashboardPageProps> = ({ profile }) => {
                 .select('*')
                 .eq('user_id', profile.id)
                 .is('clock_out_time', null)
-                .order('clock_in_time', { ascending: false })
-                .single();
-            if (data) setAttendance(data);
+                .order('clock_in_time', { ascending: false });
+            
+            if (error) {
+                console.error('Error fetching attendance:', error);
+                return;
+            }
+            if (data && data.length > 0) {
+                setAttendance(data[0]);
+            }
         };
         fetchAttendance();
     }, [profile.id]);
