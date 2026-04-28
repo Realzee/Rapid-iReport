@@ -323,6 +323,7 @@ const App: React.FC = () => {
     }
 
     if (profile.role === UserRole.GUARD) {
+        if (view === 'gate_access') return <GateAccessPage profile={profile} />;
         return view === 'profile' 
             ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
             : <GuardDashboardPage profile={profile} />;
