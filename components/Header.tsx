@@ -181,6 +181,16 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       );
     }
 
+    if (profile.role === UserRole.GUARD) {
+      return (
+        <>
+          <button onClick={() => clickHandler('gate_access')} className={classGetter('gate_access')}>
+            <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Gate Access
+          </button>
+        </>
+      );
+    }
+
     if (profile.role === UserRole.CONTROLLER) {
       return (
         <>
