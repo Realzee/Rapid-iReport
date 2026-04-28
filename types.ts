@@ -265,6 +265,14 @@ export interface ChatMessage {
   };
 }
 
+export interface Attendance {
+    id: string;
+    user_id: string;
+    clock_in_time: string;
+    clock_out_time?: string;
+    created_at: string;
+}
+
 export interface Site {
     id: string;
     name: string;
