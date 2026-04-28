@@ -184,6 +184,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     if (profile.role === UserRole.GUARD) {
       return (
         <>
+          <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>
+            <GlobeIcon className="w-4 h-4 mr-2" /> Dashboard
+          </button>
           <button onClick={() => clickHandler('gate_access')} className={classGetter('gate_access')}>
             <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Gate Access
           </button>
