@@ -214,6 +214,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         e.preventDefault();
+        e.stopPropagation();
         if (e.target.files) {
             const selectedFiles = Array.from(e.target.files);
             setImageFiles(prev => [...prev, ...selectedFiles]);
