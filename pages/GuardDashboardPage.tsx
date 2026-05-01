@@ -35,11 +35,22 @@ const GuardDashboardPage: React.FC<GuardDashboardPageProps> = ({ profile }) => {
 
     const handleClock = async () => {
         setLoading(true);
+        let currentLocation = '';
+        try {
+            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject);
+            });
+            currentLocation = `${position.coords.latitude},${position.coords.longitude}`;
+        } catch (error) {
+            console.error('Error getting location:', error);
+            addToast('Could not get location. Clocking in without location.', 'warning');
+        }
+
         if (attendance) {
             // Clock out
             const { error } = await supabase
                 .from('attendance')
-                .update({ clock_out_time: new Date().toISOString() })
+                .update({ clock_out_time: new Date().toISOString(), clock_out_location: currentLocation })
                 .eq('id', attendance.id);
             if (!error) {
                 setAttendance(null);
@@ -51,7 +62,7 @@ const GuardDashboardPage: React.FC<GuardDashboardPageProps> = ({ profile }) => {
             // Clock in
             const { data, error } = await supabase
                 .from('attendance')
-                .insert({ user_id: profile.id, clock_in_time: new Date().toISOString() })
+                .insert({ user_id: profile.id, clock_in_time: new Date().toISOString(), clock_in_location: currentLocation })
                 .select()
                 .single();
             if (data) {
