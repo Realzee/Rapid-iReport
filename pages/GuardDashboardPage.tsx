@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Profile, Attendance } from '../types';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
+import ClockInModal from '../components/ClockInModal';
 
 interface GuardDashboardPageProps {
     profile: Profile;
@@ -11,6 +12,7 @@ const GuardDashboardPage: React.FC<GuardDashboardPageProps> = ({ profile }) => {
     const [attendance, setAttendance] = useState<Attendance | null>(null);
     const [loading, setLoading] = useState(false);
     const [siteUpdate, setSiteUpdate] = useState('');
+    const [showClockModal, setShowClockModal] = useState(false);
     const { addToast } = useToast();
 
     useEffect(() => {
@@ -33,18 +35,9 @@ const GuardDashboardPage: React.FC<GuardDashboardPageProps> = ({ profile }) => {
         fetchAttendance();
     }, [profile.id]);
 
-    const handleClock = async () => {
+    const performClock = async (currentLocation: string) => {
         setLoading(true);
-        let currentLocation = '';
-        try {
-            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject);
-            });
-            currentLocation = `${position.coords.latitude},${position.coords.longitude}`;
-        } catch (error) {
-            console.error('Error getting location:', error);
-            addToast('Could not get location. Clocking in without location.', 'warning');
-        }
+        setShowClockModal(false);
 
         if (attendance) {
             // Clock out
@@ -99,12 +92,18 @@ const GuardDashboardPage: React.FC<GuardDashboardPageProps> = ({ profile }) => {
                 <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
                     <h2 className="text-lg font-bold mb-4">Attendance</h2>
                     <button 
-                        onClick={handleClock} 
+                        onClick={() => setShowClockModal(true)} 
                         disabled={loading}
                         className={`w-full py-2 px-4 rounded ${attendance ? 'bg-red-500' : 'bg-green-500'} text-white`}
                     >
                         {attendance ? 'Clock Out' : 'Clock In'}
                     </button>
+                    <ClockInModal
+                        isOpen={showClockModal}
+                        onClose={() => setShowClockModal(false)}
+                        onConfirm={performClock}
+                        action={attendance ? 'clockOut' : 'clockIn'}
+                    />
                 </div>
 
                 <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
