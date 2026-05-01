@@ -6,7 +6,7 @@ interface ConfirmModalProps {
     onClose: () => void;
     onConfirm: () => void;
     title: string;
-    message: string;
+    message: string | React.ReactNode;
     confirmText?: string;
     confirmVariant?: 'primary' | 'danger';
 }
@@ -35,8 +35,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 </div>
                 <div className="mt-3 text-center sm:mt-5">
                     <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">{title}</h3>
-                    <div className="mt-2">
-                        <p className="text-sm text-gray-500 dark:text-gray-400" dangerouslySetInnerHTML={{ __html: message }}></p>
+                    <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        {typeof message === 'string' ? <p dangerouslySetInnerHTML={{ __html: message }}></p> : message}
                     </div>
                 </div>
                 <div className="mt-5 sm:mt-6 flex justify-center space-x-4">
