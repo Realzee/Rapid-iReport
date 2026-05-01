@@ -487,7 +487,12 @@ const App: React.FC = () => {
                     {renderView()}
                   </main>
                   <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">
-                      <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto h-4" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
+                      <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto min-w-[32px] h-4 opacity-0 transition-opacity duration-300" onLoad={(e) => { e.currentTarget.style.opacity = '1'; }} onError={(e) => { 
+                          e.currentTarget.style.opacity = '1';
+                          if (e.currentTarget.src !== defaultLogoUrl) {
+                              e.currentTarget.src = defaultLogoUrl;
+                          }
+                      }} />
                       <span>Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)</span>
                   </footer>
                 </div>
