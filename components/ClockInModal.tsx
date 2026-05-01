@@ -13,6 +13,7 @@ interface ClockInModalProps {
 const ClockInModal: React.FC<ClockInModalProps> = ({ isOpen, onClose, onConfirm, action }) => {
     const [loading, setLoading] = useState(true);
     const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
+    const [showMap, setShowMap] = useState(true);
     const { addToast } = useToast();
 
     useEffect(() => {
@@ -46,7 +47,19 @@ const ClockInModal: React.FC<ClockInModalProps> = ({ isOpen, onClose, onConfirm,
                 : (
                     <div className="space-y-4">
                         <p>Confirm your current location to {action === 'clockIn' ? 'clock in' : 'clock out'}:</p>
-                        {position && <LocationMap lat={position.lat} lng={position.lng} />}
+                        {position && (
+                            <div className="space-y-2">
+                                <label className="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input
+                                        type="checkbox"
+                                        checked={showMap}
+                                        onChange={() => setShowMap(!showMap)}
+                                    />
+                                    <span>Show Map</span>
+                                </label>
+                                {showMap && <LocationMap lat={position.lat} lng={position.lng} />}
+                            </div>
+                        )}
                     </div>
                 )
             }
