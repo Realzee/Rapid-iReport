@@ -282,7 +282,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
           <div className="hidden md:flex flex-grow px-1 overflow-hidden relative group">
             <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white dark:from-gray-950 to-transparent z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white dark:from-gray-950 to-transparent z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <nav className="flex items-center space-x-1 overflow-x-auto no-scrollbar max-w-full w-full justify-start px-2 py-1">
+            <nav className="flex items-center space-x-1 overflow-x-auto custom-scrollbar max-w-full w-full justify-start px-2 py-1">
                 <NavLinks />
             </nav>
           </div>
@@ -342,7 +342,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       </div>
       
       {/* Mobile Menu */}
-      <div className={`md:hidden absolute top-full left-0 right-0 bg-white/95 dark:bg-gray-950/95 backdrop-blur-md shadow-lg transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-y-0' : '-translate-y-[150%]'}`}>
+      <div className={`md:hidden absolute top-full left-0 right-0 bg-white/95 dark:bg-gray-950/95 backdrop-blur-md shadow-lg transition-transform duration-300 ease-in-out max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar ${mobileMenuOpen ? 'translate-y-0' : '-translate-y-[150%]'}`}>
           <nav className="flex flex-col p-4 space-y-2">
             <NavLinks mobile={true} />
             <div className="border-t border-gray-200 dark:border-gray-700 my-2 pt-2 space-y-2">
