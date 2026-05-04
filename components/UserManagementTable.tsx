@@ -82,14 +82,14 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                         <div className="flex items-start justify-between">
                             <button onClick={() => onView(user)} className="flex items-center space-x-4 text-left hover:opacity-80 transition-opacity">
                                 <div className="flex-shrink-0 h-10 w-10 relative">
-                                    <img className="h-10 w-10 rounded-full" src={user.avatar_url || `https://i.pravatar.cc/40?u=${user.id}`} alt="" />
+                                    <img className="h-10 w-10 rounded-full border border-gray-200 dark:border-gray-700" src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name || user.surname || (user as any).name || user.email)}&background=random`} alt="" />
                                     <span className={`absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-gray-800 ${isOnline(user.last_seen_at) ? 'bg-green-400' : 'bg-gray-500'}`} />
                                 </div>
                                 <div>
                                     <p className="font-bold text-gray-900 dark:text-white truncate">
                                         {(user.first_name || user.surname) 
                                             ? `${user.first_name || ''} ${user.surname || ''}`.trim() 
-                                            : (user as any).name || 'Unnamed User'}
+                                            : (user as any).name || user.email.split('@')[0]}
                                     </p>
                                     <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                                 </div>
@@ -214,8 +214,8 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
 
                             let roleOptions = Object.values(UserRole);
                             if (currentUserProfile.role === UserRole.MODERATOR) {
-                                // Moderators can't create other admins or moderators
-                                roleOptions = [UserRole.USER, UserRole.RESPONDER, UserRole.CONTROLLER];
+                                // Moderators can't create other admins or moderators, but can manage field staff
+                                roleOptions = [UserRole.USER, UserRole.RESPONDER, UserRole.CONTROLLER, UserRole.GUARD, UserRole.SUPERVISOR];
                             }
 
                             return (
@@ -223,7 +223,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <button onClick={() => onView(user)} className="flex items-center text-left hover:opacity-80 transition-opacity">
                                             <div className="flex-shrink-0 h-10 w-10 relative">
-                                                <img className="h-10 w-10 rounded-full" src={user.avatar_url || `https://i.pravatar.cc/40?u=${user.id}`} alt="" />
+                                                <img className="h-10 w-10 rounded-full border border-gray-200 dark:border-gray-700" src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name || user.surname || (user as any).name || user.email)}&background=random`} alt="" />
                                                 <span
                                                     className={`absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-gray-800 ${
                                                         isOnline(user.last_seen_at) ? 'bg-green-400' : 'bg-gray-500'
@@ -231,14 +231,14 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                                 />
                                             </div>
                                             <div className="ml-4">
-                                                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                <div className="text-sm font-bold text-gray-900 dark:text-white truncate">
                                                     {(user.first_name || user.surname) 
                                                         ? `${user.first_name || ''} ${user.surname || ''}`.trim() 
-                                                        : (user as any).name || 'Unnamed User'}
+                                                        : (user as any).name || user.email.split('@')[0]}
                                                 </div>
                                                 <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</div>
-                                                {user.cell && <div className="text-xs text-gray-400 dark:text-gray-500 truncate">Cell: {user.cell}</div>}
-                                                {user.psira_number && <div className="text-xs text-blue-400 dark:text-blue-500 font-bold truncate">PSIRA: {user.psira_number}</div>}
+                                                {user.cell && <div className="text-xs text-gray-400 dark:text-gray-500 truncate font-medium">Cell: {user.cell}</div>}
+                                                {user.psira_number && <div className="text-xs text-blue-500 dark:text-blue-400 font-bold truncate mt-0.5">PSIRA: {user.psira_number}</div>}
                                             </div>
                                         </button>
                                     </td>
