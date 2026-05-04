@@ -95,6 +95,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
 
     const fetchItems = async () => {
         setLoading(true);
+        setItems([]); // Clear items before fetching new ones
         try {
             const url = profile?.company_id 
                 ? `/api/guard-monitoring?table=${activeTab}&company_id=${profile.company_id}`

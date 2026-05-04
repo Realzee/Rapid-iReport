@@ -23,13 +23,16 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
             const tables = ['sites', 'guards', 'routes', 'supervisors', 'checkpoints', 'patrol_logs'];
             const results: any = { ...data };
             for (const table of tables) {
-                const response = await fetch(`/api/guard-monitoring?table=${table}`);
+                const url = profile?.company_id 
+                    ? `/api/guard-monitoring?table=${table}&company_id=${profile.company_id}`
+                    : `/api/guard-monitoring?table=${table}`;
+                const response = await fetch(url);
                 if (response.ok) results[table] = await response.json();
             }
             setData(results);
         };
         fetchData();
-    }, []);
+    }, [profile.company_id]);
 
     if (loading) return <div className="p-6">Loading...</div>;
 

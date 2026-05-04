@@ -126,16 +126,15 @@ export default async function handler(req: any, res: any) {
         }
         
         if (action.startsWith('update-')) {
-            const table = action.split('-')[1] + (action.split('-')[1] === 'site' || action.split('-')[1] === 'route' ? 's' : (action.split('-')[1] === 'checkpoint' ? 's' : (action.split('-')[1] === 'supervisor' ? 's' : 's')));
-            // Re-mapping table names correctly
             let targetTbl = '';
-            if (action === 'update-site') targetTbl = 'sites';
-            else if (action === 'update-guard') targetTbl = 'guards';
-            else if (action === 'update-route') targetTbl = 'routes';
-            else if (action === 'update-supervisor') targetTbl = 'supervisors';
-            else if (action === 'update-checkpoint') targetTbl = 'checkpoints';
+            const entity = action.split('-')[1];
+            if (entity === 'site') targetTbl = 'sites';
+            else if (entity === 'guard') targetTbl = 'guards';
+            else if (entity === 'route') targetTbl = 'routes';
+            else if (entity === 'supervisor') targetTbl = 'supervisors';
+            else if (entity === 'checkpoint') targetTbl = 'checkpoints';
             
-            if (!targetTbl) return res.status(400).json({ error: 'Invalid update action' });
+            if (!targetTbl) return res.status(400).json({ error: `Invalid update action entity: ${entity}` });
             
             const { id, ...updateData } = payload;
             if (!id) return res.status(400).json({ error: 'ID is required for update' });
@@ -147,13 +146,14 @@ export default async function handler(req: any, res: any) {
 
         if (action.startsWith('delete-')) {
             let targetTbl = '';
-            if (action === 'delete-site') targetTbl = 'sites';
-            else if (action === 'delete-guard') targetTbl = 'guards';
-            else if (action === 'delete-route') targetTbl = 'routes';
-            else if (action === 'delete-supervisor') targetTbl = 'supervisors';
-            else if (action === 'delete-checkpoint') targetTbl = 'checkpoints';
+            const entity = action.split('-')[1];
+            if (entity === 'site') targetTbl = 'sites';
+            else if (entity === 'guard') targetTbl = 'guards';
+            else if (entity === 'route') targetTbl = 'routes';
+            else if (entity === 'supervisor') targetTbl = 'supervisors';
+            else if (entity === 'checkpoint') targetTbl = 'checkpoints';
             
-            if (!targetTbl) return res.status(400).json({ error: 'Invalid delete action' });
+            if (!targetTbl) return res.status(400).json({ error: `Invalid delete action entity: ${entity}` });
             
             const { id } = payload;
             if (!id) return res.status(400).json({ error: 'ID is required for delete' });
