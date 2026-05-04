@@ -6,11 +6,15 @@ export default async function handler(req: any, res: any) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || '');
 
     if (req.method === 'GET') {
-        const { table } = req.query;
+        const { table, company_id } = req.query;
         if (!['sites', 'guards', 'routes', 'supervisors', 'checkpoints', 'patrol_logs'].includes(table as string)) {
             return res.status(400).json({ error: 'Invalid table' });
         }
-        const { data, error } = await supabaseAdmin.from(table as string).select('*');
+        let query = supabaseAdmin.from(table as string).select('*');
+        if (company_id) {
+            query = query.eq('company_id', company_id);
+        }
+        const { data, error } = await query;
         if (error) {
             console.error(`Error fetching table ${table}:`, error);
             if (error.code === '42P01') { // relation does not exist
@@ -28,13 +32,19 @@ export default async function handler(req: any, res: any) {
         if (action === 'fix-schema') {
             const queries = [
                 "ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
+                "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
+                "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
+                "ALTER TABLE public.routes ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
+                "ALTER TABLE public.checkpoints ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS name text",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS contact_number text",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS profile_pic_url text",
+                "ALTER TABLE public.supervisors ALTER COLUMN profile_id DROP NOT NULL",
                 "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS name text",
                 "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS contact_number text",
                 "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS psira_number text",
-                "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'off_duty'"
+                "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'off_duty'",
+                "ALTER TABLE public.guards ALTER COLUMN profile_id DROP NOT NULL"
             ];
             const results = [];
             for (const q of queries) {
@@ -170,9 +180,11 @@ export default async function handler(req: any, res: any) {
             let sanitizedPayload: any = { ...payload };
             
             // Special handling for required but missing fields
-            if (table === 'sites') {
-                if (!sanitizedPayload.location) {
-                    sanitizedPayload.location = { lat: -26.2041, lng: 28.0473 }; // Default to Johannesburg coords
+            if (['sites', 'guards', 'supervisors', 'routes', 'checkpoints'].includes(table)) {
+                if (table === 'sites' || table === 'checkpoints') {
+                    if (!sanitizedPayload.location) {
+                        sanitizedPayload.location = { lat: -26.2041, lng: 28.0473 }; // Default to Johannesburg coords
+                    }
                 }
                 if (!sanitizedPayload.company_id) {
                     const { data: firstCompany } = await supabaseAdmin.from('companies').select('id').limit(1).single();
@@ -180,9 +192,6 @@ export default async function handler(req: any, res: any) {
                         sanitizedPayload.company_id = firstCompany.id;
                     }
                 }
-            }
-            if (table === 'checkpoints' && !sanitizedPayload.location) {
-                sanitizedPayload.location = { lat: -26.2041, lng: 28.0473 };
             }
 
             if (!colsError && colsData) {

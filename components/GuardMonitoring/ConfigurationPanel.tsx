@@ -11,10 +11,12 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
     const [activeTab, setActiveTab] = useState<'sites' | 'guards' | 'routes' | 'supervisors' | 'checkpoints'>('sites');
     const [formData, setFormData] = useState<any>({});
     const [items, setItems] = useState<any[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const tabs = [
         { 
@@ -32,6 +34,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
             label: 'Guards', 
             fields: [
                 { name: 'name', label: 'Guard Name', type: 'text' },
+                { name: 'profile_id', label: 'Link to Account', type: 'select', options: users.map(u => ({ value: u.id, label: `${u.first_name || ''} ${u.last_name || ''} (${u.email})` })) },
                 { name: 'profile_pic_url', label: 'Profile Pic', type: 'image' },
                 { name: 'contact_number', label: 'Contact Number', type: 'text' },
                 { name: 'psira_number', label: 'PSIRA Number', type: 'text' },
@@ -54,6 +57,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
             label: 'Supervisors', 
             fields: [
                 { name: 'name', label: 'Supervisor Name', type: 'text' },
+                { name: 'profile_id', label: 'Link to Account', type: 'select', options: users.map(u => ({ value: u.id, label: `${u.first_name || ''} ${u.last_name || ''} (${u.email})` })) },
                 { name: 'profile_pic_url', label: 'Profile Pic', type: 'image' },
                 { name: 'contact_number', label: 'Contact Number', type: 'text' },
                 { name: 'site_id', label: 'Site', type: 'select', options: sites.map(s => ({ value: s.id, label: s.name })) }
@@ -72,12 +76,30 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
 
     useEffect(() => {
         fetchItems();
+        fetchUsers();
     }, [activeTab]);
+
+    const fetchUsers = async () => {
+        try {
+            const res = await fetch('/api/profiles');
+            if (res.ok) {
+                const data = await res.json();
+                // Filter by company if needed
+                const filtered = profile.role === 'admin' ? data : data.filter((u: any) => u.company_id === profile.company_id);
+                setUsers(filtered);
+            }
+        } catch (e) {
+            console.error('Fetch users error:', e);
+        }
+    };
 
     const fetchItems = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/guard-monitoring?table=${activeTab}`);
+            const url = profile?.company_id 
+                ? `/api/guard-monitoring?table=${activeTab}&company_id=${profile.company_id}`
+                : `/api/guard-monitoring?table=${activeTab}`;
+            const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
                 setItems(data);
@@ -126,7 +148,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
         let payload = { ...formData };
         if (isEditing) payload.id = editingId;
         
-        if (activeTab === 'sites' && profile?.company_id) {
+        if (profile?.company_id) {
             payload.company_id = profile.company_id;
         }
         
@@ -165,6 +187,12 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
 
     const currentTab = tabs.find(t => t.id === activeTab);
 
+    const filteredItems = items.filter(item => 
+        item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.contact_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.id?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
             <div className="flex items-center justify-between mb-6">
@@ -180,21 +208,34 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                 )}
             </div>
 
-            <nav className="flex space-x-2 mb-6">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => { setActiveTab(tab.id); setFormData({}); setShowForm(false); setIsEditing(false); }}
-                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
-                            activeTab === tab.id
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                        }`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
+            <nav className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div className="flex space-x-2">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => { setActiveTab(tab.id); setFormData({}); setShowForm(false); setIsEditing(false); setSearchTerm(''); }}
+                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                                activeTab === tab.id
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+                {!showForm && (
+                    <div className="relative w-full md:w-64">
+                        <input 
+                            type="text"
+                            placeholder={`Search ${activeTab}...`}
+                            className="w-full pl-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                )}
             </nav>
 
             {showForm ? (
@@ -225,7 +266,15 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                         <select
                                             className="w-full p-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                                             value={formData[field.name] || ''}
-                                            onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                const selectedUser = users.find(u => u.id === val);
+                                                const newFormData = { ...formData, [field.name]: val };
+                                                if (field.name === 'profile_id' && selectedUser && !formData.name) {
+                                                    newFormData.name = `${selectedUser.first_name || ''} ${selectedUser.last_name || ''}`.trim();
+                                                }
+                                                setFormData(newFormData);
+                                            }}
                                             required
                                         >
                                             <option value="">Select {field.label}</option>
@@ -277,9 +326,9 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                                 {loading ? (
                                     <tr><td colSpan={3} className="px-6 py-10 text-center text-gray-500 italic">Loading items...</td></tr>
-                                ) : items.length === 0 ? (
-                                    <tr><td colSpan={3} className="px-6 py-10 text-center text-gray-500 italic">No {activeTab} found. Click "Add" to create one.</td></tr>
-                                ) : items.map((item) => (
+                                ) : filteredItems.length === 0 ? (
+                                    <tr><td colSpan={3} className="px-6 py-10 text-center text-gray-500 italic">{searchTerm ? 'No matches found.' : `No ${activeTab} found.`} Click "Add" to create one.</td></tr>
+                                ) : filteredItems.map((item) => (
                                     <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                                         <td className="px-6 py-4">
                                             <div className="font-medium text-gray-900 dark:text-white">{item.name}</div>
@@ -290,6 +339,11 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                                 {item.contact_number && <div>Ph: {item.contact_number}</div>}
                                                 {item.qr_code && <div>QR: {item.qr_code}</div>}
                                                 {item.psira_number && <div>PSIRA: {item.psira_number}</div>}
+                                                {item.profile_id && (
+                                                    <div className="text-xs text-blue-500 mt-1">
+                                                        Linked: {users.find(u => u.id === item.profile_id)?.email || 'User Account'}
+                                                    </div>
+                                                )}
                                                 {item.site_id && (
                                                     <div className="text-xs mt-1 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded inline-block">
                                                         Site: {sites.find(s => s.id === item.site_id)?.name || 'Assigned'}
