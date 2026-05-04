@@ -122,7 +122,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({ value, onChange, label }) => 
                     <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden max-w-lg w-full shadow-2xl">
                         <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                             <h3 className="font-semibold dark:text-white">Take a Photo</h3>
-                            <button onClick={stopCamera} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white">
+                            <button type="button" onClick={stopCamera} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white">
                                 <X size={20} />
                             </button>
                         </div>
@@ -137,6 +137,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({ value, onChange, label }) => 
                         </div>
                         <div className="p-6 flex justify-center gap-4">
                             <button 
+                                type="button"
                                 onClick={takePhoto}
                                 className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition shadow-lg active:scale-95"
                             >

@@ -90,53 +90,6 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites }) => {
         }
     };
 
-    const renderForm = () => {
-        const currentTab = tabs.find(t => t.id === activeTab);
-        return (
-            <form onSubmit={handleSubmit} className="space-y-4">
-                {currentTab?.fields.map(field => (
-                    <div key={field.name}>
-                        {field.type === 'image' ? (
-                            <ImagePicker 
-                                label={field.label}
-                                value={formData[field.name]}
-                                onChange={(val) => setFormData({ ...formData, [field.name]: val })}
-                            />
-                        ) : field.type === 'select' ? (
-                            <>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{field.label}</label>
-                                <select
-                                    className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                    value={formData[field.name] || ''}
-                                    onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                >
-                                    <option value="">Select Option</option>
-                                    {field.options?.map(opt => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                    ))}
-                                </select>
-                            </>
-                        ) : (
-                            <>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{field.label}</label>
-                                <input 
-                                    type={field.type}
-                                    placeholder={field.label}
-                                    className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
-                                    value={formData[field.name] || ''}
-                                    onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                />
-                            </>
-                        )}
-                    </div>
-                ))}
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition shadow-md">
-                    Add {activeTab.slice(0, -1).charAt(0).toUpperCase() + activeTab.slice(0, -1).slice(1)}
-                </button>
-            </form>
-        );
-    };
-
     return (
         <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Configuration</h2>
@@ -144,6 +97,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites }) => {
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
+                        type="button"
                         onClick={() => { setActiveTab(tab.id); setFormData({}); }}
                         className={`px-3 py-1 rounded-md text-sm font-medium ${
                             activeTab === tab.id
@@ -157,7 +111,47 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites }) => {
             </nav>
             <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 capitalize">Add New {activeTab.slice(0, -1)}</h3>
-                {renderForm()}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {tabs.find(t => t.id === activeTab)?.fields.map(field => (
+                        <div key={field.name}>
+                            {field.type === 'image' ? (
+                                <ImagePicker 
+                                    label={field.label}
+                                    value={formData[field.name]}
+                                    onChange={(val) => setFormData({ ...formData, [field.name]: val })}
+                                />
+                            ) : field.type === 'select' ? (
+                                <>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{field.label}</label>
+                                    <select
+                                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        value={formData[field.name] || ''}
+                                        onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                    >
+                                        <option value="">Select Option</option>
+                                        {field.options?.map(opt => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                </>
+                            ) : (
+                                <>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{field.label}</label>
+                                    <input 
+                                        type={field.type}
+                                        placeholder={field.label}
+                                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                                        value={formData[field.name] || ''}
+                                        onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                    />
+                                </>
+                            )}
+                        </div>
+                    ))}
+                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition shadow-md">
+                        Add {activeTab.slice(0, -1).charAt(0).toUpperCase() + activeTab.slice(0, -1).slice(1)}
+                    </button>
+                </form>
             </div>
         </div>
     );
