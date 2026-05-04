@@ -274,7 +274,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
             <img 
               src={profile.company?.logo_url || mainLogoUrl} 
               alt="Company Logo" 
-              className="main-logo w-auto min-w-[60px] h-12 sm:h-20 object-contain transition-all duration-300 opacity-0 bg-black rounded" 
+              className="main-logo w-auto min-w-[60px] h-12 sm:h-20 object-contain transition-all duration-300 opacity-0" 
               onLoad={(e) => { e.currentTarget.style.opacity = '1'; }}
               onError={(e) => { 
                   e.currentTarget.style.opacity = '1';
