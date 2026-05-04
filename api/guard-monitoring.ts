@@ -53,6 +53,10 @@ export default async function handler(req: any, res: any) {
                 "ALTER TABLE public.checkpoints ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL",
+                "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS first_name text",
+                "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS surname text",
+                "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS cell text",
+                "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url text",
                 "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'guard'",
                 "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'supervisor'",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS site_ids uuid[]",
@@ -165,6 +169,32 @@ export default async function handler(req: any, res: any) {
             const { id, ...updateData } = payload;
             if (!id) return res.status(400).json({ error: 'ID is required for update' });
 
+            // Profile Sync for Guards and Supervisors
+            if ((entity === 'guard' || entity === 'supervisor')) {
+                const { profile_id, name, contact_number, profile_pic_url } = payload;
+                if (profile_id) {
+                    const nameParts = name ? name.split(' ') : [];
+                    const firstName = nameParts[0];
+                    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+                    
+                    const { data: profColsData } = await supabaseAdmin.from('profiles').select('*').limit(1);
+                    const profCols = profColsData && profColsData.length > 0 ? Object.keys(profColsData[0]) : [];
+                    
+                    const profileUpdate: any = {};
+                    if (firstName && profCols.includes('first_name')) profileUpdate.first_name = firstName;
+                    if (lastName && profCols.includes('surname')) profileUpdate.surname = lastName;
+                    else if (lastName && profCols.includes('last_name')) profileUpdate.last_name = lastName;
+                    
+                    if (contact_number && profCols.includes('cell')) profileUpdate.cell = contact_number;
+                    if (profile_pic_url && profCols.includes('avatar_url')) profileUpdate.avatar_url = profile_pic_url;
+                    if (payload.psira_number && profCols.includes('psira_number')) profileUpdate.psira_number = payload.psira_number;
+                    
+                    if (Object.keys(profileUpdate).length > 0) {
+                        await supabaseAdmin.from('profiles').update(profileUpdate).eq('id', profile_id);
+                    }
+                }
+            }
+
             const { data, error } = await supabaseAdmin.from(targetTbl).update(updateData).eq('id', id).select().single();
             if (error) return res.status(400).json({ error: error.message });
             return res.status(200).json(data);
@@ -237,22 +267,27 @@ export default async function handler(req: any, res: any) {
                     const firstName = nameParts[0];
                     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
                     
+                    // Detect valid profile columns
+                    const { data: profColsData } = await supabaseAdmin.from('profiles').select('*').limit(1);
+                    const profCols = profColsData && profColsData.length > 0 ? Object.keys(profColsData[0]) : [];
+                    
                     const profileData: any = {
                         id: authData.user.id,
                         email,
-                        first_name: firstName,
-                        surname: lastName,
                         role: action === 'add-guard' ? 'guard' : 'supervisor',
                         status: 'active',
                         avatar_url: payload.profile_pic_url,
                         cell: payload.contact_number
                     };
+
+                    if (profCols.includes('first_name')) profileData.first_name = firstName;
+                    else if (profCols.includes('name')) profileData.name = name;
+
+                    if (profCols.includes('surname')) profileData.surname = lastName;
+                    else if (profCols.includes('last_name')) profileData.last_name = lastName;
                     
-                    // Safe company_id check
-                    try {
-                        const { error: testProfErr } = await supabaseAdmin.from('profiles').select('company_id').limit(1);
-                        if (!testProfErr) profileData.company_id = payload.company_id;
-                    } catch (e) {}
+                    if (profCols.includes('company_id')) profileData.company_id = payload.company_id;
+                    if (profCols.includes('psira_number') && payload.psira_number) profileData.psira_number = payload.psira_number;
                     
                     const { error: profileError } = await supabaseAdmin.from('profiles').upsert(profileData);
 

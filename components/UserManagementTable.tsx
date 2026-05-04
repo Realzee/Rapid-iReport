@@ -125,6 +125,12 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                 <p className="text-xs text-gray-500 dark:text-gray-400">Cell</p>
                                 <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{user.cell || 'N/A'}</p>
                             </div>
+                            {user.psira_number && (
+                                <div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">PSIRA</p>
+                                    <p className="font-medium text-blue-500 dark:text-blue-400 truncate">{user.psira_number}</p>
+                                </div>
+                            )}
                             <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">Reports</p>
                                 <p className="font-medium text-gray-800 dark:text-gray-200">{userReportCounts[user.id] || 0}</p>
@@ -223,7 +229,8 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                             <div className="ml-4">
                                                 <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{`${user.first_name || ''} ${user.surname || ''}`}</div>
                                                 <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</div>
-                                                {user.cell && <div className="text-xs text-gray-400 dark:text-gray-500 truncate">{user.cell}</div>}
+                                                {user.cell && <div className="text-xs text-gray-400 dark:text-gray-500 truncate">Cell: {user.cell}</div>}
+                                                {user.psira_number && <div className="text-xs text-blue-400 dark:text-blue-500 font-bold truncate">PSIRA: {user.psira_number}</div>}
                                             </div>
                                         </button>
                                     </td>
