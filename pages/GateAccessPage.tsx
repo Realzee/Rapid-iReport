@@ -34,7 +34,7 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 // Check if guard first
                 const { data: guardData, error: guardError } = await supabase
                     .from('guards')
-                    .select('site_id')
+                    .select('*')
                     .eq('profile_id', profile.id)
                     .single();
                 
@@ -50,7 +50,7 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 // Check if supervisor
                 const { data: supData, error: supError } = await supabase
                     .from('supervisors')
-                    .select('site_id')
+                    .select('*')
                     .eq('profile_id', profile.id)
                     .single();
                 
