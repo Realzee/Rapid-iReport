@@ -55,6 +55,7 @@ export default async function handler(req: any, res: any) {
                 "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL",
                 "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'guard'",
                 "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'supervisor'",
+                "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS site_ids uuid[]",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS name text",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS contact_number text",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS profile_pic_url text",
@@ -134,10 +135,12 @@ export default async function handler(req: any, res: any) {
                 }
             }
 
-            if (supData?.site_id) {
+            if (supData?.site_id || (supData?.site_ids && supData.site_ids.length > 0)) {
+                const siteId = supData.site_id || supData.site_ids[0];
                 return res.status(200).json({ 
-                    site_id: supData.site_id, 
-                    site_name: (supData as any).sites?.name || 'Assigned Site' 
+                    site_id: siteId, 
+                    site_name: (supData as any).sites?.name || 'Assigned Site',
+                    site_ids: supData.site_ids || [supData.site_id]
                 });
             }
 

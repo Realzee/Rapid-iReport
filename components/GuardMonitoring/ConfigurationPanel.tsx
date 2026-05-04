@@ -1,6 +1,65 @@
 import React, { useState, useEffect } from 'react';
 import ImagePicker from './ImagePicker';
-import { Edit, Trash2, Plus, X, Settings } from 'lucide-react';
+import { Edit, Trash2, Plus, X, Settings, AlertCircle, CheckCircle2, Info } from 'lucide-react';
+
+interface ModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    title: string;
+    children: React.ReactNode;
+    type?: 'info' | 'error' | 'confirm' | 'success';
+    onConfirm?: () => void;
+    confirmLabel?: string;
+    loading?: boolean;
+}
+
+const UIModal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, type = 'info', onConfirm, confirmLabel = 'Confirm', loading }) => {
+    if (!isOpen) return null;
+
+    const iconMap = {
+        info: <Info className="text-blue-500" size={24} />,
+        error: <AlertCircle className="text-red-500" size={24} />,
+        confirm: <AlertCircle className="text-amber-500" size={24} />,
+        success: <CheckCircle2 className="text-green-500" size={24} />
+    };
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        {iconMap[type]}
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h3>
+                    </div>
+                    <div className="text-gray-600 dark:text-gray-300 mb-6">
+                        {children}
+                    </div>
+                    <div className="flex justify-end gap-3">
+                        <button 
+                            onClick={onClose}
+                            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition font-medium"
+                        >
+                            {type === 'confirm' ? 'Cancel' : 'Close'}
+                        </button>
+                        {onConfirm && (
+                            <button 
+                                onClick={onConfirm}
+                                disabled={loading}
+                                className={`px-6 py-2 rounded-lg text-white font-medium shadow-md transition ${
+                                    type === 'error' ? 'bg-red-600 hover:bg-red-700' : 
+                                    type === 'confirm' ? 'bg-amber-600 hover:bg-amber-700' : 
+                                    'bg-blue-600 hover:bg-blue-700'
+                                } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                                {loading ? 'Processing...' : confirmLabel}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 interface ConfigurationPanelProps {
     sites: any[];
@@ -18,6 +77,46 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    
+    // Modal states
+    const [modalConfig, setModalConfig] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: React.ReactNode;
+        type: 'info' | 'error' | 'confirm' | 'success';
+        onConfirm?: () => void;
+        confirmLabel?: string;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info'
+    });
+
+    const showAlert = (title: string, message: string, type: 'info' | 'error' | 'success' = 'info') => {
+        setModalConfig({
+            isOpen: true,
+            title,
+            message,
+            type,
+            confirmLabel: 'OK',
+            onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false }))
+        });
+    };
+
+    const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+        setModalConfig({
+            isOpen: true,
+            title,
+            message,
+            type: 'confirm',
+            confirmLabel: 'Yes, Delete',
+            onConfirm: () => {
+                onConfirm();
+                setModalConfig(prev => ({ ...prev, isOpen: false }));
+            }
+        });
+    };
 
     const tabs = [
         { 
@@ -63,7 +162,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                 { name: 'password', label: 'Login Password', type: 'text' },
                 { name: 'profile_pic_url', label: 'Profile Pic', type: 'image' },
                 { name: 'contact_number', label: 'Contact Number', type: 'text' },
-                { name: 'site_id', label: 'Site', type: 'select', options: sites.map(s => ({ value: s.id, label: s.name })) }
+                { name: 'site_ids', label: 'Managed Sites', type: 'multi-select', options: sites.map(s => ({ value: s.id, label: s.name })) }
             ] 
         },
         { 
@@ -124,21 +223,25 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                 body: JSON.stringify({ action: 'fix-schema' })
             });
             if (res.ok) {
-                alert('Database schema updated successfully.');
+                showAlert('Success', 'Database schema updated successfully.', 'success');
                 fetchItems();
             } else {
                 const err = await res.json();
-                alert(`Repair failed: ${err.error}`);
+                showAlert('Repair Failed', err.error || 'Unknown error', 'error');
             }
         } catch (e) {
-            alert('Repair error');
+            showAlert('Error', 'An error occurred during repair.', 'error');
         } finally {
             setRepairing(false);
         }
     };
 
     const handleEdit = (item: any) => {
-        setFormData({ ...item, coordinates: item.coordinates ? JSON.stringify(item.coordinates) : undefined });
+        setFormData({ 
+            ...item, 
+            coordinates: item.coordinates ? JSON.stringify(item.coordinates) : undefined,
+            site_ids: item.site_ids || (item.site_id ? [item.site_id] : [])
+        });
         setEditingId(item.id);
         setIsEditing(true);
         setShowForm(true);
@@ -146,25 +249,30 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this item?')) return;
-        
-        try {
-            const action = `delete-${activeTab.slice(0, -1)}`;
-            const res = await fetch('/api/guard-monitoring', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, id })
-            });
+        showConfirm(
+            'Confirm Delete', 
+            'Are you sure you want to delete this item? This action cannot be undone.',
+            async () => {
+                try {
+                    const action = `delete-${activeTab.slice(0, -1)}`;
+                    const res = await fetch('/api/guard-monitoring', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action, id })
+                    });
 
-            if (res.ok) {
-                fetchItems();
-            } else {
-                const err = await res.json();
-                alert(`Error: ${err.error}`);
+                    if (res.ok) {
+                        fetchItems();
+                        showAlert('Deleted', 'Item removed successfully.', 'success');
+                    } else {
+                        const err = await res.json();
+                        showAlert('Error', err.error || 'Deletion failed', 'error');
+                    }
+                } catch (e) {
+                    showAlert('Error', 'Connection failed', 'error');
+                }
             }
-        } catch (e) {
-            alert('Deletion failed');
-        }
+        );
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -182,7 +290,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
             try {
                 payload.coordinates = JSON.parse(payload.coordinates);
             } catch (e) {
-                alert('Invalid coordinates JSON');
+                showAlert('Error', 'Invalid coordinates JSON format', 'error');
                 return;
             }
         }
@@ -205,9 +313,10 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
             setEditingId(null);
             setShowForm(false);
             fetchItems();
+            showAlert('Success', `${activeTab.slice(0, -1).charAt(0).toUpperCase() + activeTab.slice(0, -1).slice(1)} saved successfully!`, 'success');
         } catch (error: any) {
             console.error(error);
-            alert(`Error: ${error.message}`);
+            showAlert('Error', error.message, 'error');
         }
     };
 
@@ -303,20 +412,45 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                         value={formData[field.name]}
                                         onChange={(val) => setFormData({ ...formData, [field.name]: val })}
                                     />
-                                ) : field.type === 'select' ? (
+                                ) : field.type === 'select' || field.type === 'multi-select' ? (
                                     <div className="space-y-1.5">
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{field.label}</label>
-                                        <select
-                                            className="w-full p-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                                            value={formData[field.name] || ''}
-                                            onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                            required
-                                        >
-                                            <option value="">Select {field.label}</option>
-                                            {field.options?.map(opt => (
-                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                            ))}
-                                        </select>
+                                        {field.type === 'multi-select' ? (
+                                            <div className="p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg max-h-40 overflow-y-auto space-y-2">
+                                                {field.options?.map(opt => (
+                                                    <label key={opt.value} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 p-1 rounded transition">
+                                                        <input 
+                                                            type="checkbox"
+                                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                            checked={formData[field.name]?.includes(opt.value)}
+                                                            onChange={(e) => {
+                                                                const current = formData[field.name] || [];
+                                                                const next = e.target.checked 
+                                                                    ? [...current, opt.value]
+                                                                    : current.filter((v: any) => v !== opt.value);
+                                                                setFormData({ ...formData, [field.name]: next });
+                                                            }}
+                                                        />
+                                                        <span className="text-sm text-gray-700 dark:text-gray-300">{opt.label}</span>
+                                                    </label>
+                                                ))}
+                                                {(!field.options || field.options.length === 0) && (
+                                                    <div className="text-xs text-gray-500 italic">No options available</div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <select
+                                                className="w-full p-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                                value={formData[field.name] || ''}
+                                                onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                                required={field.name === 'site_id' || field.name === 'profile_id'}
+                                            >
+                                                <option value="">Select {field.label}</option>
+                                                {field.options?.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="space-y-1.5">
@@ -370,18 +504,47 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                             {item.id && <div className="text-xs text-gray-400 font-mono mt-0.5">{item.id.slice(0, 8)}...</div>}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="text-sm text-gray-600 dark:text-gray-400">
-                                                {item.contact_number && <div>Ph: {item.contact_number}</div>}
-                                                {item.qr_code && <div>QR: {item.qr_code}</div>}
-                                                {item.psira_number && <div>PSIRA: {item.psira_number}</div>}
-                                                {item.profile_id && (
-                                                    <div className="text-xs text-blue-500 mt-1">
-                                                        Linked: {users.find(u => u.id === item.profile_id)?.email || 'User Account'}
+                                            <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                                {item.contact_number && (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] uppercase font-bold text-gray-400 w-12">Phone:</span>
+                                                        <span className="text-gray-900 dark:text-gray-200">{item.contact_number}</span>
                                                     </div>
                                                 )}
-                                                {item.site_id && (
-                                                    <div className="text-xs mt-1 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded inline-block">
-                                                        Site: {sites.find(s => s.id === item.site_id)?.name || 'Assigned'}
+                                                {item.qr_code && (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] uppercase font-bold text-gray-400 w-12">QR:</span>
+                                                        <span className="font-mono text-xs">{item.qr_code}</span>
+                                                    </div>
+                                                )}
+                                                {item.psira_number && (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] uppercase font-bold text-gray-400 w-12">PSIRA:</span>
+                                                        <span className="text-gray-900 dark:text-gray-200">{item.psira_number}</span>
+                                                    </div>
+                                                )}
+                                                {item.profile_id && (
+                                                    <div className="flex items-center gap-1.5 text-blue-500">
+                                                        <span className="text-[10px] uppercase font-bold opacity-70 w-12">Email:</span>
+                                                        <span className="text-xs truncate max-w-[120px]">{users.find(u => u.id === item.profile_id)?.email || 'Account Linked'}</span>
+                                                    </div>
+                                                )}
+                                                {(item.site_id || (item.site_ids && item.site_ids.length > 0)) && (
+                                                    <div className="flex items-start gap-1.5 pt-1">
+                                                        <span className="text-[10px] uppercase font-bold text-gray-400 w-12 mt-1">Sites:</span>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {item.site_id ? (
+                                                                <span className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-800">
+                                                                    {sites.find(s => s.id === item.site_id)?.name || 'Assigned'}
+                                                                </span>
+                                                            ) : (
+                                                                item.site_ids?.map((sid: string) => (
+                                                                    <span key={sid} className="text-[10px] bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 px-2 py-0.5 rounded border border-indigo-100 dark:border-indigo-800">
+                                                                        {sites.find(s => s.id === sid)?.name || sid.slice(0, 5)}
+                                                                    </span>
+                                                                ))
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -411,6 +574,17 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                     </div>
                 </div>
             )}
+
+            <UIModal 
+                isOpen={modalConfig.isOpen}
+                onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+                title={modalConfig.title}
+                type={modalConfig.type}
+                confirmLabel={modalConfig.confirmLabel}
+                onConfirm={modalConfig.onConfirm}
+            >
+                {modalConfig.message}
+            </UIModal>
         </div>
     );
 };
