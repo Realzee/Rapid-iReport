@@ -35,7 +35,8 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
             label: 'Guards', 
             fields: [
                 { name: 'name', label: 'Guard Name', type: 'text' },
-                { name: 'profile_id', label: 'Link to Account', type: 'select', options: users.map(u => ({ value: u.id, label: `${u.first_name || ''} ${u.last_name || ''} (${u.email})` })) },
+                { name: 'email', label: 'Login Email', type: 'email' },
+                { name: 'password', label: 'Login Password', type: 'text' },
                 { name: 'profile_pic_url', label: 'Profile Pic', type: 'image' },
                 { name: 'contact_number', label: 'Contact Number', type: 'text' },
                 { name: 'psira_number', label: 'PSIRA Number', type: 'text' },
@@ -58,7 +59,8 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
             label: 'Supervisors', 
             fields: [
                 { name: 'name', label: 'Supervisor Name', type: 'text' },
-                { name: 'profile_id', label: 'Link to Account', type: 'select', options: users.map(u => ({ value: u.id, label: `${u.first_name || ''} ${u.last_name || ''} (${u.email})` })) },
+                { name: 'email', label: 'Login Email', type: 'email' },
+                { name: 'password', label: 'Login Password', type: 'text' },
                 { name: 'profile_pic_url', label: 'Profile Pic', type: 'image' },
                 { name: 'contact_number', label: 'Contact Number', type: 'text' },
                 { name: 'site_id', label: 'Site', type: 'select', options: sites.map(s => ({ value: s.id, label: s.name })) }
@@ -307,15 +309,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                         <select
                                             className="w-full p-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                                             value={formData[field.name] || ''}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                const selectedUser = users.find(u => u.id === val);
-                                                const newFormData = { ...formData, [field.name]: val };
-                                                if (field.name === 'profile_id' && selectedUser && !formData.name) {
-                                                    newFormData.name = `${selectedUser.first_name || ''} ${selectedUser.last_name || ''}`.trim();
-                                                }
-                                                setFormData(newFormData);
-                                            }}
+                                            onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
                                             required
                                         >
                                             <option value="">Select {field.label}</option>

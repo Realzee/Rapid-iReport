@@ -179,6 +179,56 @@ export default async function handler(req: any, res: any) {
         }
 
         try {
+            // Check if we need to create a user account for guards/supervisors
+            if ((action === 'add-guard' || action === 'add-supervisor') && payload.email && payload.password) {
+                const { email, password, name, ...rest } = payload;
+                
+                // 1. Create Auth User
+                const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+                    email,
+                    password,
+                    email_confirm: true
+                });
+
+                if (authError) {
+                    if (authError.message.includes('already registered')) {
+                        // User exists, try to get their ID
+                        const { data: userData } = await supabaseAdmin.from('profiles').select('id').eq('email', email).maybeSingle();
+                        if (userData) {
+                            payload.profile_id = userData.id;
+                        }
+                    } else {
+                        throw authError;
+                    }
+                } else if (authData.user) {
+                    // 2. Create Profile
+                    const nameParts = name ? name.split(' ') : ['User'];
+                    const firstName = nameParts[0];
+                    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+                    
+                    const { error: profileError } = await supabaseAdmin.from('profiles').insert({
+                        id: authData.user.id,
+                        email,
+                        first_name: firstName,
+                        last_name: lastName,
+                        role: action === 'add-guard' ? 'guard' : 'supervisor',
+                        company_id: payload.company_id
+                    });
+
+                    if (profileError) {
+                        console.error('Error creating profile:', profileError);
+                        // We continue because the guard/supervisor record needs to be created, 
+                        // even if the profile insertion fails (maybe it already exists)
+                    }
+                    
+                    payload.profile_id = authData.user.id;
+                }
+                
+                // Clean up payload so we don't try to insert email/password into guards/supervisors table
+                delete payload.email;
+                delete payload.password;
+            }
+
             // Get columns for the target table to sanitize payload
             const { data: colsData, error: colsError } = await supabaseAdmin.from(table).select('*').limit(1);
             
