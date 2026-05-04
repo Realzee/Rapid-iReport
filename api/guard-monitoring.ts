@@ -10,11 +10,7 @@ export default async function handler(req: any, res: any) {
         if (!['sites', 'guards', 'routes', 'supervisors', 'checkpoints', 'patrol_logs'].includes(table)) {
             return res.status(400).json({ error: 'Invalid table' });
         }
-        let query = supabaseAdmin.from(table).select('*');
-        if (table === 'sites') {
-             query = supabaseAdmin.from(table).select('id, name, contact_person, contact_number, logo_url, location, boundary, company_id');
-        }
-        const { data, error } = await query;
+        const { data, error } = await supabaseAdmin.from(table).select('*');
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data);
     }

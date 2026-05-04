@@ -21,7 +21,7 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
     useEffect(() => {
         const fetchData = async () => {
             const tables = ['sites', 'guards', 'routes', 'supervisors', 'checkpoints', 'patrol_logs'];
-            const results: any = {};
+            const results: any = { ...data };
             for (const table of tables) {
                 const response = await fetch(`/api/guard-monitoring?table=${table}`);
                 if (response.ok) results[table] = await response.json();
