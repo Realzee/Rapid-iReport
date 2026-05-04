@@ -107,11 +107,31 @@ export default async function handler(req: any, res: any) {
         }
 
         try {
-            const insertPayload = { ...payload };
-            const { data, error } = await supabaseAdmin.from(table).insert(insertPayload).select().single();
+            // Get columns for the target table to sanitize payload
+            const { data: colsData, error: colsError } = await supabaseAdmin.from(table).select('*').limit(1);
+            if (!colsError && colsData) {
+                const validCols = colsData.length > 0 ? Object.keys(colsData[0]) : [];
+                // If the table is empty, we might not get columns this way.
+                // But usually we can expect some records or we use a fallback.
+                if (validCols.length > 0) {
+                    const sanitizedPayload: any = {};
+                    Object.keys(payload).forEach(key => {
+                        if (validCols.includes(key)) {
+                            sanitizedPayload[key] = payload[key];
+                        }
+                    });
+                    const { data, error } = await supabaseAdmin.from(table).insert(sanitizedPayload).select().single();
+                    if (error) throw error;
+                    return res.status(200).json(data);
+                }
+            }
+
+            // Fallback to direct insert if column detection fails
+            const { data, error } = await supabaseAdmin.from(table).insert(payload).select().single();
             if (error) throw error;
             return res.status(200).json(data);
         } catch (error: any) {
+            console.error(`Error inserting into ${table}:`, error);
             return res.status(400).json({ error: error.message || 'Unknown error' });
         }
     }
