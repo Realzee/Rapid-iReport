@@ -3,9 +3,10 @@ import ImagePicker from './ImagePicker';
 
 interface ConfigurationPanelProps {
     sites: any[];
+    profile: any;
 }
 
-const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites }) => {
+const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile }) => {
     const [activeTab, setActiveTab] = useState<'sites' | 'guards' | 'routes' | 'supervisors'>('sites');
     const [formData, setFormData] = useState<any>({});
 
@@ -59,6 +60,11 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites }) => {
         const action = `add-${activeTab.slice(0, -1)}`;
         
         let payload = { ...formData };
+        
+        if (activeTab === 'sites' && profile?.company_id) {
+            payload.company_id = profile.company_id;
+        }
+        
         if (payload.coordinates) {
             try {
                 payload.coordinates = JSON.parse(payload.coordinates);

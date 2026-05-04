@@ -87,7 +87,7 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
                     <GuardMapView responders={responders} sites={data.sites} />
                 </div>
             )}
-            {activeTab === 'config' && <ConfigurationPanel sites={data.sites} />}
+            {activeTab === 'config' && <ConfigurationPanel sites={data.sites} profile={profile} />}
             {activeTab === 'reporting' && <ReportingPanel data={data} />}
             {activeTab === 'analytics' && <AnalyticsPanel />}
         </div>

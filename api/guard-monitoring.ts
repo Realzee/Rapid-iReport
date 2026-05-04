@@ -113,8 +113,16 @@ export default async function handler(req: any, res: any) {
             let sanitizedPayload: any = { ...payload };
             
             // Special handling for required but missing fields
-            if (table === 'sites' && !sanitizedPayload.location) {
-                sanitizedPayload.location = { lat: -26.2041, lng: 28.0473 }; // Default to Johannesburg coords
+            if (table === 'sites') {
+                if (!sanitizedPayload.location) {
+                    sanitizedPayload.location = { lat: -26.2041, lng: 28.0473 }; // Default to Johannesburg coords
+                }
+                if (!sanitizedPayload.company_id) {
+                    const { data: firstCompany } = await supabaseAdmin.from('companies').select('id').limit(1).single();
+                    if (firstCompany) {
+                        sanitizedPayload.company_id = firstCompany.id;
+                    }
+                }
             }
             if (table === 'checkpoints' && !sanitizedPayload.location) {
                 sanitizedPayload.location = { lat: -26.2041, lng: 28.0473 };
