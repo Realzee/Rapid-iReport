@@ -35,7 +35,11 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ isOpen, onClose, user
                         )}
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{user.first_name} {user.surname}</h3>
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                            {(user.first_name || user.surname) 
+                                ? `${user.first_name || ''} ${user.surname || ''}`.trim() 
+                                : (user as any).name || 'Unnamed User'}
+                        </h3>
                         <p className="text-gray-500 dark:text-gray-400">{user.email}</p>
                         <div className="mt-2 space-x-2">
                             <span className="px-3 py-1 text-xs font-bold rounded-full capitalize border bg-blue-500/20 text-blue-500 dark:text-blue-400 border-blue-500/30">{user.role}</span>

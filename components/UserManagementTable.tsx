@@ -86,7 +86,11 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                     <span className={`absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-gray-800 ${isOnline(user.last_seen_at) ? 'bg-green-400' : 'bg-gray-500'}`} />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-gray-900 dark:text-white truncate">{`${user.first_name || ''} ${user.surname || ''}`}</p>
+                                    <p className="font-bold text-gray-900 dark:text-white truncate">
+                                        {(user.first_name || user.surname) 
+                                            ? `${user.first_name || ''} ${user.surname || ''}`.trim() 
+                                            : (user as any).name || 'Unnamed User'}
+                                    </p>
                                     <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                                 </div>
                             </button>
@@ -227,7 +231,11 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                                 />
                                             </div>
                                             <div className="ml-4">
-                                                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{`${user.first_name || ''} ${user.surname || ''}`}</div>
+                                                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                    {(user.first_name || user.surname) 
+                                                        ? `${user.first_name || ''} ${user.surname || ''}`.trim() 
+                                                        : (user as any).name || 'Unnamed User'}
+                                                </div>
                                                 <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</div>
                                                 {user.cell && <div className="text-xs text-gray-400 dark:text-gray-500 truncate">Cell: {user.cell}</div>}
                                                 {user.psira_number && <div className="text-xs text-blue-400 dark:text-blue-500 font-bold truncate">PSIRA: {user.psira_number}</div>}

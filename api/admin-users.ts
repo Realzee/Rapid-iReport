@@ -19,24 +19,47 @@ export default async function handler(req: any, res: any) {
                 email_confirm: true 
             });
 
-            if (authError) throw authError;
+            if (authError) {
+                console.error('Auth User Creation Error:', authError);
+                throw authError;
+            }
 
             if (authData?.user) {
+                // Use upsert to ensure profile exists and is updated
                 const { error: profileError } = await supabaseAdmin
                     .from('profiles')
-                    .update({
+                    .upsert({
+                        id: authData.user.id,
+                        email,
                         ...profileData,
                         created_at: new Date().toISOString()
-                    })
-                    .eq('id', authData.user.id);
+                    }, { onConflict: 'id' });
 
                 if (profileError) {
+                    console.error('Profile Upsert Error:', profileError);
+                    
+                    if (profileError.code === '42703') {
+                        // Attempt fallback with minimal core fields
+                        const { error: fallbackError } = await supabaseAdmin
+                            .from('profiles')
+                            .upsert({
+                                id: authData.user.id,
+                                email,
+                                role: profileData.role || 'user',
+                                status: 'active',
+                                created_at: new Date().toISOString()
+                            }, { onConflict: 'id' });
+                        
+                        if (!fallbackError) return res.status(200).json({ success: true, user: authData.user, warning: 'Some fields skipped due to schema mismatch' });
+                    }
+                    
                     await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
                     throw profileError;
                 }
             }
-            return res.status(200).json({ success: true });
+            return res.status(200).json({ success: true, user: authData.user });
         } catch (error: any) {
+             console.error('Admin Create User Exception:', error);
              return res.status(400).json({ error: error.message });
         }
     } else if (req.method === 'DELETE') {

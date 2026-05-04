@@ -164,6 +164,7 @@ const UsersPage: React.FC = () => {
             const matchesSearch = !lowercasedTerm || 
                 (user.first_name || '').toLowerCase().includes(lowercasedTerm) ||
                 (user.surname || '').toLowerCase().includes(lowercasedTerm) ||
+                ((user as any).name || '').toLowerCase().includes(lowercasedTerm) ||
                 user.email.toLowerCase().includes(lowercasedTerm);
 
             // Role Filter

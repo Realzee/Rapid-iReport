@@ -68,7 +68,8 @@ export default async function handler(req: any, res: any) {
                 "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS contact_number text",
                 "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS psira_number text",
                 "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'off_duty'",
-                "ALTER TABLE public.guards ALTER COLUMN profile_id DROP NOT NULL"
+                "ALTER TABLE public.guards ALTER COLUMN profile_id DROP NOT NULL",
+                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Public profiles are viewable by everyone.') THEN CREATE POLICY \"Public profiles are viewable by everyone.\" ON public.profiles FOR SELECT USING (true); END IF; END $$;"
             ];
             const results = [];
             for (const q of queries) {
@@ -169,31 +170,35 @@ export default async function handler(req: any, res: any) {
             const { id, ...updateData } = payload;
             if (!id) return res.status(400).json({ error: 'ID is required for update' });
 
-            // Profile Sync for Guards and Supervisors
-            if ((entity === 'guard' || entity === 'supervisor')) {
-                const { profile_id, name, contact_number, profile_pic_url } = payload;
-                if (profile_id) {
-                    const nameParts = name ? name.split(' ') : [];
-                    const firstName = nameParts[0];
-                    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-                    
-                    const { data: profColsData } = await supabaseAdmin.from('profiles').select('*').limit(1);
-                    const profCols = profColsData && profColsData.length > 0 ? Object.keys(profColsData[0]) : [];
-                    
-                    const profileUpdate: any = {};
-                    if (firstName && profCols.includes('first_name')) profileUpdate.first_name = firstName;
-                    if (lastName && profCols.includes('surname')) profileUpdate.surname = lastName;
-                    else if (lastName && profCols.includes('last_name')) profileUpdate.last_name = lastName;
-                    
-                    if (contact_number && profCols.includes('cell')) profileUpdate.cell = contact_number;
-                    if (profile_pic_url && profCols.includes('avatar_url')) profileUpdate.avatar_url = profile_pic_url;
-                    if (payload.psira_number && profCols.includes('psira_number')) profileUpdate.psira_number = payload.psira_number;
-                    
-                    if (Object.keys(profileUpdate).length > 0) {
-                        await supabaseAdmin.from('profiles').update(profileUpdate).eq('id', profile_id);
+                    // Profile Sync for Guards and Supervisors
+                    if ((entity === 'guard' || entity === 'supervisor')) {
+                        const { profile_id, name, contact_number, profile_pic_url, psira_number } = payload;
+                        if (profile_id) {
+                            const nameParts = name ? name.split(' ') : [];
+                            const firstName = nameParts[0];
+                            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+                            
+                            // Try to update with all possible columns, if it fails because of missing columns we catch it
+                            try {
+                                const profileUpdate: any = {
+                                    cell: contact_number,
+                                    avatar_url: profile_pic_url,
+                                    psira_number: psira_number
+                                };
+                                if (firstName) profileUpdate.first_name = firstName;
+                                if (lastName) profileUpdate.surname = lastName;
+                                
+                                const { error: updateErr } = await supabaseAdmin.from('profiles').update(profileUpdate).eq('id', profile_id);
+                                if (updateErr && updateErr.code === '42703') {
+                                    // Fallback to simpler update if columns don't exist
+                                    const fallbackUpdate: any = { name: name };
+                                    await supabaseAdmin.from('profiles').update(fallbackUpdate).eq('id', profile_id);
+                                }
+                            } catch (e) {
+                                console.error('Error updating profile during sync:', e);
+                            }
+                        }
                     }
-                }
-            }
 
             const { data, error } = await supabaseAdmin.from(targetTbl).update(updateData).eq('id', id).select().single();
             if (error) return res.status(400).json({ error: error.message });
@@ -267,32 +272,37 @@ export default async function handler(req: any, res: any) {
                     const firstName = nameParts[0];
                     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
                     
-                    // Detect valid profile columns
-                    const { data: profColsData } = await supabaseAdmin.from('profiles').select('*').limit(1);
-                    const profCols = profColsData && profColsData.length > 0 ? Object.keys(profColsData[0]) : [];
-                    
                     const profileData: any = {
                         id: authData.user.id,
                         email,
                         role: action === 'add-guard' ? 'guard' : 'supervisor',
                         status: 'active',
                         avatar_url: payload.profile_pic_url,
-                        cell: payload.contact_number
+                        cell: payload.contact_number,
+                        company_id: payload.company_id,
+                        psira_number: payload.psira_number
                     };
 
-                    if (profCols.includes('first_name')) profileData.first_name = firstName;
-                    else if (profCols.includes('name')) profileData.name = name;
+                    try {
+                        const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
+                            ...profileData,
+                            first_name: firstName,
+                            surname: lastName
+                        });
 
-                    if (profCols.includes('surname')) profileData.surname = lastName;
-                    else if (profCols.includes('last_name')) profileData.last_name = lastName;
-                    
-                    if (profCols.includes('company_id')) profileData.company_id = payload.company_id;
-                    if (profCols.includes('psira_number') && payload.psira_number) profileData.psira_number = payload.psira_number;
-                    
-                    const { error: profileError } = await supabaseAdmin.from('profiles').upsert(profileData);
-
-                    if (profileError) {
-                        console.error('Error upserting profile:', profileError);
+                        if (profileError && profileError.code === '42703') {
+                            // Fallback if schema is old
+                            await supabaseAdmin.from('profiles').upsert({
+                                id: authData.user.id,
+                                email,
+                                name: name,
+                                role: profileData.role,
+                                status: 'active',
+                                company_id: profileData.company_id
+                            });
+                        }
+                    } catch (e) {
+                         console.error('Exception creating profile:', e);
                     }
                     
                     payload.profile_id = authData.user.id;
