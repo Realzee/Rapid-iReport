@@ -109,25 +109,34 @@ export default async function handler(req: any, res: any) {
         try {
             // Get columns for the target table to sanitize payload
             const { data: colsData, error: colsError } = await supabaseAdmin.from(table).select('*').limit(1);
+            
+            let sanitizedPayload: any = { ...payload };
+            
+            // Special handling for required but missing fields
+            if (table === 'sites' && !sanitizedPayload.location) {
+                sanitizedPayload.location = { lat: -26.2041, lng: 28.0473 }; // Default to Johannesburg coords
+            }
+            if (table === 'checkpoints' && !sanitizedPayload.location) {
+                sanitizedPayload.location = { lat: -26.2041, lng: 28.0473 };
+            }
+
             if (!colsError && colsData) {
                 const validCols = colsData.length > 0 ? Object.keys(colsData[0]) : [];
-                // If the table is empty, we might not get columns this way.
-                // But usually we can expect some records or we use a fallback.
                 if (validCols.length > 0) {
-                    const sanitizedPayload: any = {};
-                    Object.keys(payload).forEach(key => {
+                    const finalPayload: any = {};
+                    Object.keys(sanitizedPayload).forEach(key => {
                         if (validCols.includes(key)) {
-                            sanitizedPayload[key] = payload[key];
+                            finalPayload[key] = sanitizedPayload[key];
                         }
                     });
-                    const { data, error } = await supabaseAdmin.from(table).insert(sanitizedPayload).select().single();
+                    const { data, error } = await supabaseAdmin.from(table).insert(finalPayload).select().single();
                     if (error) throw error;
                     return res.status(200).json(data);
                 }
             }
 
             // Fallback to direct insert if column detection fails
-            const { data, error } = await supabaseAdmin.from(table).insert(payload).select().single();
+            const { data, error } = await supabaseAdmin.from(table).insert(sanitizedPayload).select().single();
             if (error) throw error;
             return res.status(200).json(data);
         } catch (error: any) {
