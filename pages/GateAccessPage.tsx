@@ -31,37 +31,19 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
 
         const fetchAllocatedSite = async () => {
              try {
-                // Check if guard first
-                const { data: guardData, error: guardError } = await supabase
-                    .from('guards')
-                    .select('id, profile_id, site_id, name, status')
-                    .eq('profile_id', profile.id)
-                    .single();
-                
-                if (guardData?.site_id) {
-                    const { data: siteData } = await supabase.from('sites').select('name').eq('id', guardData.site_id).single();
-                    if (siteData?.name) {
-                        setGateName(siteData.name);
-                        setIsFixedLocation(true);
-                        return;
-                    }
-                }
+                const response = await fetch('/api/guard-monitoring', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get-my-site', profile_id: profile.id })
+                });
 
-                // Check if supervisor
-                const { data: supData, error: supError } = await supabase
-                    .from('supervisors')
-                    .select('id, profile_id, site_id, name')
-                    .eq('profile_id', profile.id)
-                    .single();
-                
-                if (supData?.site_id) {
-                    const { data: siteData } = await supabase.from('sites').select('name').eq('id', supData.site_id).single();
-                    if (siteData?.name) {
-                        setGateName(siteData.name);
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.site_id && result.site_name) {
+                        setGateName(result.site_name);
                         setIsFixedLocation(true);
                     }
                 }
-
              } catch (err) {
                 console.error("Error fetching allocated site:", err);
              }

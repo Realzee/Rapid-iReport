@@ -7,17 +7,94 @@ export default async function handler(req: any, res: any) {
 
     if (req.method === 'GET') {
         const { table } = req.query;
-        if (!['sites', 'guards', 'routes', 'supervisors', 'checkpoints', 'patrol_logs'].includes(table)) {
+        if (!['sites', 'guards', 'routes', 'supervisors', 'checkpoints', 'patrol_logs'].includes(table as string)) {
             return res.status(400).json({ error: 'Invalid table' });
         }
-        const { data, error } = await supabaseAdmin.from(table).select('*');
-        if (error) return res.status(500).json({ error: error.message });
+        const { data, error } = await supabaseAdmin.from(table as string).select('*');
+        if (error) {
+            console.error(`Error fetching table ${table}:`, error);
+            if (error.code === '42P01') { // relation does not exist
+                return res.status(200).json([]);
+            }
+            return res.status(500).json({ error: error.message });
+        }
         return res.status(200).json(data);
     }
 
     if (req.method === 'POST') {
         const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-        const { action, ...payload } = body;
+        const { action, table: targetTable, ...payload } = body;
+        
+        if (action === 'get-my-site') {
+            const { profile_id } = payload;
+            if (!profile_id) return res.status(400).json({ error: 'profile_id required' });
+
+            // Diagnostic: Try to find any guard record to see what columns we have
+            const { data: allGuards, error: guardsCheckError } = await supabaseAdmin.from('guards').select('*').limit(1);
+            const guardCols = allGuards && allGuards.length > 0 ? Object.keys(allGuards[0]) : [];
+            
+            let guardData: any = null;
+            if (!guardsCheckError) {
+                if (guardCols.includes('profile_id')) {
+                    const { data } = await supabaseAdmin
+                        .from('guards')
+                        .select('site_id, sites(name)')
+                        .eq('profile_id', profile_id)
+                        .maybeSingle();
+                    guardData = data;
+                } else if (guardCols.includes('id')) {
+                     const { data } = await supabaseAdmin
+                        .from('guards')
+                        .select('site_id, sites(name)')
+                        .eq('id', profile_id)
+                        .maybeSingle();
+                    guardData = data;
+                }
+            }
+            
+            if (guardData?.site_id) {
+                return res.status(200).json({ 
+                    site_id: guardData.site_id, 
+                    site_name: (guardData as any).sites?.name || 'Assigned Site' 
+                });
+            }
+
+            // Check supervisors
+            const { data: allSups, error: supsCheckError } = await supabaseAdmin.from('supervisors').select('*').limit(1);
+            const supCols = allSups && allSups.length > 0 ? Object.keys(allSups[0]) : [];
+
+            let supData: any = null;
+            if (!supsCheckError) {
+                if (supCols.includes('profile_id')) {
+                    const { data } = await supabaseAdmin
+                        .from('supervisors')
+                        .select('site_id, sites(name)')
+                        .eq('profile_id', profile_id)
+                        .maybeSingle();
+                    supData = data;
+                } else if (supCols.includes('id')) {
+                    const { data } = await supabaseAdmin
+                        .from('supervisors')
+                        .select('site_id, sites(name)')
+                        .eq('id', profile_id)
+                        .maybeSingle();
+                    supData = data;
+                }
+            }
+
+            if (supData?.site_id) {
+                return res.status(200).json({ 
+                    site_id: supData.site_id, 
+                    site_name: (supData as any).sites?.name || 'Assigned Site' 
+                });
+            }
+
+            return res.status(200).json({ 
+                site_id: null, 
+                debug_cols: { guards: guardCols, sups: supCols },
+                errors: { guards: guardsCheckError?.message, sups: supsCheckError?.message }
+            });
+        }
         
         let table = '';
         switch (action) {
