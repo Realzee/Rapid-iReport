@@ -439,6 +439,10 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     arrests: parseInt(formData.arrests || '0'),
                     guns_recovered: parseInt(formData.guns_recovered || '0'),
                     guns_stolen: parseInt(formData.guns_stolen || '0'),
+                    license_plate: formData.license_plate,
+                    vehicle_make: formData.vehicle_make,
+                    vehicle_model: formData.vehicle_model,
+                    vehicle_color: formData.vehicle_color,
                 };
             }
 
@@ -731,6 +735,16 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                             ))}
                                         </div>
                                     )}
+                                </div>
+                            </div>
+                            
+                            <div className="md:col-span-2 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
+                                <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 underline">Vehicle Involved/Stolen Details</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div><label htmlFor="license_plate" className={labelClasses}>License Plate</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} className={inputClasses} /></div>
+                                    <div><label htmlFor="vehicle_make" className={labelClasses}>Vehicle Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} className={inputClasses} list="makes-list" /></div>
+                                    <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} className={inputClasses} list="models-list" /></div>
+                                    <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" /></div>
                                 </div>
                             </div>
 

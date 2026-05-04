@@ -190,6 +190,10 @@ export interface CrimeReport {
   arrests?: number;
   guns_recovered?: number;
   guns_stolen?: number;
+  license_plate?: string;
+  vehicle_make?: string;
+  vehicle_model?: string;
+  vehicle_color?: string;
 }
 
 export interface GateAccessLog {
