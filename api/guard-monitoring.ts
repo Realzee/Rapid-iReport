@@ -12,7 +12,25 @@ export default async function handler(req: any, res: any) {
         }
         let query = supabaseAdmin.from(table as string).select('*');
         if (company_id) {
-            query = query.eq('company_id', company_id);
+            // Check if column exists first to avoid 500/400 errors from Supabase client
+            const { data: colCheck, error: colError } = await supabaseAdmin.from(table as string).select('*').limit(1);
+            let hasCompanyId = false;
+            
+            if (!colError && colCheck && colCheck.length > 0) {
+                if (Object.keys(colCheck[0]).includes('company_id')) {
+                    hasCompanyId = true;
+                }
+            } else {
+                // Table might be empty or some other error, double check column existence
+                const { error: testError } = await supabaseAdmin.from(table as string).select('company_id').limit(1);
+                if (!testError) {
+                    hasCompanyId = true;
+                }
+            }
+            
+            if (hasCompanyId) {
+                query = query.eq('company_id', company_id);
+            }
         }
         const { data, error } = await query;
         if (error) {
@@ -41,6 +59,8 @@ export default async function handler(req: any, res: any) {
                 "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.routes ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.checkpoints ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
+                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
+                "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS name text",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS contact_number text",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS profile_pic_url text",
@@ -206,14 +226,25 @@ export default async function handler(req: any, res: any) {
                     const firstName = nameParts[0];
                     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
                     
-                    const { error: profileError } = await supabaseAdmin.from('profiles').insert({
+                    const profileData: any = {
                         id: authData.user.id,
                         email,
                         first_name: firstName,
                         last_name: lastName,
-                        role: action === 'add-guard' ? 'guard' : 'supervisor',
-                        company_id: payload.company_id
-                    });
+                        role: action === 'add-guard' ? 'guard' : 'supervisor'
+                    };
+                    
+                    // Check if company_id column exists in profiles
+                    const { data: profCols } = await supabaseAdmin.from('profiles').select('*').limit(1);
+                    if (profCols && profCols.length > 0 && Object.keys(profCols[0]).includes('company_id')) {
+                        profileData.company_id = payload.company_id;
+                    } else {
+                        // Double check if empty
+                        const { error: profCheckErr } = await supabaseAdmin.from('profiles').select('company_id').limit(1);
+                        if (!profCheckErr) profileData.company_id = payload.company_id;
+                    }
+                    
+                    const { error: profileError } = await supabaseAdmin.from('profiles').insert(profileData);
 
                     if (profileError) {
                         console.error('Error creating profile:', profileError);
