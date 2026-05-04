@@ -5,6 +5,7 @@ export enum UserRole {
   CONTROLLER = 'controller',
   RESPONDER = 'responder',
   GUARD = 'guard',
+  SUPERVISOR = 'supervisor',
   USER = 'user',
 }
 

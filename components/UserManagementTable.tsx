@@ -11,6 +11,7 @@ const RoleBadge: React.FC<RoleBadgeProps> = memo(({ role }) => {
         [UserRole.CONTROLLER]: 'bg-blue-500/20 text-blue-500 dark:text-blue-400 border-blue-500/30',
         [UserRole.RESPONDER]: 'bg-orange-500/20 text-orange-500 dark:text-orange-400 border-orange-500/30',
         [UserRole.GUARD]: 'bg-green-500/20 text-green-500 dark:text-green-400 border-green-500/30',
+        [UserRole.SUPERVISOR]: 'bg-cyan-500/20 text-cyan-500 dark:text-cyan-400 border-cyan-500/30',
         [UserRole.USER]: 'bg-gray-500/20 text-gray-500 dark:text-gray-400 border-gray-500/30',
     };
     return <span className={`px-3 py-1 text-xs font-bold rounded-full capitalize border ${styles[role]}`}>{role}</span>;

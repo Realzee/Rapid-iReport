@@ -9,12 +9,15 @@ export default async function handler(req: any, res: any) {
         try {
             // Safe column detection
             const { data: colCheck, error: colError } = await supabaseAdmin.from('profiles').select('*').limit(1);
-            let columns = 'id, email, first_name, last_name, role';
+            let columns = 'id, email, first_name, surname, role, status, cell, last_seen_at';
             
             if (!colError && colCheck && colCheck.length > 0) {
                 const existingCols = Object.keys(colCheck[0]);
                 if (existingCols.includes('company_id')) {
                     columns += ', company_id';
+                }
+                if (existingCols.includes('avatar_url')) {
+                    columns += ', avatar_url';
                 }
             } else if (!colError && colCheck && colCheck.length === 0) {
                 // Table is empty, try to select with company_id to see if it even exists

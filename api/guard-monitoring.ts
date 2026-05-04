@@ -53,6 +53,8 @@ export default async function handler(req: any, res: any) {
                 "ALTER TABLE public.checkpoints ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL",
+                "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'guard'",
+                "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'supervisor'",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS name text",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS contact_number text",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS profile_pic_url text",
@@ -236,8 +238,11 @@ export default async function handler(req: any, res: any) {
                         id: authData.user.id,
                         email,
                         first_name: firstName,
-                        last_name: lastName,
-                        role: action === 'add-guard' ? 'guard' : 'supervisor'
+                        surname: lastName,
+                        role: action === 'add-guard' ? 'guard' : 'supervisor',
+                        status: 'active',
+                        avatar_url: payload.profile_pic_url,
+                        cell: payload.contact_number
                     };
                     
                     // Safe company_id check
