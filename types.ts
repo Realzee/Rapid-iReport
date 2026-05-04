@@ -298,6 +298,13 @@ export interface Guard {
     status: 'on_duty' | 'off_duty' | 'panic';
 }
 
+export interface Checkpoint {
+    id: string;
+    site_id: string;
+    name: string;
+    location: LocationCoords;
+}
+
 export interface PatrolLog {
     id: string;
     site_id: string;

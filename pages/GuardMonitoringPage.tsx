@@ -20,7 +20,7 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
 
     useEffect(() => {
         const fetchData = async () => {
-            const tables = ['sites', 'guards', 'routes', 'supervisors', 'checkpoints'];
+            const tables = ['sites', 'guards', 'routes', 'supervisors', 'checkpoints', 'patrol_logs'];
             const results: any = {};
             for (const table of tables) {
                 const response = await fetch(`/api/guard-monitoring?table=${table}`);
@@ -88,7 +88,7 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
                 </div>
             )}
             {activeTab === 'config' && <ConfigurationPanel sites={data.sites} />}
-            {activeTab === 'reporting' && <ReportingPanel />}
+            {activeTab === 'reporting' && <ReportingPanel data={data} />}
             {activeTab === 'analytics' && <AnalyticsPanel />}
         </div>
     );

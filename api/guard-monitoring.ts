@@ -7,7 +7,7 @@ export default async function handler(req: any, res: any) {
 
     if (req.method === 'GET') {
         const { table } = req.query;
-        if (!['sites', 'guards', 'routes', 'supervisors', 'checkpoints'].includes(table)) {
+        if (!['sites', 'guards', 'routes', 'supervisors', 'checkpoints', 'patrol_logs'].includes(table)) {
             return res.status(400).json({ error: 'Invalid table' });
         }
         const { data, error } = await supabaseAdmin.from(table).select('*');
