@@ -4,9 +4,11 @@ ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS contact_person text;
 ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS contact_number text;
 ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS logo_url text;
 
+ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS name text;
 ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS contact_number text;
 ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS profile_pic_url text;
 
+ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS name text;
 ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS contact_number text;
 ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS psira_number text;
 ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS psira_expiry_date date;

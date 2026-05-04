@@ -44,7 +44,33 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
     return (
         <div className="p-6 space-y-6">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Guarding</h1>
+                <div className="flex items-center gap-4">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Guarding</h1>
+                    {profile.role === 'admin' && (
+                        <button 
+                            onClick={async () => {
+                                if (confirm('Run schema repair?')) {
+                                    try {
+                                        const res = await fetch('/api/guard-monitoring', {
+                                            method: 'POST',
+                                            headers: {'Content-Type': 'application/json'},
+                                            body: JSON.stringify({ action: 'fix-schema' })
+                                        });
+                                        const result = await res.json();
+                                        alert('Repair complete. Check console for details.');
+                                        console.log(result);
+                                        window.location.reload();
+                                    } catch (e) {
+                                        alert('Repair failed');
+                                    }
+                                }
+                            }}
+                            className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded hover:bg-amber-200 transition"
+                        >
+                            Repair Guarding Schema
+                        </button>
+                    )}
+                </div>
                 <nav className="flex space-x-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                     {tabs.map(tab => (
                         <button

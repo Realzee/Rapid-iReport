@@ -25,6 +25,25 @@ export default async function handler(req: any, res: any) {
         const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
         const { action, table: targetTable, ...payload } = body;
         
+        if (action === 'fix-schema') {
+            const queries = [
+                "ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
+                "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS name text",
+                "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS contact_number text",
+                "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS profile_pic_url text",
+                "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS name text",
+                "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS contact_number text",
+                "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS psira_number text",
+                "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'off_duty'"
+            ];
+            const results = [];
+            for (const q of queries) {
+                const { error } = await supabaseAdmin.rpc('eval', { query: q });
+                results.push({ query: q, success: !error, error: error?.message });
+            }
+            return res.status(200).json({ results });
+        }
+
         if (action === 'get-my-site') {
             const { profile_id } = payload;
             if (!profile_id) return res.status(400).json({ error: 'profile_id required' });
