@@ -20,6 +20,11 @@ export default async function handler(req: any, res: any) {
             if (error.code === '42P01') { // relation does not exist
                 return res.status(200).json([]);
             }
+            if (error.code === '42703' && company_id) { // column company_id does not exist
+                // Fallback to query without filter if the column is missing (means schema repair needed)
+                const { data: fallbackData, error: fallbackError } = await supabaseAdmin.from(table as string).select('*');
+                if (!fallbackError) return res.status(200).json(fallbackData);
+            }
             return res.status(500).json({ error: error.message });
         }
         return res.status(200).json(data);

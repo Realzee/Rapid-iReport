@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ImagePicker from './ImagePicker';
-import { Edit, Trash2, Plus, X } from 'lucide-react';
+import { Edit, Trash2, Plus, X, Settings } from 'lucide-react';
 
 interface ConfigurationPanelProps {
     sites: any[];
@@ -13,6 +13,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
     const [items, setItems] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [repairing, setRepairing] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
@@ -112,6 +113,28 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
         }
     };
 
+    const handleRepair = async () => {
+        setRepairing(true);
+        try {
+            const res = await fetch('/api/guard-monitoring', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'fix-schema' })
+            });
+            if (res.ok) {
+                alert('Database schema updated successfully.');
+                fetchItems();
+            } else {
+                const err = await res.json();
+                alert(`Repair failed: ${err.error}`);
+            }
+        } catch (e) {
+            alert('Repair error');
+        } finally {
+            setRepairing(false);
+        }
+    };
+
     const handleEdit = (item: any) => {
         setFormData({ ...item, coordinates: item.coordinates ? JSON.stringify(item.coordinates) : undefined });
         setEditingId(item.id);
@@ -197,7 +220,24 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
     return (
         <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
             <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Configuration</h2>
+                <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Configuration</h2>
+                    {profile.role === 'admin' && (
+                        <button 
+                            onClick={handleRepair}
+                            disabled={repairing}
+                            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md border ${
+                                repairing 
+                                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
+                                : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 transition'
+                            }`}
+                            title="Fix missing database columns"
+                        >
+                            <Settings size={14} className={repairing ? 'animate-spin' : ''} />
+                            {repairing ? 'Repairing...' : 'Repair DB'}
+                        </button>
+                    )}
+                </div>
                 {!showForm && (
                     <button 
                         onClick={() => { setShowForm(true); setIsEditing(false); setFormData({}); }}
