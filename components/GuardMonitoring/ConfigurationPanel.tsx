@@ -15,7 +15,6 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites }) => {
             label: 'Sites', 
             fields: [
                 { name: 'name', label: 'Site Name', type: 'text' },
-                { name: 'address', label: 'Address', type: 'text' },
                 { name: 'contact_person', label: 'Contact Person', type: 'text' },
                 { name: 'contact_number', label: 'Contact Number', type: 'text' },
                 { name: 'logo_url', label: 'Site Logo', type: 'image' }
