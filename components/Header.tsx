@@ -274,7 +274,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
             <img 
               src={profile.company?.logo_url || mainLogoUrl} 
               alt="Company Logo" 
-              className="main-logo w-auto min-w-[50px] h-10 sm:h-16 object-contain transition-all duration-300 opacity-0" 
+              className="main-logo w-auto min-w-[60px] h-12 sm:h-20 object-contain transition-all duration-300 opacity-0 bg-black rounded" 
               onLoad={(e) => { e.currentTarget.style.opacity = '1'; }}
               onError={(e) => { 
                   e.currentTarget.style.opacity = '1';
@@ -300,7 +300,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
             <ThemeToggle />
             {profile.company_id && (
                 <button onClick={() => setIsPTTModalOpen(true)} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300" title="Push-to-Talk">
-                  <RadioTowerIcon className="w-5 h-5 sm:w-6 h-6" />
+                  <RadioTowerIcon className="w-8 h-8 sm:w-10 sm:h-10" />
                 </button>
             )}
             <div ref={notificationsRef} className="relative">
