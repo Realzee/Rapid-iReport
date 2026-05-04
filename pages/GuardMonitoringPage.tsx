@@ -121,3 +121,4 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
 };
 
 export default GuardMonitoringPage;
+
