@@ -13,6 +13,7 @@ import ProfilePage from './pages/ProfilePage';
 import ControllerPage from './pages/ControllerPage';
 import ResponderPage from './pages/ResponderPage';
 import GuardDashboardPage from './pages/GuardDashboardPage';
+import PatrolPage from './pages/PatrolPage';
 import AttendancePage from './pages/AttendancePage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import PublicDashboardPage from './pages/PublicDashboardPage';
@@ -37,7 +38,7 @@ import GlobalSearchPage from './pages/GlobalSearchPage';
 import { useTheme } from './contexts/ThemeContext';
 import MatrixRain from './components/MatrixRain';
 
-type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access';
+type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner';
 
 const isProfileComplete = (profile: Profile) => {
     if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
@@ -324,6 +325,7 @@ const App: React.FC = () => {
 
     if (profile.role === UserRole.GUARD) {
         if (view === 'gate_access') return <GateAccessPage profile={profile} />;
+        if (view === 'patrol_scanner') return <PatrolPage profile={profile} />;
         return view === 'profile' 
             ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
             : <GuardDashboardPage profile={profile} />;

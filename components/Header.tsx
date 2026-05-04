@@ -11,7 +11,7 @@ import { updateFaviconBadge, updateDocumentTitle, playNotificationSound } from '
 
 interface HeaderProps {
     currentView: string;
-    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search') => void;
+    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner') => void;
     profile: Profile;
     onNotificationClick: (notification: Notification) => void;
 }
@@ -189,6 +189,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
           </button>
           <button onClick={() => clickHandler('gate_access')} className={classGetter('gate_access')}>
             <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Gate Access
+          </button>
+          <button onClick={() => clickHandler('patrol_scanner')} className={classGetter('patrol_scanner')}>
+            <ScanIcon className="w-4 h-4 mr-2" /> Patrolling
           </button>
         </>
       );
