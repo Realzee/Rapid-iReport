@@ -1,6 +1,7 @@
 import React from 'react';
 import { Responder, ResponderStatus } from '../../types';
 import StatusBadge from '../StatusBadge';
+import PatrolScanner from './PatrolScanner';
 
 interface GuardStatusDashboardProps {
     responders: Responder[];
@@ -76,6 +77,8 @@ const GuardStatusDashboard: React.FC<GuardStatusDashboardProps> = ({ responders,
                     ))}
                 </div>
             </div>
+
+            <PatrolScanner guards={data.guards} checkpoints={data.checkpoints} onScanSuccess={() => alert('Scan recorded!')} />
 
             <div className="flex gap-2 pt-2">
                 <button 
