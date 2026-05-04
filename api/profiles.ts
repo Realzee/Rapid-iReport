@@ -6,32 +6,38 @@ export default async function handler(req: any, res: any) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || '');
 
     if (req.method === 'GET') {
-        // Safe column detection
-        const { data: colCheck, error: colError } = await supabaseAdmin.from('profiles').select('*').limit(1);
-        let columns = 'id, email, first_name, last_name, role';
-        
-        if (!colError && colCheck && colCheck.length > 0) {
-            const existingCols = Object.keys(colCheck[0]);
-            if (existingCols.includes('company_id')) {
-                columns += ', company_id';
-            }
-        } else if (!colError && colCheck && colCheck.length === 0) {
-            // Table is empty, try to select with company_id to see if it even exists
-            const { error: testError } = await supabaseAdmin.from('profiles').select('company_id').limit(1);
-            if (!testError) {
-                columns += ', company_id';
-            }
-        }
-        
-        const { data, error } = await supabaseAdmin
-            .from('profiles')
-            .select(columns)
-            .order('email');
+        try {
+            // Safe column detection
+            const { data: colCheck, error: colError } = await supabaseAdmin.from('profiles').select('*').limit(1);
+            let columns = 'id, email, first_name, last_name, role';
             
-        if (error) {
-            return res.status(500).json({ error: error.message });
+            if (!colError && colCheck && colCheck.length > 0) {
+                const existingCols = Object.keys(colCheck[0]);
+                if (existingCols.includes('company_id')) {
+                    columns += ', company_id';
+                }
+            } else if (!colError && colCheck && colCheck.length === 0) {
+                // Table is empty, try to select with company_id to see if it even exists
+                const { error: testError } = await supabaseAdmin.from('profiles').select('company_id').limit(1);
+                if (!testError) {
+                    columns += ', company_id';
+                }
+            }
+            
+            const { data, error } = await supabaseAdmin
+                .from('profiles')
+                .select(columns)
+                .order('email');
+                
+            if (error) {
+                console.error('Error fetching profiles:', error);
+                return res.status(500).json({ error: error.message, code: error.code });
+            }
+            return res.status(200).json(data);
+        } catch (e: any) {
+            console.error('Profiles handler crash:', e);
+            return res.status(500).json({ error: e.message || 'Unknown internal error' });
         }
-        return res.status(200).json(data);
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

@@ -12,36 +12,26 @@ export default async function handler(req: any, res: any) {
         }
         let query = supabaseAdmin.from(table as string).select('*');
         if (company_id) {
-            // Check if column exists first to avoid 500/400 errors from Supabase client
-            const { data: colCheck, error: colError } = await supabaseAdmin.from(table as string).select('*').limit(1);
-            let hasCompanyId = false;
-            
-            if (!colError && colCheck && colCheck.length > 0) {
-                if (Object.keys(colCheck[0]).includes('company_id')) {
-                    hasCompanyId = true;
-                }
-            } else {
-                // Table might be empty or some other error, double check column existence
+            // Safe check for company_id column presence
+            try {
                 const { error: testError } = await supabaseAdmin.from(table as string).select('company_id').limit(1);
                 if (!testError) {
-                    hasCompanyId = true;
+                    query = query.eq('company_id', company_id);
                 }
-            }
-            
-            if (hasCompanyId) {
-                query = query.eq('company_id', company_id);
+            } catch (e) {
+                // Ignore errors during column check
             }
         }
         const { data, error } = await query;
         if (error) {
             console.error(`Error fetching table ${table}:`, error);
-            if (error.code === '42P01') { // relation does not exist
-                return res.status(200).json([]);
+            // Fallback for schema cache issues: if explicitly filtering by company_id failed, try without it
+            if (error.message.includes('schema cache') || error.code === '42703') {
+                const { data: fallbackData, error: fallbackErr } = await supabaseAdmin.from(table as string).select('*');
+                if (!fallbackErr) return res.status(200).json(fallbackData);
             }
-            if (error.code === '42703' && company_id) { // column company_id does not exist
-                // Fallback to query without filter if the column is missing (means schema repair needed)
-                const { data: fallbackData, error: fallbackError } = await supabaseAdmin.from(table as string).select('*');
-                if (!fallbackError) return res.status(200).json(fallbackData);
+            if (error.code === '42P01') { 
+                return res.status(200).json([]);
             }
             return res.status(500).json({ error: error.message });
         }
@@ -54,6 +44,8 @@ export default async function handler(req: any, res: any) {
         
         if (action === 'fix-schema') {
             const queries = [
+                // Ensure eval function exists
+                "CREATE OR REPLACE FUNCTION eval(query text) RETURNS void AS $$ BEGIN EXECUTE query; END; $$ LANGUAGE plpgsql SECURITY DEFINER;",
                 "ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
@@ -73,8 +65,12 @@ export default async function handler(req: any, res: any) {
             ];
             const results = [];
             for (const q of queries) {
-                const { error } = await supabaseAdmin.rpc('eval', { query: q });
-                results.push({ query: q, success: !error, error: error?.message });
+                try {
+                    const { error } = await supabaseAdmin.rpc('eval', { query: q });
+                    results.push({ query: q, success: !error, error: error?.message });
+                } catch (e: any) {
+                    results.push({ query: q, success: false, error: e.message });
+                }
             }
             return res.status(200).json({ results });
         }
@@ -211,11 +207,21 @@ export default async function handler(req: any, res: any) {
                 });
 
                 if (authError) {
-                    if (authError.message.includes('already registered')) {
+                    if (authError.message.includes('already registered') || authError.status === 422) {
                         // User exists, try to get their ID
                         const { data: userData } = await supabaseAdmin.from('profiles').select('id').eq('email', email).maybeSingle();
                         if (userData) {
                             payload.profile_id = userData.id;
+                            // Optionally update profile to match the required role and company
+                            await supabaseAdmin.from('profiles').update({ 
+                                role: action === 'add-guard' ? 'guard' : 'supervisor',
+                                company_id: payload.company_id 
+                            }).eq('id', userData.id);
+                        } else {
+                            // User exists in Auth but not in Profiles? This is rare but possible.
+                            // We don't have the ID easily here without searching Auth which is restricted.
+                            // Let's try to find them in Auth via listUsers if allowed, or just error.
+                            return res.status(400).json({ error: 'User exists in authentication but has no profile record. Please link manually or check with admin.' });
                         }
                     } else {
                         throw authError;
@@ -234,22 +240,16 @@ export default async function handler(req: any, res: any) {
                         role: action === 'add-guard' ? 'guard' : 'supervisor'
                     };
                     
-                    // Check if company_id column exists in profiles
-                    const { data: profCols } = await supabaseAdmin.from('profiles').select('*').limit(1);
-                    if (profCols && profCols.length > 0 && Object.keys(profCols[0]).includes('company_id')) {
-                        profileData.company_id = payload.company_id;
-                    } else {
-                        // Double check if empty
-                        const { error: profCheckErr } = await supabaseAdmin.from('profiles').select('company_id').limit(1);
-                        if (!profCheckErr) profileData.company_id = payload.company_id;
-                    }
+                    // Safe company_id check
+                    try {
+                        const { error: testProfErr } = await supabaseAdmin.from('profiles').select('company_id').limit(1);
+                        if (!testProfErr) profileData.company_id = payload.company_id;
+                    } catch (e) {}
                     
-                    const { error: profileError } = await supabaseAdmin.from('profiles').insert(profileData);
+                    const { error: profileError } = await supabaseAdmin.from('profiles').upsert(profileData);
 
                     if (profileError) {
-                        console.error('Error creating profile:', profileError);
-                        // We continue because the guard/supervisor record needs to be created, 
-                        // even if the profile insertion fails (maybe it already exists)
+                        console.error('Error upserting profile:', profileError);
                     }
                     
                     payload.profile_id = authData.user.id;
@@ -260,9 +260,6 @@ export default async function handler(req: any, res: any) {
                 delete payload.password;
             }
 
-            // Get columns for the target table to sanitize payload
-            const { data: colsData, error: colsError } = await supabaseAdmin.from(table).select('*').limit(1);
-            
             let sanitizedPayload: any = { ...payload };
             
             // Special handling for required but missing fields
@@ -272,7 +269,7 @@ export default async function handler(req: any, res: any) {
                         sanitizedPayload.location = { lat: -26.2041, lng: 28.0473 }; // Default to Johannesburg coords
                     }
                 }
-                if (!sanitizedPayload.company_id) {
+                if (!sanitizedPayload.company_id && sanitizedPayload.company_id !== null) {
                     const { data: firstCompany } = await supabaseAdmin.from('companies').select('id').limit(1).single();
                     if (firstCompany) {
                         sanitizedPayload.company_id = firstCompany.id;
@@ -280,24 +277,27 @@ export default async function handler(req: any, res: any) {
                 }
             }
 
-            if (!colsError && colsData) {
-                const validCols = colsData.length > 0 ? Object.keys(colsData[0]) : [];
-                if (validCols.length > 0) {
-                    const finalPayload: any = {};
-                    Object.keys(sanitizedPayload).forEach(key => {
-                        if (validCols.includes(key)) {
-                            finalPayload[key] = sanitizedPayload[key];
-                        }
-                    });
-                    const { data, error } = await supabaseAdmin.from(table).insert(finalPayload).select().single();
-                    if (error) throw error;
-                    return res.status(200).json(data);
-                }
-            }
-
-            // Fallback to direct insert if column detection fails
+            // Direct insert is safer than trying to detect columns from potentially empty tables
             const { data, error } = await supabaseAdmin.from(table).insert(sanitizedPayload).select().single();
-            if (error) throw error;
+            
+            if (error) {
+                // If it fails because of extra columns, try to detect what's valid
+                if (error.code === '42703') {
+                    const { data: colsData } = await supabaseAdmin.from(table).select('*').limit(1);
+                    if (colsData && colsData.length > 0) {
+                        const validCols = Object.keys(colsData[0]);
+                        const finalPayload: any = {};
+                        Object.keys(sanitizedPayload).forEach(key => {
+                            if (validCols.includes(key)) finalPayload[key] = sanitizedPayload[key];
+                        });
+                        const { data: retryData, error: retryError } = await supabaseAdmin.from(table).insert(finalPayload).select().single();
+                        if (!retryError) return res.status(200).json(retryData);
+                        throw retryError;
+                    }
+                }
+                throw error;
+            }
+            
             return res.status(200).json(data);
         } catch (error: any) {
             console.error(`Error inserting into ${table}:`, error);
