@@ -144,6 +144,17 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         }
     };
 
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = ''; // Required for Chrome
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isDirty]);
+    
     // Address suggestion logic
     useEffect(() => {
         if (formData.location_coords || !formData.location || formData.location.length < 3) {
@@ -426,6 +437,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     vehicle_make: formData.vehicle_make,
                     vehicle_model: formData.vehicle_model,
                     vehicle_color: formData.vehicle_color,
+                    vin_number: formData.vin_number,
+                    engine_number: formData.engine_number,
                 };
             } else {
                  reportData = {
@@ -439,10 +452,13 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     arrests: parseInt(formData.arrests || '0'),
                     guns_recovered: parseInt(formData.guns_recovered || '0'),
                     guns_stolen: parseInt(formData.guns_stolen || '0'),
-                    license_plate: formData.license_plate,
-                    vehicle_make: formData.vehicle_make,
-                    vehicle_model: formData.vehicle_model,
-                    vehicle_color: formData.vehicle_color,
+                    vehicle_involved: formData.vehicle_involved === 'true',
+                    license_plate: formData.vehicle_involved === 'true' ? formData.license_plate : undefined,
+                    vehicle_make: formData.vehicle_involved === 'true' ? formData.vehicle_make : undefined,
+                    vehicle_model: formData.vehicle_involved === 'true' ? formData.vehicle_model : undefined,
+                    vehicle_color: formData.vehicle_involved === 'true' ? formData.vehicle_color : undefined,
+                    vin_number: formData.vehicle_involved === 'true' ? formData.vin_number : undefined,
+                    engine_number: formData.vehicle_involved === 'true' ? formData.engine_number : undefined,
                 };
             }
 
@@ -711,8 +727,28 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         </div>
                     ) : (
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="md:col-span-2"><label htmlFor="title" className={labelClasses}>Incident Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} className={inputClasses} /></div>
-                            <div className="md:col-span-2"><label htmlFor="crime_type" className={labelClasses}>Type of Crime</label><input type="text" name="crime_type" id="crime_type" value={formData.crime_type || ''} onChange={handleChange} className={inputClasses} /></div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="title" className={labelClasses}>Incident Title</label>
+                                <input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} className={inputClasses} list="title-suggestions" />
+                                <datalist id="title-suggestions">
+                                    <option value="Armed Robbery" />
+                                    <option value="Vehicle Theft" />
+                                    <option value="Housebreaking" />
+                                    <option value="Theft" />
+                                    <option value="Assault" />
+                                </datalist>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="crime_type" className={labelClasses}>Type of Crime</label>
+                                <input type="text" name="crime_type" id="crime_type" value={formData.crime_type || ''} onChange={handleChange} className={inputClasses} list="crime-suggestions" />
+                                <datalist id="crime-suggestions">
+                                    <option value="Theft" />
+                                    <option value="Burglary" />
+                                    <option value="Robbery" />
+                                    <option value="Assault" />
+                                    <option value="Vandalism" />
+                                </datalist>
+                            </div>
                             <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
                             <div>
                                 <label htmlFor="station_name" className={labelClasses}>Station Name</label>
@@ -738,15 +774,27 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 </div>
                             </div>
                             
-                            <div className="md:col-span-2 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
-                                <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 underline">Vehicle Involved/Stolen Details</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div><label htmlFor="license_plate" className={labelClasses}>License Plate</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} className={inputClasses} /></div>
-                                    <div><label htmlFor="vehicle_make" className={labelClasses}>Vehicle Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} className={inputClasses} list="makes-list" /></div>
-                                    <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} className={inputClasses} list="models-list" /></div>
-                                    <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" /></div>
-                                </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="vehicle_involved" className={labelClasses}>Vehicle Involved?</label>
+                                <select name="vehicle_involved" id="vehicle_involved" value={formData.vehicle_involved || 'false'} onChange={handleChange} className={inputClasses}>
+                                    <option value="false">No</option>
+                                    <option value="true">Yes</option>
+                                </select>
                             </div>
+
+                            {formData.vehicle_involved === 'true' && (
+                                <div className="md:col-span-2 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
+                                    <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 underline">Vehicle Involved/Stolen Details</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div><label htmlFor="license_plate" className={labelClasses}>License Plate</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} className={inputClasses} /></div>
+                                        <div><label htmlFor="vehicle_make" className={labelClasses}>Vehicle Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} className={inputClasses} list="makes-list" /></div>
+                                        <div><label htmlFor="vehicle_model" className={labelClasses}>Vehicle Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} className={inputClasses} list="models-list" /></div>
+                                        <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" /></div>
+                                        <div><label htmlFor="vin_number" className={labelClasses}>VIN Number</label><input type="text" name="vin_number" id="vin_number" value={formData.vin_number || ''} onChange={handleChange} className={inputClasses} /></div>
+                                        <div><label htmlFor="engine_number" className={labelClasses}>Engine Number</label><input type="text" name="engine_number" id="engine_number" value={formData.engine_number || ''} onChange={handleChange} className={inputClasses} /></div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="md:col-span-2 border-t border-gray-100 dark:border-gray-800 pt-4 mt-2">
                                 <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Crime Results</h4>

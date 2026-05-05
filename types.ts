@@ -195,6 +195,8 @@ export interface CrimeReport {
   vehicle_make?: string;
   vehicle_model?: string;
   vehicle_color?: string;
+  vin_number?: string;
+  engine_number?: string;
 }
 
 export interface GateAccessLog {
@@ -240,6 +242,8 @@ export interface EmergencyReport {
   vehicle_make?: string;
   vehicle_model?: string;
   vehicle_color?: string;
+  vin_number?: string;
+  engine_number?: string;
   company_id?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];
