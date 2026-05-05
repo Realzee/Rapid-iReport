@@ -51,8 +51,27 @@ const AddEditAnnouncementModal: React.FC<AddEditAnnouncementModalProps> = ({ isO
         setFormData(prev => ({...prev, image_url: undefined }));
     };
 
+    
+    const [isDirty, setIsDirty] = useState(false);
+
+    useEffect(() => {
+        setIsDirty(true);
+    }, [formData]);
+
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = ''; // Required for Chrome
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isDirty]);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setIsDirty(false); // Reset dirty state on submit
         onSave(formData, imageFile);
     };
 

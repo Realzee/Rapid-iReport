@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MailIcon, LockIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
@@ -11,15 +11,33 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const { addToast } = useToast();
+
+  useEffect(() => {
+	  if(email !== '' || password !== '') setIsDirty(true);
+  }, [email, password]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        if (isDirty) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+	setIsDirty(false);
     setLoading(true);
     // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
     const { error } = await supabase.auth['signInWithPassword']({ email, password });
     if (error) {
       addToast(error.message, 'error');
+	  setIsDirty(true); // set dirty back if login fails
     }
     setLoading(false);
   };

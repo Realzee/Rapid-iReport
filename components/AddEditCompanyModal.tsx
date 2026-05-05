@@ -48,6 +48,17 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
         isEnabled: isOpen,
     });
     
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isDirty]);
+    
     const isFormDirty = isDirty || logoFile !== null;
 
     const handleClose = () => {
