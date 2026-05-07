@@ -104,7 +104,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             vehicle_involved: 'false',
             vehicles_involved: '1',
             injuries_reported: 'false',
-            fatalities_reported: 'false'
+            fatalities_reported: 'false',
+            crime_outcome: ''
         };
     }, [reportToEdit, isQuickAdd]);
 
@@ -448,10 +449,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     location: formData.location || 'Unknown Location',
                     cas_number: formData.cas_number,
                     station_name: formData.station_name,
-                    cit_success: formData.cit_success === 'true',
-                    arrests: parseInt(formData.arrests || '0'),
-                    guns_recovered: parseInt(formData.guns_recovered || '0'),
-                    guns_stolen: parseInt(formData.guns_stolen || '0'),
+                    crime_outcome: formData.crime_outcome,
                     vehicle_involved: formData.vehicle_involved === 'true',
                     license_plate: formData.vehicle_involved === 'true' ? formData.license_plate : undefined,
                     vehicle_make: formData.vehicle_involved === 'true' ? formData.vehicle_make : undefined,
@@ -800,23 +798,15 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Crime Results</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label htmlFor="cit_success" className={labelClasses}>CIT Success?</label>
-                                        <select name="cit_success" id="cit_success" value={formData.cit_success || 'false'} onChange={handleChange} className={inputClasses}>
-                                            <option value="false">No</option>
-                                            <option value="true">Yes</option>
+                                        <label htmlFor="crime_outcome" className={labelClasses}>Crime Outcome</label>
+                                        <select name="crime_outcome" id="crime_outcome" value={formData.crime_outcome || ''} onChange={handleChange} className={inputClasses}>
+                                            <option value="">Select Outcome</option>
+                                            <option value="Suspect arrested">Suspect arrested</option>
+                                            <option value="Goods Recovered">Goods Recovered</option>
+                                            <option value="Case Closed">Case Closed</option>
+                                            <option value="Under investigation">Under investigation</option>
+                                            <option value="No suspects">No suspects</option>
                                         </select>
-                                    </div>
-                                    <div>
-                                        <label htmlFor="arrests" className={labelClasses}>Number of Arrests</label>
-                                        <input type="number" name="arrests" id="arrests" value={formData.arrests || 0} onChange={handleChange} className={inputClasses} />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="guns_recovered" className={labelClasses}>Guns Recovered</label>
-                                        <input type="number" name="guns_recovered" id="guns_recovered" value={formData.guns_recovered || 0} onChange={handleChange} className={inputClasses} />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="guns_stolen" className={labelClasses}>Guns Stolen</label>
-                                        <input type="number" name="guns_stolen" id="guns_stolen" value={formData.guns_stolen || 0} onChange={handleChange} className={inputClasses} />
                                     </div>
                                 </div>
                             </div>

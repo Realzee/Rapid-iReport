@@ -187,6 +187,7 @@ export interface CrimeReport {
   company_id?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];
+  crime_outcome?: string;
   cit_success?: boolean;
   arrests?: number;
   guns_recovered?: number;
