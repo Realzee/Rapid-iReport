@@ -661,6 +661,36 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                             <p className="text-gray-900 dark:text-white">{(localReport as any).has_tracker ? 'Yes' : 'No'}</p>
                         </div>
                     )}
+                    {localReport.type === 'vehicle' && (localReport as any).circulation_number && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Circulation Num</p>
+                            <p className="text-gray-900 dark:text-white">{(localReport as any).circulation_number}</p>
+                        </div>
+                    )}
+                    {((localReport as any).arrests > 0 || (localReport as any).guns_recovered > 0) && (
+                        <>
+                            <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Arrests</p>
+                                <p className="text-gray-900 dark:text-white">{(localReport as any).arrests || 0}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Guns Recovered</p>
+                                <p className="text-gray-900 dark:text-white">{(localReport as any).guns_recovered || 0}</p>
+                            </div>
+                        </>
+                    )}
+                    {(localReport as any).recovered_at && (
+                        <div className="col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Recovered At</p>
+                            <p className="text-gray-900 dark:text-white">{format(new Date((localReport as any).recovered_at), 'MMM d, yyyy HH:mm')}</p>
+                        </div>
+                    )}
+                    {(localReport as any).other_recoveries && (
+                        <div className="col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Other Recoveries / Notes</p>
+                            <p className="text-gray-900 dark:text-white italic">{(localReport as any).other_recoveries}</p>
+                        </div>
+                    )}
                     {localReport.type === 'emergency' && (
                         <>
                             <div>
@@ -728,6 +758,17 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                  >
                     View on Map
                 </button>
+
+                {(localReport as any).recovered_location_coords && (
+                    <div className="pt-2">
+                        <button 
+                            onClick={onViewOnMap} 
+                            className="w-full btn-secondary bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
+                        >
+                            View Recovery on Map
+                        </button>
+                    </div>
+                )}
 
                 <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Description</p>

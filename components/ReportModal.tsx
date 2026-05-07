@@ -71,6 +71,89 @@ const geocodeLocation = async (location: string): Promise<{coords: LocationCoord
 
 // --- End Location Picker Component ---
 
+// --- MultiSelect Component ---
+interface MultiSelectProps {
+    options: string[];
+    selected: string[];
+    onChange: (selected: string[]) => void;
+    label: string;
+    placeholder?: string;
+}
+
+const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, label, placeholder }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const toggleOption = (option: string) => {
+        const newSelected = selected.includes(option)
+            ? selected.filter(s => s !== option)
+            : [...selected, option];
+        onChange(newSelected);
+    };
+
+    return (
+        <div className="relative" ref={containerRef}>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
+            <div 
+                onClick={() => setIsOpen(!isOpen)}
+                className="min-h-[42px] w-full bg-gray-50 dark:bg-gray-800/70 border border-gray-300 dark:border-gray-700 rounded-md py-1.5 px-3 flex flex-wrap gap-1.5 cursor-pointer hover:border-gray-400 transition"
+            >
+                {selected.length === 0 && <span className="text-gray-500 py-1">{placeholder || 'Select options...'}</span>}
+                {selected.map(s => (
+                    <span key={s} className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1">
+                        {s}
+                        <button type="button" onClick={(e) => { e.stopPropagation(); toggleOption(s); }} className="hover:text-blue-600 dark:hover:text-blue-100">
+                            <XIcon className="w-3 h-3" />
+                        </button>
+                    </span>
+                ))}
+            </div>
+            {isOpen && (
+                <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto p-2 space-y-1">
+                    {options.map(option => (
+                        <button
+                            key={option}
+                            type="button"
+                            onClick={() => toggleOption(option)}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${selected.includes(option) ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                        >
+                            {option}
+                            {selected.includes(option) && <CheckCircleIcon className="w-4 h-4" />}
+                        </button>
+                    ))}
+                    <div className="pt-2 mt-2 border-t border-gray-100 dark:border-gray-800">
+                        <input 
+                            type="text" 
+                            placeholder="Add custom..." 
+                            className="w-full bg-gray-50 dark:bg-gray-800 border-none text-xs p-2 rounded focus:ring-0"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const val = (e.target as HTMLInputElement).value.trim();
+                                    if (val && !selected.includes(val)) {
+                                        toggleOption(val);
+                                        (e.target as HTMLInputElement).value = '';
+                                    }
+                                }
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit, isQuickAdd = false, onReportSubmitted }) => {
     const [reportType, setReportType] = useState<ReportType>('vehicle');
     const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -105,7 +188,10 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             vehicles_involved: '1',
             injuries_reported: 'false',
             fatalities_reported: 'false',
-            crime_outcome: ''
+            crime_outcome: '',
+            arrests: 0,
+            guns_recovered: 0,
+            other_recoveries: ''
         };
     }, [reportToEdit, isQuickAdd]);
 
@@ -421,6 +507,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     circulation_number: formData.circulation_number,
                     recovered_location_coords: (formData as any).recovered_location_coords,
                     recovered_at: (formData as any).recovered_at,
+                    arrests: parseInt(formData.arrests || '0'),
+                    guns_recovered: parseInt(formData.guns_recovered || '0'),
+                    other_recoveries: formData.other_recoveries || '',
                 };
             } else if (reportType === 'emergency') {
                 // Exclude location_boundary and location_boundingbox for emergency reports as the table might not support them yet
@@ -457,6 +546,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     vehicle_color: formData.vehicle_involved === 'true' ? formData.vehicle_color : undefined,
                     vin_number: formData.vehicle_involved === 'true' ? formData.vin_number : undefined,
                     engine_number: formData.vehicle_involved === 'true' ? formData.engine_number : undefined,
+                    arrests: parseInt(formData.arrests || '0'),
+                    guns_recovered: parseInt(formData.guns_recovered || '0'),
+                    other_recoveries: formData.other_recoveries || '',
+                    recovered_location_coords: (formData as any).recovered_location_coords,
+                    recovered_at: (formData as any).recovered_at,
                 };
             }
 
@@ -588,6 +682,14 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             <div><label htmlFor="vin_number" className={labelClasses}>VIN Number</label><input type="text" name="vin_number" id="vin_number" value={formData.vin_number || ''} onChange={handleChange} className={inputClasses} /></div>
                             <div><label htmlFor="engine_number" className={labelClasses}>Engine Number</label><input type="text" name="engine_number" id="engine_number" value={formData.engine_number || ''} onChange={handleChange} className={inputClasses} /></div>
                             <div><label htmlFor="circulation_number" className={labelClasses}>Circulation Number</label><input type="text" name="circulation_number" id="circulation_number" value={formData.circulation_number || ''} onChange={handleChange} className={inputClasses} /></div>
+                            <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                                <div><label htmlFor="arrests" className={labelClasses}>Suspects Arrested</label><input type="number" name="arrests" id="arrests" value={formData.arrests || 0} onChange={handleChange} className={inputClasses} min="0" /></div>
+                                <div><label htmlFor="guns_recovered" className={labelClasses}>Firearms Recovered</label><input type="number" name="guns_recovered" id="guns_recovered" value={formData.guns_recovered || 0} onChange={handleChange} className={inputClasses} min="0" /></div>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="other_recoveries" className={labelClasses}>Other Recoveries / Notes</label>
+                                <input type="text" name="other_recoveries" id="other_recoveries" value={formData.other_recoveries || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. Stolen goods, drugs, cellphones" />
+                            </div>
                             <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
                             <div>
                                 <label htmlFor="station_name" className={labelClasses}>Station Name</label>
@@ -724,7 +826,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             </div>
                         </div>
                     ) : (
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="md:col-span-2">
                                 <label htmlFor="title" className={labelClasses}>Incident Title</label>
                                 <input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} className={inputClasses} list="title-suggestions" />
@@ -737,15 +839,21 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 </datalist>
                             </div>
                             <div className="md:col-span-2">
-                                <label htmlFor="crime_type" className={labelClasses}>Type of Crime</label>
-                                <input type="text" name="crime_type" id="crime_type" value={formData.crime_type || ''} onChange={handleChange} className={inputClasses} list="crime-suggestions" />
-                                <datalist id="crime-suggestions">
-                                    <option value="Theft" />
-                                    <option value="Burglary" />
-                                    <option value="Robbery" />
-                                    <option value="Assault" />
-                                    <option value="Vandalism" />
-                                </datalist>
+                                <MultiSelect 
+                                    label="Type of Crime"
+                                    options={["Theft", "Burglary", "Robbery", "Assault", "Vandalism", "Hijacking", "CIT Robbery", "Murder", "Attempted Murder"]}
+                                    selected={(formData.crime_type || '').split(',').filter(Boolean)}
+                                    onChange={(selected) => setFormData(prev => ({ ...prev, crime_type: selected.join(',') }))}
+                                    placeholder="Select crime types..."
+                                />
+                            </div>
+                            <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                                <div><label htmlFor="arrests" className={labelClasses}>Suspects Arrested</label><input type="number" name="arrests" id="arrests" value={formData.arrests || 0} onChange={handleChange} className={inputClasses} min="0" /></div>
+                                <div><label htmlFor="guns_recovered" className={labelClasses}>Firearms Recovered</label><input type="number" name="guns_recovered" id="guns_recovered" value={formData.guns_recovered || 0} onChange={handleChange} className={inputClasses} min="0" /></div>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="other_recoveries" className={labelClasses}>Other Recoveries / Notes</label>
+                                <input type="text" name="other_recoveries" id="other_recoveries" value={formData.other_recoveries || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. Stolen goods, drugs, cellphones" />
                             </div>
                             <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
                             <div>
@@ -795,18 +903,42 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             )}
 
                             <div className="md:col-span-2 border-t border-gray-100 dark:border-gray-800 pt-4 mt-2">
-                                <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Crime Results</h4>
+                                <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                    <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                                    Crime Results & Recovery
+                                </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label htmlFor="crime_outcome" className={labelClasses}>Crime Outcome</label>
-                                        <select name="crime_outcome" id="crime_outcome" value={formData.crime_outcome || ''} onChange={handleChange} className={inputClasses}>
-                                            <option value="">Select Outcome</option>
-                                            <option value="Suspect arrested">Suspect arrested</option>
-                                            <option value="Goods Recovered">Goods Recovered</option>
-                                            <option value="Case Closed">Case Closed</option>
-                                            <option value="Under investigation">Under investigation</option>
-                                            <option value="No suspects">No suspects</option>
-                                        </select>
+                                    <div className="md:col-span-2">
+                                        <MultiSelect 
+                                            label="Crime Outcome"
+                                            options={["Suspect arrested", "Goods Recovered", "Vehicle Recovered", "Case Closed", "Under investigation", "No suspects", "Firearms Recovered"]}
+                                            selected={(formData.crime_outcome || '').split(',').filter(Boolean)}
+                                            onChange={(selected) => setFormData(prev => ({ ...prev, crime_outcome: selected.join(',') }))}
+                                            placeholder="Select outcomes..."
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl space-y-4">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase">Recovery Location (Pindrop)</label>
+                                        <LocationPicker 
+                                            onLocationSelect={(coords) => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    recovered_location_coords: coords
+                                                } as any));
+                                            }}
+                                            initialCoords={(formData as any).recovered_location_coords}
+                                            placeholder="Pin recovery location..."
+                                        />
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Recovery Time</label>
+                                            <input
+                                                type="datetime-local"
+                                                name="recovered_at"
+                                                value={(formData as any).recovered_at || ''}
+                                                onChange={handleChange}
+                                                className={inputClasses}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>

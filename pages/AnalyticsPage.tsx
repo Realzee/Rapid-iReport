@@ -19,7 +19,7 @@ import StatCard from '../components/StatCard';
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
 
-type ReportType = 'summary' | 'trends' | 'severity' | 'status' | 'time' | 'hotspots' | 'crime_results';
+type ReportType = 'summary' | 'trends' | 'severity' | 'status' | 'time' | 'hotspots' | 'crime_results' | 'vehicle_analysis';
 type DateRange = '7days' | '30days' | '90days' | 'all';
 
 const COLORS = ['#3B82F6', '#EF4444', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899'];
@@ -150,6 +150,7 @@ const AnalyticsPage: React.FC = () => {
             case 'time': return <TimeAnalysisReport reports={filteredReports} theme={theme} />;
             case 'hotspots': return <HotspotsReport reports={filteredReports} />;
             case 'crime_results': return <CrimePerformanceReport reports={filteredReports} />;
+            case 'vehicle_analysis': return <VehicleAnalysisReport reports={filteredReports} theme={theme} />;
             default: return null;
         }
     };
@@ -162,6 +163,7 @@ const AnalyticsPage: React.FC = () => {
         { id: 'time', name: 'Time Analysis', icon: Calendar },
         { id: 'hotspots', name: 'Top Hotspots', icon: MapIcon },
         { id: 'crime_results', name: 'Crime Results', icon: CrimeIcon },
+        { id: 'vehicle_analysis', name: 'Vehicle Analysis', icon: CarIcon },
     ];
 
     return (
@@ -240,15 +242,15 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
     const resolved = reports.filter(r => r.status === ReportStatus.RESOLVED || r.status === ReportStatus.RECOVERED).length;
     const pending = reports.filter(r => r.status === ReportStatus.PENDING).length;
     
-    // Calculate crime specific stats for summary
-    const crimeStats = useMemo(() => {
-        return crimeReportsList.reduce((acc, r: any) => {
-            if (r.cit_success) acc.citSuccess++;
+    // Calculate combined stats for summary
+    const combinedStats = useMemo(() => {
+        return reports.reduce((acc, r: any) => {
+            if (r.type === 'crime' && r.cit_success) acc.citSuccess++;
             acc.arrests += (r.arrests || 0);
             acc.gunsRecovered += (r.guns_recovered || 0);
             return acc;
         }, { citSuccess: 0, arrests: 0, gunsRecovered: 0 });
-    }, [crimeReportsList]);
+    }, [reports]);
 
     // Calculate resolution rate
     const resolutionRate = totalReports > 0 ? Math.round((resolved / totalReports) * 100) : 0;
@@ -289,9 +291,9 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
             <div>
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Operational Success</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard title="Arrests" value={crimeStats.arrests.toString()} icon={<CheckCircleIcon />} color="green" />
-                    <StatCard title="CIT Success" value={crimeStats.citSuccess.toString()} icon={<ChartBarIcon />} color="indigo" />
-                    <StatCard title="Guns Recovered" value={crimeStats.gunsRecovered.toString()} icon={<ZapIcon />} color="teal" />
+                    <StatCard title="Arrests" value={combinedStats.arrests.toString()} icon={<CheckCircleIcon />} color="green" />
+                    <StatCard title="CIT Success" value={combinedStats.citSuccess.toString()} icon={<ChartBarIcon />} color="indigo" />
+                    <StatCard title="Guns Recovered" value={combinedStats.gunsRecovered.toString()} icon={<ZapIcon />} color="teal" />
                     <StatCard title="Resolution Rate" value={`${resolutionRate}%`} icon={<ChartPieIcon />} color="purple" />
                 </div>
             </div>
@@ -712,6 +714,89 @@ const CrimePerformanceReport: React.FC<{ reports: Report[] }> = ({ reports }) =>
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const VehicleAnalysisReport: React.FC<{ reports: Report[], theme: string }> = ({ reports, theme }) => {
+    const vehicleReports = reports.filter(r => r.type === 'vehicle') as VehicleReport[];
+    
+    const makeStats = useMemo(() => {
+        const stats = vehicleReports.reduce((acc, r) => {
+            const make = r.vehicle_make?.toUpperCase() || 'UNKNOWN';
+            if (!acc[make]) acc[make] = { name: make, count: 0, recovered: 0 };
+            acc[make].count++;
+            if (r.status === ReportStatus.RECOVERED) acc[make].recovered++;
+            return acc;
+        }, {} as Record<string, { name: string, count: 0, recovered: 0 }>);
+
+        return Object.values(stats).sort((a, b) => b.count - a.count).slice(0, 10);
+    }, [vehicleReports]);
+
+    const hotspotStats = useMemo(() => {
+        const stats = vehicleReports.reduce((acc, r) => {
+            const location = r.last_seen_location?.trim() || 'UNKNOWN';
+            if (!acc[location]) acc[location] = { name: location, count: 0, recovered: 0 };
+            acc[location].count++;
+            if (r.status === ReportStatus.RECOVERED) acc[location].recovered++;
+            return acc;
+        }, {} as Record<string, { name: string, count: 0, recovered: 0 }>);
+
+        return Object.values(stats).sort((a, b) => b.count - a.count).slice(0, 10);
+    }, [vehicleReports]);
+
+    return (
+        <div className="space-y-8 animate-in fade-in duration-500">
+            <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Top Snatched Vehicles (by Make)</h3>
+                <div className="w-full h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={makeStats} margin={{ top: 20, right: 30, left: 40, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                            <XAxis dataKey="name" stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'} />
+                            <YAxis stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'} />
+                            <Tooltip 
+                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} 
+                            />
+                            <Legend />
+                            <Bar dataKey="count" name="Snatched" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="recovered" name="Recovered" fill="#10B981" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Vehicle Hotspots Analysis</h3>
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-gray-100 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                <th className="p-4 font-bold">Location</th>
+                                <th className="p-4 font-bold text-center">Incidents</th>
+                                <th className="p-4 font-bold text-center">Recovered</th>
+                                <th className="p-4 font-bold text-center">Recovery Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                            {hotspotStats.map((spot) => (
+                                <tr key={spot.name} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                    <td className="p-4 text-sm font-medium text-gray-900 dark:text-white">{spot.name}</td>
+                                    <td className="p-4 text-sm text-center text-gray-700 dark:text-gray-300 font-bold">{spot.count}</td>
+                                    <td className="p-4 text-sm text-center text-green-600 dark:text-green-400 font-bold">{spot.recovered}</td>
+                                    <td className="p-4 text-sm text-center">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                            (spot.recovered / spot.count) > 0.5 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                        }`}>
+                                            {Math.round((spot.recovered / spot.count) * 100)}%
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

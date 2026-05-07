@@ -884,7 +884,19 @@ const ControllerReportDetail: React.FC<{
                     </div>
                 )}
 
-                {report.status === ReportStatus.RECOVERED && (report as any).recovered_location_coords && (
+                {report.type === 'vehicle' && (
+                    <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                        <DetailField label="Arrests">{(report as any).arrests || 0}</DetailField>
+                        <DetailField label="Guns Recovered">{(report as any).guns_recovered || 0}</DetailField>
+                        {(report as any).other_recoveries && (
+                             <DetailField label="Recovery Notes" className="col-span-2">
+                                <p className="text-gray-700 dark:text-gray-300 italic">{(report as any).other_recoveries}</p>
+                             </DetailField>
+                        )}
+                    </div>
+                )}
+
+                {((report as any).recovered_location_coords) && (
                     <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg space-y-2">
                         <div className="flex items-center gap-2 text-green-700 dark:text-green-400 font-bold text-sm">
                             <CheckCircleIcon className="w-4 h-4" />
@@ -996,10 +1008,29 @@ const ControllerReportDetail: React.FC<{
                 
                 {report.type === 'crime' && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                        <DetailField label="Type of Crime" className="col-span-2">
+                             <div className="flex flex-wrap gap-1 mt-1">
+                                {(report.crime_type || 'Unknown').split(',').map((type, i) => (
+                                    <span key={i} className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded text-[10px] font-bold uppercase">{type.trim()}</span>
+                                ))}
+                             </div>
+                        </DetailField>
+                        <DetailField label="Outcome" className="col-span-2">
+                             <div className="flex flex-wrap gap-1 mt-1">
+                                {(report.crime_outcome || 'Pending').split(',').map((outcome, i) => (
+                                    <span key={i} className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded text-[10px] font-bold uppercase">{outcome.trim()}</span>
+                                ))}
+                             </div>
+                        </DetailField>
                         <DetailField label="CIT Success">{(report as any).cit_success ? 'Yes' : 'No'}</DetailField>
                         <DetailField label="Arrests">{(report as any).arrests || 0}</DetailField>
                         <DetailField label="Guns Recovered">{(report as any).guns_recovered || 0}</DetailField>
                         <DetailField label="Guns Stolen">{(report as any).guns_stolen || 0}</DetailField>
+                        {(report as any).other_recoveries && (
+                             <DetailField label="Other Recoveries" className="col-span-2">
+                                <p className="text-gray-700 dark:text-gray-300 italic">{(report as any).other_recoveries}</p>
+                             </DetailField>
+                        )}
                     </div>
                 )}
                 {(report as any).cas_number && <DetailField label="CAS Number"><p className="text-gray-800 dark:text-gray-200">{(report as any).cas_number}</p></DetailField>}

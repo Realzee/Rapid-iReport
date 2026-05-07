@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip, GeoJSON, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip, GeoJSON, Circle, Polyline } from 'react-leaflet';
 import L, { LatLngBoundsExpression } from 'leaflet';
 import { Report, Responder, VehicleReport, ReportStatus, Severity, ResponderStatus, Profile } from '../types';
 import StatusBadge from './StatusBadge';
@@ -83,6 +83,28 @@ const createIncidentIcon = (report: Report, isSelected: boolean, isInHighRisk: b
         iconSize: [size, size],
         iconAnchor: [size / 2, size],
         popupAnchor: [0, -size],
+    });
+};
+
+const createRecoveryIcon = (isSelected: boolean) => {
+    const color = '#10B981'; // emerald-500
+    const size = isSelected ? 48 : 40;
+    
+    const iconHtml = `
+        <div style="width: ${size}px; height: ${size}px; display: flex; justify-content: center; align-items: center;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 100%; height: 100%; filter: drop-shadow(0 0 4px rgba(255,255,255,1)) drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
+                <path fill="${color}" stroke="#ffffff" stroke-width="1.5" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path>
+                <circle cx="12" cy="9" r="3" fill="white" />
+                <path d="M9 9l2 2 4-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" transform="translate(0, 1) scale(0.8)"/>
+            </svg>
+        </div>
+    `;
+
+    return new L.DivIcon({
+        html: iconHtml,
+        className: '',
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size],
     });
 };
 
@@ -406,6 +428,33 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                                     </div>
                                 </Popup>
                             </Marker>
+
+                            {(report as any).recovered_location_coords && (
+                                <>
+                                    <Polyline 
+                                        positions={[
+                                            [report.location_coords.lat, report.location_coords.lng],
+                                            [(report as any).recovered_location_coords.lat, (report as any).recovered_location_coords.lng]
+                                        ]} 
+                                        pathOptions={{ color: '#10B981', weight: 3, dashArray: '10, 10', opacity: 0.6 }} 
+                                    />
+                                    <Marker
+                                        position={[(report as any).recovered_location_coords.lat, (report as any).recovered_location_coords.lng]}
+                                        icon={createRecoveryIcon(isSelected)}
+                                        zIndexOffset={isSelected ? 1100 : 100}
+                                    >
+                                        <Popup>
+                                            <div className="p-2">
+                                                <p className="font-bold text-green-600 mb-1 flex items-center gap-1">
+                                                    <CheckCircleIcon className="w-4 h-4" /> RECOVERED LOCATION
+                                                </p>
+                                                <p className="text-sm">Recovered at: {formatDistanceToNow(new Date((report as any).recovered_at || report.updated_at), { addSuffix: true })}</p>
+                                                <p className="text-xs text-gray-500 mt-2">Vehicle/Subject from OB: {report.ob_number}</p>
+                                            </div>
+                                        </Popup>
+                                    </Marker>
+                                </>
+                            )}
                         </React.Fragment>
                     )
                 })}

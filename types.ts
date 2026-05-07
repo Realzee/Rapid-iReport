@@ -158,6 +158,9 @@ export interface VehicleReport {
   recovered_at?: string; // ISO date string
   is_wanted?: boolean;
   wanted_report_id?: string;
+  arrests?: number;
+  guns_recovered?: number;
+  other_recoveries?: string;
 }
 
 export interface CrimeReport {
@@ -198,6 +201,9 @@ export interface CrimeReport {
   vehicle_color?: string;
   vin_number?: string;
   engine_number?: string;
+  recovered_location_coords?: LocationCoords;
+  recovered_at?: string;
+  other_recoveries?: string;
 }
 
 export interface GateAccessLog {
