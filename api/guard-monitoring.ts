@@ -163,6 +163,11 @@ export default async function handler(req: any, res: any) {
             });
         }
         
+        if (action === 'debug-sites-table') {
+            const { data, error } = await supabaseAdmin.from('sites').select('*').limit(1);
+            return res.status(200).json({ cols: data && data.length > 0 ? Object.keys(data[0]) : [], error });
+        }
+        
         if (action.startsWith('update-')) {
             let targetTbl = '';
             const entity = action.split('-')[1];
@@ -176,6 +181,12 @@ export default async function handler(req: any, res: any) {
             
             const { id, ...updateData } = payload;
             if (!id) return res.status(400).json({ error: 'ID is required for update' });
+            
+            if (targetTbl === 'supervisors') {
+                if (!updateData.site_id && updateData.site_ids && updateData.site_ids.length > 0) {
+                    updateData.site_id = updateData.site_ids[0];
+                }
+            }
 
                     // Profile Sync for Guards and Supervisors
                     if ((entity === 'guard' || entity === 'supervisor')) {
@@ -327,6 +338,11 @@ export default async function handler(req: any, res: any) {
                 if (table === 'sites' || table === 'checkpoints') {
                     if (!sanitizedPayload.location) {
                         sanitizedPayload.location = { lat: -26.2041, lng: 28.0473 }; // Default to Johannesburg coords
+                    }
+                }
+                if (table === 'supervisors') {
+                    if (!sanitizedPayload.site_id && sanitizedPayload.site_ids && sanitizedPayload.site_ids.length > 0) {
+                        sanitizedPayload.site_id = sanitizedPayload.site_ids[0];
                     }
                 }
                 if (!sanitizedPayload.company_id && sanitizedPayload.company_id !== null) {

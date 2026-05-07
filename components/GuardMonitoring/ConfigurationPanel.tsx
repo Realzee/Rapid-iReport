@@ -562,17 +562,17 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                                     <div className="flex items-start gap-1.5 pt-1">
                                                         <span className="text-[10px] uppercase font-bold text-gray-400 w-12 mt-1">Sites:</span>
                                                         <div className="flex flex-wrap gap-1">
-                                                            {item.site_id ? (
-                                                                <span className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-800">
-                                                                    {sites.find(s => s.id === item.site_id)?.name || 'Assigned'}
-                                                                </span>
-                                                            ) : (
-                                                                item.site_ids?.map((sid: string) => (
+                                                            {(item.site_ids && item.site_ids.length > 0) ? (
+                                                                item.site_ids.map((sid: string) => (
                                                                     <span key={sid} className="text-[10px] bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 px-2 py-0.5 rounded border border-indigo-100 dark:border-indigo-800">
                                                                         {sites.find(s => s.id === sid)?.name || sid.slice(0, 5)}
                                                                     </span>
                                                                 ))
-                                                            )}
+                                                            ) : item.site_id ? (
+                                                                <span className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-800">
+                                                                    {sites.find(s => s.id === item.site_id)?.name || 'Assigned'}
+                                                                </span>
+                                                            ) : null}
                                                         </div>
                                                     </div>
                                                 )}
