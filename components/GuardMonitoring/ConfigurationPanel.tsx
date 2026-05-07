@@ -71,6 +71,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
     const [formData, setFormData] = useState<any>({});
     const [items, setItems] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
+    const [companies, setCompanies] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [repairing, setRepairing] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -179,7 +180,22 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
     useEffect(() => {
         fetchItems();
         fetchUsers();
+        if (profile?.role === 'admin') {
+            fetchCompanies();
+        }
     }, [activeTab]);
+
+    const fetchCompanies = async () => {
+        try {
+            const res = await fetch('/api/companies');
+            if (res.ok) {
+                const data = await res.json();
+                setCompanies(data);
+            }
+        } catch (e) {
+            console.error('Fetch companies error:', e);
+        }
+    };
 
     const fetchUsers = async () => {
         try {
@@ -199,7 +215,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
         setLoading(true);
         setItems([]); // Clear items before fetching new ones
         try {
-            const url = profile?.company_id 
+            const url = (profile?.company_id && profile?.role !== 'admin') 
                 ? `/api/guard-monitoring?table=${activeTab}&company_id=${profile.company_id}`
                 : `/api/guard-monitoring?table=${activeTab}`;
             const res = await fetch(url);
@@ -527,6 +543,12 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                                     <div className="flex items-center gap-1.5 text-blue-500">
                                                         <span className="text-[10px] uppercase font-bold opacity-70 w-12">Email:</span>
                                                         <span className="text-xs truncate max-w-[120px]">{users.find(u => u.id === item.profile_id)?.email || 'Account Linked'}</span>
+                                                    </div>
+                                                )}
+                                                {profile?.role === 'admin' && item.company_id && (
+                                                    <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
+                                                        <span className="text-[10px] uppercase font-bold opacity-70 w-12">Company:</span>
+                                                        <span className="text-xs truncate max-w-[120px]">{companies.find(c => c.id === item.company_id)?.name || 'Unknown Company'}</span>
                                                     </div>
                                                 )}
                                                 {(item.site_id || (item.site_ids && item.site_ids.length > 0)) && (
