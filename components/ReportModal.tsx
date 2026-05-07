@@ -505,6 +505,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     vin_number: formData.vin_number,
                     engine_number: formData.engine_number,
                     circulation_number: formData.circulation_number,
+                    crime_outcome: formData.crime_outcome,
+                    cit_success: formData.cit_success === 'true',
                     recovered_location_coords: (formData as any).recovered_location_coords,
                     recovered_at: (formData as any).recovered_at,
                     arrests: parseInt(formData.arrests || '0'),
@@ -529,6 +531,15 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     vehicle_color: formData.vehicle_color,
                     vin_number: formData.vin_number,
                     engine_number: formData.engine_number,
+                    cas_number: formData.cas_number,
+                    station_name: formData.station_name,
+                    crime_outcome: formData.crime_outcome,
+                    cit_success: formData.cit_success === 'true',
+                    arrests: parseInt(formData.arrests || '0'),
+                    guns_recovered: parseInt(formData.guns_recovered || '0'),
+                    other_recoveries: formData.other_recoveries || '',
+                    recovered_location_coords: (formData as any).recovered_location_coords,
+                    recovered_at: (formData as any).recovered_at,
                 };
             } else {
                  reportData = {
@@ -539,6 +550,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     cas_number: formData.cas_number,
                     station_name: formData.station_name,
                     crime_outcome: formData.crime_outcome,
+                    cit_success: formData.cit_success === 'true',
                     vehicle_involved: formData.vehicle_involved === 'true',
                     license_plate: formData.vehicle_involved === 'true' ? formData.license_plate : undefined,
                     vehicle_make: formData.vehicle_involved === 'true' ? formData.vehicle_make : undefined,
@@ -681,15 +693,65 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             <div><label htmlFor="vehicle_color" className={labelClasses}>Vehicle Color</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" /></div>
                             <div><label htmlFor="vin_number" className={labelClasses}>VIN Number</label><input type="text" name="vin_number" id="vin_number" value={formData.vin_number || ''} onChange={handleChange} className={inputClasses} /></div>
                             <div><label htmlFor="engine_number" className={labelClasses}>Engine Number</label><input type="text" name="engine_number" id="engine_number" value={formData.engine_number || ''} onChange={handleChange} className={inputClasses} /></div>
-                            <div><label htmlFor="circulation_number" className={labelClasses}>Circulation Number</label><input type="text" name="circulation_number" id="circulation_number" value={formData.circulation_number || ''} onChange={handleChange} className={inputClasses} /></div>
-                            <div className="md:col-span-2 grid grid-cols-2 gap-4">
-                                <div><label htmlFor="arrests" className={labelClasses}>Suspects Arrested</label><input type="number" name="arrests" id="arrests" value={formData.arrests || 0} onChange={handleChange} className={inputClasses} min="0" /></div>
-                                <div><label htmlFor="guns_recovered" className={labelClasses}>Firearms Recovered</label><input type="number" name="guns_recovered" id="guns_recovered" value={formData.guns_recovered || 0} onChange={handleChange} className={inputClasses} min="0" /></div>
+                             <div><label htmlFor="circulation_number" className={labelClasses}>Circulation Number</label><input type="text" name="circulation_number" id="circulation_number" value={formData.circulation_number || ''} onChange={handleChange} className={inputClasses} /></div>
+                            
+                            <div className="md:col-span-2 border-t border-gray-100 dark:border-gray-800 pt-4 mt-2">
+                                <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                    <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                                    Crime Results & Recovery
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="md:col-span-2">
+                                        <MultiSelect 
+                                            label="Crime Outcome"
+                                            options={["Suspect arrested", "Goods Recovered", "Vehicle Recovered", "Case Closed", "Under investigation", "No suspects", "Firearms Recovered"]}
+                                            selected={(formData.crime_outcome || '').split(',').filter(Boolean)}
+                                            onChange={(selected) => setFormData(prev => ({ ...prev, crime_outcome: selected.join(',') }))}
+                                            placeholder="Select outcomes..."
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label htmlFor="cit_success" className={labelClasses}>CIT Success?</label>
+                                            <select name="cit_success" id="cit_success" value={formData.cit_success || 'false'} onChange={handleChange} className={inputClasses}>
+                                                <option value="false">No</option>
+                                                <option value="true">Yes</option>
+                                            </select>
+                                        </div>
+                                        <div><label htmlFor="arrests" className={labelClasses}>Suspects Arrested</label><input type="number" name="arrests" id="arrests" value={formData.arrests || 0} onChange={handleChange} className={inputClasses} min="0" /></div>
+                                    </div>
+                                    <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                                        <div><label htmlFor="guns_recovered" className={labelClasses}>Firearms Recovered</label><input type="number" name="guns_recovered" id="guns_recovered" value={formData.guns_recovered || 0} onChange={handleChange} className={inputClasses} min="0" /></div>
+                                        <div><label htmlFor="other_recoveries" className={labelClasses}>Other Recoveries / Notes</label>
+                                            <input type="text" name="other_recoveries" id="other_recoveries" value={formData.other_recoveries || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. Stolen goods" />
+                                        </div>
+                                    </div>
+                                    <div className="md:col-span-2 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl space-y-4">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase">Recovery Location (Pindrop)</label>
+                                        <LocationPicker 
+                                            onLocationSelect={(coords) => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    recovered_location_coords: coords
+                                                } as any));
+                                            }}
+                                            initialCoords={(formData as any).recovered_location_coords}
+                                            placeholder="Pin recovery location..."
+                                        />
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Recovery Time</label>
+                                            <input
+                                                type="datetime-local"
+                                                name="recovered_at"
+                                                value={(formData as any).recovered_at || ''}
+                                                onChange={handleChange}
+                                                className={inputClasses}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="md:col-span-2">
-                                <label htmlFor="other_recoveries" className={labelClasses}>Other Recoveries / Notes</label>
-                                <input type="text" name="other_recoveries" id="other_recoveries" value={formData.other_recoveries || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. Stolen goods, drugs, cellphones" />
-                            </div>
+
                             <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
                             <div>
                                 <label htmlFor="station_name" className={labelClasses}>Station Name</label>
@@ -722,39 +784,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                             <option key={s} value={s}>{s.replace(/_/g, ' ').toUpperCase()}</option>
                                         ))}
                                     </select>
-                                </div>
-                            )}
-                            {formData.status === ReportStatus.RECOVERED && (
-                                <div className="md:col-span-2 bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-100 dark:border-green-800 space-y-4">
-                                    <h4 className="text-sm font-bold text-green-800 dark:text-green-300 flex items-center gap-2">
-                                        <CheckCircleIcon className="w-4 h-4" />
-                                        Recovery Details
-                                    </h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-green-700 dark:text-green-400 mb-1 uppercase">Recovery Date & Time</label>
-                                            <input
-                                                type="datetime-local"
-                                                name="recovered_at"
-                                                value={(formData as any).recovered_at || new Date().toISOString().slice(0, 16)}
-                                                onChange={handleChange}
-                                                className="w-full bg-white dark:bg-gray-900 border border-green-200 dark:border-green-800 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-green-700 dark:text-green-400 mb-1 uppercase">Recovery Location (Pindrop)</label>
-                                            <LocationPicker 
-                                                onLocationSelect={(coords) => {
-                                                    setFormData(prev => ({
-                                                        ...prev,
-                                                        recovered_location_coords: coords
-                                                    } as any));
-                                                }}
-                                                initialCoords={(formData as any).recovered_location_coords}
-                                                placeholder="Select recovery location..."
-                                            />
-                                        </div>
-                                    </div>
                                 </div>
                             )}
                         </div>
@@ -822,6 +851,90 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                         <option value="false">No</option>
                                         <option value="true">Yes</option>
                                     </select>
+                                </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
+                                <div>
+                                    <label htmlFor="station_name" className={labelClasses}>Station Name</label>
+                                    <div className="relative" ref={stationSuggestionsRef}>
+                                        <input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="STATION" autoComplete="off" />
+                                        {stationSuggestions.length > 0 && (
+                                            <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                {stationSuggestions.map(station => (
+                                                    <button
+                                                        type="button"
+                                                        key={station}
+                                                        onClick={() => {
+                                                            setFormData(prev => ({ ...prev, station_name: station }));
+                                                            setStationSuggestions([]);
+                                                        }}
+                                                        className="w-full text-left p-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                    >
+                                                        {station}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="md:col-span-2 border-t border-gray-100 dark:border-gray-800 pt-4 mt-2">
+                                <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                    <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                                    Crime Results & Recovery
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="md:col-span-2">
+                                        <MultiSelect 
+                                            label="Crime Outcome"
+                                            options={["Suspect arrested", "Goods Recovered", "Vehicle Recovered", "Case Closed", "Under investigation", "No suspects", "Firearms Recovered"]}
+                                            selected={(formData.crime_outcome || '').split(',').filter(Boolean)}
+                                            onChange={(selected) => setFormData(prev => ({ ...prev, crime_outcome: selected.join(',') }))}
+                                            placeholder="Select outcomes..."
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label htmlFor="cit_success" className={labelClasses}>CIT Success?</label>
+                                            <select name="cit_success" id="cit_success" value={formData.cit_success || 'false'} onChange={handleChange} className={inputClasses}>
+                                                <option value="false">No</option>
+                                                <option value="true">Yes</option>
+                                            </select>
+                                        </div>
+                                        <div><label htmlFor="arrests" className={labelClasses}>Suspects Arrested</label><input type="number" name="arrests" id="arrests" value={formData.arrests || 0} onChange={handleChange} className={inputClasses} min="0" /></div>
+                                    </div>
+                                    <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                                        <div><label htmlFor="guns_recovered" className={labelClasses}>Firearms Recovered</label><input type="number" name="guns_recovered" id="guns_recovered" value={formData.guns_recovered || 0} onChange={handleChange} className={inputClasses} min="0" /></div>
+                                        <div><label htmlFor="other_recoveries" className={labelClasses}>Other Recoveries / Notes</label>
+                                            <input type="text" name="other_recoveries" id="other_recoveries" value={formData.other_recoveries || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. Stolen goods" />
+                                        </div>
+                                    </div>
+                                    <div className="md:col-span-2 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl space-y-4">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase">Recovery Location (Pindrop)</label>
+                                        <LocationPicker 
+                                            onLocationSelect={(coords) => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    recovered_location_coords: coords
+                                                } as any));
+                                            }}
+                                            initialCoords={(formData as any).recovered_location_coords}
+                                            placeholder="Pin recovery location..."
+                                        />
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Recovery Time</label>
+                                            <input
+                                                type="datetime-local"
+                                                name="recovered_at"
+                                                value={(formData as any).recovered_at || ''}
+                                                onChange={handleChange}
+                                                className={inputClasses}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -916,6 +1029,22 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                             onChange={(selected) => setFormData(prev => ({ ...prev, crime_outcome: selected.join(',') }))}
                                             placeholder="Select outcomes..."
                                         />
+                                    </div>
+                                    <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label htmlFor="cit_success" className={labelClasses}>CIT Success?</label>
+                                            <select name="cit_success" id="cit_success" value={formData.cit_success || 'false'} onChange={handleChange} className={inputClasses}>
+                                                <option value="false">No</option>
+                                                <option value="true">Yes</option>
+                                            </select>
+                                        </div>
+                                        <div><label htmlFor="arrests" className={labelClasses}>Suspects Arrested</label><input type="number" name="arrests" id="arrests" value={formData.arrests || 0} onChange={handleChange} className={inputClasses} min="0" /></div>
+                                    </div>
+                                    <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                                        <div><label htmlFor="guns_recovered" className={labelClasses}>Firearms Recovered</label><input type="number" name="guns_recovered" id="guns_recovered" value={formData.guns_recovered || 0} onChange={handleChange} className={inputClasses} min="0" /></div>
+                                        <div><label htmlFor="other_recoveries" className={labelClasses}>Other Recoveries / Notes</label>
+                                            <input type="text" name="other_recoveries" id="other_recoveries" value={formData.other_recoveries || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. Stolen goods" />
+                                        </div>
                                     </div>
                                     <div className="md:col-span-2 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl space-y-4">
                                         <label className="block text-xs font-bold text-gray-500 uppercase">Recovery Location (Pindrop)</label>

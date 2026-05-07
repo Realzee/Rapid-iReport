@@ -156,6 +156,8 @@ export interface VehicleReport {
   circulation_number?: string;
   recovered_location_coords?: LocationCoords;
   recovered_at?: string; // ISO date string
+  crime_outcome?: string;
+  cit_success?: boolean;
   is_wanted?: boolean;
   wanted_report_id?: string;
   arrests?: number;
@@ -251,6 +253,15 @@ export interface EmergencyReport {
   vehicle_color?: string;
   vin_number?: string;
   engine_number?: string;
+  cas_number?: string;
+  station_name?: string;
+  crime_outcome?: string;
+  cit_success?: boolean;
+  arrests?: number;
+  guns_recovered?: number;
+  other_recoveries?: string;
+  recovered_location_coords?: LocationCoords;
+  recovered_at?: string;
   company_id?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];
