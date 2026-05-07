@@ -356,21 +356,6 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Configuration</h2>
-                    {profile.role === 'admin' && (
-                        <button 
-                            onClick={handleRepair}
-                            disabled={repairing}
-                            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md border ${
-                                repairing 
-                                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
-                                : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 transition'
-                            }`}
-                            title="Fix missing database columns"
-                        >
-                            <Settings size={14} className={repairing ? 'animate-spin' : ''} />
-                            {repairing ? 'Repairing...' : 'Repair DB'}
-                        </button>
-                    )}
                 </div>
                 {!showForm && (
                     <button 
