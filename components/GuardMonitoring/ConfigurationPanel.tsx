@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ImagePicker from './ImagePicker';
+import { supabase } from '../../utils/supabase';
 import { Edit, Trash2, Plus, X, Settings, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 
 interface ModalProps {
@@ -180,16 +181,13 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
     useEffect(() => {
         fetchItems();
         fetchUsers();
-        if (profile?.role === 'admin') {
-            fetchCompanies();
-        }
+        fetchCompanies();
     }, [activeTab]);
 
     const fetchCompanies = async () => {
         try {
-            const res = await fetch('/api/companies');
-            if (res.ok) {
-                const data = await res.json();
+            const { data, error } = await supabase.from('companies').select('id, name');
+            if (data && !error) {
                 setCompanies(data);
             }
         } catch (e) {
@@ -545,7 +543,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                                         <span className="text-xs truncate max-w-[120px]">{users.find(u => u.id === item.profile_id)?.email || 'Account Linked'}</span>
                                                     </div>
                                                 )}
-                                                {profile?.role === 'admin' && item.company_id && (
+                                                {item.company_id && (
                                                     <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
                                                         <span className="text-[10px] uppercase font-bold opacity-70 w-12">Company:</span>
                                                         <span className="text-xs truncate max-w-[120px]">{companies.find(c => c.id === item.company_id)?.name || 'Unknown Company'}</span>

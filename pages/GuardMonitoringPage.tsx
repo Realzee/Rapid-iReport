@@ -8,6 +8,7 @@ import GateAccessPage from './GateAccessPage';
 import { useResponders } from '../contexts/RespondersContext';
 import { Profile } from '../types';
 import { ScanIcon, MapIcon, BuildingIcon, ClipboardCheckIcon, ChartBarIcon } from '../components/icons';
+import { supabase } from '../utils/supabase';
 
 interface GuardMonitoringPageProps {
     profile: Profile;
@@ -17,8 +18,14 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
     const { responders, loading } = useResponders();
     const [activeTab, setActiveTab] = useState<'overview' | 'config' | 'reporting' | 'analytics' | 'gate_access'>('gate_access');
     const [data, setData] = useState<any>({ sites: [], guards: [], routes: [], supervisors: [], checkpoints: [] });
+    const [companies, setCompanies] = useState<any[]>([]);
 
     useEffect(() => {
+        const fetchCompanies = async () => {
+            const { data: cData, error } = await supabase.from('companies').select('id, name');
+            if (cData && !error) setCompanies(cData);
+        };
+        fetchCompanies();
         const fetchData = async () => {
             const tables = ['sites', 'guards', 'routes', 'supervisors', 'checkpoints', 'patrol_logs'];
             const results: any = { ...data };
@@ -98,10 +105,18 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
                         <h3 className="font-bold capitalize mb-2">{table} ({items?.length || 0})</h3>
                         <ul className="text-sm">
                             {items?.map((item: any) => (
-                                <li key={item.id} className="flex items-center gap-2">
-                                    {item.logo_url && <img src={item.logo_url} alt="" className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" />}
-                                    {item.profile_pic_url && <img src={item.profile_pic_url} alt="" className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" />}
-                                    <span>{item.name || 'Unnamed'}</span>
+                                <li key={item.id} className="flex flex-col mb-2">
+                                    <div className="flex items-center gap-2">
+                                        {item.logo_url && <img src={item.logo_url} alt="" className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" />}
+                                        {item.profile_pic_url && <img src={item.profile_pic_url} alt="" className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" />}
+                                        <span className="truncate">{item.name || 'Unnamed'}</span>
+                                    </div>
+                                    {item.company_id && (
+                                         <div className="flex items-center gap-1 mt-1 text-xs text-blue-500">
+                                            <BuildingIcon className="w-3 h-3" />
+                                            <span className="truncate">{companies.find(c => c.id === item.company_id)?.name || 'Unknown Company'}</span>
+                                        </div>
+                                    )}
                                 </li>
                             ))}
                         </ul>
