@@ -46,6 +46,7 @@ export default async function handler(req: any, res: any) {
             const queries = [
                 // Ensure eval function exists
                 "CREATE OR REPLACE FUNCTION eval(query text) RETURNS void AS $$ BEGIN EXECUTE query; END; $$ LANGUAGE plpgsql SECURITY DEFINER;",
+                "NOTIFY pgrst, 'reload schema';",
                 "ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
@@ -74,7 +75,8 @@ export default async function handler(req: any, res: any) {
                 "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'guards' AND policyname = 'Admins can do everything on guards') THEN CREATE POLICY \"Admins can do everything on guards\" ON public.guards FOR ALL TO authenticated USING (auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'admin')); END IF; END $$;",
                 "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'guards' AND policyname = 'Guards can update own status and contact') THEN CREATE POLICY \"Guards can update own status and contact\" ON public.guards FOR UPDATE TO authenticated USING (profile_id = auth.uid()) WITH CHECK (profile_id = auth.uid()); END IF; END $$;",
                 "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'guards' AND policyname = 'Guards can view own record') THEN CREATE POLICY \"Guards can view own record\" ON public.guards FOR SELECT TO authenticated USING (profile_id = auth.uid() OR auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'admin' OR role = 'moderator')); END IF; END $$;",
-                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'sites' AND policyname = 'Guards can only see their assigned site') THEN CREATE POLICY \"Guards can only see their assigned site\" ON public.sites FOR SELECT TO authenticated USING (auth.uid() IN (SELECT profile_id FROM public.guards WHERE site_id = public.sites.id) OR auth.uid() IN (SELECT id FROM public.profiles WHERE role IN ('admin', 'moderator', 'controller'))); END IF; END $$;"
+                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'sites' AND policyname = 'Guards can only see their assigned site') THEN CREATE POLICY \"Guards can only see their assigned site\" ON public.sites FOR SELECT TO authenticated USING (auth.uid() IN (SELECT profile_id FROM public.guards WHERE site_id = public.sites.id) OR auth.uid() IN (SELECT id FROM public.profiles WHERE role IN ('admin', 'moderator', 'controller'))); END IF; END $$;",
+                "NOTIFY pgrst, 'reload schema';"
             ];
             const results = [];
             for (const q of queries) {

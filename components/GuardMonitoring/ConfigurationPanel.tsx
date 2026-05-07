@@ -291,9 +291,18 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        const currentTabConfig = tabs.find(t => t.id === activeTab);
         const action = isEditing ? `update-${activeTab.slice(0, -1)}` : `add-${activeTab.slice(0, -1)}`;
         
-        let payload = { ...formData };
+        let payload: any = {};
+        if (currentTabConfig) {
+            currentTabConfig.fields.forEach(field => {
+                if (formData[field.name] !== undefined) {
+                    payload[field.name] = formData[field.name];
+                }
+            });
+        }
+        
         if (isEditing) payload.id = editingId;
         
         if (profile?.company_id) {
