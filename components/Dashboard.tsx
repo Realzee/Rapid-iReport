@@ -68,6 +68,8 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const isGlobalAdmin = profile.role === UserRole.ADMIN && 
         (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 
+    const [reportCounts, setReportCounts] = useState({ vehicle: 0, crime: 0, emergency: 0 });
+
     const fetchData = useCallback(async () => {
         setLoading(true);
 
@@ -97,10 +99,18 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         let crimeQuery = supabase.from('crime_reports').select('*');
         let emergencyQuery = supabase.from('emergency_reports').select('*');
 
+        let vehicleCountQuery = supabase.from('vehicle_reports').select('*', { count: 'exact', head: true });
+        let crimeCountQuery = supabase.from('crime_reports').select('*', { count: 'exact', head: true });
+        let emergencyCountQuery = supabase.from('emergency_reports').select('*', { count: 'exact', head: true });
+
         if (allowedReporterIds) {
             vehicleQuery = vehicleQuery.in('reported_by', allowedReporterIds);
             crimeQuery = crimeQuery.in('reported_by', allowedReporterIds);
             emergencyQuery = emergencyQuery.in('reported_by', allowedReporterIds);
+            
+            vehicleCountQuery = vehicleCountQuery.in('reported_by', allowedReporterIds);
+            crimeCountQuery = crimeCountQuery.in('reported_by', allowedReporterIds);
+            emergencyCountQuery = emergencyCountQuery.in('reported_by', allowedReporterIds);
         }
 
         const [
@@ -108,13 +118,19 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             { data: crimeData, error: cError },
             { data: emergencyData, error: aError },
             { data: usersData, error: uError },
-            { data: companiesData, error: companiesError }
+            { data: companiesData, error: companiesError },
+            { count: vCount },
+            { count: cCount },
+            { count: aCount }
         ] = await Promise.all([
-            vehicleQuery.order('reported_at', { ascending: false }).limit(500),
-            crimeQuery.order('reported_at', { ascending: false }).limit(500),
-            emergencyQuery.order('reported_at', { ascending: false }).limit(500),
+            vehicleQuery.order('reported_at', { ascending: false }).limit(100),
+            crimeQuery.order('reported_at', { ascending: false }).limit(100),
+            emergencyQuery.order('reported_at', { ascending: false }).limit(100),
             profilesQuery,
-            supabase.from('companies').select('*')
+            supabase.from('companies').select('*'),
+            vehicleCountQuery,
+            crimeCountQuery,
+            emergencyCountQuery
         ]);
         if (vError || cError || aError || uError || companiesError) console.error('Data fetch error:', vError || cError || aError || uError || companiesError);
 
@@ -123,6 +139,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             ...(crimeData || []).map(r => ({...r, type: 'crime' as const})),
             ...(emergencyData || []).map(r => ({...r, type: 'emergency' as const}))
         ];
+        
+        setReports(combinedReports);
+        setReportCounts({
+            vehicle: vCount || 0,
+            crime: cCount || 0,
+            emergency: aCount || 0
+        });
         
         // Ensure we have profiles for all reporters, even if they are outside the user's company scope
         const reporterIds = Array.from(new Set(combinedReports.map(r => r.reported_by)));
@@ -135,7 +158,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 if (missingProfiles) additionalProfiles = missingProfiles;
         }
         
-        setReports(combinedReports);
         setAllUsers([...(usersData || []), ...additionalProfiles]);
         setCompanies(companiesData || []);
         setLoading(false);
@@ -166,6 +188,18 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 if (!reporter || reporter.company_id !== profile.company_id) {
                     return; // Ignore report from other company
                 }
+            }
+
+            if (payload.eventType === 'INSERT') {
+                setReportCounts(prev => ({
+                    ...prev,
+                    [reportType]: prev[reportType as keyof typeof prev] + 1
+                }));
+            } else if (payload.eventType === 'DELETE') {
+                setReportCounts(prev => ({
+                    ...prev,
+                    [reportType]: Math.max(0, prev[reportType as keyof typeof prev] - 1)
+                }));
             }
 
             setReports(currentReports => {
@@ -478,10 +512,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                    <StatCard title="Total Reports" value={reports.length.toString()} icon={<ZapIcon />} color="primary" />
-                    <StatCard title="Vehicle" value={reports.filter(r => r.type === 'vehicle').length.toString()} icon={<CarIcon />} color="yellow" />
-                    <StatCard title="Crime" value={reports.filter(r => r.type === 'crime').length.toString()} icon={<CrimeIcon />} color="red" />
-                    <StatCard title="Emergency" value={reports.filter(r => r.type === 'emergency').length.toString()} icon={<AlertTriangleIcon />} color="orange" />
+                    <StatCard title="Total Reports" value={(reportCounts.vehicle + reportCounts.crime + reportCounts.emergency).toString()} icon={<ZapIcon />} color="primary" />
+                    <StatCard title="Vehicle" value={reportCounts.vehicle.toString()} icon={<CarIcon />} color="yellow" />
+                    <StatCard title="Crime" value={reportCounts.crime.toString()} icon={<CrimeIcon />} color="red" />
+                    <StatCard title="Emergency" value={reportCounts.emergency.toString()} icon={<AlertTriangleIcon />} color="orange" />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     <StatCard title="Active Incidents" value={reports.filter(r => r.status === 'active' || r.status === 'in_progress').length.toString()} icon={<AlertTriangleIcon />} color="red" />

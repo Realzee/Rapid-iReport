@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, memo } from 'react';
 import { Report, ReportStatus, Profile, Company } from '../types';
 import ReportListItem from './ReportListItem';
 import { ChevronUpIcon } from './icons';
@@ -136,4 +136,4 @@ const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onRe
   );
 };
 
-export default ReportList;
+export default memo(ReportList);

@@ -1,25 +1,29 @@
 
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
-import AuthPage from './pages/AuthPage';
-import UsersPage from './pages/UsersPage';
-import CompaniesPage from './pages/CompaniesPage';
-import GlobalMapModal from './components/GlobalMapModal';
-import ReportsPage from './pages/ReportsPage';
-import AnalyticsPage from './pages/AnalyticsPage';
-import ProfilePage from './pages/ProfilePage';
-import ControllerPage from './pages/ControllerPage';
-import ResponderPage from './pages/ResponderPage';
-import GuardDashboardPage from './pages/GuardDashboardPage';
-import PatrolPage from './pages/PatrolPage';
-import AttendancePage from './pages/AttendancePage';
-import UserDashboardPage from './pages/UserDashboardPage';
-import PublicDashboardPage from './pages/PublicDashboardPage';
-import AboutPage from './pages/AboutPage';
-import GuardMonitoringPage from './pages/GuardMonitoringPage';
-import GateAccessPage from './pages/GateAccessPage';
+
+const AuthPage = lazy(() => import('./pages/AuthPage'));
+const UsersPage = lazy(() => import('./pages/UsersPage'));
+const CompaniesPage = lazy(() => import('./pages/CompaniesPage'));
+const GlobalMapModal = lazy(() => import('./components/GlobalMapModal'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const ControllerPage = lazy(() => import('./pages/ControllerPage'));
+const ResponderPage = lazy(() => import('./pages/ResponderPage'));
+const GuardDashboardPage = lazy(() => import('./pages/GuardDashboardPage'));
+const PatrolPage = lazy(() => import('./pages/PatrolPage'));
+const AttendancePage = lazy(() => import('./pages/AttendancePage'));
+const UserDashboardPage = lazy(() => import('./pages/UserDashboardPage'));
+const PublicDashboardPage = lazy(() => import('./pages/PublicDashboardPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const GuardMonitoringPage = lazy(() => import('./pages/GuardMonitoringPage'));
+const GateAccessPage = lazy(() => import('./pages/GateAccessPage'));
+const UserActivityPage = lazy(() => import('./pages/UserActivityPage'));
+const GlobalSearchPage = lazy(() => import('./pages/GlobalSearchPage'));
+
 import AnnouncementsBanner from './components/AnnouncementsBanner';
 import { supabase } from './utils/supabase';
 import type { AuthSession as Session } from '@supabase/supabase-js';
@@ -33,8 +37,6 @@ import { RespondersProvider } from './contexts/RespondersContext';
 import { EventsProvider } from './contexts/EventsContext';
 import { AlertTriangleIcon, ClockIcon } from './components/icons';
 import { useToast } from './contexts/ToastContext';
-import UserActivityPage from './pages/UserActivityPage';
-import GlobalSearchPage from './pages/GlobalSearchPage';
 import { useTheme } from './contexts/ThemeContext';
 import MatrixRain from './components/MatrixRain';
 
@@ -312,58 +314,71 @@ const App: React.FC = () => {
     }
   };
 
+  const renderLoadingFallback = () => (
+    <div className="flex-grow flex flex-col items-center justify-center p-12">
+        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">Wait, loading component...</p>
+    </div>
+  );
+
   const renderView = () => {
     if (!profile) return null;
 
     const onInitialReportHandled = () => setInitialReportId(null);
 
-    if (profile.role === UserRole.RESPONDER) {
-        return view === 'profile' 
-            ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
-            : <ResponderPage profile={profile} setProfile={setProfile} />;
-    }
+    return (
+      <Suspense fallback={renderLoadingFallback()}>
+          {(() => {
+            if (profile.role === UserRole.RESPONDER) {
+                return view === 'profile' 
+                    ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
+                    : <ResponderPage profile={profile} setProfile={setProfile} />;
+            }
 
-    if (profile.role === UserRole.GUARD) {
-        if (view === 'gate_access') return <GateAccessPage profile={profile} />;
-        if (view === 'patrol_scanner') return <PatrolPage profile={profile} />;
-        return view === 'profile' 
-            ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
-            : <GuardDashboardPage profile={profile} />;
-    }
-    
-    if (profile.role === UserRole.USER) {
-        if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
-        return view === 'profile'
-            ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
-            : <UserDashboardPage profile={profile} />;
-    }
-    
-    if (profile.role === UserRole.CONTROLLER) {
-      if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
-      if (view === 'attendance') return <AttendancePage />;
-      return view === 'profile'
-          ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
-          : <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
-    }
-    
-    const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
+            if (profile.role === UserRole.GUARD) {
+                if (view === 'gate_access') return <GateAccessPage profile={profile} />;
+                if (view === 'patrol_scanner') return <PatrolPage profile={profile} />;
+                return view === 'profile' 
+                    ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
+                    : <GuardDashboardPage profile={profile} />;
+            }
+            
+            if (profile.role === UserRole.USER) {
+                if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
+                return view === 'profile'
+                    ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
+                    : <UserDashboardPage profile={profile} />;
+            }
+            
+            if (profile.role === UserRole.CONTROLLER) {
+              if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
+              if (view === 'attendance') return <AttendancePage />;
+              return view === 'profile'
+                  ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
+                  : <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
+            }
+            
+            const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 
-    switch(view) {
-      case 'dashboard': return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
-      case 'controller': return <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
-      case 'archives': return <ReportsPage profile={profile} />;
-      case 'attendance': return <AttendancePage />;
-      case 'global_search': return <GlobalSearchPage profile={profile} isGlobalAdmin={isGlobalAdmin} />;
-      case 'analytics': return <AnalyticsPage />;
-      case 'users': return <UsersPage />;
-      case 'activity_logs': return <UserActivityPage />;
-      case 'companies': return <CompaniesPage />;
-      case 'guard_monitoring': return <GuardMonitoringPage profile={profile} />;
-      case 'gate_access': return <GateAccessPage profile={profile} />;
-      case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />;
-      case 'map':
-      default: return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
-    }
+            switch(view) {
+              case 'dashboard': return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
+              case 'controller': return <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
+              case 'archives': return <ReportsPage profile={profile} />;
+              case 'attendance': return <AttendancePage />;
+              case 'global_search': return <GlobalSearchPage profile={profile} isGlobalAdmin={isGlobalAdmin} />;
+              case 'analytics': return <AnalyticsPage />;
+              case 'users': return <UsersPage />;
+              case 'activity_logs': return <UserActivityPage />;
+              case 'companies': return <CompaniesPage />;
+              case 'guard_monitoring': return <GuardMonitoringPage profile={profile} />;
+              case 'gate_access': return <GateAccessPage profile={profile} />;
+              case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />;
+              case 'map':
+              default: return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
+            }
+          })()}
+      </Suspense>
+    );
   }
 
   if (schemaError) {
@@ -396,12 +411,24 @@ const App: React.FC = () => {
 
   if (!session) {
       if (showPublicView) {
-        return <PublicDashboardPage onBackToLogin={() => setShowPublicView(false)} />;
+        return (
+            <Suspense fallback={renderLoadingFallback()}>
+                <PublicDashboardPage onBackToLogin={() => setShowPublicView(false)} />
+            </Suspense>
+        );
       }
       if (showAboutPage) {
-        return <AboutPage onBackToLogin={() => setShowAboutPage(false)} />;
+        return (
+            <Suspense fallback={renderLoadingFallback()}>
+                <AboutPage onBackToLogin={() => setShowAboutPage(false)} />
+            </Suspense>
+        );
       }
-      return <AuthPage onViewPublicDashboard={() => setShowPublicView(true)} onViewAbout={() => setShowAboutPage(true)} />;
+      return (
+          <Suspense fallback={renderLoadingFallback()}>
+              <AuthPage onViewPublicDashboard={() => setShowPublicView(true)} onViewAbout={() => setShowAboutPage(true)} />
+          </Suspense>
+      );
   }
   
   if (session && !profile && !profileLoading && !error) {
@@ -503,7 +530,11 @@ const App: React.FC = () => {
           </ChatProvider>
         ) : null}
       </div>
-      {isGlobalMapModalOpen && <GlobalMapModal isOpen={isGlobalMapModalOpen} onClose={() => setIsGlobalMapModalOpen(false)} profile={profile} />}
+      {isGlobalMapModalOpen && (
+          <Suspense fallback={null}>
+              <GlobalMapModal isOpen={isGlobalMapModalOpen} onClose={() => setIsGlobalMapModalOpen(false)} profile={profile} />
+          </Suspense>
+      )}
     </div>
   );
 };
