@@ -145,6 +145,7 @@ export interface VehicleReport {
   station_name?: string;
   vin_number?: string;
   engine_number?: string;
+  year?: string;
   company_id?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];
@@ -163,6 +164,10 @@ export interface VehicleReport {
   arrests?: number;
   guns_recovered?: number;
   other_recoveries?: string;
+  saps_13?: string;
+  pound_name?: string;
+  has_arrests?: boolean;
+  has_firearms?: boolean;
 }
 
 export interface CrimeReport {
@@ -189,6 +194,7 @@ export interface CrimeReport {
   resolved_at?: string; // ISO date string
   cas_number?: string;
   station_name?: string;
+  stat?: string;
   company_id?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];
@@ -206,6 +212,10 @@ export interface CrimeReport {
   recovered_location_coords?: LocationCoords;
   recovered_at?: string;
   other_recoveries?: string;
+  saps_13?: string;
+  pound_name?: string;
+  has_arrests?: boolean;
+  has_firearms?: boolean;
 }
 
 export interface GateAccessLog {
@@ -262,6 +272,10 @@ export interface EmergencyReport {
   other_recoveries?: string;
   recovered_location_coords?: LocationCoords;
   recovered_at?: string;
+  saps_13?: string;
+  pound_name?: string;
+  has_arrests?: boolean;
+  has_firearms?: boolean;
   company_id?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];

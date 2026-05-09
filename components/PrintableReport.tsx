@@ -64,6 +64,11 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
               <div><p className="font-bold text-gray-500">Make</p><p>{(report as any).vehicle_make}</p></div>
               <div><p className="font-bold text-gray-500">Model</p><p>{(report as any).vehicle_model}</p></div>
               <div><p className="font-bold text-gray-500">Color</p><p>{(report as any).vehicle_color}</p></div>
+              {(report as any).year && <div><p className="font-bold text-gray-500">Year</p><p>{(report as any).year}</p></div>}
+              {(report as any).vin_number && <div><p className="font-bold text-gray-500">VIN</p><p>{(report as any).vin_number}</p></div>}
+              {(report as any).engine_number && <div><p className="font-bold text-gray-500">Engine</p><p>{(report as any).engine_number}</p></div>}
+              {(report as any).cas_number && <div><p className="font-bold text-gray-500">CAS Number</p><p>{(report as any).cas_number}</p></div>}
+              {(report as any).station_name && <div><p className="font-bold text-gray-500">Station</p><p>{(report as any).station_name}</p></div>}
               <div className="col-span-2"><p className="font-bold text-gray-500">Last Seen Location</p><p>{(report as any).last_seen_location}</p></div>
             </>
           ) : report.type === 'emergency' ? (
@@ -71,12 +76,18 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
               <div><p className="font-bold text-gray-500">Title</p><p>{report.title}</p></div>
               <div><p className="font-bold text-gray-500">Emergency Type</p><p>{(report as any).emergency_type}</p></div>
               <div className="col-span-2"><p className="font-bold text-gray-500">Location</p><p>{(report as any).location}</p></div>
+              {(report as any).cas_number && <div><p className="font-bold text-gray-500">CAS Number</p><p>{(report as any).cas_number}</p></div>}
+              {(report as any).station_name && <div><p className="font-bold text-gray-500">Station</p><p>{(report as any).station_name}</p></div>}
             </>
           ) : (
             <>
               <div><p className="font-bold text-gray-500">Title</p><p>{report.title}</p></div>
               <div><p className="font-bold text-gray-500">Crime Type</p><p>{(report as any).crime_type}</p></div>
               <div className="col-span-2"><p className="font-bold text-gray-500">Location</p><p>{(report as any).location}</p></div>
+              {(report as any).stat && <div><p className="font-bold text-gray-500">STAT</p><p>{(report as any).stat}</p></div>}
+              {(report as any).cas_number && <div><p className="font-bold text-gray-500">CAS Number</p><p>{(report as any).cas_number}</p></div>}
+              {(report as any).station_name && <div><p className="font-bold text-gray-500">Station</p><p>{(report as any).station_name}</p></div>}
+              {(report as any).crime_outcome && <div className="col-span-2"><p className="font-bold text-gray-500">Outcome</p><p>{(report as any).crime_outcome}</p></div>}
             </>
           )}
            <div className="col-span-2">
