@@ -31,6 +31,7 @@ import { Profile, UserRole, Notification, UserStatus } from './types';
 import { ToastContainer } from './components/ToastContainer';
 import { checkDatabaseSchema } from './utils/schemaCheck';
 import GlobalSchemaErrorModal from './components/GlobalSchemaErrorModal';
+import { logUserAction } from './utils/logger';
 import { useSettings } from './contexts/SettingsContext';
 import { ChatProvider } from './contexts/ChatContext';
 import { RespondersProvider } from './contexts/RespondersContext';
@@ -167,6 +168,7 @@ const App: React.FC = () => {
                     setProfile(null);
                 } else if (data) {
                     setProfile(data);
+                    logUserAction(data.id, 'USER_LOGIN', `User ${data.email} signed in`);
                     if (data.role === UserRole.CONTROLLER) {
                         setView('controller');
                     }

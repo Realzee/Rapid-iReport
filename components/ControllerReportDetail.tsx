@@ -869,8 +869,8 @@ const ControllerReportDetail: React.FC<{
                 
                 {((report as any).license_plate || (report as any).vehicle_make || (report as any).vehicle_model || (report as any).vehicle_color || (report as any).year || (report as any).vin_number || (report as any).engine_number || (report as any).circulation_number) && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                        {(report as any).license_plate && <DetailField label="License Plate">{(report as any).license_plate}</DetailField>}
-                        {(report as any).vehicle_make && <DetailField label="Vehicle Make">{(report as any).vehicle_make}</DetailField>}
+                        {(report as any).license_plate && <DetailField label="Reg">{(report as any).license_plate}</DetailField>}
+                        {(report as any).vehicle_make && <DetailField label="Make">{(report as any).vehicle_make}</DetailField>}
                         {(report as any).vehicle_model && <DetailField label="Vehicle Model">{(report as any).vehicle_model}</DetailField>}
                         {(report as any).vehicle_color && <DetailField label="Vehicle Color">{(report as any).vehicle_color}</DetailField>}
                         {(report as any).year && <DetailField label="Year">{(report as any).year}</DetailField>}
@@ -885,7 +885,7 @@ const ControllerReportDetail: React.FC<{
                     </div>
                 )}
 
-                {(report.type === 'vehicle' || report.type === 'crime' || report.type === 'emergency') && (
+                {(report.type === 'vehicle' || report.type === 'crime') && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
                         <DetailField label="Arrests">{(report as any).arrests || 0}</DetailField>
                         <DetailField label="Guns Recovered">{(report as any).guns_recovered || 0}</DetailField>

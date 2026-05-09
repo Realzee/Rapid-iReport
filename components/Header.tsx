@@ -8,6 +8,7 @@ import NotificationsPanel from './NotificationsPanel';
 import PTTModal from './PTTModal';
 import LedClock from './LedClock';
 import { updateFaviconBadge, updateDocumentTitle, playNotificationSound } from '../utils/notificationUtils';
+import { logUserAction } from '../utils/logger';
 
 interface HeaderProps {
     currentView: string;
@@ -125,6 +126,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       }`;
 
   const handleLogout = async () => {
+    if (profile) {
+      await logUserAction(profile.id, 'USER_SIGNOUT', `User ${profile.email} signed out`);
+    }
     // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
     await supabase.auth['signOut']();
     setMobileMenuOpen(false);

@@ -8,6 +8,7 @@ import ReportDetailModal from '../components/ReportDetailModal';
 import ReportModal from '../components/ReportModal';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
+import { logUserAction } from '../utils/logger';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
@@ -257,6 +258,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
             addToast(`Error restoring report: ${error.message}`, 'error');
         } else {
             addToast('Report restored successfully. It has been moved to the active queue.', 'success');
+            logUserAction(profile.id, 'RESTORE_REPORT', `Restored report ${reportToRestore.ob_number} (${reportToRestore.id})`);
             setReports(prev => prev.filter(r => r.id !== reportToRestore!.id));
         }
         setReportToRestore(null);
@@ -283,6 +285,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
             addToast(`Error deleting report: ${error.message}`, 'error');
         } else {
             addToast('Report permanently deleted from archives.', 'success');
+            logUserAction(profile.id, 'DELETE_REPORT', `Permanently deleted report ${reportToDelete.ob_number} (${reportToDelete.id})`);
             setReports(prev => prev.filter(r => r.id !== reportToDelete!.id));
         }
         setReportToDelete(null);
