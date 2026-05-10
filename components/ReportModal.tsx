@@ -196,8 +196,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             other_recoveries: '',
             saps_13: '',
             pound_name: '',
-            year: '',
-            stat: ''
+            year: ''
         };
     }, [reportToEdit, isQuickAdd]);
 
@@ -351,7 +350,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             'saps_13',
             'pound_name',
             'cas_number',
-            'stat',
             'circulation_number'
         ];
 
@@ -731,11 +729,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 </div>
                             )}
 
-                            <div><label htmlFor="cas_number" className={labelClasses}>CAS</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
+                            <div><label htmlFor="cas_number" className={labelClasses}>Case</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="Case" /></div>
                             <div>
                                 <label htmlFor="station_name" className={labelClasses}>Station</label>
                                 <div className="relative" ref={stationSuggestionsRef}>
-                                    <input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="STATION" autoComplete="off" />
+                                    <input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="Station" autoComplete="off" />
                                     {stationSuggestions.length > 0 && (
                                         <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                             {stationSuggestions.map(station => (
@@ -848,11 +846,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label htmlFor="cas_number" className={labelClasses}>CAS Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
+                                <div><label htmlFor="cas_number" className={labelClasses}>Case Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="Case" /></div>
                                 <div>
                                     <label htmlFor="station_name" className={labelClasses}>Station Name</label>
                                     <div className="relative" ref={stationSuggestionsRef}>
-                                        <input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="STATION" autoComplete="off" />
+                                        <input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="Station" autoComplete="off" />
                                         {stationSuggestions.length > 0 && (
                                             <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                                 {stationSuggestions.map(station => (
@@ -890,13 +888,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 />
                             </div>
                            
-                            <div><label htmlFor="cas_number" className={labelClasses}>CAS</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="CAS" /></div>
-                            <div><label htmlFor="stat" className={labelClasses}>STAT</label><input type="text" name="stat" id="stat" value={formData.stat || ''} onChange={handleChange} className={inputClasses} placeholder="STAT" /></div>
+                            <div><label htmlFor="cas_number" className={labelClasses}>Case</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="Case" /></div>
                             
                             <div className="md:col-span-2">
                                 <label htmlFor="station_name" className={labelClasses}>Station</label>
                                 <div className="relative" ref={stationSuggestionsRef}>
-                                    <input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="STATION" autoComplete="off" />
+                                    <input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="Station" autoComplete="off" />
                                     {stationSuggestions.length > 0 && (
                                         <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                             {stationSuggestions.map(station => (

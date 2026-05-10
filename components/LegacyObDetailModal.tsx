@@ -47,7 +47,7 @@ const LegacyObDetailModal: React.FC<LegacyObDetailModalProps> = ({ isOpen, onClo
                     <div>
                         <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 border-b border-gray-200 dark:border-gray-700 pb-1">Vehicle Info</h4>
                          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-3 items-center">
-                            <DetailRow label="Vehicle Registration" value={entry.vehicleRegistration} isMono />
+                            <DetailRow label="Reg" value={entry.vehicleRegistration} isMono />
                             <DetailRow label="Make" value={entry.make} />
                             <DetailRow label="Model" value={entry.model} />
                             <DetailRow label="Color" value={entry.color} />

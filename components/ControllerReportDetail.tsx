@@ -1025,7 +1025,6 @@ const ControllerReportDetail: React.FC<{
                                 ))}
                              </div>
                         </DetailField>
-                        {(report as any).stat && <DetailField label="STAT">{(report as any).stat}</DetailField>}
                         <DetailField label="CIT Success">{(report as any).cit_success ? 'Yes' : 'No'}</DetailField>
                         <DetailField label="Arrests">{(report as any).arrests || 0}</DetailField>
                         <DetailField label="Guns Recovered">{(report as any).guns_recovered || 0}</DetailField>
@@ -1037,7 +1036,7 @@ const ControllerReportDetail: React.FC<{
                         )}
                     </div>
                 )}
-                {(report as any).cas_number && <DetailField label="CAS Number"><p className="text-gray-800 dark:text-gray-200">{(report as any).cas_number}</p></DetailField>}
+                {(report as any).cas_number && <DetailField label="Case"><p className="text-gray-800 dark:text-gray-200">{(report as any).cas_number}</p></DetailField>}
                 {(report as any).station_name && <DetailField label="Station"><p className="text-gray-800 dark:text-gray-200">{(report as any).station_name}</p></DetailField>}
             </div>
             

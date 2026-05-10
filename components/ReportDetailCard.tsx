@@ -321,9 +321,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 ctx.fillText(truncatedValue, leftMargin + labelWidth + 10, y);
             };
 
-            drawField('Status:', statusText, detailsY);
-
             if (report.type === 'vehicle') {
+                drawField('Status:', statusText, detailsY);
                 drawField('Reg:', (report as any).license_plate || 'N/A', detailsY + lineHeight);
                 drawField('Make:', (report as any).vehicle_make || 'N/A', detailsY + lineHeight * 2);
                 drawField('Type:', (report as any).vehicle_model || 'N/A', detailsY + lineHeight * 3);
@@ -331,6 +330,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 drawField('Case:', (report as any).cas_number || 'N/A', detailsY + lineHeight * 5);
                 drawField('Station:', (report as any).station_name || 'N/A', detailsY + lineHeight * 6);
             } else {
+                drawField('Status:', statusText, detailsY);
                 drawField('Location:', (report as any).location || 'N/A', detailsY + lineHeight);
                 drawField('Case:', (report as any).cas_number || 'N/A', detailsY + lineHeight * 2);
                 drawField('Station:', (report as any).station_name || 'N/A', detailsY + lineHeight * 3);
@@ -607,12 +607,10 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported</p>
                         <p className="text-gray-900 dark:text-white">{format(new Date(localReport.reported_at), 'MMM d, yyyy HH:mm')}</p>
                     </div>
-                    {(localReport as any).cas_number && (
-                        <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">CAS Number</p>
-                            <p className="text-gray-900 dark:text-white">{(localReport as any).cas_number}</p>
-                        </div>
-                    )}
+                    <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Case</p>
+                        <p className="text-gray-900 dark:text-white">{(localReport as any).cas_number}</p>
+                    </div>
                     {(localReport as any).station_name && (
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Station</p>

@@ -263,7 +263,7 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
 
                                 <div className="flex justify-between items-end mt-auto pt-3 border-t border-gray-100 dark:border-gray-700">
                                     <div className="text-xs text-gray-500 dark:text-gray-400 flex flex-col min-w-0 pr-2">
-                                         <span className="font-semibold text-gray-700 dark:text-gray-300 truncate">{report.cas_number || 'No CAS'}</span>
+                                         <span className="font-semibold text-gray-700 dark:text-gray-300 truncate">{report.cas_number || 'No Case'}</span>
                                          <span className="flex items-center gap-1 truncate"><MapPinIcon className="w-3 h-3 flex-shrink-0"/> <span className="truncate">{report.station_name || 'N/A'}</span></span>
                                     </div>
                                     <div className="text-xs text-gray-400 dark:text-gray-500 font-medium flex-shrink-0 whitespace-nowrap">

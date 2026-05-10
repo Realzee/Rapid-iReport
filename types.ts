@@ -194,7 +194,6 @@ export interface CrimeReport {
   resolved_at?: string; // ISO date string
   cas_number?: string;
   station_name?: string;
-  stat?: string;
   company_id?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];
