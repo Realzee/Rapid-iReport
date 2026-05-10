@@ -65,8 +65,8 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
               <div><p className="font-bold text-gray-500">Model</p><p>{(report as any).vehicle_model}</p></div>
               <div><p className="font-bold text-gray-500">Color</p><p>{(report as any).vehicle_color}</p></div>
               {(report as any).year && <div><p className="font-bold text-gray-500">Year</p><p>{(report as any).year}</p></div>}
-              {(report as any).vin_number && <div><p className="font-bold text-gray-500">VIN</p><p>{(report as any).vin_number}</p></div>}
-              {(report as any).engine_number && <div><p className="font-bold text-gray-500">Engine</p><p>{(report as any).engine_number}</p></div>}
+              {(report as any).vin_number && <div><p className="font-bold text-gray-500">VIN Number</p><p>{(report as any).vin_number}</p></div>}
+              {(report as any).engine_number && <div><p className="font-bold text-gray-500">Engine Number</p><p>{(report as any).engine_number}</p></div>}
               {(report as any).cas_number && <div><p className="font-bold text-gray-500">Case</p><p>{(report as any).cas_number}</p></div>}
               {(report as any).station_name && <div><p className="font-bold text-gray-500">Station</p><p>{(report as any).station_name}</p></div>}
               <div className="col-span-2"><p className="font-bold text-gray-500">Last Seen Location</p><p>{(report as any).last_seen_location}</p></div>

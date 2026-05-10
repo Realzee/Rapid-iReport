@@ -619,13 +619,13 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     )}
                     {localReport.type === 'vehicle' && (localReport as any).vin_number && (
                         <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">VIN</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">VIN Number</p>
                             <p className="text-gray-900 dark:text-white">{(localReport as any).vin_number}</p>
                         </div>
                     )}
                     {localReport.type === 'vehicle' && (localReport as any).engine_number && (
                         <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Engine</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Engine Number</p>
                             <p className="text-gray-900 dark:text-white">{(localReport as any).engine_number}</p>
                         </div>
                     )}
@@ -661,7 +661,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     )}
                     {localReport.type === 'vehicle' && (localReport as any).circulation_number && (
                         <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Circulation Num</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Circulation Number</p>
                             <p className="text-gray-900 dark:text-white">{(localReport as any).circulation_number}</p>
                         </div>
                     )}

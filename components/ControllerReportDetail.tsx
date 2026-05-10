@@ -874,9 +874,9 @@ const ControllerReportDetail: React.FC<{
                         {(report as any).vehicle_model && <DetailField label="Vehicle Model">{(report as any).vehicle_model}</DetailField>}
                         {(report as any).vehicle_color && <DetailField label="Vehicle Color">{(report as any).vehicle_color}</DetailField>}
                         {(report as any).year && <DetailField label="Year">{(report as any).year}</DetailField>}
-                        {(report as any).vin_number && <DetailField label="VIN">{(report as any).vin_number}</DetailField>}
-                        {(report as any).engine_number && <DetailField label="Engine">{(report as any).engine_number}</DetailField>}
-                        {(report as any).circulation_number && <DetailField label="Circulation Num">{(report as any).circulation_number}</DetailField>}
+                        {(report as any).vin_number && <DetailField label="VIN Number">{(report as any).vin_number}</DetailField>}
+                        {(report as any).engine_number && <DetailField label="Engine Number">{(report as any).engine_number}</DetailField>}
+                        {(report as any).circulation_number && <DetailField label="Circulation Number">{(report as any).circulation_number}</DetailField>}
                         {(report as any).cos_name && <DetailField label="COS Name">{(report as any).cos_name}</DetailField>}
                         {(report as any).cos_contact_number && <DetailField label="COS Contact">{(report as any).cos_contact_number}</DetailField>}
                         {(report as any).io_name && <DetailField label="IO Name">{(report as any).io_name}</DetailField>}
