@@ -7,7 +7,7 @@ import AnalyticsPanel from '../components/GuardMonitoring/AnalyticsPanel';
 import GateAccessPage from './GateAccessPage';
 import { useResponders } from '../contexts/RespondersContext';
 import { Profile } from '../types';
-import { ScanIcon, MapIcon, BuildingIcon, ClipboardCheckIcon, ChartBarIcon } from '../components/icons';
+import { ScanIcon, MapIcon, BuildingIcon, ClipboardCheckIcon, ChartBarIcon, UsersIcon, MapPinIcon } from '../components/icons';
 import { supabase } from '../utils/supabase';
 
 interface GuardMonitoringPageProps {
@@ -87,6 +87,18 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
                                         {item.profile_pic_url && <img src={item.profile_pic_url} alt="" className="w-6 h-6 rounded-full object-cover" referrerPolicy="no-referrer" />}
                                         <span className="truncate">{item.name || 'Unnamed'}</span>
                                     </div>
+                                    {table === 'sites' && (
+                                        <div className="flex items-center gap-1 mt-1 text-[10px] text-gray-500 font-medium ml-8">
+                                            <UsersIcon className="w-3 h-3" />
+                                            <span>{data.guards?.filter((g: any) => g.site_id === item.id).length || 0} Guards Allocated</span>
+                                        </div>
+                                    )}
+                                    {table === 'guards' && item.site_id && (
+                                        <div className="flex items-center gap-1 mt-0.5 text-[10px] text-indigo-500 font-medium ml-8">
+                                            <MapPinIcon className="w-2.5 h-2.5" />
+                                            <span className="truncate">{data.sites?.find((s: any) => s.id === item.site_id)?.name || 'Direct Assignment'}</span>
+                                        </div>
+                                    )}
                                     {item.company_id && (
                                          <div className="flex items-center gap-1 mt-1 text-xs text-blue-500">
                                             <BuildingIcon className="w-3 h-3" />
