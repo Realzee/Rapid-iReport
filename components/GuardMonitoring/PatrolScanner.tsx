@@ -150,7 +150,7 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
                 <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
                     <QrCode size={24} />
                 </div>
-                <h4 className="text-lg font-bold text-gray-900 dark:text-white">Patrol Patrol Scanner</h4>
+                <h4 className="text-lg font-bold text-gray-900 dark:text-white">Patrol Scanner</h4>
             </div>
 
             <div className="space-y-4">
@@ -170,7 +170,13 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
 
                 {isScanning ? (
                     <div className="space-y-4">
-                        <div id="qr-reader" className="overflow-hidden rounded-xl border-2 border-emerald-500 shadow-lg bg-black"></div>
+                        <div id="qr-reader" className="overflow-hidden rounded-xl border-2 border-emerald-500 shadow-lg bg-black">
+                            <div className="p-8 text-center text-gray-400">
+                                <Camera className="mx-auto mb-4 opacity-50" size={48} />
+                                <p className="text-sm">Initializing camera...</p>
+                                <p className="text-[10px] mt-2">Please ensure camera permissions are granted in your browser.</p>
+                            </div>
+                        </div>
                         <button 
                             onClick={() => setIsScanning(false)}
                             className="w-full flex items-center justify-center gap-2 py-3 border-2 border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 font-bold rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition"

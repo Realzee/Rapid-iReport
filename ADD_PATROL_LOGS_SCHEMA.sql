@@ -19,9 +19,10 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'patrol_logs' AND policyname = 'Enable read access for authenticated users') THEN
         CREATE POLICY "Enable read access for authenticated users" ON public.patrol_logs FOR SELECT TO authenticated USING (true);
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'patrol_logs' AND policyname = 'Enable insert access for authenticated guards') THEN
-        -- Allow guards to insert their own logs
-        CREATE POLICY "Enable insert access for authenticated guards" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'patrol_logs' AND policyname = 'Enable insert access for authenticated users') THEN
+        -- Allow guards to insert their own logs, and allow admins/controllers to insert any logs
+        CREATE POLICY "Enable insert access for authenticated users" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (
+            public.get_user_role(auth.uid()) IN ('admin', 'controller') OR
             exists (
                 SELECT 1 FROM public.guards 
                 WHERE guards.id = patrol_logs.guard_id 

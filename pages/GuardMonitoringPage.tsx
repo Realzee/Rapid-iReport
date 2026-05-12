@@ -56,6 +56,28 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Guarding</h1>
+                    {profile.role === 'admin' && (
+                        <button 
+                            onClick={async () => {
+                                if (confirm('Run database repair? This will ensure all columns and permissions are correctly set up.')) {
+                                    try {
+                                        const res = await fetch('/api/guard-monitoring', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ action: 'fix-schema' })
+                                        });
+                                        if (res.ok) alert('Database repair completed successfully.');
+                                        else alert('Repair failed: ' + (await res.text()));
+                                    } catch (e: any) {
+                                        alert('Error: ' + e.message);
+                                    }
+                                }
+                            }}
+                            className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded shadow transition"
+                        >
+                            Repair DB
+                        </button>
+                    )}
                 </div>
                 <nav className="flex space-x-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                     {tabs.map(tab => (
