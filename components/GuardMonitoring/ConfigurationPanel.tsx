@@ -83,6 +83,17 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
     const [showQRModal, setShowQRModal] = useState(false);
     const [selectedCheckpoint, setSelectedCheckpoint] = useState<any>(null);
     
+    // Auto-generate QR code for new checkpoints
+    useEffect(() => {
+        if (activeTab === 'checkpoints' && showForm && !isEditing && !formData.qr_code) {
+            const prefix = 'CP';
+            const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const timestamp = Date.now().toString(36).toUpperCase().slice(-4);
+            const randomId = `${prefix}-${randomPart}-${timestamp}`;
+            setFormData(prev => ({ ...prev, qr_code: randomId }));
+        }
+    }, [activeTab, showForm, isEditing]);
+    
     // Modal states
     const [modalConfig, setModalConfig] = useState<{
         isOpen: boolean;
@@ -539,11 +550,16 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                                 <button 
                                                     type="button"
                                                     onClick={() => {
-                                                        const randomId = 'CP-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+                                                        const prefix = 'CP';
+                                                        const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+                                                        const timestamp = Date.now().toString(36).toUpperCase().slice(-4);
+                                                        const randomId = `${prefix}-${randomPart}-${timestamp}`;
                                                         setFormData({ ...formData, qr_code: randomId });
                                                     }}
-                                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded text-xs font-medium transition"
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-800/40 text-blue-600 dark:text-blue-400 rounded-md text-xs font-bold transition border border-blue-200 dark:border-blue-800"
+                                                    title="Generate Secure QR ID"
                                                 >
+                                                    <QrCode size={14} />
                                                     Generate
                                                 </button>
                                             )}
