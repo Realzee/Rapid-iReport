@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../utils/supabase';
 import { Guard, Checkpoint } from '../../types';
 import { getDistance } from '../../utils/geo';
+import { Html5QrcodeScanner } from 'html5-qrcode';
+import { QrCode, X, Check, AlertTriangle, Camera } from 'lucide-react';
 
 interface PatrolScannerProps {
     guards: Guard[];
@@ -11,8 +13,64 @@ interface PatrolScannerProps {
 
 const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onScanSuccess }) => {
     const [selectedGuard, setSelectedGuard] = useState<string>('');
-    const [selectedCheckpoint, setSelectedCheckpoint] = useState<string>('');
     const [loading, setLoading] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const [scanResult, setScanResult] = useState<{
+        checkpoint: Checkpoint;
+        status: 'valid' | 'invalid';
+        message: string;
+    } | null>(null);
+
+    const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+
+    useEffect(() => {
+        if (isScanning && !scannerRef.current) {
+            scannerRef.current = new Html5QrcodeScanner(
+                "qr-reader",
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                /* verbose= */ false
+            );
+
+            scannerRef.current.render(onScanSuccess_QR, onScanFailure_QR);
+        }
+
+        return () => {
+            if (scannerRef.current) {
+                scannerRef.current.clear().catch(error => {
+                    console.error("Failed to clear scanner: ", error);
+                });
+                scannerRef.current = null;
+            }
+        };
+    }, [isScanning]);
+
+    const onScanSuccess_QR = async (decodedText: string) => {
+        // Stop scanning
+        if (scannerRef.current) {
+            await scannerRef.current.clear();
+            scannerRef.current = null;
+        }
+        setIsScanning(false);
+        
+        // Find checkpoint by QR code or ID
+        const cp = checkpoints.find(c => c.qr_code === decodedText || c.id === decodedText);
+        if (!cp) {
+            alert('Unrecognized QR Code. This is not a valid checkpoint for this system.');
+            return;
+        }
+
+        if (!selectedGuard) {
+            alert('Please select a guard first.');
+            setIsScanning(true); // Restart if no guard
+            return;
+        }
+
+        await handleScan(cp.id, decodedText);
+    };
+
+    const onScanFailure_QR = (error: any) => {
+        // Quietly fail as it scans continuously
+    };
 
     const getCurrentLocation = (): Promise<GeolocationPosition> => {
         return new Promise((resolve, reject) => {
@@ -28,12 +86,12 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
         });
     };
 
-    const handleScan = async () => {
-        if (!selectedCheckpoint || !selectedGuard) return;
+    const handleScan = async (checkpointId: string, qrCodeScanned?: string) => {
+        if (!selectedGuard) return;
         setLoading(true);
 
         try {
-            const cp = checkpoints.find(c => c.id === selectedCheckpoint);
+            const cp = checkpoints.find(c => c.id === checkpointId);
             if (!cp) throw new Error('Checkpoint not found');
             
             const guard = guards.find(g => g.id === selectedGuard);
@@ -46,28 +104,38 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
                 const position = await getCurrentLocation();
                 location_coords = { lat: position.coords.latitude, lng: position.coords.longitude };
                 const distance = getDistance(location_coords.lat, location_coords.lng, cp.location.lat, cp.location.lng);
-                verification_status = distance < 50 ? 'valid' : 'invalid'; // 50m threshold
+                verification_status = distance < 100 ? 'valid' : 'invalid'; // 100m threshold for QR
             } catch (err) {
                 console.warn('Geolocation failed, defaulting to checkpoint location', err);
                 location_coords = cp.location; // Fallback
+                verification_status = 'valid'; // Trust QR if GPS fails?
             }
 
             const { error } = await supabase
                 .from('patrol_logs')
                 .insert([
                     {
-                        checkpoint_id: selectedCheckpoint,
+                        checkpoint_id: checkpointId,
                         guard_id: selectedGuard,
                         site_id: guard.site_id,
                         location_coords: location_coords,
-                        verification_status: verification_status
+                        verification_status: verification_status,
+                        qr_code_scanned: qrCodeScanned,
+                        company_id: guard.company_id
                     }
                 ]);
 
             if (error) throw error;
+            
+            setScanResult({
+                checkpoint: cp,
+                status: verification_status,
+                message: verification_status === 'valid' 
+                    ? 'Scan verified successfully!' 
+                    : 'Scan recorded, but distance check failed.'
+            });
+
             onScanSuccess();
-            setSelectedCheckpoint('');
-            alert(`Scan recorded as ${verification_status}`);
         } catch (error) {
             console.error('Error scanning checkpoint:', error);
             alert('Failed to record patrol log.');
@@ -77,37 +145,107 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mt-4">
-            <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-4">Patrol Checkpoint Scanner</h4>
-            <select
-                value={selectedGuard}
-                onChange={(e) => setSelectedGuard(e.target.value)}
-                className="w-full mb-2 p-2 border rounded dark:bg-gray-700 dark:text-white"
-            >
-                <option value="">Select Guard</option>
-                {guards.map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-            </select>
-            <select
-                value={selectedCheckpoint}
-                onChange={(e) => setSelectedCheckpoint(e.target.value)}
-                className="w-full mb-4 p-2 border rounded dark:bg-gray-700 dark:text-white"
-            >
-                <option value="">Select Checkpoint</option>
-                {checkpoints.map(cp => (
-                    <option key={cp.id} value={cp.id}>{cp.name}</option>
-                ))}
-            </select>
-            <button
-                onClick={handleScan}
-                disabled={!selectedCheckpoint || !selectedGuard || loading}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded transition disabled:bg-gray-400"
-            >
-                {loading ? 'Recording...' : 'Scan Checkpoint'}
-            </button>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                    <QrCode size={24} />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 dark:text-white">Patrol Patrol Scanner</h4>
+            </div>
+
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Select Guard on Duty</label>
+                    <select
+                        value={selectedGuard}
+                        onChange={(e) => setSelectedGuard(e.target.value)}
+                        className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition"
+                    >
+                        <option value="">Choose a guard...</option>
+                        {guards.map(g => (
+                            <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {isScanning ? (
+                    <div className="space-y-4">
+                        <div id="qr-reader" className="overflow-hidden rounded-xl border-2 border-emerald-500 shadow-lg bg-black"></div>
+                        <button 
+                            onClick={() => setIsScanning(false)}
+                            className="w-full flex items-center justify-center gap-2 py-3 border-2 border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 font-bold rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                        >
+                            <X size={18} />
+                            Cancel Scanning
+                        </button>
+                    </div>
+                ) : scanResult ? (
+                    <div className={`p-6 rounded-xl border-2 flex flex-col items-center text-center ${
+                        scanResult.status === 'valid' 
+                            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' 
+                            : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                    }`}>
+                        <div className={`p-3 rounded-full mb-4 ${
+                            scanResult.status === 'valid' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'
+                        }`}>
+                            {scanResult.status === 'valid' ? <Check size={32} /> : <AlertTriangle size={32} />}
+                        </div>
+                        <h5 className="font-bold text-gray-900 dark:text-white text-lg mb-1">{scanResult.checkpoint.name}</h5>
+                        <p className={`text-sm mb-6 ${
+                            scanResult.status === 'valid' ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'
+                        }`}>{scanResult.message}</p>
+                        
+                        <button 
+                            onClick={() => setScanResult(null)}
+                            className="px-8 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold rounded-lg hover:opacity-90 transition shadow-lg"
+                        >
+                            Scan Another
+                        </button>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <button
+                            onClick={() => {
+                                if (!selectedGuard) {
+                                    alert('Please select a guard first');
+                                    return;
+                                }
+                                setIsScanning(true);
+                            }}
+                            className="w-full flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-4 rounded-xl transition shadow-lg shadow-emerald-500/30 group"
+                        >
+                            <Camera className="group-hover:scale-110 transition" size={24} />
+                            Scan Point QR Code
+                        </button>
+                        
+                        <div className="relative flex items-center py-2">
+                            <div className="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
+                            <span className="flex-shrink mx-4 text-gray-400 text-xs font-medium uppercase tracking-widest">or manual backup</span>
+                            <div className="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
+                        </div>
+
+                        <select
+                            onChange={(e) => e.target.value && handleScan(e.target.value)}
+                            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition"
+                        >
+                            <option value="">Select manual checkpoint...</option>
+                            {checkpoints.map(cp => (
+                                <option key={cp.id} value={cp.id}>{cp.name}</option>
+                            ))}
+                        </select>
+                        <p className="text-[10px] text-gray-500 italic text-center">Use manual selection ONLY if QR scanning is not possible.</p>
+                    </div>
+                )}
+            </div>
+            
+            {loading && (
+                <div className="absolute inset-0 bg-white/50 dark:bg-gray-800/50 backdrop-blur-[1px] flex items-center justify-center rounded-2xl">
+                    <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            )}
         </div>
     );
 };
 
 export default PatrolScanner;
+
