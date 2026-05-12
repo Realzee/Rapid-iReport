@@ -25,7 +25,9 @@ CREATE TABLE IF NOT EXISTS public.routes (
 CREATE TABLE IF NOT EXISTS public.checkpoints (
     id uuid NOT NULL DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
     name text NOT NULL,
-    route_id uuid NOT NULL REFERENCES public.routes(id) ON DELETE CASCADE,
+    route_id uuid REFERENCES public.routes(id) ON DELETE CASCADE,
+    site_id uuid REFERENCES public.sites(id) ON DELETE CASCADE,
+    qr_code text,
     location jsonb NOT NULL -- {lat, lng}
 );
 

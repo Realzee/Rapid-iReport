@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ImagePicker from './ImagePicker';
 import { supabase } from '../../utils/supabase';
-import { Edit, Trash2, Plus, X, Settings, AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { Edit, Trash2, Plus, X, Settings, AlertCircle, CheckCircle2, Info, QrCode, Printer } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface ModalProps {
     isOpen: boolean;
@@ -79,6 +80,8 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [showQRModal, setShowQRModal] = useState(false);
+    const [selectedCheckpoint, setSelectedCheckpoint] = useState<any>(null);
     
     // Modal states
     const [modalConfig, setModalConfig] = useState<{
@@ -345,6 +348,66 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
 
     const currentTab = tabs.find(t => t.id === activeTab);
 
+    const handleViewQR = (checkpoint: any) => {
+        setSelectedCheckpoint(checkpoint);
+        setShowQRModal(true);
+    };
+
+    const handlePrintQR = () => {
+        const printContent = document.getElementById('qr-to-print');
+        if (!printContent) return;
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        const qrSvg = printContent.querySelector('svg')?.outerHTML || '';
+
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Print QR Code - ${selectedCheckpoint?.name}</title>
+                    <style>
+                        body { 
+                            display: flex; 
+                            flex-direction: column; 
+                            align-items: center; 
+                            justify-content: center; 
+                            height: 100vh; 
+                            margin: 0; 
+                            font-family: sans-serif;
+                        }
+                        .qr-container { 
+                            padding: 40px; 
+                            border: 2px solid #eee; 
+                            border-radius: 20px;
+                            text-align: center;
+                        }
+                        h1 { margin-top: 20px; font-size: 24px; color: #333; }
+                        h2 { margin-top: 5px; font-size: 16px; color: #666; }
+                        svg { width: 300px; height: 300px; }
+                        @media print {
+                            .no-print { display: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="qr-container">
+                        ${qrSvg}
+                        <h1>${selectedCheckpoint?.name}</h1>
+                        <h2>Checkpoint QR Code</h2>
+                    </div>
+                    <script>
+                        window.onload = () => {
+                            window.print();
+                            // window.close(); // Not closing for better UX in preview
+                        };
+                    </script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
+
     const filteredItems = items.filter(item => 
         item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.contact_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -463,14 +526,28 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                 ) : (
                                     <div className="space-y-1.5">
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{field.label}</label>
-                                        <input 
-                                            type={field.type}
-                                            placeholder={field.label}
-                                            className="w-full p-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" 
-                                            value={formData[field.name] || ''}
-                                            onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                                            required={field.name === 'name'}
-                                        />
+                                        <div className="relative">
+                                            <input 
+                                                type={field.type}
+                                                placeholder={field.label}
+                                                className="w-full p-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" 
+                                                value={formData[field.name] || ''}
+                                                onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                                required={field.name === 'name'}
+                                            />
+                                            {field.name === 'qr_code' && (
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const randomId = 'CP-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+                                                        setFormData({ ...formData, qr_code: randomId });
+                                                    }}
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded text-xs font-medium transition"
+                                                >
+                                                    Generate
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -565,6 +642,15 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex justify-end gap-2">
+                                                {activeTab === 'checkpoints' && (
+                                                    <button 
+                                                        onClick={() => handleViewQR(item)}
+                                                        className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition"
+                                                        title="View QR Code"
+                                                    >
+                                                        <QrCode size={18} />
+                                                    </button>
+                                                )}
                                                 <button 
                                                     onClick={() => handleEdit(item)}
                                                     className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition"
@@ -599,6 +685,54 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
             >
                 {modalConfig.message}
             </UIModal>
+
+            {/* QR Code Modal */}
+            {showQRModal && selectedCheckpoint && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-300">
+                        <div className="p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Checkpoint QR Code</h3>
+                                <button 
+                                    onClick={() => setShowQRModal(false)}
+                                    className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-white transition"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="flex flex-col items-center">
+                                <div id="qr-to-print" className="bg-white p-6 rounded-xl border border-gray-100 shadow-inner mb-6">
+                                    <QRCodeSVG 
+                                        value={selectedCheckpoint.qr_code || selectedCheckpoint.id} 
+                                        size={200}
+                                        level="H"
+                                        includeMargin={false}
+                                    />
+                                </div>
+                                <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{selectedCheckpoint.name}</h4>
+                                <p className="text-sm text-gray-500 mb-6 font-mono">{selectedCheckpoint.qr_code || selectedCheckpoint.id}</p>
+
+                                <div className="grid grid-cols-2 gap-3 w-full">
+                                    <button 
+                                        onClick={() => setShowQRModal(false)}
+                                        className="px-4 py-3 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition font-medium"
+                                    >
+                                        Close
+                                    </button>
+                                    <button 
+                                        onClick={handlePrintQR}
+                                        className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-bold shadow-lg shadow-blue-500/30"
+                                    >
+                                        <Printer size={18} />
+                                        Print QR
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

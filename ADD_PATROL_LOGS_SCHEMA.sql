@@ -6,7 +6,9 @@ CREATE TABLE IF NOT EXISTS public.patrol_logs (
     site_id uuid NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
     scanned_at timestamptz NOT NULL DEFAULT now(),
     location_coords jsonb NOT NULL, -- {lat, lng}
-    verification_status text NOT NULL DEFAULT 'valid' -- 'valid', 'invalid'
+    verification_status text NOT NULL DEFAULT 'valid', -- 'valid', 'invalid'
+    qr_code_scanned text,
+    company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE
 );
 
 ALTER TABLE public.patrol_logs ENABLE ROW LEVEL SECURITY;

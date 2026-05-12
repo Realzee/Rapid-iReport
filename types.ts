@@ -340,9 +340,11 @@ export interface Guard {
 
 export interface Checkpoint {
     id: string;
-    site_id: string;
+    site_id?: string;
+    route_id?: string;
     name: string;
     location: LocationCoords;
+    qr_code?: string;
 }
 
 export interface PatrolLog {
@@ -353,6 +355,7 @@ export interface PatrolLog {
     scanned_at: string;
     location_coords: LocationCoords;
     verification_status: 'valid' | 'invalid';
+    qr_code_scanned?: string;
 }
 
 export interface GuardHeartbeat {
