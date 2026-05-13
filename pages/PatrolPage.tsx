@@ -33,8 +33,8 @@ const PatrolPage: React.FC<PatrolPageProps> = ({ profile }) => {
                 setGuardRecord({ 
                     id: profile.id, 
                     name: `${profile.first_name || ''} ${profile.surname || ''}`.trim() || profile.email,
-                    site_id: profile.company_id || '',
-                    company_id: profile.company_id
+                    site_id: profile.company_id || null,
+                    company_id: profile.company_id || null
                 });
             }
         };

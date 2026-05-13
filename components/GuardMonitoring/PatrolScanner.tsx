@@ -138,17 +138,21 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
                 verification_status = 'valid'; // Trust QR if GPS fails?
             }
 
+            const guardId = selectedGuard && selectedGuard !== '' ? selectedGuard : null;
+            const siteId = (guard.site_id && guard.site_id !== '') ? guard.site_id : (cp.site_id && cp.site_id !== '' ? cp.site_id : null);
+            const companyId = (guard.company_id && guard.company_id !== '') ? guard.company_id : (cp.company_id && cp.company_id !== '' ? cp.company_id : ((guard as any).company_id || null));
+
             const { error } = await supabase
                 .from('patrol_logs')
                 .insert([
                     {
                         checkpoint_id: checkpointId,
-                        guard_id: selectedGuard,
-                        site_id: guard.site_id || cp.site_id || null,
+                        guard_id: guardId,
+                        site_id: siteId,
                         location_coords: location_coords,
                         verification_status: verification_status,
                         qr_code_scanned: qrCodeScanned || null,
-                        company_id: guard.company_id || cp.company_id || (guard as any).company_id || null
+                        company_id: companyId
                     }
                 ]);
 
@@ -157,9 +161,10 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
                     error,
                     payload: {
                         checkpoint_id: checkpointId,
-                        guard_id: selectedGuard,
-                        site_id: guard.site_id || cp.site_id,
-                        company_id: guard.company_id || cp.company_id
+                        guard_id: guardId,
+                        site_id: siteId,
+                        company_id: companyId,
+                        location_coords
                     }
                 });
                 throw error;
