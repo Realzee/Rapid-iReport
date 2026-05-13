@@ -46,6 +46,7 @@ export default async function handler(req: any, res: any) {
             const queries = [
                 // Ensure eval function exists
                 "CREATE OR REPLACE FUNCTION eval(query text) RETURNS void AS $$ BEGIN EXECUTE query; END; $$ LANGUAGE plpgsql SECURITY DEFINER;",
+                "CREATE OR REPLACE FUNCTION public.get_user_role(p_user_id uuid) RETURNS text AS $body$ BEGIN RETURN (SELECT role FROM public.profiles WHERE id = p_user_id); END; $body$ LANGUAGE plpgsql SECURITY DEFINER;",
                 "NOTIFY pgrst, 'reload schema';",
                 "ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",

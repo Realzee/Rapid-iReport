@@ -23,31 +23,14 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
 
     const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
-    useEffect(() => {
-        if (isScanning && !scannerRef.current) {
-            scannerRef.current = new Html5QrcodeScanner(
-                "qr-reader",
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                /* verbose= */ false
-            );
-
-            scannerRef.current.render(onScanSuccess_QR, onScanFailure_QR);
-        }
-
-        return () => {
-            if (scannerRef.current) {
-                scannerRef.current.clear().catch(error => {
-                    console.error("Failed to clear scanner: ", error);
-                });
-                scannerRef.current = null;
-            }
-        };
-    }, [isScanning]);
-
-    const onScanSuccess_QR = async (decodedText: string) => {
+    const onScanSuccess_QR = React.useCallback(async (decodedText: string) => {
         // Stop scanning
         if (scannerRef.current) {
-            await scannerRef.current.clear();
+            try {
+                await scannerRef.current.clear();
+            } catch (err) {
+                console.warn('Failed to clear scanner:', err);
+            }
             scannerRef.current = null;
         }
         setIsScanning(false);
@@ -55,7 +38,7 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
         // Find checkpoint by QR code or ID
         const cp = checkpoints.find(c => c.qr_code === decodedText || c.id === decodedText);
         if (!cp) {
-            alert('Unrecognized QR Code. This is not a valid checkpoint for this system.');
+            alert(`Unrecognized QR code or checkpoint ID: ${decodedText}`);
             return;
         }
 
@@ -66,11 +49,49 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
         }
 
         await handleScan(cp.id, decodedText);
-    };
+    }, [checkpoints, selectedGuard]);
 
-    const onScanFailure_QR = (error: any) => {
-        // Quietly fail as it scans continuously
-    };
+    const onScanFailure_QR = React.useCallback((error: any) => {
+        // Continuous scanning failures are expected when no QR is in view
+    }, []);
+
+    useEffect(() => {
+        let isScannerReady = true;
+
+        if (isScanning && !scannerRef.current) {
+            // Delay initialization to ensure the DOM element #qr-reader is mounted
+            const timer = setTimeout(() => {
+                if (!isScannerReady) return;
+                
+                try {
+                    const scanner = new Html5QrcodeScanner(
+                        "qr-reader",
+                        { 
+                            fps: 10, 
+                            qrbox: { width: 250, height: 250 },
+                            aspectRatio: 1.0,
+                            showTorchButtonIfSupported: true
+                        },
+                        false
+                    );
+                    scannerRef.current = scanner;
+                    scanner.render(onScanSuccess_QR, onScanFailure_QR);
+                } catch (err) {
+                    console.error("Scanner initialization failed:", err);
+                    setIsScanning(false);
+                }
+            }, 150);
+
+            return () => {
+                isScannerReady = false;
+                clearTimeout(timer);
+                if (scannerRef.current) {
+                    scannerRef.current.clear().catch(err => console.warn("Scanner clear failed:", err));
+                    scannerRef.current = null;
+                }
+            };
+        }
+    }, [isScanning, onScanSuccess_QR, onScanFailure_QR]);
 
     const getCurrentLocation = (): Promise<GeolocationPosition> => {
         return new Promise((resolve, reject) => {
@@ -117,15 +138,26 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
                     {
                         checkpoint_id: checkpointId,
                         guard_id: selectedGuard,
-                        site_id: guard.site_id,
+                        site_id: guard.site_id || cp.site_id,
                         location_coords: location_coords,
                         verification_status: verification_status,
-                        qr_code_scanned: qrCodeScanned,
-                        company_id: guard.company_id
+                        qr_code_scanned: qrCodeScanned || null,
+                        company_id: guard.company_id || cp.company_id || null
                     }
                 ]);
 
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase insert error details:', {
+                    error,
+                    payload: {
+                        checkpoint_id: checkpointId,
+                        guard_id: selectedGuard,
+                        site_id: guard.site_id || cp.site_id,
+                        company_id: guard.company_id || cp.company_id
+                    }
+                });
+                throw error;
+            }
             
             setScanResult({
                 checkpoint: cp,

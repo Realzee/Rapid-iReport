@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS public.patrol_logs (
     scanned_at timestamptz NOT NULL DEFAULT now(),
     location_coords jsonb NOT NULL, -- {lat, lng}
     verification_status text NOT NULL DEFAULT 'valid' CHECK (verification_status IN ('valid', 'invalid')),
+    qr_code_scanned text,
+    company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE,
     verification_details text
 );
 

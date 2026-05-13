@@ -335,6 +335,7 @@ export interface Guard {
     next_of_kin_contact?: string;
     profile_id?: string;
     site_id?: string;
+    company_id?: string;
     status: 'on_duty' | 'off_duty' | 'panic';
 }
 
@@ -342,6 +343,7 @@ export interface Checkpoint {
     id: string;
     site_id?: string;
     route_id?: string;
+    company_id?: string;
     name: string;
     location: LocationCoords;
     qr_code?: string;
@@ -352,6 +354,7 @@ export interface PatrolLog {
     site_id: string;
     guard_id: string;
     checkpoint_id: string;
+    company_id: string;
     scanned_at: string;
     location_coords: LocationCoords;
     verification_status: 'valid' | 'invalid';
