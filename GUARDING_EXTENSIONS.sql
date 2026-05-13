@@ -31,12 +31,24 @@ ALTER TABLE public.patrol_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.guard_heartbeats ENABLE ROW LEVEL SECURITY;
 
 -- Policies for Patrol Logs
-CREATE POLICY "Enable read access for authenticated users" ON public.patrol_logs FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Enable write access for authenticated users" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (true);
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'patrol_logs' AND policyname = 'Enable read access for authenticated users') THEN
+        CREATE POLICY "Enable read access for authenticated users" ON public.patrol_logs FOR SELECT TO authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'patrol_logs' AND policyname = 'Enable write access for authenticated users') THEN
+        CREATE POLICY "Enable write access for authenticated users" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (true);
+    END IF;
+END $$;
 
 -- Policies for Heartbeats
-CREATE POLICY "Enable read access for authenticated users" ON public.guard_heartbeats FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Enable write access for authenticated users" ON public.guard_heartbeats FOR INSERT TO authenticated WITH CHECK (true);
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'guard_heartbeats' AND policyname = 'Enable read access for authenticated users') THEN
+        CREATE POLICY "Enable read access for authenticated users" ON public.guard_heartbeats FOR SELECT TO authenticated USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'guard_heartbeats' AND policyname = 'Enable write access for authenticated users') THEN
+        CREATE POLICY "Enable write access for authenticated users" ON public.guard_heartbeats FOR INSERT TO authenticated WITH CHECK (true);
+    END IF;
+END $$;
 
 -- Function to handle Geofencing trigger (pseudo-code/placeholder)
 -- This would typically be handled via a Supabase EDGE Function or Database Trigger
