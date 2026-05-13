@@ -9,27 +9,50 @@ interface PatrolPageProps {
 
 const PatrolPage: React.FC<PatrolPageProps> = ({ profile }) => {
     const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
+    const [guardRecord, setGuardRecord] = useState<any>(null);
 
     useEffect(() => {
-        const fetchCheckpoints = async () => {
-             // Fetch checkpoints for the guard's site
-             // Assuming guards belong to a site via company_id or some other link
-             // For now, let's just fetch all or filter by something
-            const { data, error } = await supabase
+        const fetchData = async () => {
+             // Fetch checkpoints
+            const { data: cpData } = await supabase
                 .from('checkpoints')
                 .select('*');
-            if (data) setCheckpoints(data);
-        };
-        fetchCheckpoints();
-    }, []);
+            if (cpData) setCheckpoints(cpData);
 
-    // Assuming guard profile acts as a guard
-    const guards = [{ id: profile.id, name: `${profile.first_name} ${profile.surname}`, site_id: profile.company_id || '' }];
+            // Fetch actual guard record for this profile
+            const { data: gData } = await supabase
+                .from('guards')
+                .select('*')
+                .eq('profile_id', profile.id)
+                .maybeSingle();
+            
+            if (gData) {
+                setGuardRecord(gData);
+            } else {
+                // If no guard record found, fallback to constructing one from profile (for admins etc)
+                setGuardRecord({ 
+                    id: profile.id, 
+                    name: `${profile.first_name || ''} ${profile.surname || ''}`.trim() || profile.email,
+                    site_id: profile.company_id || '',
+                    company_id: profile.company_id
+                });
+            }
+        };
+        fetchData();
+    }, [profile.id]);
+
+    const guards = guardRecord ? [guardRecord] : [];
 
     return (
         <div className="p-6">
-            <h1 className="text-2xl font-bold mb-4">Patrol</h1>
-            <PatrolScanner guards={guards as any} checkpoints={checkpoints} onScanSuccess={() => {}} />
+            <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Patrol</h1>
+            {guards.length > 0 ? (
+                <PatrolScanner guards={guards as any} checkpoints={checkpoints} onScanSuccess={() => {}} />
+            ) : (
+                <div className="p-8 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400">
+                    Loading patrol scanner...
+                </div>
+            )}
         </div>
     );
 };

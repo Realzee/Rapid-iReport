@@ -12,7 +12,7 @@ interface PatrolScannerProps {
 }
 
 const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onScanSuccess }) => {
-    const [selectedGuard, setSelectedGuard] = useState<string>('');
+    const [selectedGuard, setSelectedGuard] = useState<string>(guards.length === 1 ? guards[0].id : '');
     const [loading, setLoading] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [scanResult, setScanResult] = useState<{
@@ -22,6 +22,12 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
     } | null>(null);
 
     const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+
+    useEffect(() => {
+        if (guards.length === 1 && !selectedGuard) {
+            setSelectedGuard(guards[0].id);
+        }
+    }, [guards, selectedGuard]);
 
     const onScanSuccess_QR = React.useCallback(async (decodedText: string) => {
         // Stop scanning
@@ -138,11 +144,11 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
                     {
                         checkpoint_id: checkpointId,
                         guard_id: selectedGuard,
-                        site_id: guard.site_id || cp.site_id,
+                        site_id: guard.site_id || cp.site_id || null,
                         location_coords: location_coords,
                         verification_status: verification_status,
                         qr_code_scanned: qrCodeScanned || null,
-                        company_id: guard.company_id || cp.company_id || null
+                        company_id: guard.company_id || cp.company_id || (guard as any).company_id || null
                     }
                 ]);
 
@@ -186,19 +192,30 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
             </div>
 
             <div className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Select Guard on Duty</label>
-                    <select
-                        value={selectedGuard}
-                        onChange={(e) => setSelectedGuard(e.target.value)}
-                        className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition"
-                    >
-                        <option value="">Choose a guard...</option>
-                        {guards.map(g => (
-                            <option key={g.id} value={g.id}>{g.name}</option>
-                        ))}
-                    </select>
-                </div>
+                {guards.length > 1 && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Select Guard on Duty</label>
+                        <select
+                            value={selectedGuard}
+                            onChange={(e) => setSelectedGuard(e.target.value)}
+                            className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none transition"
+                        >
+                            <option value="">Choose a guard...</option>
+                            {guards.map(g => (
+                                <option key={g.id} value={g.id}>{g.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                {guards.length === 1 && (
+                    <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/20">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                            <span className="text-sm font-medium text-emerald-800 dark:text-emerald-400">Recording for: <strong>{guards[0].name}</strong></span>
+                        </div>
+                    </div>
+                )}
 
                 {isScanning ? (
                     <div className="space-y-4">
