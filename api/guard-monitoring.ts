@@ -44,36 +44,38 @@ export default async function handler(req: any, res: any) {
         
         if (action === 'fix-schema') {
             const queries = [
-                // Ensure eval function exists - try to create it using DO block
+                // 1. Ensure table exists with core columns at minimum
+                "CREATE TABLE IF NOT EXISTS public.patrol_logs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), created_at timestamptz DEFAULT now());",
+                
+                // 2. Ensure eval function exists - try to create it using DO block
                 "DO $$ BEGIN EXECUTE 'CREATE OR REPLACE FUNCTION eval(query text) RETURNS void AS $func$ BEGIN EXECUTE query; END; $func$ LANGUAGE plpgsql SECURITY DEFINER;'; EXCEPTION WHEN OTHERS THEN NULL; END $$;",
                 
-                // Consolidate patrol_logs columns
-                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS verification_status text",
-                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS location_coords jsonb",
-                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS qr_code_scanned text",
-                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS company_id uuid",
-                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS scanned_at timestamptz DEFAULT now()",
+                // 3. Add columns one by one with IF NOT EXISTS logic
+                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS checkpoint_id uuid;",
+                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS guard_id uuid;",
+                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS site_id uuid;",
+                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS company_id uuid;",
+                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS location_coords jsonb;",
+                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS verification_status text;",
+                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS qr_code_scanned text;",
+                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS scanned_at timestamptz DEFAULT now();",
                 
-                // Ensure correct types
-                "ALTER TABLE public.patrol_logs ALTER COLUMN location_coords SET DATA TYPE jsonb USING location_coords::jsonb",
+                // 4. Reset nullability for safety
+                "ALTER TABLE public.patrol_logs ALTER COLUMN checkpoint_id DROP NOT NULL;",
+                "ALTER TABLE public.patrol_logs ALTER COLUMN guard_id DROP NOT NULL;",
+                "ALTER TABLE public.patrol_logs ALTER COLUMN site_id DROP NOT NULL;",
+                "ALTER TABLE public.patrol_logs ALTER COLUMN company_id DROP NOT NULL;",
+                "ALTER TABLE public.patrol_logs ALTER COLUMN location_coords DROP NOT NULL;",
                 
-                // Drop constraints and null requirements
-                "ALTER TABLE public.patrol_logs ALTER COLUMN guard_id DROP NOT NULL",
-                "ALTER TABLE public.patrol_logs ALTER COLUMN site_id DROP NOT NULL",
-                "ALTER TABLE public.patrol_logs ALTER COLUMN checkpoint_id DROP NOT NULL",
-                "ALTER TABLE public.patrol_logs ALTER COLUMN location_coords DROP NOT NULL",
+                // 5. Hard cast location_coords to jsonb if it was somehow text
+                "DO $$ BEGIN ALTER TABLE public.patrol_logs ALTER COLUMN location_coords SET DATA TYPE jsonb USING location_coords::jsonb; EXCEPTION WHEN OTHERS THEN NULL; END $$;",
                 
-                "DO $$ BEGIN ALTER TABLE public.patrol_logs DROP CONSTRAINT IF EXISTS patrol_logs_guard_id_fkey; EXCEPTION WHEN OTHERS THEN NULL; END $$;",
-                "DO $$ BEGIN ALTER TABLE public.patrol_logs DROP CONSTRAINT IF EXISTS patrol_logs_site_id_fkey; EXCEPTION WHEN OTHERS THEN NULL; END $$;",
-                "DO $$ BEGIN ALTER TABLE public.patrol_logs DROP CONSTRAINT IF EXISTS patrol_logs_checkpoint_id_fkey; EXCEPTION WHEN OTHERS THEN NULL; END $$;",
+                // 6. Ensure RLS is enabled but permissive for now to debug
+                "ALTER TABLE public.patrol_logs ENABLE ROW LEVEL SECURITY;",
+                "DROP POLICY IF EXISTS \"Enable all for authenticated\" ON public.patrol_logs;",
+                "CREATE POLICY \"Enable all for authenticated\" ON public.patrol_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);",
                 
-                // Ensure RLS allows inserts
-                "DROP POLICY IF EXISTS \"Enable insert access for authenticated users\" ON public.patrol_logs",
-                "CREATE POLICY \"Enable insert access for authenticated users\" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (true)",
-                "DROP POLICY IF EXISTS \"Enable insert for authenticated\" ON public.patrol_logs",
-                "CREATE POLICY \"Enable insert for authenticated\" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (true)",
-                
-                // Force reload
+                // 7. Force PostgREST reload
                 "NOTIFY pgrst, 'reload schema';",
                 "SELECT pg_notify('pgrst', 'reload schema');"
             ];
@@ -173,8 +175,10 @@ export default async function handler(req: any, res: any) {
         }
 
         if (action === 'debug-patrol-logs-columns') {
-            const { data, error } = await supabaseAdmin.from('patrol_logs').select('*').limit(1);
-            return res.status(200).json({ cols: data && data.length > 0 ? Object.keys(data[0]) : [], error });
+            const { data, error } = await supabaseAdmin.rpc('eval', { 
+                query: "SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'patrol_logs';" 
+            });
+            return res.status(200).json({ info: data, error });
         }
         
         if (action.startsWith('update-')) {

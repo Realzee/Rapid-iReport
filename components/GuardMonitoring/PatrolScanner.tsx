@@ -159,11 +159,10 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
                 .insert([payload]);
 
             if (error) {
-                console.error('Supabase insert error details:', {
-                    error,
-                    payload
-                });
+                console.error('Supabase insert error details:', error);
                 
+                const detailedErrorMsg = `${error.message} (Code: ${error.code})${error.details ? ` - Details: ${error.details}` : ''}${error.hint ? ` - Hint: ${error.hint}` : ''}`;
+
                 if (error.code === 'PGRST204' || error.message.includes('schema cache') || error.message.includes('column') || error.code === '42703' || error.code === 'PGRST200') {
                     // Attempt a minimal insert as a fallback
                     const { error: fallbackError } = await supabase
@@ -185,8 +184,10 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
                         });
                         return;
                     }
+                    
+                    const fallbackDetailedMsg = `${fallbackError.message} (Code: ${fallbackError.code})${fallbackError.details ? ` - Details: ${fallbackError.details}` : ''}`;
 
-                    if (confirm('The database link needs a quick refresh to record this entry. Fix now?')) {
+                    if (confirm(`Database link error: ${detailedErrorMsg}\n\nFallback also failed: ${fallbackDetailedMsg}\n\nWould you like the system to attempt an automatic repair?`)) {
                         await fetch('/api/guard-monitoring', {
                             method: 'POST',
                             body: JSON.stringify({ action: 'fix-schema' })
@@ -197,7 +198,7 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
                     }
                 }
 
-                alert(`Failed to record patrol log: ${error.message} (${error.code}). ${error.details || ''}`);
+                alert(`Failed to record patrol log: ${detailedErrorMsg}`);
                 throw error;
             }
 
