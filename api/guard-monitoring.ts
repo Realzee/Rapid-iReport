@@ -59,6 +59,13 @@ export default async function handler(req: any, res: any) {
                 "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS verification_status text;",
                 "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS qr_code_scanned text;",
                 "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS scanned_at timestamptz DEFAULT now();",
+
+                // 3.5 Ensure report_updates exists and has correct foreign keys
+                "CREATE TABLE IF NOT EXISTS public.report_updates (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), report_id uuid NOT NULL, user_id uuid NOT NULL, content text NOT NULL, created_at timestamptz DEFAULT now());",
+                "DO $$ BEGIN ALTER TABLE public.report_updates ADD CONSTRAINT report_updates_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE; EXCEPTION WHEN OTHERS THEN NULL; END $$;",
+                "ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;",
+                "DROP POLICY IF EXISTS \"Enable all for authenticated on updates\" ON public.report_updates;",
+                "CREATE POLICY \"Enable all for authenticated on updates\" ON public.report_updates FOR ALL TO authenticated USING (true) WITH CHECK (true);",
                 
                 // 4. Reset nullability for safety
                 "ALTER TABLE public.patrol_logs ALTER COLUMN checkpoint_id DROP NOT NULL;",
@@ -174,6 +181,11 @@ export default async function handler(req: any, res: any) {
             return res.status(200).json({ cols: data && data.length > 0 ? Object.keys(data[0]) : [], error });
         }
 
+        if (action === 'debug-report-updates') {
+            const { data, error } = await supabaseAdmin.from('report_updates').select('*, profile:profiles(first_name, surname)').limit(1);
+            return res.status(200).json({ data, error });
+        }
+        
         if (action === 'debug-patrol-logs-columns') {
             const { data, error } = await supabaseAdmin.rpc('eval', { 
                 query: "SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'patrol_logs';" 

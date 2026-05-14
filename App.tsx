@@ -84,6 +84,13 @@ const App: React.FC = () => {
   const { theme } = useTheme();
 
   useEffect(() => {
+    // Automatically trigger a background schema reload to ensure report_updates and patrol_logs are fully synced
+    fetch('/api/guard-monitoring', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'fix-schema' })
+    }).catch(console.error);
+
     const runSchemaCheck = async () => {
         const result = await checkDatabaseSchema();
         if (result.status === 'invalid') {
