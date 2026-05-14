@@ -170,12 +170,13 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
                     }
                 });
                 
-                if (error.code === 'PGRST204' || error.message.includes('schema cache')) {
-                    if (confirm('Database schema update detected. Would you like to refresh the system connection now?')) {
+                if (error.code === 'PGRST204' || error.message.includes('schema cache') || error.message.includes('column') || error.code === '42703' || error.code === 'PGRST200') {
+                    if (confirm('The database link needs a quick refresh to record this entry. Fix now?')) {
                         await fetch('/api/guard-monitoring', {
                             method: 'POST',
                             body: JSON.stringify({ action: 'fix-schema' })
                         });
+                        alert('System link refreshed. Please try scanning again.');
                         window.location.reload();
                         return;
                     }

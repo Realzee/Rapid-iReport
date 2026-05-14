@@ -79,8 +79,12 @@ export default async function handler(req: any, res: any) {
                 "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'sites' AND policyname = 'Guards can only see their assigned site') THEN CREATE POLICY \"Guards can only see their assigned site\" ON public.sites FOR SELECT TO authenticated USING (auth.uid() IN (SELECT profile_id FROM public.guards WHERE site_id = public.sites.id) OR auth.uid() IN (SELECT id FROM public.profiles WHERE role IN ('admin', 'moderator', 'controller'))); END IF; END $$;",
                 "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS qr_code_scanned text",
+                // Ensure eval function exists with high precision
+                "CREATE OR REPLACE FUNCTION eval(query text) RETURNS void AS $$ BEGIN EXECUTE query; END; $$ LANGUAGE plpgsql SECURITY DEFINER;",
                 "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS verification_status text",
                 "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS location_coords jsonb",
+                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS qr_code_scanned text",
+                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.patrol_logs ALTER COLUMN guard_id DROP NOT NULL",
                 "ALTER TABLE public.patrol_logs ALTER COLUMN site_id DROP NOT NULL",
                 "ALTER TABLE public.patrol_logs ALTER COLUMN checkpoint_id DROP NOT NULL",
@@ -88,12 +92,10 @@ export default async function handler(req: any, res: any) {
                 "DO $$ BEGIN ALTER TABLE public.patrol_logs DROP CONSTRAINT IF EXISTS patrol_logs_guard_id_fkey; END $$;",
                 "DO $$ BEGIN ALTER TABLE public.patrol_logs DROP CONSTRAINT IF EXISTS patrol_logs_site_id_fkey; END $$;",
                 "DO $$ BEGIN ALTER TABLE public.patrol_logs DROP CONSTRAINT IF EXISTS patrol_logs_checkpoint_id_fkey; END $$;",
-                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'patrol_logs' AND policyname = 'Enable read access for authenticated users') THEN CREATE POLICY \"Enable read access for authenticated users\" ON public.patrol_logs FOR SELECT TO authenticated USING (true); END IF; END $$;",
                 "DROP POLICY IF EXISTS \"Enable insert access for authenticated users\" ON public.patrol_logs",
                 "CREATE POLICY \"Enable insert access for authenticated users\" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (true)",
-                "DROP POLICY IF EXISTS \"Enable insert for authenticated\" ON public.patrol_logs",
-                "CREATE POLICY \"Enable insert for authenticated\" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (true)",
-                "DO $$ BEGIN NOTIFY pgrst, 'reload schema'; END $$;"
+                "DO $$ BEGIN NOTIFY pgrst, 'reload schema'; END $$;",
+                "SELECT pg_notify('pgrst', 'reload schema');"
             ];
             const results = [];
             for (const q of queries) {

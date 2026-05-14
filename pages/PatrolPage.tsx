@@ -29,14 +29,15 @@ const PatrolPage: React.FC<PatrolPageProps> = ({ profile }) => {
             if (gData) {
                 setGuardRecord(gData);
             } else {
-                // Try to find the site assigned to this person via supervisors or just the first site for the company
-                const { data: mySiteData } = await supabase.from('sites').select('id').eq('company_id', profile.company_id).limit(1).maybeSingle();
-                
+                // Try to find if this user is a supervisor and get their first site
+                const { data: supSites } = await supabase.from('supervisors').select('site_ids, site_id').eq('profile_id', profile.id).maybeSingle();
+                const defaultSiteId = supSites?.site_id || (supSites?.site_ids && supSites.site_ids.length > 0 ? supSites.site_ids[0] : null);
+
                 // If no guard record found, fallback to constructing one from profile (for admins etc)
                 setGuardRecord({ 
                     id: profile.id, 
                     name: `${profile.first_name || ''} ${profile.surname || ''}`.trim() || profile.email,
-                    site_id: mySiteData?.id || null,
+                    site_id: defaultSiteId || profile.company_id || null,
                     company_id: profile.company_id || null
                 });
             }
