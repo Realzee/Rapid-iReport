@@ -72,7 +72,6 @@ export default async function handler(req: any, res: any) {
                 "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS psira_number text",
                 "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'off_duty'",
                 "ALTER TABLE public.guards ALTER COLUMN profile_id DROP NOT NULL",
-                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Public profiles are viewable by everyone.') THEN CREATE POLICY \"Public profiles are viewable by everyone.\" ON public.profiles FOR SELECT USING (true); END IF; END $$;",
                 "ALTER TABLE public.guards ENABLE ROW LEVEL SECURITY",
                 "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'guards' AND policyname = 'Admins can do everything on guards') THEN CREATE POLICY \"Admins can do everything on guards\" ON public.guards FOR ALL TO authenticated USING (auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'admin')); END IF; END $$;",
                 "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'guards' AND policyname = 'Guards can update own status and contact') THEN CREATE POLICY \"Guards can update own status and contact\" ON public.guards FOR UPDATE TO authenticated USING (profile_id = auth.uid()) WITH CHECK (profile_id = auth.uid()); END IF; END $$;",
@@ -94,13 +93,16 @@ export default async function handler(req: any, res: any) {
                 "CREATE POLICY \"Enable insert access for authenticated users\" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (true)",
                 "DROP POLICY IF EXISTS \"Enable insert for authenticated\" ON public.patrol_logs",
                 "CREATE POLICY \"Enable insert for authenticated\" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (true)",
-                "NOTIFY pgrst, 'reload schema';"
+                "DO $$ BEGIN NOTIFY pgrst, 'reload schema'; END $$;"
             ];
-
             const results = [];
             for (const q of queries) {
                 try {
                     const { error } = await supabaseAdmin.rpc('eval', { query: q });
+                    if (error) {
+                        // If eval rpc fails, try via SQL query if possible (not possible in standard client)
+                        console.warn(`RPC eval failed for query: ${q}`, error);
+                    }
                     results.push({ query: q, success: !error, error: error?.message });
                 } catch (e: any) {
                     results.push({ query: q, success: false, error: e.message });
@@ -184,6 +186,11 @@ export default async function handler(req: any, res: any) {
         
         if (action === 'debug-sites-table') {
             const { data, error } = await supabaseAdmin.from('sites').select('*').limit(1);
+            return res.status(200).json({ cols: data && data.length > 0 ? Object.keys(data[0]) : [], error });
+        }
+
+        if (action === 'debug-patrol-logs-columns') {
+            const { data, error } = await supabaseAdmin.from('patrol_logs').select('*').limit(1);
             return res.status(200).json({ cols: data && data.length > 0 ? Object.keys(data[0]) : [], error });
         }
         

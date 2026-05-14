@@ -40,9 +40,23 @@ const PatrolPage: React.FC<PatrolPageProps> = ({ profile }) => {
                     company_id: profile.company_id || null
                 });
             }
+
+            // Proactive schema fix if columns are missing
+            const checkSchema = async () => {
+                const { error: schemaError } = await supabase.from('patrol_logs').select('location_coords').limit(1);
+                if (schemaError && (schemaError.code === 'PGRST204' || schemaError.message.includes('column "location_coords" does not exist'))) {
+                    console.log('Detected missing columns in patrol_logs, applying fix...');
+                    await fetch('/api/guard-monitoring', {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'fix-schema' })
+                    });
+                    // Don't reload immediately to avoid loop, just log
+                }
+            };
+            checkSchema();
         };
         fetchData();
-    }, [profile.id]);
+    }, [profile.id, profile.company_id]);
 
     const guards = guardRecord ? [guardRecord] : [];
 
