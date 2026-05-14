@@ -139,8 +139,8 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
             }
 
             const guardId = selectedGuard && selectedGuard !== '' ? selectedGuard : null;
-            const siteId = (guard.site_id && guard.site_id !== '') ? guard.site_id : (cp.site_id && cp.site_id !== '' ? cp.site_id : null);
-            const companyId = (guard.company_id && guard.company_id !== '') ? guard.company_id : (cp.company_id && cp.company_id !== '' ? cp.company_id : ((guard as any).company_id || null));
+            const siteId = (guard.site_id && guard.site_id !== '' && guard.site_id !== 'null') ? guard.site_id : (cp.site_id && cp.site_id !== '' ? cp.site_id : null);
+            const companyId = (guard.company_id && guard.company_id !== '' && guard.company_id !== 'null') ? guard.company_id : (cp.company_id && cp.company_id !== '' ? cp.company_id : ((guard as any).company_id || null));
 
             const { error } = await supabase
                 .from('patrol_logs')
@@ -169,6 +169,18 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
                         qr_code_scanned: qrCodeScanned || null
                     }
                 });
+                
+                if (error.code === 'PGRST204' || error.message.includes('schema cache')) {
+                    if (confirm('Database schema update detected. Would you like to refresh the system connection now?')) {
+                        await fetch('/api/guard-monitoring', {
+                            method: 'POST',
+                            body: JSON.stringify({ action: 'fix-schema' })
+                        });
+                        window.location.reload();
+                        return;
+                    }
+                }
+
                 alert(`Failed to record patrol log: ${error.message} (${error.code}). ${error.details || ''}`);
                 throw error;
             }

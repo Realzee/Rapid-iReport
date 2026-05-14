@@ -47,7 +47,6 @@ export default async function handler(req: any, res: any) {
                 // Ensure eval function exists
                 "CREATE OR REPLACE FUNCTION eval(query text) RETURNS void AS $$ BEGIN EXECUTE query; END; $$ LANGUAGE plpgsql SECURITY DEFINER;",
                 "CREATE OR REPLACE FUNCTION public.get_user_role(p_user_id uuid) RETURNS text AS $body$ BEGIN RETURN (SELECT role FROM public.profiles WHERE id = p_user_id); END; $body$ LANGUAGE plpgsql SECURITY DEFINER;",
-                "NOTIFY pgrst, 'reload schema';",
                 "ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
                 "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
@@ -56,8 +55,6 @@ export default async function handler(req: any, res: any) {
                 "ALTER TABLE public.checkpoints ADD COLUMN IF NOT EXISTS site_id uuid REFERENCES public.sites(id) ON DELETE CASCADE",
                 "ALTER TABLE public.checkpoints ADD COLUMN IF NOT EXISTS qr_code text",
                 "ALTER TABLE public.checkpoints ALTER COLUMN route_id DROP NOT NULL",
-                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
-                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS qr_code_scanned text",
                 "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL",
                 "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS first_name text",
                 "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS surname text",
@@ -95,9 +92,11 @@ export default async function handler(req: any, res: any) {
                 "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'patrol_logs' AND policyname = 'Enable read access for authenticated users') THEN CREATE POLICY \"Enable read access for authenticated users\" ON public.patrol_logs FOR SELECT TO authenticated USING (true); END IF; END $$;",
                 "DROP POLICY IF EXISTS \"Enable insert access for authenticated users\" ON public.patrol_logs",
                 "CREATE POLICY \"Enable insert access for authenticated users\" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (true)",
+                "DROP POLICY IF EXISTS \"Enable insert for authenticated\" ON public.patrol_logs",
                 "CREATE POLICY \"Enable insert for authenticated\" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (true)",
                 "NOTIFY pgrst, 'reload schema';"
             ];
+
             const results = [];
             for (const q of queries) {
                 try {
