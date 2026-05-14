@@ -164,9 +164,12 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
                         guard_id: guardId,
                         site_id: siteId,
                         company_id: companyId,
-                        location_coords
+                        location_coords,
+                        verification_status,
+                        qr_code_scanned: qrCodeScanned || null
                     }
                 });
+                alert(`Failed to record patrol log: ${error.message} (${error.code}). ${error.details || ''}`);
                 throw error;
             }
             
