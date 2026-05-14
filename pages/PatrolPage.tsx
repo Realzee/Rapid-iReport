@@ -23,7 +23,7 @@ const PatrolPage: React.FC<PatrolPageProps> = ({ profile }) => {
                     scanned_at,
                     verification_status,
                     location_coords,
-                    checkpoints ( id, name, location_description )
+                    checkpoint_id
                 `)
                 .order('scanned_at', { ascending: false })
                 .limit(20);
@@ -120,16 +120,18 @@ const PatrolPage: React.FC<PatrolPageProps> = ({ profile }) => {
                 ) : patrolLogs.length > 0 ? (
                     <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                         <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {patrolLogs.map((log) => (
+                            {patrolLogs.map((log) => {
+                                const checkpoint = checkpoints.find(cp => cp.id === log.checkpoint_id);
+                                return (
                                 <li key={log.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <p className="font-semibold text-gray-900 dark:text-white">
-                                                {log.checkpoints ? log.checkpoints.name : 'Unknown Checkpoint'}
+                                                {checkpoint ? checkpoint.name : 'Unknown Checkpoint'}
                                             </p>
-                                            {log.checkpoints?.location_description && (
+                                            {checkpoint?.location_description && (
                                                 <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
-                                                    {log.checkpoints.location_description}
+                                                    {checkpoint.location_description}
                                                 </p>
                                             )}
                                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
@@ -152,7 +154,8 @@ const PatrolPage: React.FC<PatrolPageProps> = ({ profile }) => {
                                         </div>
                                     </div>
                                 </li>
-                            ))}
+                               );
+                            })}
                         </ul>
                     </div>
                 ) : (
