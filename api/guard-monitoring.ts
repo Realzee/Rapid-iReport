@@ -257,6 +257,53 @@ export default async function handler(req: any, res: any) {
 
         let table = '';
         switch (action) {
+            case 'add-patrol-log':
+                try {
+                    const { checkpoint_id, guard_id, site_id, company_id, location_coords, verification_status, qr_code_scanned } = payload;
+                    let insertQuery = `INSERT INTO public.patrol_logs (`;
+                    let valuesQuery = `VALUES (`;
+                    const args: any[] = [];
+                    let idx = 1;
+
+                    // Building dynamic SQL query text to bypass PostgREST schema cache issues on newly created columns
+                    const safeStr = (v: any) => v === null ? 'NULL' : typeof v === 'object' ? `'${JSON.stringify(v)}'::jsonb` : `'${String(v).replace(/'/g, "''")}'`;
+
+                    const cols = [];
+                    if (checkpoint_id !== undefined) cols.push(`checkpoint_id = ${safeStr(checkpoint_id)}`);
+                    if (guard_id !== undefined) cols.push(`guard_id = ${safeStr(guard_id)}`);
+                    if (site_id !== undefined) cols.push(`site_id = ${safeStr(site_id)}`);
+                    if (company_id !== undefined) cols.push(`company_id = ${safeStr(company_id)}`);
+                    if (location_coords !== undefined) cols.push(`location_coords = ${safeStr(location_coords)}`);
+                    if (verification_status !== undefined) cols.push(`verification_status = ${safeStr(verification_status)}`);
+                    if (qr_code_scanned !== undefined) cols.push(`qr_code_scanned = ${safeStr(qr_code_scanned)}`);
+
+                    const queryCols = [];
+                    const queryVals = [];
+                    if (checkpoint_id !== undefined) { queryCols.push('checkpoint_id'); queryVals.push(safeStr(checkpoint_id)); }
+                    if (guard_id !== undefined) { queryCols.push('guard_id'); queryVals.push(safeStr(guard_id)); }
+                    if (site_id !== undefined) { queryCols.push('site_id'); queryVals.push(safeStr(site_id)); }
+                    if (company_id !== undefined) { queryCols.push('company_id'); queryVals.push(safeStr(company_id)); }
+                    if (location_coords !== undefined) { queryCols.push('location_coords'); queryVals.push(safeStr(location_coords)); }
+                    if (verification_status !== undefined) { queryCols.push('verification_status'); queryVals.push(safeStr(verification_status)); }
+                    if (qr_code_scanned !== undefined) { queryCols.push('qr_code_scanned'); queryVals.push(safeStr(qr_code_scanned)); }
+
+                    if (queryCols.length === 0) {
+                        return res.status(400).json({ error: 'No data to insert' });
+                    }
+
+                    const rawQuery = `INSERT INTO public.patrol_logs (${queryCols.join(', ')}) VALUES (${queryVals.join(', ')})`;
+                    const { error: evalErr } = await supabaseAdmin.rpc('eval', { query: rawQuery });
+                    if (evalErr) {
+                         // fallback to typical insert if RPC fails
+                         const { data, error } = await supabaseAdmin.from('patrol_logs').insert(payload).select().single();
+                         if (error) throw error;
+                         return res.status(200).json(data);
+                    }
+                    return res.status(200).json({ success: true, method: 'rpc' });
+                } catch (err: any) {
+                    return res.status(500).json({ error: err.message });
+                }
+
             case 'add-site': table = 'sites'; break;
             case 'add-guard': table = 'guards'; break;
             case 'add-route': table = 'routes'; break;

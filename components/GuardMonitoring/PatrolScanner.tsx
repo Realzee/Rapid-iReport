@@ -143,6 +143,7 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
             const companyId = (guard.company_id && guard.company_id !== '' && guard.company_id !== 'null') ? guard.company_id : (cp.company_id && cp.company_id !== '' ? cp.company_id : ((guard as any).company_id || null));
 
             const payload: any = {
+                action: 'add-patrol-log',
                 checkpoint_id: checkpointId,
                 guard_id: guardId,
                 site_id: siteId,
@@ -154,52 +155,68 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
             if (verification_status) payload.verification_status = verification_status;
             if (qrCodeScanned) payload.qr_code_scanned = qrCodeScanned;
 
-            const { error } = await supabase
-                .from('patrol_logs')
-                .insert([payload]);
-
-            if (error) {
-                console.error('Supabase insert error details:', error);
+            try {
+                const response = await fetch('/api/guard-monitoring', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
                 
-                const detailedErrorMsg = `${error.message} (Code: ${error.code})${error.details ? ` - Details: ${error.details}` : ''}${error.hint ? ` - Hint: ${error.hint}` : ''}`;
-
-                if (error.code === 'PGRST204' || error.message.includes('schema cache') || error.message.includes('column') || error.code === '42703' || error.code === 'PGRST200') {
-                    // Attempt a minimal insert as a fallback
-                    const { error: fallbackError } = await supabase
-                        .from('patrol_logs')
-                        .insert([{ checkpoint_id: checkpointId, guard_id: guardId, site_id: siteId }]);
-                        
-                    if (!fallbackError) {
-                        alert('Patrol recorded (some details like GPS were skipped due to system sync issue).');
-                        setScanResult({
-                            success: true,
-                            message: `Checkpoint ${checkpointId} verified (Fallback mode)`
-                        });
-                        onScanComplete?.(checkpointId);
-                        
-                        // Trigger background fix
-                        fetch('/api/guard-monitoring', {
-                            method: 'POST',
-                            body: JSON.stringify({ action: 'fix-schema' })
-                        });
-                        return;
-                    }
-                    
-                    const fallbackDetailedMsg = `${fallbackError.message} (Code: ${fallbackError.code})${fallbackError.details ? ` - Details: ${fallbackError.details}` : ''}`;
-
-                    if (confirm(`Database link error: ${detailedErrorMsg}\n\nFallback also failed: ${fallbackDetailedMsg}\n\nWould you like the system to attempt an automatic repair?`)) {
-                        await fetch('/api/guard-monitoring', {
-                            method: 'POST',
-                            body: JSON.stringify({ action: 'fix-schema' })
-                        });
-                        alert('System link refreshed. Please try scanning again.');
-                        window.location.reload();
-                        return;
-                    }
+                const responseData = await response.json();
+                
+                if (!response.ok || responseData.error) {
+                    throw new Error(responseData.error || 'Failed to submit patrol log via API');
                 }
+            } catch (apiError: any) {
+                console.warn('API route failed, falling back to direct insert', apiError);
+                // Fallback to standard client insert (might fail due to cache, but it's a backup)
+                delete payload.action;
+                const { error } = await supabase.from('patrol_logs').insert([payload]);
 
-                alert(`Failed to record patrol log: ${detailedErrorMsg}`);
-                throw error;
+                if (error) {
+                    console.error('Supabase insert error details:', error);
+                    
+                    const detailedErrorMsg = `${error.message} (Code: ${error.code})${error.details ? ` - Details: ${error.details}` : ''}${error.hint ? ` - Hint: ${error.hint}` : ''}`;
+    
+                    if (error.code === 'PGRST204' || error.message.includes('schema cache') || error.message.includes('column') || error.code === '42703' || error.code === 'PGRST200') {
+                        // Attempt a minimal insert as a fallback
+                        const { error: fallbackError } = await supabase
+                            .from('patrol_logs')
+                            .insert([{ checkpoint_id: checkpointId, guard_id: guardId }]);
+                            
+                        if (!fallbackError) {
+                            alert('Patrol recorded (some details like GPS were skipped due to system sync issue).');
+                            setScanResult({
+                                checkpoint: cp,
+                                status: 'valid',
+                                message: `Checkpoint ${checkpointId} verified (Fallback mode)`
+                            });
+                            onScanSuccess?.();
+                            
+                            // Trigger background fix
+                            fetch('/api/guard-monitoring', {
+                                method: 'POST',
+                                body: JSON.stringify({ action: 'fix-schema' })
+                            });
+                            return;
+                        }
+                        
+                        const fallbackDetailedMsg = `${fallbackError.message} (Code: ${fallbackError.code})${fallbackError.details ? ` - Details: ${fallbackError.details}` : ''}`;
+    
+                        if (confirm(`Database link error: ${detailedErrorMsg}\n\nFallback also failed: ${fallbackDetailedMsg}\n\nWould you like the system to attempt an automatic repair?`)) {
+                            await fetch('/api/guard-monitoring', {
+                                method: 'POST',
+                                body: JSON.stringify({ action: 'fix-schema' })
+                            });
+                            alert('System link refreshed. Please try scanning again.');
+                            window.location.reload();
+                            return;
+                        }
+                    }
+    
+                    alert(`Failed to record patrol log: ${detailedErrorMsg}`);
+                    throw error;
+                }
             }
 
             
