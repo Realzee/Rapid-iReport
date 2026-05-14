@@ -44,65 +44,46 @@ export default async function handler(req: any, res: any) {
         
         if (action === 'fix-schema') {
             const queries = [
-                // Ensure eval function exists
-                "CREATE OR REPLACE FUNCTION eval(query text) RETURNS void AS $$ BEGIN EXECUTE query; END; $$ LANGUAGE plpgsql SECURITY DEFINER;",
-                "CREATE OR REPLACE FUNCTION public.get_user_role(p_user_id uuid) RETURNS text AS $body$ BEGIN RETURN (SELECT role FROM public.profiles WHERE id = p_user_id); END; $body$ LANGUAGE plpgsql SECURITY DEFINER;",
-                "ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
-                "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
-                "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
-                "ALTER TABLE public.routes ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
-                "ALTER TABLE public.checkpoints ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
-                "ALTER TABLE public.checkpoints ADD COLUMN IF NOT EXISTS site_id uuid REFERENCES public.sites(id) ON DELETE CASCADE",
-                "ALTER TABLE public.checkpoints ADD COLUMN IF NOT EXISTS qr_code text",
-                "ALTER TABLE public.checkpoints ALTER COLUMN route_id DROP NOT NULL",
-                "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL",
-                "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS first_name text",
-                "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS surname text",
-                "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS cell text",
-                "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url text",
-                "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'guard'",
-                "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'supervisor'",
-                "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS site_ids uuid[]",
-                "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS name text",
-                "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS contact_number text",
-                "ALTER TABLE public.supervisors ADD COLUMN IF NOT EXISTS profile_pic_url text",
-                "ALTER TABLE public.supervisors ALTER COLUMN profile_id DROP NOT NULL",
-                "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS name text",
-                "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS contact_number text",
-                "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS psira_number text",
-                "ALTER TABLE public.guards ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'off_duty'",
-                "ALTER TABLE public.guards ALTER COLUMN profile_id DROP NOT NULL",
-                "ALTER TABLE public.guards ENABLE ROW LEVEL SECURITY",
-                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'guards' AND policyname = 'Admins can do everything on guards') THEN CREATE POLICY \"Admins can do everything on guards\" ON public.guards FOR ALL TO authenticated USING (auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'admin')); END IF; END $$;",
-                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'guards' AND policyname = 'Guards can update own status and contact') THEN CREATE POLICY \"Guards can update own status and contact\" ON public.guards FOR UPDATE TO authenticated USING (profile_id = auth.uid()) WITH CHECK (profile_id = auth.uid()); END IF; END $$;",
-                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'guards' AND policyname = 'Guards can view own record') THEN CREATE POLICY \"Guards can view own record\" ON public.guards FOR SELECT TO authenticated USING (profile_id = auth.uid() OR auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'admin' OR role = 'moderator')); END IF; END $$;",
-                "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'sites' AND policyname = 'Guards can only see their assigned site') THEN CREATE POLICY \"Guards can only see their assigned site\" ON public.sites FOR SELECT TO authenticated USING (auth.uid() IN (SELECT profile_id FROM public.guards WHERE site_id = public.sites.id) OR auth.uid() IN (SELECT id FROM public.profiles WHERE role IN ('admin', 'moderator', 'controller'))); END IF; END $$;",
-                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
-                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS qr_code_scanned text",
-                // Ensure eval function exists with high precision
-                "CREATE OR REPLACE FUNCTION eval(query text) RETURNS void AS $$ BEGIN EXECUTE query; END; $$ LANGUAGE plpgsql SECURITY DEFINER;",
+                // Ensure eval function exists - try to create it using DO block
+                "DO $$ BEGIN EXECUTE 'CREATE OR REPLACE FUNCTION eval(query text) RETURNS void AS $func$ BEGIN EXECUTE query; END; $func$ LANGUAGE plpgsql SECURITY DEFINER;'; EXCEPTION WHEN OTHERS THEN NULL; END $$;",
+                
+                // Consolidate patrol_logs columns
                 "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS verification_status text",
                 "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS location_coords jsonb",
                 "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS qr_code_scanned text",
-                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE",
+                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS company_id uuid",
+                "ALTER TABLE public.patrol_logs ADD COLUMN IF NOT EXISTS scanned_at timestamptz DEFAULT now()",
+                
+                // Ensure correct types
+                "ALTER TABLE public.patrol_logs ALTER COLUMN location_coords SET DATA TYPE jsonb USING location_coords::jsonb",
+                
+                // Drop constraints and null requirements
                 "ALTER TABLE public.patrol_logs ALTER COLUMN guard_id DROP NOT NULL",
                 "ALTER TABLE public.patrol_logs ALTER COLUMN site_id DROP NOT NULL",
                 "ALTER TABLE public.patrol_logs ALTER COLUMN checkpoint_id DROP NOT NULL",
                 "ALTER TABLE public.patrol_logs ALTER COLUMN location_coords DROP NOT NULL",
-                "DO $$ BEGIN ALTER TABLE public.patrol_logs DROP CONSTRAINT IF EXISTS patrol_logs_guard_id_fkey; END $$;",
-                "DO $$ BEGIN ALTER TABLE public.patrol_logs DROP CONSTRAINT IF EXISTS patrol_logs_site_id_fkey; END $$;",
-                "DO $$ BEGIN ALTER TABLE public.patrol_logs DROP CONSTRAINT IF EXISTS patrol_logs_checkpoint_id_fkey; END $$;",
+                
+                "DO $$ BEGIN ALTER TABLE public.patrol_logs DROP CONSTRAINT IF EXISTS patrol_logs_guard_id_fkey; EXCEPTION WHEN OTHERS THEN NULL; END $$;",
+                "DO $$ BEGIN ALTER TABLE public.patrol_logs DROP CONSTRAINT IF EXISTS patrol_logs_site_id_fkey; EXCEPTION WHEN OTHERS THEN NULL; END $$;",
+                "DO $$ BEGIN ALTER TABLE public.patrol_logs DROP CONSTRAINT IF EXISTS patrol_logs_checkpoint_id_fkey; EXCEPTION WHEN OTHERS THEN NULL; END $$;",
+                
+                // Ensure RLS allows inserts
                 "DROP POLICY IF EXISTS \"Enable insert access for authenticated users\" ON public.patrol_logs",
                 "CREATE POLICY \"Enable insert access for authenticated users\" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (true)",
-                "DO $$ BEGIN NOTIFY pgrst, 'reload schema'; END $$;",
+                "DROP POLICY IF EXISTS \"Enable insert for authenticated\" ON public.patrol_logs",
+                "CREATE POLICY \"Enable insert for authenticated\" ON public.patrol_logs FOR INSERT TO authenticated WITH CHECK (true)",
+                
+                // Force reload
+                "NOTIFY pgrst, 'reload schema';",
                 "SELECT pg_notify('pgrst', 'reload schema');"
             ];
+
             const results = [];
             for (const q of queries) {
                 try {
+                    // Try direct rpc if eval exists, or try to run as a DO block if it's a simple query
                     const { error } = await supabaseAdmin.rpc('eval', { query: q });
                     if (error) {
-                        // If eval rpc fails, try via SQL query if possible (not possible in standard client)
                         console.warn(`RPC eval failed for query: ${q}`, error);
                     }
                     results.push({ query: q, success: !error, error: error?.message });

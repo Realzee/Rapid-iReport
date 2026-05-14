@@ -142,35 +142,50 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
             const siteId = (guard.site_id && guard.site_id !== '' && guard.site_id !== 'null') ? guard.site_id : (cp.site_id && cp.site_id !== '' ? cp.site_id : null);
             const companyId = (guard.company_id && guard.company_id !== '' && guard.company_id !== 'null') ? guard.company_id : (cp.company_id && cp.company_id !== '' ? cp.company_id : ((guard as any).company_id || null));
 
+            const payload: any = {
+                checkpoint_id: checkpointId,
+                guard_id: guardId,
+                site_id: siteId,
+                company_id: companyId
+            };
+
+            // Only add these if they have values to avoid schema issues if columns are missing but nullable
+            if (location_coords) payload.location_coords = location_coords;
+            if (verification_status) payload.verification_status = verification_status;
+            if (qrCodeScanned) payload.qr_code_scanned = qrCodeScanned;
+
             const { error } = await supabase
                 .from('patrol_logs')
-                .insert([
-                    {
-                        checkpoint_id: checkpointId,
-                        guard_id: guardId,
-                        site_id: siteId,
-                        location_coords: location_coords,
-                        verification_status: verification_status,
-                        qr_code_scanned: qrCodeScanned || null,
-                        company_id: companyId
-                    }
-                ]);
+                .insert([payload]);
 
             if (error) {
                 console.error('Supabase insert error details:', {
                     error,
-                    payload: {
-                        checkpoint_id: checkpointId,
-                        guard_id: guardId,
-                        site_id: siteId,
-                        company_id: companyId,
-                        location_coords,
-                        verification_status,
-                        qr_code_scanned: qrCodeScanned || null
-                    }
+                    payload
                 });
                 
                 if (error.code === 'PGRST204' || error.message.includes('schema cache') || error.message.includes('column') || error.code === '42703' || error.code === 'PGRST200') {
+                    // Attempt a minimal insert as a fallback
+                    const { error: fallbackError } = await supabase
+                        .from('patrol_logs')
+                        .insert([{ checkpoint_id: checkpointId, guard_id: guardId, site_id: siteId }]);
+                        
+                    if (!fallbackError) {
+                        alert('Patrol recorded (some details like GPS were skipped due to system sync issue).');
+                        setScanResult({
+                            success: true,
+                            message: `Checkpoint ${checkpointId} verified (Fallback mode)`
+                        });
+                        onScanComplete?.(checkpointId);
+                        
+                        // Trigger background fix
+                        fetch('/api/guard-monitoring', {
+                            method: 'POST',
+                            body: JSON.stringify({ action: 'fix-schema' })
+                        });
+                        return;
+                    }
+
                     if (confirm('The database link needs a quick refresh to record this entry. Fix now?')) {
                         await fetch('/api/guard-monitoring', {
                             method: 'POST',
@@ -185,6 +200,7 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
                 alert(`Failed to record patrol log: ${error.message} (${error.code}). ${error.details || ''}`);
                 throw error;
             }
+
             
             setScanResult({
                 checkpoint: cp,
