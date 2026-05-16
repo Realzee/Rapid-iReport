@@ -3,6 +3,17 @@ import { MailIcon, LockIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
 
+const TurnstileHandler: React.FC<{ onToken: (token: string) => void }> = ({ onToken }) => {
+    useEffect(() => {
+        const handler = (e: any) => {
+            onToken(e.detail.token);
+        };
+        window.addEventListener('turnstile-success', handler);
+        return () => window.removeEventListener('turnstile-success', handler);
+    }, [onToken]);
+    return null;
+};
+
 interface LoginFormProps {
   onSwitchToRegister: () => void;
 }
@@ -12,6 +23,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -31,6 +43,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!turnstileToken) {
+      addToast('Please complete the security check', 'warning');
+      return;
+    }
+
 	setIsDirty(false);
     setLoading(true);
     // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
@@ -95,6 +113,25 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
             {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Sign In'}
           </button>
         </div>
+
+        {/* Cloudflare Turnstile Widget */}
+        <div className="flex justify-center mt-4">
+            <div 
+                className="cf-turnstile" 
+                data-sitekey="1x00000000000000000000AA"
+                data-callback="onTurnstileSuccess"
+                data-theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+            ></div>
+        </div>
+
+        <script dangerouslySetInnerHTML={{ __html: `
+            window.onTurnstileSuccess = function(token) {
+                const event = new CustomEvent('turnstile-success', { detail: { token } });
+                window.dispatchEvent(event);
+            };
+        `}} />
+
+        <TurnstileHandler onToken={setTurnstileToken} />
       </form>
       <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
         Don't have an account?{' '}

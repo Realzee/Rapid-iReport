@@ -47,13 +47,12 @@
       }
     }
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
-   integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w=="
-   crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     body {
-      font-family: 'Roboto', sans-serif;
+      font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
     }
     /* Light Mode Styles */
     .leaflet-popup-content-wrapper {
@@ -225,5 +224,8 @@
 <body class="bg-white dark:bg-black text-gray-900 dark:text-gray-100 transition-colors duration-300">
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
+  <!-- Cloudflare Web Analytics -->
+  <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cloudflare_analytics_token_placeholder"}'></script>
+  <!-- End Cloudflare Web Analytics -->
 </body>
 </html>

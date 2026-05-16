@@ -1,8 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserIcon, MailIcon, LockIcon, UploadCloudIcon, BuildingIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
 import { Company, UserRole } from '../types';
+
+const TurnstileHandler: React.FC<{ onToken: (token: string) => void }> = ({ onToken }) => {
+    useEffect(() => {
+        const handler = (e: any) => {
+            onToken(e.detail.token);
+        };
+        window.addEventListener('turnstile-success', handler);
+        return () => window.removeEventListener('turnstile-success', handler);
+    }, [onToken]);
+    return null;
+};
 
 interface RegisterFormProps {
   onSwitchToLogin: () => void;
@@ -25,6 +36,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState('');
   const [role, setRole] = useState(UserRole.USER);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
@@ -39,6 +51,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!turnstileToken) {
+      addToast('Please complete the security check', 'warning');
+      return;
+    }
+
     if (password !== confirmPassword) {
       addToast('Passwords do not match.', 'error');
       return;
@@ -261,6 +279,25 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
             {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Create Account'}
           </button>
         </div>
+
+        {/* Cloudflare Turnstile Widget */}
+        <div className="flex justify-center mt-4">
+            <div 
+                className="cf-turnstile" 
+                data-sitekey="1x00000000000000000000AA"
+                data-callback="onTurnstileSuccess"
+                data-theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+            ></div>
+        </div>
+
+        <script dangerouslySetInnerHTML={{ __html: `
+            window.onTurnstileSuccess = function(token) {
+                const event = new CustomEvent('turnstile-success', { detail: { token } });
+                window.dispatchEvent(event);
+            };
+        `}} />
+
+        <TurnstileHandler onToken={setTurnstileToken} />
       </form>
       <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
         Already have an account?{' '}

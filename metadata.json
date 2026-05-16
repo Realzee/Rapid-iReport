@@ -1,6 +1,6 @@
 {
   "name": "RAPID iREPORT Community Safety System",
-  "description": "A professional, modern community safety reporting system that allows users to report and track vehicle thefts, crime incidents, and emergencies in real-time with advanced mapping and analytics, using Supabase as the backend.",
+  "description": "A professional, modern community safety reporting system optimized with Cloudflare infrastructure for high performance and security. Allows real-time incident tracking, advanced mapping, and analytics with a robust Supabase backend.",
   "requestFramePermissions": [
     "geolocation",
     "microphone",
