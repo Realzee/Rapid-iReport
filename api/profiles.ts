@@ -3,7 +3,15 @@ import { createClient } from '@supabase/supabase-js';
 export default async function handler(req: any, res: any) {
     const supabaseUrl = process.env.SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co';
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || '');
+
+    if (!supabaseServiceKey) {
+        return res.status(500).json({ 
+            error: 'Configuration missing', 
+            message: 'SUPABASE_SERVICE_ROLE_KEY is not set on the server.' 
+        });
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     if (req.method === 'GET') {
         try {

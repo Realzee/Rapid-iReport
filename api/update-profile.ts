@@ -9,11 +9,18 @@ export default async function handler(req: any, res: any) {
     const supabaseUrl = process.env.SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co';
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+    if (!supabaseServiceKey) {
+        return res.status(500).json({ 
+            error: 'Configuration missing', 
+            message: 'SUPABASE_SERVICE_ROLE_KEY is not set on the server.' 
+        });
+    }
+
     if (!userId) {
         return res.status(400).json({ error: 'User ID is required' });
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || '');
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     try {
         const { data, error } = await supabaseAdmin

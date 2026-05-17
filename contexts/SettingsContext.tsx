@@ -22,6 +22,10 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   useEffect(() => {
     const fetchSettings = async () => {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
       try {
         const { data, error } = await supabase
           .from('app_settings')

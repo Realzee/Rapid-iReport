@@ -108,7 +108,7 @@ const App: React.FC = () => {
     
     const initializeApp = async () => {
       const isSchemaValid = await runSchemaCheck();
-      if (!isSchemaValid) return;
+      if (!isSchemaValid || !supabase) return;
 
       const { data: { session } } = await supabase.auth['getSession']();
       setSession(session);
@@ -117,6 +117,8 @@ const App: React.FC = () => {
   
     initializeApp();
   
+    if (!supabase) return;
+
     const { data: { subscription } } = supabase.auth['onAuthStateChange']((_event, session) => {
       setSession(session);
       setError(null);
@@ -291,6 +293,7 @@ const App: React.FC = () => {
   }, [faviconUrl]);
 
   const handleNotificationClick = useCallback(async (notification: Notification) => {
+    if (!supabase) return;
     if (!notification.is_read) {
         await supabase.from('notifications').update({ is_read: true }).eq('id', notification.id);
     }
