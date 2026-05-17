@@ -65,16 +65,23 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     if (!profile) return;
     
     const fetchInitialData = async () => {
-        const { data: notificationsData, error: notificationsError } = await supabase
-            .from('notifications')
-            .select('*')
-            .eq('recipient_user_id', profile.id)
-            .order('created_at', { ascending: false });
-        if (notificationsError) console.error("Error fetching notifications:", notificationsError);
-        else setNotifications(notificationsData || []);
+        if (!supabase) return;
+        try {
+            const { data: notificationsData, error: notificationsError } = await supabase
+                .from('notifications')
+                .select('*')
+                .eq('recipient_user_id', profile.id)
+                .order('created_at', { ascending: false });
+            if (notificationsError) console.error("Error fetching notifications:", notificationsError);
+            else setNotifications(notificationsData || []);
+        } catch (err) {
+            console.error("Header: Error fetching notifications:", err);
+        }
     };
     
     fetchInitialData();
+
+    if (!supabase) return;
 
     const handleNotificationChange = (payload: any) => {
         setNotifications(currentNotifications => {
@@ -102,7 +109,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         .subscribe();
         
     return () => {
-        supabase.removeChannel(notificationsChannel);
+        if (supabase) {
+            supabase.removeChannel(notificationsChannel);
+        }
     };
   }, [profile]);
 
@@ -129,8 +138,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     if (profile) {
       await logUserAction(profile.id, 'USER_SIGNOUT', `User ${profile.email} signed out`);
     }
-    // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
-    await supabase.auth['signOut']();
+    if (supabase) {
+        await supabase.auth.signOut();
+    }
     setMobileMenuOpen(false);
   };
 
@@ -150,7 +160,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
 
   const handleMarkAllAsRead = async () => {
     const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
-    if (unreadIds.length > 0) {
+    if (unreadIds.length > 0 && supabase) {
         setNotifications(prev => prev.map(n => ({...n, is_read: true})));
         await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds);
     }

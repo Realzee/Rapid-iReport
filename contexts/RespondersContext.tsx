@@ -15,27 +15,38 @@ export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     useEffect(() => {
         const fetchResponders = async () => {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('role', UserRole.RESPONDER);
-
-            if (error) {
-                console.error('Error fetching responders:', error);
-            } else if (data) {
-                const mappedResponders: Responder[] = data.map((p: Profile) => ({
-                    id: p.id,
-                    first_name: p.first_name,
-                    surname: p.surname,
-                    status: p.responder_status || ResponderStatus.OFF_DUTY,
-                    location_coords: p.location_coords || undefined,
-                }));
-                setResponders(mappedResponders);
+            if (!supabase) {
+                setLoading(false);
+                return;
             }
-            setLoading(false);
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('role', UserRole.RESPONDER);
+
+                if (error) {
+                    console.error('Error fetching responders:', error);
+                } else if (data) {
+                    const mappedResponders: Responder[] = data.map((p: Profile) => ({
+                        id: p.id,
+                        first_name: p.first_name,
+                        surname: p.surname,
+                        status: p.responder_status || ResponderStatus.OFF_DUTY,
+                        location_coords: p.location_coords || undefined,
+                    }));
+                    setResponders(mappedResponders);
+                }
+            } catch (err) {
+                console.error("Error in fetchResponders:", err);
+            } finally {
+                setLoading(false);
+            }
         };
 
         fetchResponders();
+
+        if (!supabase) return;
 
         const channel = supabase.channel('public:profiles-responders')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: 'role=eq.responder' }, (payload) => {
@@ -45,7 +56,9 @@ export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             .subscribe();
 
         return () => {
-            supabase.removeChannel(channel);
+            if (supabase) {
+                supabase.removeChannel(channel);
+            }
         };
     }, []);
 

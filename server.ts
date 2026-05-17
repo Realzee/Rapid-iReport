@@ -81,7 +81,7 @@ if (fs.existsSync(apiDir)) {
 }
 
 // Catch-all for /api that doesn't match
-app.all('/api/:any*', (req, res) => {
+app.all('/api/(.*)', (req, res) => {
     const timestamp = new Date().toISOString();
     console.log(`[API 404] ${req.method} ${req.originalUrl} at ${timestamp}`);
     
@@ -134,7 +134,7 @@ async function setupFrontend() {
     } else {
         const distPath = path.resolve(currentDir, 'dist');
         app.use(express.static(distPath));
-        app.get('/:any*', (req, res) => {
+        app.get('(.*)', (req, res) => {
             res.sendFile(path.join(distPath, 'index.html'));
         });
     }

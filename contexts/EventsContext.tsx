@@ -22,22 +22,31 @@ export const EventsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     useEffect(() => {
         const fetchEvents = async () => {
+            if (!supabase) {
+                setLoading(false);
+                return;
+            }
             setLoading(true);
             // Fetch reports, panic alerts, shifts
-            const [reports, panics, shifts] = await Promise.all([
-                supabase.from('vehicle_reports').select('*'),
-                supabase.from('panic_alerts').select('*'),
-                supabase.from('shifts').select('*')
-            ]);
+            try {
+                const [reports, panics, shifts] = await Promise.all([
+                    supabase.from('vehicle_reports').select('*'),
+                    supabase.from('panic_alerts').select('*'),
+                    supabase.from('shifts').select('*')
+                ]);
 
-            const allEvents: Event[] = [
-                ...(reports.data || []).map(r => ({ id: r.id, type: 'report' as const, data: r, created_at: r.reported_at })),
-                ...(panics.data || []).map(p => ({ id: p.id, type: 'panic' as const, data: p, created_at: p.created_at })),
-                ...(shifts.data || []).map(s => ({ id: s.id, type: 'shift' as const, data: s, created_at: s.created_at }))
-            ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                const allEvents: Event[] = [
+                    ...(reports.data || []).map(r => ({ id: r.id, type: 'report' as const, data: r, created_at: r.reported_at })),
+                    ...(panics.data || []).map(p => ({ id: p.id, type: 'panic' as const, data: p, created_at: p.created_at })),
+                    ...(shifts.data || []).map(s => ({ id: s.id, type: 'shift' as const, data: s, created_at: s.created_at }))
+                ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-            setEvents(allEvents);
-            setLoading(false);
+                setEvents(allEvents);
+            } catch (err) {
+                console.error("Error fetching events:", err);
+            } finally {
+                setLoading(false);
+            }
         };
 
         fetchEvents();

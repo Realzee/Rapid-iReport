@@ -31,16 +31,21 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
 
     // Fetch and subscribe to allUsers list, as it's needed by the chat components
     useEffect(() => {
-        if (!profile) return;
+        if (!profile || !supabase) return;
 
         const fetchAllUsers = async () => {
+            if (!supabase) return;
             const usersQuery = supabase.from('profiles').select('*');
             if (profile.role !== UserRole.ADMIN && profile.company_id) {
                 usersQuery.eq('company_id', profile.company_id);
             }
-            const { data, error } = await usersQuery;
-            if (error) console.error("ChatContext: Failed to load users list:", error.message);
-            else setAllUsers(data || []);
+            try {
+                const { data, error } = await usersQuery;
+                if (error) console.error("ChatContext: Failed to load users list:", error.message);
+                else setAllUsers(data || []);
+            } catch (err) {
+                console.error("ChatContext: Error fetching users:", err);
+            }
         };
         fetchAllUsers();
         
@@ -55,7 +60,9 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
             }).subscribe();
             
         return () => {
-            supabase.removeChannel(profilesChannel);
+            if (supabase) {
+                supabase.removeChannel(profilesChannel);
+            }
         };
     }, [profile]);
     
@@ -165,13 +172,17 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
             );
         };
 
+        if (!supabase) return;
+
         const chatChannel = supabase
             .channel(`chat-notifications-listener-${profile.id}`)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, handleNewMessage)
             .subscribe();
 
         return () => {
-            supabase.removeChannel(chatChannel);
+            if (supabase) {
+                supabase.removeChannel(chatChannel);
+            }
         };
     }, [profile, activeChats, expandedChatId, addToast, expandChat, openChat, playNotificationSound]);
 

@@ -108,11 +108,19 @@ const App: React.FC = () => {
     
     const initializeApp = async () => {
       const isSchemaValid = await runSchemaCheck();
-      if (!isSchemaValid || !supabase) return;
+      if (!isSchemaValid || !supabase) {
+        setLoading(false);
+        return;
+      }
 
-      const { data: { session } } = await supabase.auth['getSession']();
-      setSession(session);
-      setLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+      } catch (err) {
+        console.error("Error getting session:", err);
+      } finally {
+        setLoading(false);
+      }
     };
   
     initializeApp();
@@ -167,7 +175,7 @@ const App: React.FC = () => {
         }, 60000);
     };
 
-    if (session?.user) {
+    if (session?.user && supabase) {
         const loadProfile = async () => {
             setProfileLoading(true);
             try {
@@ -418,9 +426,11 @@ const App: React.FC = () => {
                   <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Application Error</h2>
                   <p className="mb-4">{error}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">This can happen due to network issues or incorrect database permissions (Row Level Security). Please check the console for more details.</p>
-                  <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
-                      Logout and Try Again
-                  </button>
+                  {supabase && (
+                    <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
+                        Logout and Try Again
+                    </button>
+                  )}
               </div>
           </div>
       );
@@ -460,9 +470,11 @@ const App: React.FC = () => {
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                     To fix this, please log out and sign up again. If the issue persists, contact administrator support.
                 </p>
-                <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition-colors">
-                    Logout
-                </button>
+                {supabase && (
+                    <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition-colors">
+                        Logout
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -475,9 +487,11 @@ const App: React.FC = () => {
                 <ClockIcon className="w-12 h-12 mx-auto text-yellow-500 mb-4" />
                 <h2 className="text-2xl font-bold mb-2 text-yellow-700 dark:text-yellow-300">Account Pending Approval</h2>
                 <p className="mb-4 text-gray-600 dark:text-gray-300">Thank you for registering. Your account is currently awaiting review by an administrator. You will be notified once it has been approved.</p>
-                <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition-colors">
-                    Logout
-                </button>
+                {supabase && (
+                    <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition-colors">
+                        Logout
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -490,9 +504,11 @@ const App: React.FC = () => {
                 <AlertTriangleIcon className="w-12 h-12 mx-auto text-red-500 mb-4" />
                 <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Account Suspended</h2>
                 <p className="mb-4 text-gray-600 dark:text-gray-300">Your access to the system has been revoked. Please contact an administrator for assistance.</p>
-                <button onClick={() => supabase.auth['signOut']()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
-                    Logout
-                </button>
+                {supabase && (
+                    <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
+                        Logout
+                    </button>
+                )}
             </div>
         </div>
     );
