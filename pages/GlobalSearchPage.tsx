@@ -54,8 +54,18 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'search', query })
-                }).then(res => {
-                    if (!res.ok) throw new Error('Legacy search failed');
+                }).then(async res => {
+                    if (!res.ok) {
+                        let msg = 'Legacy search failed';
+                        try {
+                            const data = await res.json();
+                            msg = data.message || data.error || msg;
+                        } catch (e) {
+                            const text = await res.text().catch(() => '');
+                            if (text && text.length < 500) msg = text.replace(/<[^>]*>/g, ' ').substring(0, 200).trim();
+                        }
+                        throw new Error(msg);
+                    }
                     return res.json();
                 })
             ]);

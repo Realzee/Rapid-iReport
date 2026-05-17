@@ -89,8 +89,19 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
             });
 
             if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.message || `Failed to ${action} report`);
+                let errorMessage = `Failed to ${action} report (Status: ${res.status})`;
+                try {
+                    const data = await res.json();
+                    errorMessage = data.message || data.error || errorMessage;
+                } catch (e) {
+                    // If not JSON, try to get text
+                    const text = await res.text().catch(() => '');
+                    if (text && text.length < 500) {
+                        // Strip HTML tags if possible for a cleaner message
+                        errorMessage = text.replace(/<[^>]*>/g, ' ').substring(0, 200).trim();
+                    }
+                }
+                throw new Error(errorMessage);
             }
 
             onSuccess();

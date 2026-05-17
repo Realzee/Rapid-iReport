@@ -16,8 +16,21 @@ export default async function handler(req: Request, res: Response) {
 
             let legacyCount = 0;
             try {
-                const legacyRes = await fetch('https://rapidreportingsa.co.za/WORKING/ob.php');
+                const legacyRes = await fetch('https://rapidreportingsa.co.za/WORKING/ob.php', {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
                 const html = await legacyRes.text();
+                
+                if (legacyRes.status === 403) {
+                    console.warn("Legacy system returned 403 Forbidden. Body snippet:", html.substring(0, 200));
+                }
+                
                 const countMatch = html.match(/(?:TOTAL RECORDS|Total Entries).*?([\d,]+)/is);
                 if (countMatch && countMatch[1]) {
                     legacyCount = parseInt(countMatch[1].replace(/,/g, ''), 10);
@@ -45,7 +58,13 @@ export default async function handler(req: Request, res: Response) {
 
             const legacyRes = await fetch('https://rapidreportingsa.co.za/WORKING/ob.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Origin': 'https://rapidreportingsa.co.za',
+                    'Referer': 'https://rapidreportingsa.co.za/WORKING/ob.php'
+                },
                 body: formData.toString()
             });
 
@@ -99,7 +118,11 @@ export default async function handler(req: Request, res: Response) {
 
             res.status(200).json(results);
         } catch (error: any) {
-            res.status(500).json({ error: 'Internal Server Error', message: error.message });
+            console.error(`Error in legacy-api [${action}]:`, error);
+            res.status(500).json({ 
+                error: 'Internal Server Error', 
+                message: error.message || 'An unexpected error occurred in the legacy API connector.'
+            });
         }
         return;
     }
@@ -127,15 +150,26 @@ export default async function handler(req: Request, res: Response) {
 
             const legacyRes = await fetch('https://rapidreportingsa.co.za/WORKING/ob.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Origin': 'https://rapidreportingsa.co.za',
+                    'Referer': 'https://rapidreportingsa.co.za/WORKING/ob.php'
+                },
                 body: formData.toString()
             });
 
-            if (!legacyRes.ok) throw new Error(`Legacy system status: ${legacyRes.status}`);
+            if (!legacyRes.ok) {
+                const text = await legacyRes.text().catch(() => '');
+                const snippet = text.replace(/<[^>]*>/g, ' ').substring(0, 150).trim();
+                throw new Error(`Legacy system status ${legacyRes.status}${snippet ? ': ' + snippet : ''}`);
+            }
 
             res.status(200).json({ success: true, message: 'Added successfully to legacy database' });
         } catch (error: any) {
-            res.status(500).json({ error: 'Internal Server Error' });
+            console.error(`Error in legacy-api [${action}]:`, error);
+            res.status(500).json({ error: 'Internal Server Error', message: error.message });
         }
         return;
     }
@@ -165,15 +199,26 @@ export default async function handler(req: Request, res: Response) {
 
             const legacyRes = await fetch('https://rapidreportingsa.co.za/WORKING/ob.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Origin': 'https://rapidreportingsa.co.za',
+                    'Referer': 'https://rapidreportingsa.co.za/WORKING/ob.php'
+                },
                 body: formData.toString()
             });
 
-            if (!legacyRes.ok) throw new Error(`Legacy system status: ${legacyRes.status}`);
+            if (!legacyRes.ok) {
+                const text = await legacyRes.text().catch(() => '');
+                const snippet = text.replace(/<[^>]*>/g, ' ').substring(0, 150).trim();
+                throw new Error(`Legacy system status ${legacyRes.status}${snippet ? ': ' + snippet : ''}`);
+            }
 
             res.status(200).json({ success: true, message: 'Updated successfully in legacy database' });
         } catch (error: any) {
-            res.status(500).json({ error: 'Internal Server Error' });
+            console.error(`Error in legacy-api [${action}]:`, error);
+            res.status(500).json({ error: 'Internal Server Error', message: error.message });
         }
         return;
     }
@@ -188,15 +233,26 @@ export default async function handler(req: Request, res: Response) {
 
             const legacyRes = await fetch('https://rapidreportingsa.co.za/WORKING/ob.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Origin': 'https://rapidreportingsa.co.za',
+                    'Referer': 'https://rapidreportingsa.co.za/WORKING/ob.php'
+                },
                 body: formData.toString()
             });
 
-            if (!legacyRes.ok) throw new Error(`Legacy system status: ${legacyRes.status}`);
+            if (!legacyRes.ok) {
+                const text = await legacyRes.text().catch(() => '');
+                const snippet = text.replace(/<[^>]*>/g, ' ').substring(0, 150).trim();
+                throw new Error(`Legacy system status ${legacyRes.status}${snippet ? ': ' + snippet : ''}`);
+            }
 
             res.status(200).json({ success: true, message: 'Deleted successfully from legacy database' });
         } catch (error: any) {
-            res.status(500).json({ error: 'Internal Server Error' });
+            console.error(`Error in legacy-api [${action}]:`, error);
+            res.status(500).json({ error: 'Internal Server Error', message: error.message });
         }
         return;
     }
