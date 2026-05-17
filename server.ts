@@ -73,7 +73,7 @@ if (fs.existsSync(apiDir)) {
             app.all([routePath, `${routePath}/`], async (req, res) => {
                 try {
                     const modulePath = path.resolve(apiDir, file);
-                    console.log(`[API CALL] ${req.method} ${req.url} (Matched: ${routePath})`);
+                    console.log(`[API LOOKUP] Trying to load module: ${modulePath}, exists: ${fs.existsSync(modulePath)}`);
                     // Use pathToFileURL for safe dynamic import on all platforms
                     const { default: handler } = await import(pathToFileURL(modulePath).href);
                     if (typeof handler === 'function') {

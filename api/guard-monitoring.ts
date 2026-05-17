@@ -466,7 +466,12 @@ export default async function handler(req: any, res: any) {
             return res.status(200).json(data);
         } catch (error: any) {
             console.error(`Error inserting into ${table}:`, error);
-            return res.status(500).json({ error: error.message || 'Unknown error' });
+            return res.status(500).json({ 
+                error: error.message || 'Unknown error',
+                details: error.stack,
+                table: table,
+                payloadKeys: Object.keys(payload || {})
+            });
         }
     }
 
