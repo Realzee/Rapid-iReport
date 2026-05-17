@@ -35,8 +35,11 @@ export default async function handler(req: Request, res: Response) {
                 if (countMatch && countMatch[1]) {
                     legacyCount = parseInt(countMatch[1].replace(/,/g, ''), 10);
                 }
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Legacy fetch failed", e);
+                if (e.message?.includes('SSL') || e.code?.includes('SSL')) {
+                    console.error("DETAILED SSL ERROR DETECTED in server-side fetch to legacy system.");
+                }
             }
 
             const supabaseTotal = count || 0;
@@ -119,9 +122,13 @@ export default async function handler(req: Request, res: Response) {
             res.status(200).json(results);
         } catch (error: any) {
             console.error(`Error in legacy-api [${action}]:`, error);
+            let message = error.message || 'An unexpected error occurred in the legacy API connector.';
+            if (error.message?.includes('SSL') || error.code?.includes('SSL')) {
+                message = "Secure connection to legacy system failed (SSL Error). The reporting server might have outdated security settings.";
+            }
             res.status(500).json({ 
                 error: 'Internal Server Error', 
-                message: error.message || 'An unexpected error occurred in the legacy API connector.'
+                message
             });
         }
         return;

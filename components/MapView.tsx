@@ -240,7 +240,8 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
     const { theme } = useTheme();
 
     const handleShareReport = (reportId: string) => {
-        navigator.clipboard.writeText(`https://rapid-ireport.app/report/${reportId}`).then(() => {
+        const shareUrl = `${window.location.origin}/report/${reportId}`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
             setCopiedReportId(reportId);
             setTimeout(() => setCopiedReportId(null), 2000);
         });
