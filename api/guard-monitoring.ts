@@ -334,8 +334,11 @@ export default async function handler(req: any, res: any) {
         }
 
         try {
+            console.log(`Processing action: ${action}, table: ${table}`);
+            
             // Check if we need to create a user account for guards/supervisors
             if ((action === 'add-guard' || action === 'add-supervisor') && payload.email && payload.password) {
+                console.log('Creating auth user...');
                 const { email, password, name, ...rest } = payload;
                 
                 // 1. Create Auth User
@@ -346,6 +349,7 @@ export default async function handler(req: any, res: any) {
                 });
 
                 if (authError) {
+                    console.log('Auth user creation error:', authError);
                     if (authError.message.includes('already registered') || authError.status === 422) {
                         // User exists, try to get their ID
                         const { data: userData } = await supabaseAdmin.from('profiles').select('id').eq('email', email).maybeSingle();
@@ -366,6 +370,7 @@ export default async function handler(req: any, res: any) {
                         throw authError;
                     }
                 } else if (authData.user) {
+                    console.log('Auth user created:', authData.user.id);
                     // 2. Create Profile
                     const nameParts = name ? name.split(' ') : ['User'];
                     const firstName = nameParts[0];
@@ -415,7 +420,7 @@ export default async function handler(req: any, res: any) {
             let sanitizedPayload: any = { ...payload };
             
             // Special handling for required but missing fields
-            if (['sites', 'guards', 'supervisors', 'routes', 'checkpoints'].includes(table)) {
+            if (['sites', 'guards', 'supervisors', 'routes', 'checkpoints'].includes(table || '')) {
                 if (table === 'sites' || table === 'checkpoints') {
                     if (!sanitizedPayload.location) {
                         sanitizedPayload.location = { lat: -26.2041, lng: 28.0473 }; // Default to Johannesburg coords
@@ -426,7 +431,7 @@ export default async function handler(req: any, res: any) {
                         sanitizedPayload.site_id = sanitizedPayload.site_ids[0];
                     }
                 }
-                if (!sanitizedPayload.company_id && sanitizedPayload.company_id !== null) {
+                if (!sanitizedPayload.company_id && (sanitizedPayload.company_id !== null || sanitizedPayload.company_id !== undefined)) {
                     const { data: firstCompany } = await supabaseAdmin.from('companies').select('id').limit(1).single();
                     if (firstCompany) {
                         sanitizedPayload.company_id = firstCompany.id;
@@ -434,10 +439,12 @@ export default async function handler(req: any, res: any) {
                 }
             }
 
+            console.log('Inserting into table:', table, 'payload:', sanitizedPayload);
             // Direct insert is safer than trying to detect columns from potentially empty tables
             const { data, error } = await supabaseAdmin.from(table).insert(sanitizedPayload).select().single();
             
             if (error) {
+                console.log('Insert error:', error);
                 // If it fails because of extra columns, try to detect what's valid
                 if (error.code === '42703') {
                     const { data: colsData } = await supabaseAdmin.from(table).select('*').limit(1);
@@ -455,10 +462,11 @@ export default async function handler(req: any, res: any) {
                 throw error;
             }
             
+            console.log('Insert success:', data);
             return res.status(200).json(data);
         } catch (error: any) {
             console.error(`Error inserting into ${table}:`, error);
-            return res.status(400).json({ error: error.message || 'Unknown error' });
+            return res.status(500).json({ error: error.message || 'Unknown error' });
         }
     }
 
