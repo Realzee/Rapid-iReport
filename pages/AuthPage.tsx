@@ -19,6 +19,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewPublicDashboard, onViewAbout 
 
     useEffect(() => {
         const fetchCompanies = async () => {
+            if (!supabase) return;
             const { data, error } = await supabase.from('companies').select('*').order('name');
             if (error) {
                 console.error('Error fetching companies:', error);

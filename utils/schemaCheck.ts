@@ -6,6 +6,12 @@ interface SchemaCheckResult {
 }
 
 export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
+    if (!supabase) {
+        return {
+            status: 'invalid',
+            error: "Supabase client not initialized. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables."
+        };
+    }
     try {
         // Check 1: Basic table access (catches RLS issues or missing tables)
         const { error: profileError } = await supabase.from('profiles').select('id').limit(1);

@@ -92,6 +92,11 @@ const App: React.FC = () => {
     }).catch(console.error);
 
     const runSchemaCheck = async () => {
+        if (!supabase) {
+            setError("Supabase configuration is missing. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your environment variables.");
+            setLoading(false);
+            return false;
+        }
         const result = await checkDatabaseSchema();
         if (result.status === 'invalid') {
             setSchemaError(result.error || 'An unknown schema error occurred.');
