@@ -17,9 +17,10 @@ export const logUserAction = async (
     details: string
 ) => {
     try {
-        // Best effort to get IP, though in a client-side app this is often not reliable or possible without an external service.
-        // We'll skip IP for now or use a placeholder if needed.
-        
+        if (!supabase) {
+            console.warn('Logging skipped: Supabase not configured.');
+            return;
+        }
         const { error } = await supabase
             .from('user_activity_logs')
             .insert({

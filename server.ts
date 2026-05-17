@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 dotenv.config();
 
@@ -23,19 +23,25 @@ app.use((req, res, next) => {
     next();
 });
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co';
+const rawUrl = (process.env.SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co').trim();
+const supabaseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseServiceKey) {
-    console.warn('SUPABASE_SERVICE_ROLE_KEY is not set. Administrative tasks will fail.');
+    console.warn('SUPABASE_SERVICE_ROLE_KEY is not set. Administrative features will be limited.');
 }
 
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || '', {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false
+// Ensure createClient doesn't crash the server start if URL is invalid
+let supabaseAdmin: any = null;
+try {
+    if (supabaseUrl && supabaseUrl !== 'https://undefined' && supabaseUrl !== 'undefined') {
+        supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || '', {
+            auth: { autoRefreshToken: false, persistSession: false }
+        });
     }
-});
+} catch (e) {
+    console.error('Failed to initialize supabaseAdmin:', e);
+}
 
 app.use(express.json());
 
@@ -61,9 +67,11 @@ if (fs.existsSync(apiDir)) {
                 try {
                     const modulePath = path.resolve(apiDir, file);
                     console.log(`[API CALL] ${req.method} ${req.url} (Matched: ${routePath})`);
-                    // Use dynamic import to load the handler
-                    const { default: handler } = await import(`file://${modulePath}`);
+                    // Use pathToFileURL for safe dynamic import on all platforms
+                    const { default: handler } = await import(pathToFileURL(modulePath).href);
                     if (typeof handler === 'function') {
+                        // Pass supabaseAdmin to the handler if it needs it (as a property on req)
+                        (req as any).supabaseAdmin = supabaseAdmin;
                         await handler(req, res);
                     } else {
                         console.error(`Handler in ${file} is not a function`);
@@ -81,7 +89,7 @@ if (fs.existsSync(apiDir)) {
 }
 
 // Catch-all for /api that doesn't match
-app.all('/api/(.*)', (req, res) => {
+app.all('/api/:path*', (req, res) => {
     const timestamp = new Date().toISOString();
     console.log(`[API 404] ${req.method} ${req.originalUrl} at ${timestamp}`);
     
@@ -134,7 +142,7 @@ async function setupFrontend() {
     } else {
         const distPath = path.resolve(currentDir, 'dist');
         app.use(express.static(distPath));
-        app.get('(.*)', (req, res) => {
+        app.get('*', (req, res) => {
             res.sendFile(path.join(distPath, 'index.html'));
         });
     }

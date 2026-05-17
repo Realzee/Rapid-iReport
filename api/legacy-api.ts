@@ -1,15 +1,16 @@
 import { Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 
-export default async function handler(req: Request, res: Response) {
-    const supabaseUrl = process.env.SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co';
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export default async function handler(req: any, res: any) {
+    const supabaseAdmin = req.supabaseAdmin || createClient(
+        process.env.SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co',
+        process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    );
 
     const action = req.query.action || req.body?.action;
 
     if (action === 'count' && req.method === 'GET') {
         try {
-            const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
             const { count, error } = await supabaseAdmin.from('vehicle_reports').select('*', { count: 'exact', head: true });
             
             if (error) console.error("Supabase count error:", error);

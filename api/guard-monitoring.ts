@@ -1,17 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: any, res: any) {
-    const supabaseUrl = process.env.SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co';
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseAdmin = req.supabaseAdmin || createClient(
+        process.env.SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co',
+        process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    );
 
-    if (!supabaseServiceKey) {
-        return res.status(500).json({ 
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !req.supabaseAdmin) {
+        return res.status(200).json({ 
             error: 'Configuration missing', 
-            message: 'SUPABASE_SERVICE_ROLE_KEY is not set on the server.' 
+            message: 'SUPABASE_SERVICE_ROLE_KEY is not set. Some features are unavailable.',
+            data: [] 
         });
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     if (req.method === 'GET') {
         const { table, company_id } = req.query;
