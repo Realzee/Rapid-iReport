@@ -23,8 +23,14 @@ app.use((req, res, next) => {
     next();
 });
 
-const rawUrl = (process.env.SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co').trim();
-const supabaseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+const getSafeSupabaseUrl = (url: string | undefined): string => {
+    const defaultUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co';
+    if (!url || url === 'undefined' || url.trim() === '') return defaultUrl;
+    const trimmed = url.trim();
+    return trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
+};
+
+const supabaseUrl = getSafeSupabaseUrl(process.env.SUPABASE_URL);
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseServiceKey) {
@@ -34,7 +40,7 @@ if (!supabaseServiceKey) {
 // Ensure createClient doesn't crash the server start if URL is invalid
 let supabaseAdmin: any = null;
 try {
-    if (supabaseUrl && supabaseUrl !== 'https://undefined' && supabaseUrl !== 'undefined') {
+    if (supabaseUrl && !supabaseUrl.includes('undefined')) {
         supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || '', {
             auth: { autoRefreshToken: false, persistSession: false }
         });
@@ -47,7 +53,7 @@ app.use(express.json());
 
 // Health check
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', message: 'Backend is running', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok', message: 'Backend is running', timestamp: new Date().toISOString(), supabaseUrl: supabaseUrl.replace(/:\/\/.*@/, '://***@') });
 });
 
 // Dynamic API Route Loader
@@ -63,6 +69,7 @@ if (fs.existsSync(apiDir)) {
             
             console.log(`Registering route: ${routePath}`);
             
+            // Match exactly /api/route and /api/route/
             app.all([routePath, `${routePath}/`], async (req, res) => {
                 try {
                     const modulePath = path.resolve(apiDir, file);
@@ -79,7 +86,11 @@ if (fs.existsSync(apiDir)) {
                     }
                 } catch (error: any) {
                     console.error(`Error in API route ${routePath}:`, error);
-                    res.status(500).json({ error: 'Internal Server Error', message: error.message });
+                    res.status(500).json({ 
+                        error: 'Internal Server Error', 
+                        message: error.message,
+                        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+                    });
                 }
             });
         }
@@ -89,7 +100,8 @@ if (fs.existsSync(apiDir)) {
 }
 
 // Catch-all for /api that doesn't match
-app.all('/api/:path*', (req, res) => {
+// In Express 5, * must be named or expressed as a regex. (.*) is a common way to express it.
+app.all('/api/(.*)', (req, res) => {
     const timestamp = new Date().toISOString();
     console.log(`[API 404] ${req.method} ${req.originalUrl} at ${timestamp}`);
     
@@ -142,7 +154,7 @@ async function setupFrontend() {
     } else {
         const distPath = path.resolve(currentDir, 'dist');
         app.use(express.static(distPath));
-        app.get('*', (req, res) => {
+        app.get('(.*)', (req, res) => {
             res.sendFile(path.join(distPath, 'index.html'));
         });
     }
