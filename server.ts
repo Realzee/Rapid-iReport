@@ -5,7 +5,6 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import TelegramBot from 'node-telegram-bot-api';
 
 dotenv.config();
 
@@ -38,57 +37,6 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || '', {
     }
 });
 
-// Telegram Bot Logic
-const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
-const telegramGroupId = process.env.TELEGRAM_GROUP_ID;
-
-if (telegramToken && telegramGroupId) {
-    const bot = new TelegramBot(telegramToken, { polling: false });
-    console.log('Telegram bot initialized.');
-
-    let lastChecked = new Date();
-    
-    // Check every minute
-    setInterval(async () => {
-        try {
-            console.log('Telegram bot polling for new reports...');
-            const now = new Date();
-            // Fetch potential new vehicle reports
-            const { data: vehicleReports, error: supabaseError } = await (supabaseAdmin as any)
-                .from('vehicle_reports')
-                .select('*')
-                .gt('reported_at', lastChecked.toISOString())
-                .order('reported_at', { ascending: true });
-
-            if (supabaseError) {
-                console.error('Supabase error in Telegram bot polling:', supabaseError);
-                return;
-            }
-
-            if (vehicleReports && vehicleReports.length > 0) {
-                console.log(`Found ${vehicleReports.length} new reports.`);
-                for (const report of vehicleReports) {
-                    try {
-                        const message = `🚨 *New ${report.is_wanted ? 'WANTED' : 'Reported'} Vehicle* 🚨\n\n` +
-                            `*Plate:* ${report.license_plate}\n` +
-                            `*Make/Model:* ${report.vehicle_make} ${report.vehicle_model}\n` +
-                            `*Color:* ${report.vehicle_color}\n` +
-                            `*Last Seen:* ${report.last_seen_location}\n` +
-                            `*Description:* ${report.description}\n`;
-                        await bot.sendMessage(telegramGroupId, message, { parse_mode: 'Markdown' });
-                        console.log(`Sent alert for license plate: ${report.license_plate}`);
-                    } catch (botError) {
-                        console.error('Error sending Telegram message:', botError);
-                    }
-                }
-            }
-            lastChecked = now;
-        } catch (e) {
-            console.error('Error in Telegram bot polling:', e);
-        }
-    }, 60000);
-}
-
 app.use(express.json());
 
 // Health check
@@ -100,10 +48,11 @@ app.get('/api/health', (req, res) => {
 const apiDir = path.resolve(currentDir, 'api');
 if (fs.existsSync(apiDir)) {
     console.log(`Loading API routes from ${apiDir}...`);
-    const files = fs.readdirSync(apiDir);
+    const files = fs.readdirSync(apiDir, { recursive: true }) as string[];
     for (const file of files) {
-        if (file.endsWith('.ts') || file.endsWith('.js')) {
-            const routeName = file.replace(/\.(ts|js)$/, '');
+        if (file.endsWith('.ts') || file.endsWith('.js') || file.endsWith('.cjs')) {
+            const relativePath = file.replace(/\.(ts|js|cjs)$/, '');
+            const routeName = relativePath.split(path.sep).join('/');
             const routePath = `/api/${routeName}`;
             
             console.log(`Registering route: ${routePath}`);
@@ -113,7 +62,6 @@ if (fs.existsSync(apiDir)) {
                     const modulePath = path.resolve(apiDir, file);
                     console.log(`[API CALL] ${req.method} ${req.url} (Matched: ${routePath})`);
                     // Use dynamic import to load the handler
-                    // We use a query param to avoid cache in dev if needed, but tsx handles this well
                     const { default: handler } = await import(`file://${modulePath}`);
                     if (typeof handler === 'function') {
                         await handler(req, res);
