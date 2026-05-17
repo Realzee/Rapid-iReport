@@ -124,13 +124,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
             ></div>
         </div>
 
-        <script dangerouslySetInnerHTML={{ __html: `
-            window.onTurnstileSuccess = function(token) {
-                const event = new CustomEvent('turnstile-success', { detail: { token } });
-                window.dispatchEvent(event);
-            };
-        `}} />
-
         <TurnstileHandler onToken={setTurnstileToken} />
       </form>
       <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
