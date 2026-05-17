@@ -9,8 +9,9 @@ import TelegramBot from 'node-telegram-bot-api';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Fix for CJS bundling where import.meta.url is not available
+const currentFile = typeof import.meta !== 'undefined' && import.meta.url ? fileURLToPath(import.meta.url) : (typeof __filename !== 'undefined' ? __filename : '');
+const currentDir = currentFile ? path.dirname(currentFile) : (typeof __dirname !== 'undefined' ? __dirname : process.cwd());
 
 const app = express();
 const PORT = 3000;
@@ -96,7 +97,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Dynamic API Route Loader
-const apiDir = path.resolve(__dirname, 'api');
+const apiDir = path.resolve(currentDir, 'api');
 if (fs.existsSync(apiDir)) {
     console.log(`Loading API routes from ${apiDir}...`);
     const files = fs.readdirSync(apiDir);
@@ -132,7 +133,7 @@ if (fs.existsSync(apiDir)) {
 }
 
 // Catch-all for /api that doesn't match
-app.all('/api/:path*', (req, res) => {
+app.all('/api/:any*', (req, res) => {
     const timestamp = new Date().toISOString();
     console.log(`[API 404] ${req.method} ${req.originalUrl} at ${timestamp}`);
     
@@ -168,7 +169,7 @@ async function setupFrontend() {
             }
             try {
                 const url = req.originalUrl;
-                let template = await import('fs').then(fs => fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8'));
+                let template = await import('fs').then(fs => fs.readFileSync(path.resolve(currentDir, 'index.html'), 'utf-8'));
                 template = await vite.transformIndexHtml(url, template);
                 res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
             } catch (e) {
@@ -183,9 +184,9 @@ async function setupFrontend() {
             res.status(500).json({ error: 'Internal Server Error', message: err.message });
         });
     } else {
-        const distPath = path.resolve(__dirname, 'dist');
+        const distPath = path.resolve(currentDir, 'dist');
         app.use(express.static(distPath));
-        app.get(/(.*)/, (req, res) => {
+        app.get('/:any*', (req, res) => {
             res.sendFile(path.join(distPath, 'index.html'));
         });
     }
