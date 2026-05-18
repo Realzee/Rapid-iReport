@@ -36,7 +36,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState('');
   const [role, setRole] = useState(UserRole.USER);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>('dummy_token');
   
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
