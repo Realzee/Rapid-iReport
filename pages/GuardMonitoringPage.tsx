@@ -34,7 +34,16 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
                     ? `/api/guard-monitoring?table=${table}&company_id=${profile.company_id}`
                     : `/api/guard-monitoring?table=${table}`;
                 const response = await fetch(url);
-                if (response.ok) results[table] = await response.json();
+                if (response.ok) {
+                    const result = await response.json();
+                    if (Array.isArray(result)) {
+                        results[table] = result;
+                    } else if (result.data && Array.isArray(result.data)) {
+                        results[table] = result.data;
+                    } else {
+                        results[table] = [];
+                    }
+                }
             }
             setData(results);
         };

@@ -16,6 +16,10 @@ export default async function handler(req: any, res: any) {
         });
     }
 
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !req.supabaseAdmin) {
+        return res.status(200).json({ success: true, dummy: true });
+    }
+
     if (!userId) {
         return res.status(400).json({ error: 'User ID is required' });
     }

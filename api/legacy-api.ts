@@ -7,6 +7,11 @@ export default async function handler(req: any, res: any) {
         process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'dummy_key_to_prevent_crash'
     );
 
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !req.supabaseAdmin) {
+        if (req.method === 'GET') return res.status(200).json([]);
+        return res.status(200).json({ success: true, dummy: true });
+    }
+
     const action = req.query.action || req.body?.action;
 
     if (action === 'count' && req.method === 'GET') {
