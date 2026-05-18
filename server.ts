@@ -16,9 +16,11 @@ const PORT = 3000;
 
 // Global request logger
 app.use((req, res, next) => {
-    const timestamp = new Date().toISOString();
-    const host = req.headers.host;
-    console.log(`[${timestamp}] ${req.method} ${req.url} (Host: ${host})`);
+    if (req.url.startsWith('/api') || req.headers.accept?.includes('text/html')) {
+        const timestamp = new Date().toISOString();
+        const host = req.headers.host || 'unknown';
+        console.log(`[${timestamp}] ${req.method} ${req.url} (Host: ${host})`);
+    }
     next();
 });
 
@@ -56,7 +58,10 @@ app.get('/api/health', (req, res) => {
 });
 
 // Dynamic API Route Loader
-const apiDir = path.resolve(currentDir, 'api');
+const apiDir = process.env.NODE_ENV === 'production' 
+    ? path.resolve(currentDir, 'dist', 'api') 
+    : path.resolve(currentDir, 'api');
+
 if (fs.existsSync(apiDir)) {
     console.log(`Loading API routes from ${apiDir}...`);
     const files = fs.readdirSync(apiDir, { recursive: true }) as string[];
@@ -72,7 +77,6 @@ if (fs.existsSync(apiDir)) {
             app.all([routePath, `${routePath}/`], async (req, res) => {
                 try {
                     const modulePath = path.resolve(apiDir, file);
-                    console.log(`[API LOOKUP] Trying to load module: ${modulePath}, exists: ${fs.existsSync(modulePath)}`);
                     // Use pathToFileURL for safe dynamic import on all platforms
                     const { default: handler } = await import(pathToFileURL(modulePath).href);
                     if (typeof handler === 'function') {
@@ -99,7 +103,7 @@ if (fs.existsSync(apiDir)) {
 }
 
 // Catch-all for /api that doesn't match
-app.all('/api/*', (req, res) => {
+app.use('/api', (req, res) => {
     const timestamp = new Date().toISOString();
     console.log(`[API 404] ${req.method} ${req.originalUrl} at ${timestamp}`);
     
@@ -152,8 +156,12 @@ async function setupFrontend() {
     } else {
         const distPath = path.resolve(currentDir, 'dist');
         app.use(express.static(distPath));
-        app.get('(.*)', (req, res) => {
-            res.sendFile(path.join(distPath, 'index.html'));
+        app.use((req, res, next) => {
+            if (req.method === 'GET') {
+                res.sendFile(path.join(distPath, 'index.html'));
+            } else {
+                next();
+            }
         });
     }
 }
