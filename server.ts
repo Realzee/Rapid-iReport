@@ -8,9 +8,8 @@ import { fileURLToPath, pathToFileURL } from 'url';
 
 dotenv.config();
 
-// Fix for CJS bundling where import.meta.url is not available
-const currentFile = typeof import.meta !== 'undefined' && import.meta.url ? fileURLToPath(import.meta.url) : (typeof __filename !== 'undefined' ? __filename : '');
-const currentDir = currentFile ? path.dirname(currentFile) : (typeof __dirname !== 'undefined' ? __dirname : process.cwd());
+// Use process.cwd() as the project root, which is consistent for Node.js applications.
+const currentDir = process.cwd();
 
 const app = express();
 const PORT = 3000;
