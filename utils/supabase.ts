@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const getSafeUrl = () => {
-  const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+  const envUrl = (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL) || (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL);
   const defaultUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co';
   if (!envUrl || envUrl === 'undefined' || envUrl.trim() === '') return defaultUrl;
   const trimmed = envUrl.trim();
@@ -9,7 +9,7 @@ const getSafeUrl = () => {
 };
 
 const supabaseUrl = getSafeUrl();
-const supabaseAnonKey = ((import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '').trim();
+const supabaseAnonKey = ((typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY) || (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_ANON_KEY) || '').trim();
 
 if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('undefined') || supabaseAnonKey === 'undefined') {
   console.error("VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing or invalid. Database functionality will NOT work. Please check your environment variables.");
