@@ -100,8 +100,7 @@ if (fs.existsSync(apiDir)) {
 }
 
 // Catch-all for /api that doesn't match
-// In Express 5, * must be named or expressed as a regex. (.*) is a common way to express it.
-app.all('/api/(.*)', (req, res) => {
+app.all('/api/*', (req, res) => {
     const timestamp = new Date().toISOString();
     console.log(`[API 404] ${req.method} ${req.originalUrl} at ${timestamp}`);
     
