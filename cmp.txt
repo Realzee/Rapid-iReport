@@ -1,0 +1,11 @@
+const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit, isQuickAdd = false, onReportSubmitted }) => {
+    const [reportType, setReportType] = useState<ReportType>('vehicle');
+    const [imageFiles, setImageFiles] = useState<File[]>([]);
+    const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [duplicateInfo, setDuplicateInfo] = useState<{
+        type: string;
+        obNumber: string;
+        status?: string;
+        licensePlate: string;
+    } | null>(null);

@@ -19,6 +19,9 @@ import { useFormPersistence } from '../useFormPersistence';
 import { logUserAction } from '../utils/logger';
 import { LocationPicker, parseLocationInput, reverseGeocode } from './LocationPicker';
 
+import { useSettings } from '../contexts/SettingsContext';
+import { generateAndShareBolo } from '../utils/boloUtils';
+
 interface ReportModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -168,6 +171,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     const [isMapVisible, setMapVisible] = useState(false);
     const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
     const { addToast } = useToast();
+    const { mainLogoUrl } = useSettings();
     
     // Address suggestion state
     const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
@@ -582,7 +586,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             } else {
                 const { data: profileData, error: profileError } = await supabase
                     .from('profiles')
-                    .select('company_id, company:companies(name)')
+                    .select('*, company:companies(*)')
                     .eq('id', user.id)
                     .single();
 
@@ -649,6 +653,32 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 }
 
                 logUserAction(user.id, 'CREATE_REPORT', `Created new ${reportType} report ${reportId} (${finalObNumber})`);
+
+                // Auto-send WhatsApp message over BOLO
+                if (profileData) {
+                    const reportForBolo = {
+                        ...reportData,
+                        id: reportId,
+                        ob_number: finalObNumber,
+                        type: reportType,
+                        // Fix array mapping for company (just in case)
+                        company: Array.isArray(profileData.company) ? profileData.company[0] : profileData.company
+                    };
+                    
+                    try {
+                        addToast('Generating BOLO card for WhatsApp...', 'info');
+                        await generateAndShareBolo(
+                            reportForBolo, 
+                            { ...profileData, company: Array.isArray(profileData.company) ? profileData.company[0] : profileData.company } as any, 
+                            mainLogoUrl, 
+                            'whatsapp', 
+                            '+27846910111'
+                        );
+                    } catch (e) {
+                        console.error('Failed to auto-generate BOLO for WhatsApp:', e);
+                        addToast('Failed to auto-send BOLO via WhatsApp', 'error');
+                    }
+                }
             }
             
             addToast(`Report ${reportToEdit ? 'updated' : 'submitted'} successfully!`, 'success');
