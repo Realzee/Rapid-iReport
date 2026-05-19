@@ -426,6 +426,18 @@ export const generateAndShareBolo = async (
                     }
                 } else if (action === 'whatsapp') {
                     const filename = `bolo-${(report.ob_number || 'new').replace(/\//g, '-')}.png`;
+                    
+                    // Try to copy to clipboard for easy pasting
+                    if (navigator.clipboard && (window as any).ClipboardItem) {
+                        try {
+                            const data = [new ClipboardItem({ [blob.type]: blob })];
+                            await navigator.clipboard.write(data);
+                            console.log('Image copied to clipboard');
+                        } catch (err) {
+                            console.error('Failed to copy image to clipboard:', err);
+                        }
+                    }
+
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;

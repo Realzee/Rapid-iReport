@@ -666,7 +666,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     };
                     
                     try {
-                        addToast('Generating BOLO card for WhatsApp...', 'info');
+                        addToast('Generating BOLO card... It will be copied to your clipboard.', 'info');
                         await generateAndShareBolo(
                             reportForBolo, 
                             { ...profileData, company: Array.isArray(profileData.company) ? profileData.company[0] : profileData.company } as any, 
@@ -674,6 +674,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             'whatsapp', 
                             '+27846910111'
                         );
+                        addToast('BOLO card copied to clipboard. Please paste it (Ctrl+V) in the WhatsApp window.', 'success', 8000);
                     } catch (e) {
                         console.error('Failed to auto-generate BOLO for WhatsApp:', e);
                         addToast('Failed to auto-send BOLO via WhatsApp', 'error');
