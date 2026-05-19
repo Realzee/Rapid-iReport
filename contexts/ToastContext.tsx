@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, ReactNode, useCallback } fr
 import { Toast, ToastType } from '../types';
 
 interface ToastContextType {
-  addToast: (message: string, type: ToastType, duration?: number, onClick?: () => void) => void;
+  addToast: (message: string, type: ToastType, durationOrOnClick?: number | (() => void), onClick?: () => void) => void;
   toasts: Toast[];
   removeToast: (id: string) => void;
 }
@@ -16,9 +16,24 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setToasts(currentToasts => currentToasts.filter(toast => toast.id !== id));
   }, []);
 
-  const addToast = useCallback((message: string, type: ToastType, duration: number = 3000, onClick?: () => void) => {
+  const addToast = useCallback((
+    message: string, 
+    type: ToastType, 
+    durationOrOnClick?: number | (() => void), 
+    onClick?: () => void
+  ) => {
     const id = crypto.randomUUID();
-    setToasts(currentToasts => [...currentToasts, { id, message, type, onClick }]);
+    
+    let duration = 3000;
+    let finalOnClick = onClick;
+
+    if (typeof durationOrOnClick === 'number') {
+        duration = durationOrOnClick;
+    } else if (typeof durationOrOnClick === 'function') {
+        finalOnClick = durationOrOnClick;
+    }
+
+    setToasts(currentToasts => [...currentToasts, { id, message, type, onClick: finalOnClick }]);
 
     if (duration !== Infinity) {
       setTimeout(() => {

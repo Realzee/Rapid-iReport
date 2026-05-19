@@ -371,7 +371,7 @@ export const generateAndShareBolo = async (
         ctx.fillText(copyrightText, copyrightStartX + logoW + gap, copyrightY);
 
         // 11. Export
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<{ method: 'share' | 'download' | 'clipboard' | 'none' }>((resolve, reject) => {
             canvas.toBlob(async (blob) => {
                 if (!blob) {
                     reject(new Error('Failed to create canvas blob'));
@@ -387,7 +387,7 @@ export const generateAndShareBolo = async (
                     a.click();
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
-                    return { method: 'download' };
+                    resolve({ method: 'download' });
                 } else if (action === 'share') {
                     const filename = `bolo-${(report.ob_number || 'new').replace(/\//g, '-')}.png`;
                     const file = new File([blob], filename, { type: 'image/png' });
@@ -405,7 +405,8 @@ export const generateAndShareBolo = async (
                                 title: 'BOLO Card',
                                 text: caption
                             });
-                            return { method: 'share' };
+                            resolve({ method: 'share' });
+                            return;
                         } catch (error) {
                             // Silently fail and proceed to fallback
                         }
@@ -423,7 +424,7 @@ export const generateAndShareBolo = async (
                     // We do not addToast here directly to keep util pure, but can open whatsapp
                     const waUrl = `https://wa.me/${companyNumber}?text=${encodeURIComponent(caption)}`;
                     window.open(waUrl, '_blank');
-                    return { method: 'download' };
+                    resolve({ method: 'download' });
                 } else if (action === 'whatsapp') {
                     const filename = `bolo-${(report.ob_number || 'new').replace(/\//g, '-')}.png`;
                     const file = new File([blob], filename, { type: 'image/png' });
@@ -434,7 +435,19 @@ export const generateAndShareBolo = async (
                     caption += report.license_plate ? `*Reg:* ${report.license_plate}\n` : '';
                     caption += report.vehicle_make ? `*Make:* ${report.vehicle_make}\n` : '';
 
-                    // If navigator.share is available, it's the best way to "auto-attach" a file
+                    // Try copy to clipboard first (less restrictive than share for auto-attach)
+                    let clipboardUsed = false;
+                    if (navigator.clipboard && (window as any).ClipboardItem) {
+                        try {
+                            const data = [new ClipboardItem({ [blob.type]: blob })];
+                            await navigator.clipboard.write(data);
+                            clipboardUsed = true;
+                        } catch (err) {
+                            console.error('Failed to copy to clipboard:', err);
+                        }
+                    }
+
+                    // Then try system share (the only real "auto-attach" on mobile)
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                         try {
                             await navigator.share({
@@ -442,26 +455,14 @@ export const generateAndShareBolo = async (
                                 title: 'NEW BOLO',
                                 text: caption
                             });
-                            return { method: 'share' };
+                            resolve({ method: 'share' });
+                            return;
                         } catch (error) {
                             console.error('Share failed, falling back to download/URL method:', error);
                         }
                     }
                     
-                    // Fallback for browsers that don't support file sharing
-                    // Try to copy to clipboard for easy pasting
-                    let clipboardUsed = false;
-                    if (navigator.clipboard && (window as any).ClipboardItem) {
-                        try {
-                            const data = [new ClipboardItem({ [blob.type]: blob })];
-                            await navigator.clipboard.write(data);
-                            console.log('Image copied to clipboard');
-                            clipboardUsed = true;
-                        } catch (err) {
-                            console.error('Failed to copy image to clipboard:', err);
-                        }
-                    }
-
+                    // Fallback: Download file
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
@@ -480,11 +481,10 @@ export const generateAndShareBolo = async (
                     const waPhone = targetPhone ? targetPhone.replace(/\D/g, '') : '';
                     const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(captionText)}`;
                     window.open(waUrl, '_blank');
-                    return { method: clipboardUsed ? 'clipboard' : 'download' };
+                    resolve({ method: clipboardUsed ? 'clipboard' : 'download' });
                 }
             }, 'image/png');
         });
-
     } catch (error) {
         throw error;
     }

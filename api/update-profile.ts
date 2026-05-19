@@ -5,7 +5,15 @@ export default async function handler(req: any, res: any) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { userId, ...dbPayload } = req.body;
+    const { userId, updates, ...rest } = req.body;
+    
+    // Flatten updates if provided, otherwise use rest of the body
+    let dbPayload = updates ? { ...updates } : { ...rest };
+    
+    // Security/Safety: Filter out common frontend-only keys or non-existent columns
+    const keysToExclude = ['last_sync_timestamp', 'method'];
+    keysToExclude.forEach(key => delete dbPayload[key]);
+
     const supabaseUrl = process.env.SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co';
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'dummy_key_to_prevent_crash';
 
