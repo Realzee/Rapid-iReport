@@ -160,7 +160,7 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
                         Search vehicle reports by Registration, Make, Model, or Case Number.
                     </p>
                 </div>
-                {totalVehicles !== null && (
+                {typeof totalVehicles === 'number' && (
                     <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-lg flex items-center gap-2">
                         <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Database Records</span>
                         <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{totalVehicles.toLocaleString()}</span>

@@ -13,7 +13,16 @@ export default async function handler(req: Request, res: Response) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        return res.status(503).json({ error: 'AI service not configured' });
+        return res.status(200).json({
+            insights: [
+                {
+                    vehicleType: "Toyota Hilux",
+                    likelyRecoveryArea: "Industrial areas / Borders",
+                    confidence: "Medium",
+                    reasoning: "AI service not configured, showing dummy data."
+                }
+            ]
+        });
     }
 
     try {
