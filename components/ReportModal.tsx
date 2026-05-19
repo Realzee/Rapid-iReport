@@ -454,6 +454,13 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             if (userError || !user) throw new Error("User not authenticated");
 
+            // Fetch profile data early for BOLO logic
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*, company:companies(*)')
+                .eq('id', user.id)
+                .single();
+
             // Check for existing license plate if not skipped
             if (!skipDuplicateCheck) {
                 const hasDuplicate = await checkDuplicates();
@@ -586,17 +593,24 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                  const { error } = await supabase.from(tableName).update(reportData).eq('id', reportToEdit.id);
                  if (error) throw error;
                  logUserAction(user.id, 'UPDATE_REPORT', `Updated report ${reportToEdit.id} (${reportToEdit.ob_number})`);
+                 
+                 // Show WhatsApp confirm for updates too
+                 if (profileData) {
+                    const reportForBolo = {
+                        ...reportData,
+                        id: reportToEdit.id,
+                        ob_number: reportToEdit.ob_number,
+                        type: reportType,
+                        company: Array.isArray(profileData.company) ? profileData.company[0] : profileData.company
+                    };
+                    setPendingBoloData({ 
+                        report: reportForBolo, 
+                        profile: { ...profileData, company: Array.isArray(profileData.company) ? profileData.company[0] : profileData.company } as any 
+                    });
+                    setIsBoloConfirmOpen(true);
+                    showWhatsAppConfirm = true;
+                 }
             } else {
-                const { data: profileData, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('*, company:companies(*)')
-                    .eq('id', user.id)
-                    .single();
-
-                if (profileError) {
-                    console.warn("Could not fetch user's company for OB number generation:", profileError.message);
-                }
-                
                 const companyId = profileData?.company_id;
                 const company = profileData?.company as any;
                 const companyName = Array.isArray(company) ? company[0]?.name : company?.name;
@@ -657,7 +671,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
                 logUserAction(user.id, 'CREATE_REPORT', `Created new ${reportType} report ${reportId} (${finalObNumber})`);
                 
-                showWhatsAppConfirm = false;
                 if (profileData) {
                     const reportForBolo = {
                         ...reportData,
@@ -1138,69 +1151,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         </button>
                     </div>
                 </form>
-
-                <AnimatePresence>
-                    {isBoloConfirmOpen && (
-                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-                            <motion.div 
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-sm w-full border border-gray-100 dark:border-gray-700"
-                            >
-                                <CheckCircleIcon className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                                <h4 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-2">Report Saved!</h4>
-                                <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
-                                    Would you like to generate and send a BOLO card via WhatsApp now?
-                                </p>
-                                <div className="flex gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={onClose}
-                                        className="flex-1 py-2.5 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                                    >
-                                        Later
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={async () => {
-                                            if (pendingBoloData) {
-                                                try {
-                                                    addToast('Generating BOLO card...', 'info');
-                                                    setIsBoloConfirmOpen(false);
-                                                    const result = await generateAndShareBolo(
-                                                        pendingBoloData.report, 
-                                                        pendingBoloData.profile, 
-                                                        mainLogoUrl, 
-                                                        'whatsapp', 
-                                                        '+27846910111'
-                                                    );
-                                                    
-                                                    if (result.method === 'share') {
-                                                        addToast('BOLO card shared via system menu.', 'success');
-                                                    } else if (result.method === 'clipboard') {
-                                                        addToast('BOLO card copied to clipboard. Please paste it (Ctrl+V) in the WhatsApp window.', 'success', 8000);
-                                                    } else {
-                                                        addToast('BOLO card downloaded. Please attach it manually in the WhatsApp window.', 'info', 8000);
-                                                    }
-                                                } catch (e) {
-                                                    console.error('Failed to generate BOLO for WhatsApp:', e);
-                                                    addToast('Failed to send BOLO via WhatsApp', 'error');
-                                                } finally {
-                                                    onClose();
-                                                }
-                                            }
-                                        }}
-                                        className="flex-1 py-2.5 px-4 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20"
-                                    >
-                                        Yes, Send
-                                    </button>
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>
-
+                
                 <datalist id="makes-list">
                     {vehicleMakes.map(make => <option key={make} value={make} />)}
                 </datalist>
@@ -1211,6 +1162,74 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     {vehicleColors.map(color => <option key={color} value={color} />)}
                 </datalist>
             </div>
+
+            <AnimatePresence>
+                {isBoloConfirmOpen && (
+                    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-sm w-full border border-gray-100 dark:border-gray-700 text-center"
+                        >
+                            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <CheckCircleIcon className="w-10 h-10 text-green-500" />
+                            </div>
+                            <h4 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Report Saved!</h4>
+                            <p className="text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
+                                Your report has been submitted successfully.<br/>
+                                <span className="font-semibold text-gray-900 dark:text-gray-200">Generate BOLO card for WhatsApp?</span>
+                            </p>
+                            <div className="flex gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsBoloConfirmOpen(false);
+                                        onClose();
+                                    }}
+                                    className="flex-1 py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all border border-gray-200 dark:border-gray-600"
+                                >
+                                    Later
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        if (pendingBoloData) {
+                                            try {
+                                                addToast('Generating BOLO card...', 'info');
+                                                setIsBoloConfirmOpen(false);
+                                                const result = await generateAndShareBolo(
+                                                    pendingBoloData.report, 
+                                                    pendingBoloData.profile, 
+                                                    mainLogoUrl, 
+                                                    'whatsapp', 
+                                                    '+27846910111'
+                                                );
+                                                
+                                                if (result.method === 'share') {
+                                                    addToast('BOLO card shared via system menu.', 'success');
+                                                } else if (result.method === 'clipboard') {
+                                                    addToast('BOLO card copied to clipboard. Please paste it (Ctrl+V) in the WhatsApp window.', 'success', 8000);
+                                                } else {
+                                                    addToast('BOLO card downloaded. Please attach it manually in the WhatsApp window.', 'info', 8000);
+                                                }
+                                            } catch (e) {
+                                                console.error('Failed to generate BOLO for WhatsApp:', e);
+                                                addToast('Failed to send BOLO via WhatsApp', 'error');
+                                            } finally {
+                                                onClose();
+                                            }
+                                        }
+                                    }}
+                                    className="flex-1 py-3 px-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-600/20"
+                                >
+                                    Yes, Send
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             <AnimatePresence>
                 {isConfirmCloseOpen && (
