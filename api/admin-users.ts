@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: any, res: any) {
-    const hasServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+    const hasServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
     if (!hasServiceKey && !req.supabaseAdmin) {
         if (req.method === 'GET') return res.status(200).json([]);
         return res.status(200).json({ success: true, dummy: true });
