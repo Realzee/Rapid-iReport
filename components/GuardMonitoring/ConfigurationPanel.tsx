@@ -233,7 +233,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
             const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
-                setItems(data);
+                setItems(Array.isArray(data) ? data : (data.data || []));
             }
         } catch (e) {
             console.error('Fetch error:', e);
@@ -419,11 +419,15 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
         printWindow.document.close();
     };
 
-    const filteredItems = items.filter(item => 
-        item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.contact_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.id?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredItems = items.filter(item => {
+        const search = searchTerm.toLowerCase();
+        const name = item.name || (item.first_name ? `${item.first_name} ${item.surname || ''}` : '');
+        return (
+            (name && name.toLowerCase().includes(search)) ||
+            (item.contact_number && item.contact_number.toLowerCase().includes(search)) ||
+            (item.id && item.id.toLowerCase().includes(search))
+        );
+    });
 
     return (
         <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">

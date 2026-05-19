@@ -9,10 +9,10 @@ export default async function handler(req: any, res: any) {
 
     if (req.method === 'GET') {
         const { table, company_id } = req.query;
-        if (!['sites', 'guards', 'routes', 'supervisors', 'checkpoints', 'patrol_logs'].includes(table as string)) {
+        if (!['sites', 'guards', 'routes', 'supervisors', 'checkpoints', 'patrol_logs', 'gate_access_logs'].includes(table as string)) {
             return res.status(400).json({ error: 'Invalid table' });
         }
-        let query = supabaseAdmin.from(table as string).select('*');
+        let query = supabaseAdmin.from(table as string).select(table === 'gate_access_logs' ? '*, wanted_report:vehicle_reports(*)' : '*');
         if (company_id) {
             // Safe check for company_id column presence
             try {

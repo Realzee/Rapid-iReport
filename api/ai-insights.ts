@@ -13,16 +13,14 @@ export default async function handler(req: Request, res: Response) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        return res.status(200).json({
-            insights: [
-                {
-                    vehicleType: "Toyota Hilux",
-                    likelyRecoveryArea: "Industrial areas / Borders",
-                    confidence: "Medium",
-                    reasoning: "AI service not configured, showing dummy data."
-                }
-            ]
-        });
+        return res.status(200).json([
+            {
+                vehicleType: "Toyota Hilux",
+                likelyRecoveryArea: "Industrial areas / Borders",
+                confidence: "Medium",
+                reasoning: "AI service not configured, showing dummy data."
+            }
+        ]);
     }
 
     try {
@@ -61,17 +59,13 @@ export default async function handler(req: Request, res: Response) {
         `;
 
         const response = await ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gemini-2.5-flash",
             contents: prompt,
         });
 
-        const text = response.text || '';
-        
-        const jsonMatch = text.match(/\[.*\]/s);
-        if (jsonMatch) {
-            return res.status(200).json(JSON.parse(jsonMatch[0]));
-        }
-        
+        let text = response.text || '';
+        text = text.replace(/```json\n/g, '').replace(/```/g, '').trim();
+
         try {
             return res.status(200).json(JSON.parse(text));
         } catch {
