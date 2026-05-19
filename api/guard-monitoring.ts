@@ -6,47 +6,6 @@ export default async function handler(req: any, res: any) {
         process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'dummy_key_to_prevent_crash'
     );
 
-    const hasServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-    if (!hasServiceKey && !req.supabaseAdmin) {
-        if (req.method === 'GET') {
-            const { table } = req.query;
-            if (table === 'sites') {
-                return res.status(200).json([
-                    { id: 'site-1', name: 'Downtown Corporate Center', location: { lat: -26.2041, lng: 28.0473 }, contact_person: 'John Doe', contact_number: '555-0101' },
-                    { id: 'site-2', name: 'Industrial Logistics Park', location: { lat: -26.1952, lng: 28.0340 }, contact_person: 'Jane Smith', contact_number: '555-0102' }
-                ]);
-            }
-            if (table === 'guards') {
-                return res.status(200).json([
-                    { id: 'guard-1', profile_id: 'prof-1', name: 'Michael Johnson', contact_number: '555-0201', psira_number: 'PS-123456', site_id: 'site-1' },
-                    { id: 'guard-2', profile_id: 'prof-2', name: 'Sarah Williams', contact_number: '555-0202', psira_number: 'PS-654321', site_id: 'site-1' }
-                ]);
-            }
-            if (table === 'supervisors') {
-                return res.status(200).json([
-                    { id: 'sup-1', profile_id: 'prof-3', name: 'David Brown', contact_number: '555-0301', site_id: 'site-1', site_ids: ['site-1', 'site-2'] }
-                ]);
-            }
-            if (table === 'routes') {
-                return res.status(200).json([
-                    { id: 'route-1', name: 'Perimeter Patrol', site_id: 'site-1', description: 'Walk around the main building perimeter' }
-                ]);
-            }
-            if (table === 'checkpoints') {
-                return res.status(200).json([
-                    { id: 'cp-1', name: 'North Gate', route_id: 'route-1', location: { lat: -26.2045, lng: 28.0470 }, sequence: 1 },
-                    { id: 'cp-2', name: 'West Entrance', route_id: 'route-1', location: { lat: -26.2040, lng: 28.0465 }, sequence: 2 }
-                ]);
-            }
-            if (table === 'patrol_logs') {
-                return res.status(200).json([
-                    { id: 'log-1', guard_id: 'guard-1', checkpoint_id: 'cp-1', site_id: 'site-1', scanned_at: new Date().toISOString(), verification_status: 'verified' }
-                ]);
-            }
-            return res.status(200).json([]);
-        }
-        return res.status(200).json({ success: true, dummy: true });
-    }
 
     if (req.method === 'GET') {
         const { table, company_id } = req.query;
