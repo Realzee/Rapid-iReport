@@ -666,15 +666,22 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     };
                     
                     try {
-                        addToast('Generating BOLO card... It will be copied to your clipboard.', 'info');
-                        await generateAndShareBolo(
+                        addToast('Generating BOLO card...', 'info');
+                        const result = await generateAndShareBolo(
                             reportForBolo, 
                             { ...profileData, company: Array.isArray(profileData.company) ? profileData.company[0] : profileData.company } as any, 
                             mainLogoUrl, 
                             'whatsapp', 
                             '+27846910111'
                         );
-                        addToast('BOLO card copied to clipboard. Please paste it (Ctrl+V) in the WhatsApp window.', 'success', 8000);
+                        
+                        if (result.method === 'share') {
+                            addToast('BOLO card shared via system menu.', 'success');
+                        } else if (result.method === 'clipboard') {
+                            addToast('BOLO card copied to clipboard. Please paste it (Ctrl+V) in the WhatsApp window.', 'success', 8000);
+                        } else {
+                            addToast('BOLO card downloaded. Please attach it manually in the WhatsApp window.', 'info', 8000);
+                        }
                     } catch (e) {
                         console.error('Failed to auto-generate BOLO for WhatsApp:', e);
                         addToast('Failed to auto-send BOLO via WhatsApp', 'error');

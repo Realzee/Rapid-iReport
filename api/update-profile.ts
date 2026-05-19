@@ -25,6 +25,7 @@ export default async function handler(req: any, res: any) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     try {
+        console.log(`Updating profile for ${userId} with:`, dbPayload);
         const { data, error } = await supabaseAdmin
             .from('profiles')
             .update(dbPayload)
@@ -32,9 +33,13 @@ export default async function handler(req: any, res: any) {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase update error:', error);
+            throw error;
+        }
         return res.status(200).json(data);
     } catch (error: any) {
+        console.error('Caught error in update-profile:', error);
         return res.status(400).json({ error: error.message });
     }
 }

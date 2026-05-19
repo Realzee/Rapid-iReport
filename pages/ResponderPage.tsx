@@ -297,6 +297,13 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                     setLocationError(null);
                     const { latitude, longitude } = position.coords;
                     
+                    // Throttle updates: only sync if at least 15 seconds passed since last sync
+                    const now = new Date();
+                    if (lastSyncTimestamp && now.getTime() - lastSyncTimestamp.getTime() < 15000) {
+                        setIsSyncing(false);
+                        return;
+                    }
+
                     if (typeof latitude === 'number' && !isNaN(latitude) && typeof longitude === 'number' && !isNaN(longitude)) {
                         try {
                             const response = await fetch('/api/update-profile', {

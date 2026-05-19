@@ -6,7 +6,7 @@ export const generateAndShareBolo = async (
     mainLogoUrl: string, 
     action: 'download' | 'share' | 'whatsapp' = 'download',
     targetPhone?: string
-): Promise<void> => {
+): Promise<{ method: 'share' | 'download' | 'clipboard' | 'none' }> => {
     
     const fetchImageAsDataURL = async (url: string) => {
         try {
@@ -387,7 +387,7 @@ export const generateAndShareBolo = async (
                     a.click();
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
-                    resolve();
+                    return { method: 'download' };
                 } else if (action === 'share') {
                     const filename = `bolo-${(report.ob_number || 'new').replace(/\//g, '-')}.png`;
                     const file = new File([blob], filename, { type: 'image/png' });
@@ -405,34 +405,58 @@ export const generateAndShareBolo = async (
                                 title: 'BOLO Card',
                                 text: caption
                             });
-                            resolve();
+                            return { method: 'share' };
                         } catch (error) {
-                            reject(error);
+                            // Silently fail and proceed to fallback
                         }
-                    } else {
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                        
-                        // We do not addToast here directly to keep util pure, but can open whatsapp
-                        const waUrl = `https://wa.me/${companyNumber}?text=${encodeURIComponent(caption)}`;
-                        window.open(waUrl, '_blank');
-                        resolve();
                     }
+                    
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    // We do not addToast here directly to keep util pure, but can open whatsapp
+                    const waUrl = `https://wa.me/${companyNumber}?text=${encodeURIComponent(caption)}`;
+                    window.open(waUrl, '_blank');
+                    return { method: 'download' };
                 } else if (action === 'whatsapp') {
                     const filename = `bolo-${(report.ob_number || 'new').replace(/\//g, '-')}.png`;
+                    const file = new File([blob], filename, { type: 'image/png' });
                     
+                    let caption = `*RAPID iREPORT NEW BOLO*\n`;
+                    caption += `*Type:* ${String(report.type).toUpperCase()}\n`;
+                    caption += `*Ref:* ${report.ob_number || 'N/A'}\n`;
+                    caption += report.license_plate ? `*Reg:* ${report.license_plate}\n` : '';
+                    caption += report.vehicle_make ? `*Make:* ${report.vehicle_make}\n` : '';
+
+                    // If navigator.share is available, it's the best way to "auto-attach" a file
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        try {
+                            await navigator.share({
+                                files: [file],
+                                title: 'NEW BOLO',
+                                text: caption
+                            });
+                            return { method: 'share' };
+                        } catch (error) {
+                            console.error('Share failed, falling back to download/URL method:', error);
+                        }
+                    }
+                    
+                    // Fallback for browsers that don't support file sharing
                     // Try to copy to clipboard for easy pasting
+                    let clipboardUsed = false;
                     if (navigator.clipboard && (window as any).ClipboardItem) {
                         try {
                             const data = [new ClipboardItem({ [blob.type]: blob })];
                             await navigator.clipboard.write(data);
                             console.log('Image copied to clipboard');
+                            clipboardUsed = true;
                         } catch (err) {
                             console.error('Failed to copy image to clipboard:', err);
                         }
@@ -447,16 +471,16 @@ export const generateAndShareBolo = async (
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
 
-                    let caption = `*RAPID iREPORT NEW BOLO*\n`;
-                    caption += `*Type:* ${String(report.type).toUpperCase()}\n`;
-                    caption += `*Ref:* ${report.ob_number || 'N/A'}\n`;
-                    caption += report.license_plate ? `*Reg:* ${report.license_plate}\n` : '';
-                    caption += report.vehicle_make ? `*Make:* ${report.vehicle_make}\n` : '';
+                    let captionText = `*RAPID iREPORT NEW BOLO*\n`;
+                    captionText += `*Type:* ${String(report.type).toUpperCase()}\n`;
+                    captionText += `*Ref:* ${report.ob_number || 'N/A'}\n`;
+                    captionText += report.license_plate ? `*Reg:* ${report.license_plate}\n` : '';
+                    captionText += report.vehicle_make ? `*Make:* ${report.vehicle_make}\n` : '';
                     
                     const waPhone = targetPhone ? targetPhone.replace(/\D/g, '') : '';
-                    const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(caption)}`;
+                    const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(captionText)}`;
                     window.open(waUrl, '_blank');
-                    resolve();
+                    return { method: clipboardUsed ? 'clipboard' : 'download' };
                 }
             }, 'image/png');
         });
