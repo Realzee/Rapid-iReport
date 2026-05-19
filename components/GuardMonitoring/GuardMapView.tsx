@@ -4,7 +4,7 @@ import L from 'leaflet';
 import { Responder, ResponderStatus } from '../../types';
 
 interface GuardMapViewProps {
-    responders: Responder[];
+    guards: any[];
     sites?: any[];
 }
 
@@ -49,7 +49,7 @@ const createSiteIcon = () => {
     });
 };
 
-const GuardMapView: React.FC<GuardMapViewProps> = ({ responders, sites = [] }) => {
+const GuardMapView: React.FC<GuardMapViewProps> = ({ guards, sites = [] }) => {
     return (
         <div className="h-[500px] w-full rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow">
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
@@ -78,19 +78,19 @@ const GuardMapView: React.FC<GuardMapViewProps> = ({ responders, sites = [] }) =
                     </React.Fragment>
                 ))}
 
-                {/* Responders (Guards) */}
-                {responders.map(responder => (
-                    responder.location_coords && (
+                {/* Guards */}
+                {guards.map(guard => (
+                    guard.location_coords && (
                         <Marker
-                            key={responder.id}
-                            position={[responder.location_coords.lat, responder.location_coords.lng]}
-                            icon={createResponderIcon(responder.status)}
+                            key={guard.id}
+                            position={[guard.location_coords.lat, guard.location_coords.lng]}
+                            icon={createResponderIcon(guard.status || ResponderStatus.AVAILABLE)}
                         >
-                            <Tooltip>{`${responder.first_name} ${responder.surname}`}</Tooltip>
+                            <Tooltip>{guard.name || guard.first_name || 'Unknown Guard'}</Tooltip>
                             <Popup>
                                 <div>
-                                    <p className="font-bold">{responder.first_name} {responder.surname}</p>
-                                    <p className="capitalize">{responder.status.replace('_', ' ')}</p>
+                                    <p className="font-bold">{guard.name || guard.first_name || 'Unknown Guard'}</p>
+                                    <p className="capitalize">{(guard.status || 'available').replace('_', ' ')}</p>
                                 </div>
                             </Popup>
                         </Marker>

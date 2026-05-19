@@ -605,7 +605,9 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                 ) : filteredItems.map((item) => (
                                     <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                                         <td className="px-6 py-4">
-                                            <div className="font-medium text-gray-900 dark:text-white">{item.name}</div>
+                                            <div className="font-medium text-gray-900 dark:text-white">
+                                                {item.name || (item.first_name ? `${item.first_name} ${item.surname || ''}` : '') || (item.profile_id ? users.find(u => u.id === item.profile_id)?.email : 'Unnamed Item')}
+                                            </div>
                                             {item.id && <div className="text-xs text-gray-400 font-mono mt-0.5">{item.id.slice(0, 8)}...</div>}
                                         </td>
                                         <td className="px-6 py-4">

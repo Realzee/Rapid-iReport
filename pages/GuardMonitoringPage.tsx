@@ -147,7 +147,7 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
             {activeTab === 'overview' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <GuardStatusDashboard responders={responders} data={data} />
-                    <GuardMapView responders={responders} sites={data.sites} />
+                    <GuardMapView guards={data.guards || []} sites={data.sites} />
                 </div>
             )}
             {activeTab === 'config' && <ConfigurationPanel sites={data.sites} profile={profile} />}

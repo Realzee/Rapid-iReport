@@ -9,11 +9,13 @@ interface GuardStatusDashboardProps {
 }
 
 const GuardStatusDashboard: React.FC<GuardStatusDashboardProps> = ({ responders, data }) => {
+    const guards = data.guards || [];
+
     const counts = {
-        available: responders.filter(r => r.status === ResponderStatus.AVAILABLE).length,
-        enRoute: responders.filter(r => r.status === ResponderStatus.EN_ROUTE).length,
-        onScene: responders.filter(r => r.status === ResponderStatus.ON_SCENE).length,
-        offDuty: responders.filter(r => r.status === ResponderStatus.OFF_DUTY).length,
+        available: guards.filter(r => r.status === 'available').length,
+        enRoute: guards.filter(r => r.status === 'en_route').length,
+        onScene: guards.filter(r => r.status === 'on_scene' || r.status === 'patrolling').length,
+        offDuty: guards.filter(r => !r.status || r.status === 'off_duty').length,
     };
 
     const [isPanicActive, setIsPanicActive] = React.useState(false);
@@ -69,10 +71,12 @@ const GuardStatusDashboard: React.FC<GuardStatusDashboardProps> = ({ responders,
             <div className="mt-4">
                 <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-2">All Guards</h4>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {responders.map(r => (
-                        <div key={r.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                            <span className="text-sm text-gray-900 dark:text-white">{r.first_name} {r.surname}</span>
-                            <StatusBadge status={r.status} />
+                    {guards.length === 0 ? (
+                        <div className="text-gray-500 text-sm py-4 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">No guards found. Please add guards in the Configuration tab.</div>
+                    ) : guards.map(r => (
+                        <div key={r.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-100 dark:border-gray-700">
+                            <span className="text-sm text-gray-900 dark:text-white font-medium">{r.name || r.first_name || 'Unknown Guard'} {r.contact_number ? `(${r.contact_number})` : ''}</span>
+                            <StatusBadge status={r.status as ResponderStatus || ResponderStatus.OFF_DUTY} />
                         </div>
                     ))}
                 </div>
