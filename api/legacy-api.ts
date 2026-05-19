@@ -9,9 +9,21 @@ export default async function handler(req: any, res: any) {
 
     const action = req.query.action || req.body?.action;
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !req.supabaseAdmin) {
+    const hasServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+    if (!hasServiceKey && !req.supabaseAdmin) {
         if (req.method === 'GET') return res.status(200).json(action === 'count' ? { total: 0 } : []);
         return res.status(200).json({ success: true, dummy: true });
+    }
+
+    if (action === 'debug-tables' && req.method === 'GET') {
+        try {
+            const { data, error } = await supabaseAdmin.rpc('eval', {
+                query: "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';"
+            });
+            return res.status(200).json({ data, error });
+        } catch (e: any) {
+            return res.status(500).json({ error: e.message });
+        }
     }
 
     if (action === 'count' && req.method === 'GET') {

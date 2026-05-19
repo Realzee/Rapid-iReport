@@ -5,7 +5,8 @@ export default async function handler(req: any, res: any) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !req.supabaseAdmin) {
+    const hasServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+    if (!hasServiceKey && !req.supabaseAdmin) {
         return res.status(200).json({ success: true, dummy: true });
     }
 
