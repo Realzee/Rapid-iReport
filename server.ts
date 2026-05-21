@@ -31,18 +31,18 @@ const getSafeSupabaseUrl = (url: string | undefined): string => {
     return trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
 };
 
-const supabaseUrl = getSafeSupabaseUrl(process.env.SUPABASE_URL);
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = getSafeSupabaseUrl(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL);
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseServiceKey) {
-    console.warn('SUPABASE_SERVICE_ROLE_KEY is not set. Administrative features will be limited.');
+    console.warn('SUPABASE_SERVICE_ROLE_KEY and fallback keys are not set. Administrative features will be limited.');
 }
 
-// Ensure createClient doesn't crash the server start if URL is invalid
+// Ensure createClient doesn't crash the server start if URL or key is invalid
 let supabaseAdmin: any = null;
 try {
-    if (supabaseUrl && !supabaseUrl.includes('undefined')) {
-        supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || '', {
+    if (supabaseUrl && !supabaseUrl.includes('undefined') && supabaseServiceKey && supabaseServiceKey.trim() !== '') {
+        supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
             auth: { autoRefreshToken: false, persistSession: false }
         });
     }

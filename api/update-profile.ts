@@ -62,8 +62,12 @@ export default async function handler(req: any, res: any) {
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
-                .single();
+                .maybeSingle();
             if (getError) throw getError;
+            if (!currentProfile) {
+                console.warn(`Profile not found for ${userId} during empty-update fetch.`);
+                return res.status(200).json({ message: 'Profile not found', id: userId });
+            }
             return res.status(200).json(currentProfile);
         }
 
@@ -72,12 +76,18 @@ export default async function handler(req: any, res: any) {
             .update(cleanedPayload)
             .eq('id', userId)
             .select()
-            .single();
+            .maybeSingle();
 
         if (error) {
             console.error('Supabase update error:', error);
             throw error;
         }
+
+        if (!data) {
+            console.warn(`Profile not found for ${userId} during update payload save.`);
+            return res.status(200).json({ message: 'Profile not found to update', id: userId });
+        }
+
         return res.status(200).json(data);
     } catch (error: any) {
         console.error('Caught error in update-profile:', error);
