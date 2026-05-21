@@ -13,7 +13,7 @@ export default async function handler(req: any, res: any) {
     const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co';
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'dummy_key_to_prevent_crash';
 
-    if (!supabaseServiceKey) {
+    if (!supabaseServiceKey || supabaseServiceKey === 'dummy_key_to_prevent_crash') {
         return res.status(500).json({ 
             error: 'Configuration missing', 
             message: 'SUPABASE_SERVICE_ROLE_KEY is not set on the server.' 
@@ -91,6 +91,10 @@ export default async function handler(req: any, res: any) {
         return res.status(200).json(data);
     } catch (error: any) {
         console.error('Caught error in update-profile:', error);
-        return res.status(400).json({ error: error.message });
+        const statusCode = error.status || error.code ? 500 : 400; // Let's use 500 for server errors
+        return res.status(error.status || 500).json({ 
+            error: error.message || 'An unexpected error occurred', 
+            details: error 
+        });
     }
 }
