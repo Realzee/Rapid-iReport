@@ -9,7 +9,7 @@ import ReportModal from './ReportModal';
 import ArchiveReportModal from './ArchiveReportModal';
 import ReportDetailCard from './ReportDetailCard';
 import MapModal from './MapModal';
-import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon, ChatAlt2Icon, CarIcon, CrimeIcon } from './icons';
+import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon, ChatAlt2Icon, CarIcon, CrimeIcon, WrenchIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
 import { useChat } from '../contexts/ChatContext';
@@ -20,6 +20,7 @@ interface DashboardProps {
     profile: Profile;
     initialReportId?: string | null;
     onInitialReportHandled?: () => void;
+    setView?: (view: any) => void;
 }
 
 const ACTIVE_STATUSES = [
@@ -30,7 +31,7 @@ const ACTIVE_STATUSES = [
     ReportStatus.ON_SCENE,
 ];
 
-const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onInitialReportHandled }) => {
+const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onInitialReportHandled, setView }) => {
     const [reports, setReports] = useState<Report[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
@@ -494,6 +495,16 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                         <p className="text-gray-500 dark:text-gray-400 mt-1">Live operational overview of community safety.</p>
                     </div>
                     <div className="mt-4 md:mt-0 flex items-center gap-4">
+                        {setView && (
+                            <button
+                                onClick={() => setView('technician_dashboard')}
+                                className="px-6 py-3.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold rounded-xl shadow-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-2"
+                                title="Open technical operations console"
+                            >
+                                <WrenchIcon className="w-5 h-5" />
+                                <span>Tech Ops</span>
+                            </button>
+                        )}
                         <button
                             onClick={() => openChat(CONTROLLER_CHANNEL_REPORT)}
                             className="px-6 py-3.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold rounded-xl shadow-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-2"

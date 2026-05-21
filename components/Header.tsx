@@ -223,9 +223,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
           <button onClick={() => clickHandler('attendance')} className={classGetter('attendance')}>
             <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Attendance
           </button>
-          <button onClick={() => clickHandler('technician_dashboard')} className={classGetter('technician_dashboard')}>
-            <WrenchIcon className="w-4 h-4 mr-2" /> Tech Ops
-          </button>
           <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>
             <SearchIcon className="w-4 h-4 mr-2" /> Global Search
           </button>
@@ -273,9 +270,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         </button>
         <button onClick={() => clickHandler('map')} className={classGetter('map')}>
           <MapIcon className="w-4 h-4 mr-2" /> Map
-        </button>
-        <button onClick={() => clickHandler('technician_dashboard')} className={classGetter('technician_dashboard')}>
-          <WrenchIcon className="w-4 h-4 mr-2" /> Tech Ops
         </button>
         {canAccessAdminPages && (
           <>
