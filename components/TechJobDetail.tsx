@@ -25,8 +25,8 @@ const TechJobDetail: React.FC<TechJobDetailProps> = ({
     const [sendingMsg, setSendingMsg] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
-    // Active Tab in detail panel: 'status' | 'materials' | 'chat' | 'telemetry'
-    const [activeTab, setActiveTab] = useState<'status' | 'materials' | 'chat' | 'telemetry'>('status');
+    // Active Tab in detail panel: 'status' | 'materials' | 'chat'
+    const [activeTab, setActiveTab] = useState<'status' | 'materials' | 'chat'>('status');
 
     // Filter to technicians
     const technicians = allUsers.filter(u => u.role === UserRole.TECHNICIAN);
@@ -189,12 +189,6 @@ const TechJobDetail: React.FC<TechJobDetailProps> = ({
                     className={`flex-grow py-2 rounded-lg transition-all ${activeTab === 'chat' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-950 dark:text-white' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                 >
                     Live Chat
-                </button>
-                <button
-                    onClick={() => setActiveTab('telemetry')}
-                    className={`flex-grow py-2 rounded-lg transition-all ${activeTab === 'telemetry' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-950 dark:text-white' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
-                >
-                    Vehicle Tracker
                 </button>
             </div>
 
@@ -365,62 +359,6 @@ const TechJobDetail: React.FC<TechJobDetailProps> = ({
                                 Send
                             </button>
                         </form>
-                    </div>
-                )}
-
-                {/* 4. Vehicle Tracking Telemetry */}
-                {activeTab === 'telemetry' && (
-                    <div className="space-y-4 text-xs text-left">
-                        <h4 className="font-bold text-sm text-gray-900 dark:text-white">Active Vehicle Telemetry</h4>
-                        
-                        {assignedProfile ? (
-                            <div className="bg-gray-50 dark:bg-gray-850 border border-gray-150 dark:border-gray-800 rounded-2xl p-4 space-y-4">
-                                <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-800">
-                                    <div>
-                                        <span className="block font-bold text-gray-900 dark:text-white">
-                                            {assignedProfile.first_name} {assignedProfile.surname}'s Mobile
-                                        </span>
-                                        <span className="text-[10px] text-gray-450">
-                                            Role: Technical Specialist
-                                        </span>
-                                    </div>
-                                    <span className="px-2 py-0.5 bg-green-500/10 text-green-400 font-extrabold rounded text-[9px] uppercase tracking-wider animate-pulse">
-                                        ● GPS Link Live
-                                    </span>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3 font-medium">
-                                    <div className="bg-white dark:bg-gray-900 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800">
-                                        <span className="block text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold mb-1">Vehicle Match</span>
-                                        <span className="font-semibold text-gray-900 dark:text-white font-mono">
-                                            {assignedProfile.vehicle_reg || 'Tech Van EN-R1'}
-                                        </span>
-                                    </div>
-                                    <div className="bg-white dark:bg-gray-900 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800">
-                                        <span className="block text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold mb-1">Speed Radar</span>
-                                        <span className="font-semibold text-gray-900 dark:text-white font-mono">
-                                            {job.status === 'in_progress' ? 'STATIONARY' : '48 KM/H'}
-                                        </span>
-                                    </div>
-                                    <div className="bg-white dark:bg-gray-900 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800">
-                                        <span className="block text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold mb-1">Current Heading</span>
-                                        <span className="font-semibold text-gray-900 dark:text-white">
-                                            {job.status === 'in_progress' ? 'JOB SITE WORK' : 'M1 SOUTHBOUND'}
-                                        </span>
-                                    </div>
-                                    <div className="bg-white dark:bg-gray-900 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800">
-                                        <span className="block text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold mb-1">ETA Site Destination</span>
-                                        <span className="font-semibold text-gray-900 dark:text-white">
-                                            {job.status === 'completed' ? 'ON SITE - COMPLETED' : (job.status === 'in_progress' ? 'ON SITE - ACTIVE' : '8 MINS')}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="py-12 bg-gray-50 dark:bg-gray-850 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 text-center text-gray-400 dark:text-gray-500">
-                                No technician is assigned yet to stream telemetry tracking.
-                            </div>
-                        )}
                     </div>
                 )}
 

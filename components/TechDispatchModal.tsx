@@ -97,7 +97,7 @@ const TechDispatchModal: React.FC<TechDispatchModalProps> = ({
                             type="text"
                             value={title}
                             onChange={e => setTitle(e.target.value)}
-                            placeholder="e.g. Server Room UPS Replacement / Lock Maintenance"
+                            placeholder="e.g. Vehicle Tracker Installation / Server Room UPS"
                             className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
                             required
                         />
