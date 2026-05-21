@@ -10,7 +10,7 @@ export default async function handler(req: any, res: any) {
     // Flatten updates if provided, otherwise use rest of the body
     let dbPayload = updates ? { ...updates } : { ...rest };
     
-    const supabaseUrl = process.env.SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co';
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co';
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'dummy_key_to_prevent_crash';
 
     if (!supabaseServiceKey) {
