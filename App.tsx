@@ -23,6 +23,7 @@ const GuardMonitoringPage = lazy(() => import('./pages/GuardMonitoringPage'));
 const GateAccessPage = lazy(() => import('./pages/GateAccessPage'));
 const UserActivityPage = lazy(() => import('./pages/UserActivityPage'));
 const GlobalSearchPage = lazy(() => import('./pages/GlobalSearchPage'));
+const TechnicianDashboardPage = lazy(() => import('./pages/TechnicianDashboardPage'));
 
 import AnnouncementsBanner from './components/AnnouncementsBanner';
 import { supabase } from './utils/supabase';
@@ -41,7 +42,7 @@ import { useToast } from './contexts/ToastContext';
 import { useTheme } from './contexts/ThemeContext';
 import MatrixRain from './components/MatrixRain';
 
-type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner';
+type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner' | 'technician_dashboard';
 
 const isProfileComplete = (profile: Profile) => {
     if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
@@ -193,6 +194,8 @@ const App: React.FC = () => {
                     logUserAction(data.id, 'USER_LOGIN', `User ${data.email} signed in`);
                     if (data.role === UserRole.CONTROLLER) {
                         setView('controller');
+                    } else if (data.role === UserRole.TECHNICIAN) {
+                        setView('technician_dashboard');
                     }
                     setError(null);
                     setupPresence(session.user.id);
@@ -238,6 +241,8 @@ const App: React.FC = () => {
                         setProfile(newProfile);
                         if (newProfile.role === UserRole.CONTROLLER) {
                             setView('controller');
+                        } else if (newProfile.role === UserRole.TECHNICIAN) {
+                            setView('technician_dashboard');
                         }
                         setError(null);
                         setupPresence(user.id);
@@ -277,12 +282,20 @@ const App: React.FC = () => {
         setView('controller');
         return;
       }
+
+      if (profile.role === UserRole.TECHNICIAN && view !== 'technician_dashboard' && view !== 'profile') {
+        setView('technician_dashboard');
+        return;
+      }
       
       const adminPages: View[] = ['users', 'companies'];
       if (adminPages.includes(view) && ![UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role)) {
         setView('dashboard');
       }
       if (view === 'controller' && ![UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role)) {
+        setView('dashboard');
+      }
+      if (view === 'technician_dashboard' && ![UserRole.ADMIN, UserRole.MODERATOR, UserRole.TECHNICIAN].includes(profile.role)) {
         setView('dashboard');
       }
     }
@@ -373,6 +386,12 @@ const App: React.FC = () => {
                 return view === 'profile'
                     ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
                     : <UserDashboardPage profile={profile} />;
+            }
+            
+            if (profile.role === UserRole.TECHNICIAN) {
+                return view === 'profile'
+                    ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('technician_dashboard')} />
+                    : <TechnicianDashboardPage profile={profile} />;
             }
             
             if (profile.role === UserRole.CONTROLLER) {

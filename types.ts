@@ -7,6 +7,7 @@ export enum UserRole {
   GUARD = 'guard',
   SUPERVISOR = 'supervisor',
   USER = 'user',
+  TECHNICIAN = 'technician',
 }
 
 export enum UserStatus {
@@ -515,5 +516,39 @@ export interface UserActivityLog {
     company?: {
       name: string;
     };
+  };
+}
+
+export interface TechJob {
+  id: string;
+  company_id?: string;
+  title: string;
+  description?: string;
+  status: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  location?: string;
+  location_coords?: LocationCoords;
+  assigned_to?: string;
+  reported_by?: string;
+  parts_logged?: { id: string; name: string; qty: number; cost?: number }[];
+  created_at: string;
+  updated_at: string;
+  assigned_to_profile?: {
+    first_name: string;
+    surname: string;
+    email: string;
+  };
+}
+
+export interface TechChatMessage {
+  id: string;
+  job_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  profile?: {
+    first_name: string;
+    surname: string;
+    avatar_url?: string;
   };
 }

@@ -1,12 +1,12 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Report, Profile, Responder, ResponderStatus, UserRole, Severity, ReportStatus, CrimeReport, VehicleReport } from '../types';
+import { Report, Profile, Responder, ResponderStatus, UserRole, Severity, ReportStatus, CrimeReport, VehicleReport, TechJob } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
 import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
 import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
-import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, MapIcon, ChatAlt2Icon, RadioTowerIcon } from '../components/icons';
+import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, MapIcon, ChatAlt2Icon, RadioTowerIcon, WrenchIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
 import CirculationListManager from '../components/CirculationListManager';
 import { useChat } from '../contexts/ChatContext';
@@ -14,13 +14,17 @@ import { useToast } from '../contexts/ToastContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
 import { useWakeLock } from '../hooks/useWakeLock';
 
+import TechStack from '../components/TechStack';
+import TechJobDetail from '../components/TechJobDetail';
+import TechDispatchModal from '../components/TechDispatchModal';
+
 interface ControllerPageProps {
     profile: Profile;
     initialReportId?: string | null;
     onInitialReportHandled?: () => void;
 }
 
-type ControllerTab = 'events' | 'responders';
+type ControllerTab = 'events' | 'responders' | 'tech';
 
 const ACTIVE_STATUSES = [
     ReportStatus.PENDING,
@@ -78,6 +82,38 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         }
     }, [reports]);
     const [isDetailsVisible, setIsDetailsVisible] = useState(true);
+
+    const [techJobs, setTechJobs] = useState<TechJob[]>([]);
+    const [selectedTechJobId, setSelectedTechJobId] = useState<string | null>(null);
+    const [isTechDispatchOpen, setIsTechDispatchOpen] = useState(false);
+
+    const fetchTechJobs = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('tech_jobs')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            setTechJobs(data as TechJob[] || []);
+        } catch (e: any) {
+            console.error("Error loading controller tech jobs:", e);
+        }
+    };
+
+    useEffect(() => {
+        fetchTechJobs();
+
+        const channel = supabase
+            .channel('controller_realtime_tech_jobs')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tech_jobs' }, () => {
+                fetchTechJobs();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
     const { openChat } = useChat();
     const { addToast } = useToast();
     const [newPanicReportId, setNewPanicReportId] = useState<string | null>(null);
@@ -539,9 +575,10 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 <div className="lg:col-span-3 print:hidden lg:h-[calc(100vh-12rem)]">
                     <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex flex-col backdrop-blur-lg h-full">
                         <div className="flex-shrink-0 mb-4 p-1 bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg">
-                            <div className="flex">
-                                <button onClick={() => setActiveTab('events')} className={tabButtonClasses('events')}><ZapIcon className="w-5 h-5" /> Live Events</button>
-                                <button onClick={() => setActiveTab('responders')} className={tabButtonClasses('responders')}><UsersIcon className="w-5 h-5" /> Responders</button>
+                            <div className="flex flex-wrap gap-1">
+                                <button onClick={() => setActiveTab('events')} className={`flex-grow py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${activeTab === 'events' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}><ZapIcon className="w-4 h-4" /> Events</button>
+                                <button onClick={() => setActiveTab('responders')} className={`flex-grow py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${activeTab === 'responders' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}><UsersIcon className="w-4 h-4" /> Response</button>
+                                <button onClick={() => setActiveTab('tech')} className={`flex-grow py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${activeTab === 'tech' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}><WrenchIcon className="w-4 h-4" /> Tech Ops</button>
                             </div>
                         </div>
                         
@@ -575,7 +612,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                     unviewedReportIds={unviewedReportIds}
                                 />
                             </>
-                        ) : (
+                        ) : activeTab === 'responders' ? (
                             <ResponderStack
                                 responders={responders}
                                 reports={displayReports}
@@ -583,6 +620,14 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 selectedResponderId={selectedResponderId}
                                 onAssign={handleAssignResponder}
                                 onResponderSelect={handleResponderSelect}
+                            />
+                        ) : (
+                            <TechStack
+                                jobs={techJobs}
+                                allUsers={allUsers}
+                                onSelectJob={setSelectedTechJobId}
+                                selectedJobId={selectedTechJobId}
+                                onCreateJobClick={() => setIsTechDispatchOpen(true)}
                             />
                         )}
                     </div>
@@ -617,7 +662,20 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                         </div>
                         {isDetailsVisible && (
                              <div className="lg:col-span-4 space-y-4 lg:h-[calc(100vh-12rem)]">
-                                {selectedReport ? (
+                                {activeTab === 'tech' ? (
+                                    selectedTechJobId && techJobs.find(j => j.id === selectedTechJobId) ? (
+                                        <TechJobDetail
+                                            key={selectedTechJobId}
+                                            job={techJobs.find(j => j.id === selectedTechJobId)!}
+                                            allUsers={allUsers}
+                                            onRefresh={fetchTechJobs}
+                                        />
+                                    ) : (
+                                        <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden min-h-[40vh]">
+                                            <p className="text-gray-500 dark:text-gray-400">Select a technician job to view details &amp; track vehicle.</p>
+                                        </div>
+                                    )
+                                ) : selectedReport ? (
                                     <ControllerReportDetail
                                         key={selectedReport.id}
                                         report={selectedReport}
@@ -658,6 +716,12 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 reportToEdit={null}
                 isQuickAdd={true}
                 onReportSubmitted={fetchData}
+            />
+            <TechDispatchModal
+                isOpen={isTechDispatchOpen}
+                onClose={() => setIsTechDispatchOpen(false)}
+                allUsers={allUsers}
+                onJobDispatched={fetchTechJobs}
             />
         </div>
     );

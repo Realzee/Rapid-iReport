@@ -50,6 +50,67 @@ try {
     console.error('Failed to initialize supabaseAdmin:', e);
 }
 
+// Tech Operations migrations
+async function runMigrations() {
+    if (!supabaseAdmin) return;
+    console.log('Running system migrations for Tech Ops module...');
+    const queries = [
+        "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'technician';",
+        `CREATE TABLE IF NOT EXISTS public.tech_jobs (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL,
+            title text NOT NULL,
+            description text,
+            status text NOT NULL DEFAULT 'pending',
+            severity text NOT NULL DEFAULT 'medium',
+            location text,
+            location_coords jsonb DEFAULT '{"lat": -26.2041, "lng": 28.0473}'::jsonb,
+            assigned_to uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+            reported_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+            parts_logged jsonb DEFAULT '[]'::jsonb,
+            created_at timestamptz DEFAULT now(),
+            updated_at timestamptz DEFAULT now()
+        );`,
+        "ALTER TABLE public.tech_jobs ENABLE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS \"Allow select tech_jobs for authenticated\" ON public.tech_jobs;",
+        "CREATE POLICY \"Allow select tech_jobs for authenticated\" ON public.tech_jobs FOR SELECT TO authenticated USING (true);",
+        "DROP POLICY IF EXISTS \"Allow insert tech_jobs for authenticated\" ON public.tech_jobs;",
+        "CREATE POLICY \"Allow insert tech_jobs for authenticated\" ON public.tech_jobs FOR INSERT TO authenticated WITH CHECK (true);",
+        "DROP POLICY IF EXISTS \"Allow update tech_jobs for authenticated\" ON public.tech_jobs;",
+        "CREATE POLICY \"Allow update tech_jobs for authenticated\" ON public.tech_jobs FOR UPDATE TO authenticated USING (true) WITH CHECK (true);",
+        "DROP POLICY IF EXISTS \"Allow delete tech_jobs for authenticated\" ON public.tech_jobs;",
+        "CREATE POLICY \"Allow delete tech_jobs for authenticated\" ON public.tech_jobs FOR DELETE TO authenticated USING (true);",
+        `CREATE TABLE IF NOT EXISTS public.tech_chat_messages (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            job_id uuid REFERENCES public.tech_jobs(id) ON DELETE CASCADE,
+            sender_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+            content text NOT NULL,
+            created_at timestamptz DEFAULT now()
+        );`,
+        "ALTER TABLE public.tech_chat_messages ENABLE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS \"Allow select tech_chat for authenticated\" ON public.tech_chat_messages;",
+        "CREATE POLICY \"Allow select tech_chat for authenticated\" ON public.tech_chat_messages FOR SELECT TO authenticated USING (true);",
+        "DROP POLICY IF EXISTS \"Allow insert tech_chat for authenticated\" ON public.tech_chat_messages;",
+        "CREATE POLICY \"Allow insert tech_chat for authenticated\" ON public.tech_chat_messages FOR INSERT TO authenticated WITH CHECK (true);",
+        "NOTIFY pgrst, 'reload schema';",
+        "SELECT pg_notify('pgrst', 'reload schema');"
+    ];
+
+    for (const q of queries) {
+        try {
+            const { error } = await supabaseAdmin.rpc('eval', { query: q });
+            if (error) {
+                console.log(`[Tech Ops Migrations] Error executing: "${q.substring(0, 45)}..." ->`, error.message);
+            } else {
+                console.log(`[Tech Ops Migrations] Executed: "${q.substring(0, 45)}..."`);
+            }
+        } catch (e: any) {
+            console.error('[Tech Ops Migrations] Error:', e.message);
+        }
+    }
+}
+runMigrations();
+
 app.use(express.json());
 
 // Health check

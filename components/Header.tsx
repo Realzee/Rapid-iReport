@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, memo } from 'react';
-import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, GlobeIcon, RadioTowerIcon, BuildingIcon, HistoryIcon, SearchIcon, ChartBarIcon, MapIcon, UsersIcon, ClipboardCheckIcon, ScanIcon } from './icons';
+import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, GlobeIcon, RadioTowerIcon, BuildingIcon, HistoryIcon, SearchIcon, ChartBarIcon, MapIcon, UsersIcon, ClipboardCheckIcon, ScanIcon, WrenchIcon } from './icons';
 import { Profile, UserRole, Notification } from '../types';
 import { supabase } from '../utils/supabase';
 import { useSettings } from '../contexts/SettingsContext';
@@ -12,7 +12,7 @@ import { logUserAction } from '../utils/logger';
 
 interface HeaderProps {
     currentView: string;
-    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner') => void;
+    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'technician_dashboard') => void;
     profile: Profile;
     onNotificationClick: (notification: Notification) => void;
 }
@@ -179,7 +179,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   };
 
   const NavLinks: React.FC<{mobile?: boolean}> = ({ mobile = false}) => {
-    const clickHandler = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'attendance' | 'patrol_scanner') => mobile ? handleMobileLinkClick(view as any) : setView(view as any);
+    const clickHandler = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'attendance' | 'patrol_scanner' | 'technician_dashboard') => mobile ? handleMobileLinkClick(view as any) : setView(view as any);
     const classGetter = mobile ? mobileNavLinkClasses : navLinkClasses;
 
     if (profile.role === UserRole.USER) {
@@ -232,6 +232,16 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
 
     if (profile.role === UserRole.RESPONDER) {
       return null;
+    }
+
+    if (profile.role === UserRole.TECHNICIAN) {
+      return (
+        <>
+          <button onClick={() => clickHandler('technician_dashboard')} className={classGetter('technician_dashboard')}>
+            <WrenchIcon className="w-4 h-4 mr-2" /> Tech Ops
+          </button>
+        </>
+      );
     }
   
     // For Admin/Moderator

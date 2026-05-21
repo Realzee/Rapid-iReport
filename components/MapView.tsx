@@ -19,7 +19,7 @@ interface MapViewProps {
   onResponderSelect?: (responderId: string) => void;
   onAssignResponder?: (responderId: string) => void;
   allUsers: Profile[];
-  activeTab?: 'events' | 'responders';
+  activeTab?: 'events' | 'responders' | 'tech';
   showHighRiskAreas?: boolean;
 }
 
@@ -143,7 +143,7 @@ const createResponderIcon = (status: ResponderStatus, isInHighRisk: boolean) => 
 };
 
 
-const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report | undefined, responders: Responder[], selectedResponder: Responder | undefined, selectedResponderId: string | null, activeTab?: 'events' | 'responders' }> = ({ reports, selectedReport, responders, selectedResponder, selectedResponderId, activeTab }) => {
+const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report | undefined, responders: Responder[], selectedResponder: Responder | undefined, selectedResponderId: string | null, activeTab?: 'events' | 'responders' | 'tech' }> = ({ reports, selectedReport, responders, selectedResponder, selectedResponderId, activeTab }) => {
     const map = useMap();
     useEffect(() => {
         // Use a timeout to allow CSS transitions on the container to finish before recalculating map size and position
