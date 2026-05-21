@@ -12,7 +12,7 @@ import { logUserAction } from '../utils/logger';
 
 interface HeaderProps {
     currentView: string;
-    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'technician_dashboard') => void;
+    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops') => void;
     profile: Profile;
     onNotificationClick: (notification: Notification) => void;
 }
@@ -179,7 +179,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   };
 
   const NavLinks: React.FC<{mobile?: boolean}> = ({ mobile = false}) => {
-    const clickHandler = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'attendance' | 'patrol_scanner' | 'technician_dashboard') => mobile ? handleMobileLinkClick(view as any) : setView(view as any);
+    const clickHandler = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'attendance' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops') => mobile ? handleMobileLinkClick(view as any) : setView(view as any);
     const classGetter = mobile ? mobileNavLinkClasses : navLinkClasses;
 
     if (profile.role === UserRole.USER) {
@@ -217,6 +217,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
           <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>
             <RadioTowerIcon className="w-4 h-4 mr-2" /> Controller
           </button>
+          <button onClick={() => clickHandler('tech_ops')} className={classGetter('tech_ops')}>
+            <WrenchIcon className="w-4 h-4 mr-2 text-teal-400" /> Tech Ops
+          </button>
           <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>
             <BuildingIcon className="w-4 h-4 mr-2" /> Guarding
           </button>
@@ -252,6 +255,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         </button>
         <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>
           <RadioTowerIcon className="w-4 h-4 mr-2" /> Controller
+        </button>
+        <button onClick={() => clickHandler('tech_ops')} className={classGetter('tech_ops')}>
+          <WrenchIcon className="w-4 h-4 mr-2 text-teal-400" /> Tech Ops
         </button>
         <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>
           <BuildingIcon className="w-4 h-4 mr-2" /> Guarding
