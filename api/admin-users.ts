@@ -62,7 +62,11 @@ export default async function handler(req: any, res: any) {
             return res.status(200).json({ success: true, user: authData.user });
         } catch (error: any) {
              console.error('Admin Create User Exception:', error);
-             return res.status(400).json({ error: error.message });
+             let msg = error.message;
+             if (msg === 'Invalid API key') {
+                 msg = 'Invalid API key. Please ensure your SUPABASE_SERVICE_ROLE_KEY is a valid service_role key, not an anon key.';
+             }
+             return res.status(400).json({ error: msg });
         }
     } else if (req.method === 'DELETE') {
          const { id } = req.body;

@@ -23,6 +23,11 @@ export default async function handler(req: any, res: any) {
         if (error) throw error;
         return res.status(200).json(data);
     } catch (error: any) {
-        return res.status(400).json({ error: error.message });
+        console.error('Error updating setting:', error);
+        let msg = error.message || 'Failed to update setting';
+        if (msg === 'Invalid API key') {
+            msg = 'Invalid API key. Please ensure your SUPABASE_SERVICE_ROLE_KEY is a valid service_role key.';
+        }
+        return res.status(400).json({ error: msg });
     }
 }
