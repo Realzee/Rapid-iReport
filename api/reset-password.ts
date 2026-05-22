@@ -11,8 +11,14 @@ export default async function handler(req: any, res: any) {
     const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co';
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'dummy_key_to_prevent_crash';
 
-    if (!supabaseServiceKey) {
+    if (!supabaseServiceKey || supabaseServiceKey === 'dummy_key_to_prevent_crash') {
         return res.status(500).json({ error: 'Server configuration error: Missing Service Role Key' });
+    }
+
+    if (supabaseServiceKey === process.env.VITE_SUPABASE_ANON_KEY && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return res.status(400).json({ 
+            error: 'Server configuration error: SUPABASE_SERVICE_ROLE_KEY is required to reset passwords. The ANON key does not have permission.' 
+        });
     }
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);

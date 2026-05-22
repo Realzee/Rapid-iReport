@@ -24,6 +24,15 @@ export default async function handler(req: any, res: any) {
         });
     }
 
+    if (supabaseServiceKey === process.env.VITE_SUPABASE_ANON_KEY && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        if (dbPayload.last_seen_at && Object.keys(dbPayload).length === 1) {
+            return res.status(200).json({ success: false, message: 'Presence update ignored because config is missing' });
+        }
+        return res.status(400).json({ 
+            error: 'Server configuration error: SUPABASE_SERVICE_ROLE_KEY is required to update profiles securely. The ANON key does not have permission.' 
+        });
+    }
+
     if (!userId) {
         return res.status(400).json({ error: 'User ID is required' });
     }
