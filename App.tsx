@@ -279,29 +279,66 @@ const App: React.FC = () => {
         return;
       }
 
-      const allowedControllerViews: View[] = ['controller', 'profile', 'attendance', 'global_search', 'guard_monitoring', 'tech_ops'];
-      if (profile.role === UserRole.CONTROLLER && !allowedControllerViews.includes(view)) {
-        setView('controller');
-        return;
-      }
+      const isModuleAllowed = (modId: string): boolean => {
+        if (profile.role === UserRole.ADMIN || profile.role === UserRole.MODERATOR) return true;
+        if (!profile.company) return true;
+        if (!profile.company.allowed_modules) return true;
+        return profile.company.allowed_modules.includes(modId);
+      };
 
-      if (profile.role === UserRole.TECHNICIAN && view !== 'technician_dashboard' && view !== 'profile') {
-        setView('technician_dashboard');
-        return;
-      }
-      
-      const adminPages: View[] = ['users', 'companies'];
-      if (adminPages.includes(view) && ![UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role)) {
-        setView('dashboard');
-      }
-      if (view === 'controller' && ![UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role)) {
-        setView('dashboard');
-      }
-      if (view === 'tech_ops' && ![UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role)) {
-        setView('dashboard');
-      }
-      if (view === 'technician_dashboard' && ![UserRole.ADMIN, UserRole.MODERATOR, UserRole.TECHNICIAN].includes(profile.role)) {
-        setView('dashboard');
+      if (profile.role === UserRole.CONTROLLER) {
+        const fallbackViews: View[] = ['controller', 'tech_ops', 'guard_monitoring', 'attendance', 'global_search', 'profile'];
+        const allowedViews = fallbackViews.filter(v => {
+          if (v === 'profile' || v === 'global_search') return true;
+          if (v === 'guard_monitoring') return isModuleAllowed('guard_monitoring');
+          return isModuleAllowed(v);
+        });
+
+        if (!allowedViews.includes(view)) {
+          setView(allowedViews[0] || 'profile');
+          return;
+        }
+      } else if (profile.role === UserRole.GUARD) {
+        const fallbackViews: View[] = ['dashboard', 'gate_access', 'patrol_scanner', 'profile'];
+        const allowedViews = fallbackViews.filter(v => {
+          if (v === 'dashboard' || v === 'profile') return true;
+          if (v === 'gate_access') return isModuleAllowed('gate_access');
+          if (v === 'patrol_scanner') return isModuleAllowed('guard_monitoring');
+          return true;
+        });
+
+        if (!allowedViews.includes(view)) {
+          setView('dashboard');
+          return;
+        }
+      } else if (profile.role === UserRole.TECHNICIAN) {
+        if (view !== 'technician_dashboard' && view !== 'profile') {
+          setView('technician_dashboard');
+          return;
+        }
+      } else {
+        // General admin & standard user checks
+        const adminPages: View[] = ['users', 'companies'];
+        if (adminPages.includes(view) && ![UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role)) {
+          setView('dashboard');
+          return;
+        }
+        if (view === 'controller' && ![UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role)) {
+          setView('dashboard');
+          return;
+        }
+        if (view === 'tech_ops' && ![UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role)) {
+          setView('dashboard');
+          return;
+        }
+        if (view === 'archives' && !isModuleAllowed('archives')) {
+          setView('dashboard');
+          return;
+        }
+        if (view === 'analytics' && !isModuleAllowed('analytics')) {
+          setView('dashboard');
+          return;
+        }
       }
     }
   }, [view, profile]);

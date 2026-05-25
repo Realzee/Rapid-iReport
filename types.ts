@@ -74,6 +74,7 @@ export interface Company {
     contact_person?: string;
     cell_number?: string;
     psira_number?: string;
+    allowed_modules?: string[];
 }
 
 export interface Profile {

@@ -179,8 +179,15 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   };
 
   const NavLinks: React.FC<{mobile?: boolean}> = ({ mobile = false}) => {
-    const clickHandler = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'attendance' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops') => mobile ? handleMobileLinkClick(view as any) : setView(view as any);
+    const clickHandler = (view: any) => mobile ? handleMobileLinkClick(view) : setView(view);
     const classGetter = mobile ? mobileNavLinkClasses : navLinkClasses;
+
+    const isModuleAllowed = (modId: string): boolean => {
+      if (profile.role === UserRole.ADMIN || profile.role === UserRole.MODERATOR) return true;
+      if (!profile.company) return true;
+      if (!profile.company.allowed_modules) return true;
+      return profile.company.allowed_modules.includes(modId);
+    };
 
     if (profile.role === UserRole.USER) {
       return (
@@ -201,12 +208,16 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
           <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>
             <GlobeIcon className="w-4 h-4 mr-2" /> Dashboard
           </button>
-          <button onClick={() => clickHandler('gate_access')} className={classGetter('gate_access')}>
-            <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Gate Access
-          </button>
-          <button onClick={() => clickHandler('patrol_scanner')} className={classGetter('patrol_scanner')}>
-            <ScanIcon className="w-4 h-4 mr-2" /> Patrolling
-          </button>
+          {isModuleAllowed('gate_access') && (
+            <button onClick={() => clickHandler('gate_access')} className={classGetter('gate_access')}>
+              <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Gate Access
+            </button>
+          )}
+          {isModuleAllowed('guard_monitoring') && (
+            <button onClick={() => clickHandler('patrol_scanner')} className={classGetter('patrol_scanner')}>
+              <ScanIcon className="w-4 h-4 mr-2" /> Patrolling
+            </button>
+          )}
         </>
       );
     }
@@ -214,18 +225,26 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     if (profile.role === UserRole.CONTROLLER) {
       return (
         <>
-          <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>
-            <RadioTowerIcon className="w-4 h-4 mr-2" /> Controller
-          </button>
-          <button onClick={() => clickHandler('tech_ops')} className={classGetter('tech_ops')}>
-            <WrenchIcon className="w-4 h-4 mr-2 text-teal-400" /> Tech Ops
-          </button>
-          <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>
-            <BuildingIcon className="w-4 h-4 mr-2" /> Guarding
-          </button>
-          <button onClick={() => clickHandler('attendance')} className={classGetter('attendance')}>
-            <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Attendance
-          </button>
+          {isModuleAllowed('controller') && (
+            <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>
+              <RadioTowerIcon className="w-4 h-4 mr-2" /> Controller
+            </button>
+          )}
+          {isModuleAllowed('tech_ops') && (
+            <button onClick={() => clickHandler('tech_ops')} className={classGetter('tech_ops')}>
+              <WrenchIcon className="w-4 h-4 mr-2 text-teal-400" /> Tech Ops
+            </button>
+          )}
+          {isModuleAllowed('guard_monitoring') && (
+            <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>
+              <BuildingIcon className="w-4 h-4 mr-2" /> Guarding
+            </button>
+          )}
+          {isModuleAllowed('attendance') && (
+            <button onClick={() => clickHandler('attendance')} className={classGetter('attendance')}>
+              <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Attendance
+            </button>
+          )}
           <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>
             <SearchIcon className="w-4 h-4 mr-2" /> Global Search
           </button>
@@ -253,27 +272,39 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>
           <GlobeIcon className="w-4 h-4 mr-2" /> Dashboard
         </button>
-        <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>
-          <RadioTowerIcon className="w-4 h-4 mr-2" /> Controller
-        </button>
-        <button onClick={() => clickHandler('tech_ops')} className={classGetter('tech_ops')}>
-          <WrenchIcon className="w-4 h-4 mr-2 text-teal-400" /> Tech Ops
-        </button>
-        <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>
-          <BuildingIcon className="w-4 h-4 mr-2" /> Guarding
-        </button>
-        <button onClick={() => clickHandler('attendance')} className={classGetter('attendance')}>
-          <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Attendance
-        </button>
-        <button onClick={() => clickHandler('archives')} className={classGetter('archives')}>
-          <HistoryIcon className="w-4 h-4 mr-2" /> Archives
-        </button>
+        {isModuleAllowed('controller') && (
+          <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>
+            <RadioTowerIcon className="w-4 h-4 mr-2" /> Controller
+          </button>
+        )}
+        {isModuleAllowed('tech_ops') && (
+          <button onClick={() => clickHandler('tech_ops')} className={classGetter('tech_ops')}>
+            <WrenchIcon className="w-4 h-4 mr-2 text-teal-400" /> Tech Ops
+          </button>
+        )}
+        {isModuleAllowed('guard_monitoring') && (
+          <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>
+            <BuildingIcon className="w-4 h-4 mr-2" /> Guarding
+          </button>
+        )}
+        {isModuleAllowed('attendance') && (
+          <button onClick={() => clickHandler('attendance')} className={classGetter('attendance')}>
+            <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Attendance
+          </button>
+        )}
+        {isModuleAllowed('archives') && (
+          <button onClick={() => clickHandler('archives')} className={classGetter('archives')}>
+            <HistoryIcon className="w-4 h-4 mr-2" /> Archives
+          </button>
+        )}
         <button onClick={() => clickHandler('global_search')} className={classGetter('global_search')}>
           <SearchIcon className="w-4 h-4 mr-2" /> Global Search
         </button>
-        <button onClick={() => clickHandler('analytics')} className={classGetter('analytics')}>
-          <ChartBarIcon className="w-4 h-4 mr-2" /> Analytics
-        </button>
+        {isModuleAllowed('analytics') && (
+          <button onClick={() => clickHandler('analytics')} className={classGetter('analytics')}>
+            <ChartBarIcon className="w-4 h-4 mr-2" /> Analytics
+          </button>
+        )}
         <button onClick={() => clickHandler('map')} className={classGetter('map')}>
           <MapIcon className="w-4 h-4 mr-2" /> Map
         </button>

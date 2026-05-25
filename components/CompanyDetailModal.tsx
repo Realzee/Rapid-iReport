@@ -52,6 +52,35 @@ const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({ isOpen, onClose
                            <DetailItem label="Address" value={company.address} />
                         </div>
                     </div>
+
+                    <div>
+                        <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Allowed System Modules</p>
+                        <div className="flex flex-wrap gap-1.5">
+                            {company.allowed_modules && company.allowed_modules.length > 0 ? (
+                                company.allowed_modules.map((modId) => {
+                                    const names: Record<string, string> = {
+                                        controller: 'Controller Dashboard',
+                                        tech_ops: 'Tech Ops',
+                                        guard_monitoring: 'Guarding & Patrols',
+                                        gate_access: 'Gate Access Control',
+                                        attendance: 'Attendance',
+                                        analytics: 'Analytics & Stats',
+                                        archives: 'Archives',
+                                    };
+                                    return (
+                                        <span 
+                                            key={modId} 
+                                            className="text-xs font-medium px-2.5 py-1 rounded-md bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 border border-teal-200 dark:border-teal-800/50"
+                                        >
+                                            {names[modId] || modId}
+                                        </span>
+                                    );
+                                })
+                            ) : (
+                                <span className="text-xs text-gray-500 dark:text-gray-400 italic">No modules enabled. If created previously, they have access to all modules by default.</span>
+                            )}
+                        </div>
+                    </div>
                     
                     <div>
                         <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2 flex items-center gap-2">
