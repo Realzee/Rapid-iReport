@@ -18,7 +18,8 @@ export default async function handler(req: Request, res: Response) {
                 vehicleType: "Toyota Hilux",
                 likelyRecoveryArea: "Industrial areas / Borders",
                 confidence: "Medium",
-                reasoning: "AI service not configured, showing dummy data."
+                reasoning: "AI service not configured, showing dummy data.",
+                hotspots: []
             }
         ]);
     }

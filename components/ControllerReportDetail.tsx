@@ -962,7 +962,7 @@ const ControllerReportDetail: React.FC<{
                                         <p className="text-sm font-medium text-blue-900 dark:text-blue-200">Likely Area: {insight.likelyRecoveryArea}</p>
                                         <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed italic">"{insight.reasoning}"</p>
                                         
-                                        {insight.hotspots.length > 0 && (
+                                        {insight.hotspots && Array.isArray(insight.hotspots) && insight.hotspots.length > 0 && (
                                             <div className="pt-1 flex flex-wrap gap-2">
                                                 {insight.hotspots.map((h, i) => (
                                                     <div key={i} className="flex items-center gap-1 bg-white/50 dark:bg-black/20 px-2 py-1 rounded text-[10px] text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
