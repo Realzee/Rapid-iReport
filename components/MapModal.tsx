@@ -52,14 +52,24 @@ const MapFocusController: React.FC<{ report: Report }> = ({ report }) => {
     const map = useMap();
     useEffect(() => {
         // This effect runs once when the map is ready
-        if (report.location_boundingbox && report.location_boundingbox.length === 4 && !report.location_boundingbox.some(isNaN)) {
-             const bounds: LatLngBoundsExpression = [
-                [report.location_boundingbox[0], report.location_boundingbox[2]],
-                [report.location_boundingbox[1], report.location_boundingbox[3]]
-            ];
-            map.fitBounds(bounds, { padding: [20, 20] });
-        } else if (report.location_coords && typeof report.location_coords.lat === 'number' && !isNaN(report.location_coords.lat) && typeof report.location_coords.lng === 'number' && !isNaN(report.location_coords.lng)) {
-            map.setView([report.location_coords.lat, report.location_coords.lng], 16);
+        if (report.location_boundingbox && report.location_boundingbox.length === 4) {
+            const bbox = report.location_boundingbox.map(Number);
+            if (!bbox.some(isNaN)) {
+                const bounds: LatLngBoundsExpression = [
+                    [bbox[0], bbox[2]],
+                    [bbox[1], bbox[3]]
+                ];
+                map.fitBounds(bounds, { padding: [20, 20] });
+                return;
+            }
+        }
+        
+        if (report.location_coords) {
+            const lat = Number(report.location_coords.lat);
+            const lng = Number(report.location_coords.lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                map.setView([lat, lng], 16);
+            }
         }
     }, [map, report]); // Depend on map and report to re-run if they change
     return null;
