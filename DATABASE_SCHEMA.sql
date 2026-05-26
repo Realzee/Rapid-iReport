@@ -62,16 +62,20 @@ CREATE TABLE IF NOT EXISTS public.companies (
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 
 -- Companies Policies
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.companies;
 CREATE POLICY "Enable read access for all users" ON public.companies FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Enable insert for admins" ON public.companies;
 CREATE POLICY "Enable insert for admins" ON public.companies FOR INSERT TO authenticated WITH CHECK (
     public.get_user_role(auth.uid()) = 'admin'
 );
 
+DROP POLICY IF EXISTS "Enable update for admins" ON public.companies;
 CREATE POLICY "Enable update for admins" ON public.companies FOR UPDATE TO authenticated USING (
     public.get_user_role(auth.uid()) = 'admin'
 );
 
+DROP POLICY IF EXISTS "Enable delete for admins" ON public.companies;
 CREATE POLICY "Enable delete for admins" ON public.companies FOR DELETE TO authenticated USING (
     public.get_user_role(auth.uid()) = 'admin'
 );
