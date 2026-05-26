@@ -116,20 +116,24 @@ const MapFocusController: React.FC<{ report: Report | null, responderProfile: Pr
         const responderCoords = responderProfile.location_coords;
         const reportCoords = report?.location_coords;
 
-        const isValid = (coords: { lat: number, lng: number } | undefined | null) => 
-            coords && typeof coords.lat === 'number' && !isNaN(coords.lat) && typeof coords.lng === 'number' && !isNaN(coords.lng);
+        const isValid = (coords: { lat: any, lng: any } | undefined | null) => {
+            if (!coords) return false;
+            const lat = Number(coords.lat);
+            const lng = Number(coords.lng);
+            return !isNaN(lat) && !isNaN(lng);
+        };
 
         if (!map) return; // Prevent errors if map is gone
 
         if (isValid(reportCoords) && isValid(responderCoords)) {
             map.flyToBounds([
-                [responderCoords!.lat, responderCoords!.lng],
-                [reportCoords!.lat, reportCoords!.lng]
+                [Number(responderCoords!.lat), Number(responderCoords!.lng)],
+                [Number(reportCoords!.lat), Number(reportCoords!.lng)]
             ], { padding: [50, 50], maxZoom: 14 });
         } else if (isValid(reportCoords)) {
-            map.flyTo([reportCoords!.lat, reportCoords!.lng], 14);
+            map.flyTo([Number(reportCoords!.lat), Number(reportCoords!.lng)], 14);
         } else if (isValid(responderCoords)) {
-            map.flyTo([responderCoords!.lat, responderCoords!.lng], 14);
+            map.flyTo([Number(responderCoords!.lat), Number(responderCoords!.lng)], 14);
         }
 
     }, [report, responderProfile, map]);

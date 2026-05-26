@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS public.companies (
     contact_person text,
     cell_number text,
     psira_number text,
+    allowed_modules text[],
     CONSTRAINT companies_pkey PRIMARY KEY (id)
 );
 

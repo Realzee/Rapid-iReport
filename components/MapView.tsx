@@ -151,23 +151,28 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
             map.invalidateSize();
 
             if (selectedResponder?.location_coords) {
-                const { lat, lng } = selectedResponder.location_coords;
-                if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) {
+                const lat = Number(selectedResponder.location_coords.lat);
+                const lng = Number(selectedResponder.location_coords.lng);
+                if (!isNaN(lat) && !isNaN(lng)) {
                     map.flyTo([lat, lng], 16, { animate: true, duration: 1.0 });
                 }
             } else if (activeTab === 'responders' && selectedResponderId) {
                 // If we are in responders tab and have a selected responder but no coords, 
                 // maybe we should do something?
             } else if (activeTab === 'responders') {
-                const respondersWithCoords = responders.filter(r => 
-                    r.location_coords && 
-                    typeof r.location_coords.lat === 'number' && !isNaN(r.location_coords.lat) &&
-                    typeof r.location_coords.lng === 'number' && !isNaN(r.location_coords.lng)
-                );
+                const respondersWithCoords = responders.filter(r => {
+                    if (!r.location_coords) return false;
+                    const lat = Number(r.location_coords.lat);
+                    const lng = Number(r.location_coords.lng);
+                    return !isNaN(lat) && !isNaN(lng);
+                });
                 
                 if (respondersWithCoords.length > 0) {
                     try {
-                        const bounds = L.latLngBounds(respondersWithCoords.map(r => [r.location_coords!.lat, r.location_coords!.lng]));
+                        const bounds = L.latLngBounds(respondersWithCoords.map(r => [
+                            Number(r.location_coords!.lat), 
+                            Number(r.location_coords!.lng)
+                        ]));
                         if (bounds.isValid()) {
                             map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0, maxZoom: 14 });
                         }
@@ -179,15 +184,18 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
                     map.flyTo([-26.2041, 28.0473], 11, { animate: true, duration: 1.0 });
                 }
             } else if (selectedReport?.location_coords) {
-                const { lat, lng } = selectedReport.location_coords;
-                if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) {
+                const lat = Number(selectedReport.location_coords.lat);
+                const lng = Number(selectedReport.location_coords.lng);
+                if (!isNaN(lat) && !isNaN(lng)) {
                     const reportLocation: L.LatLngExpression = [lat, lng];
 
                     // If the report has a defined bounding box (e.g., a neighborhood), fit to that.
                     if (selectedReport.location_boundingbox && selectedReport.location_boundingbox.length === 4) {
-                        const [s, n, w, e] = selectedReport.location_boundingbox;
-                        if (typeof s === 'number' && !isNaN(s) && typeof n === 'number' && !isNaN(n) && 
-                            typeof w === 'number' && !isNaN(w) && typeof e === 'number' && !isNaN(e)) {
+                        const s = Number(selectedReport.location_boundingbox[0]);
+                        const n = Number(selectedReport.location_boundingbox[1]);
+                        const w = Number(selectedReport.location_boundingbox[2]);
+                        const e = Number(selectedReport.location_boundingbox[3]);
+                        if (!isNaN(s) && !isNaN(n) && !isNaN(w) && !isNaN(e)) {
                             try {
                                 const bounds: LatLngBoundsExpression = [
                                     [s, w],
@@ -207,15 +215,19 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
                 }
             } else {
                 // "Show All" logic: No report is selected, so fit all reports on the map.
-                const reportsWithCoords = reports.filter(r => 
-                    r.location_coords && 
-                    typeof r.location_coords.lat === 'number' && !isNaN(r.location_coords.lat) &&
-                    typeof r.location_coords.lng === 'number' && !isNaN(r.location_coords.lng)
-                );
+                const reportsWithCoords = reports.filter(r => {
+                    if (!r.location_coords) return false;
+                    const lat = Number(r.location_coords.lat);
+                    const lng = Number(r.location_coords.lng);
+                    return !isNaN(lat) && !isNaN(lng);
+                });
                 
                 if (reportsWithCoords.length > 0) {
                     try {
-                        const bounds = L.latLngBounds(reportsWithCoords.map(r => [r.location_coords!.lat, r.location_coords!.lng]));
+                        const bounds = L.latLngBounds(reportsWithCoords.map(r => [
+                            Number(r.location_coords!.lat), 
+                            Number(r.location_coords!.lng)
+                        ]));
                         if (bounds.isValid()) {
                             map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0, maxZoom: 14 });
                         }

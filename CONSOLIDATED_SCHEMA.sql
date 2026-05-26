@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS public.companies (
     contact_person text,
     cell_number text,
     psira_number text,
+    allowed_modules text[],
     created_at timestamp with time zone DEFAULT now()
 );
 
