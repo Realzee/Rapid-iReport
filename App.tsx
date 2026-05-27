@@ -272,6 +272,13 @@ const App: React.FC = () => {
   }, [session, addToast]);
 
   useEffect(() => {
+    if (!loading && (!session || !profileLoading)) {
+      document.body.style.backgroundColor = '';
+      document.body.style.color = '';
+    }
+  }, [loading, session, profileLoading]);
+
+  useEffect(() => {
     if (profile) {
       if (!isProfileComplete(profile) && view !== 'profile') {
         setView('profile');
@@ -475,9 +482,9 @@ const App: React.FC = () => {
 
   if (loading || (session && profileLoading)) {
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
-             <div className="mb-6 animate-pulse">
-                 <img src={mainLogoUrl} alt="Rapid911 Logo" className="w-auto h-16 mx-auto opacity-90" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
+        <div className="fixed inset-0 flex flex-col items-center justify-center bg-black text-white z-[9999] overflow-hidden">
+             <div className="mb-6 animate-pulse px-4">
+                 <img src={mainLogoUrl} alt="Rapid911 Logo" className="max-w-xs md:max-w-md h-auto mx-auto opacity-90 object-contain" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
              </div>
              <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
              <p className="mt-6 text-xs tracking-widest text-gray-400 uppercase font-medium">Loading workspace...</p>
