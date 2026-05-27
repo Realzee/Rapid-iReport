@@ -475,9 +475,12 @@ const App: React.FC = () => {
 
   if (loading || (session && profileLoading)) {
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black">
-             <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-             <p className="mt-4 text-gray-500 dark:text-gray-400">Loading your workspace...</p>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
+             <div className="mb-6 animate-pulse">
+                 <img src={mainLogoUrl} alt="Rapid911 Logo" className="w-auto h-16 mx-auto opacity-90" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
+             </div>
+             <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+             <p className="mt-6 text-xs tracking-widest text-gray-400 uppercase font-medium">Loading workspace...</p>
         </div>
     )
   }
