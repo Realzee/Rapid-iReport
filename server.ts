@@ -6,7 +6,12 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath, pathToFileURL } from 'url';
 
-dotenv.config();
+dotenv.config({ override: true });
+
+// Ensure correct service role key is loaded into environment variables for all API endpoints
+const SERVICE_ROLE_KEY_VAL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlnbHdkd2h3cGJxYXd1bmJrenl5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODI3NTc4OSwiZXhwIjoyMDgzODUxNzg5fQ.h8tD0STrVfQ7-eSXYJmDGoGGWKoNDr4o0SmGsYy0KRo';
+process.env.SUPABASE_SERVICE_ROLE_KEY = SERVICE_ROLE_KEY_VAL;
+process.env.VITE_SUPABASE_SERVICE_ROLE_KEY = SERVICE_ROLE_KEY_VAL;
 
 // Use process.cwd() as the project root, which is consistent for Node.js applications.
 const currentDir = process.cwd();
