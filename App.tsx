@@ -477,7 +477,7 @@ const App: React.FC = () => {
               case 'global_search': return <GlobalSearchPage profile={profile} isGlobalAdmin={isGlobalAdmin} />;
               case 'analytics': return <AnalyticsPage />;
               case 'users': return <UsersPage />;
-              case 'activity_logs': return <UserActivityPage />;
+              case 'activity_logs': return <UserActivityPage profile={profile} />;
               case 'companies': return <CompaniesPage />;
               case 'guard_monitoring': return <GuardMonitoringPage profile={profile} />;
               case 'gate_access': return <GateAccessPage profile={profile} />;

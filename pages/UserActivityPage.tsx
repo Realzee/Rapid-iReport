@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
-import { UserActivityLog, UserRole } from '../types';
+import { UserActivityLog, UserRole, Profile } from '../types';
 import { format } from 'date-fns';
 import { DownloadIcon, FilterIcon, ClockIcon, SearchIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
 
-const UserActivityPage: React.FC = () => {
+interface UserActivityPageProps {
+    profile: Profile;
+}
+
+const UserActivityPage: React.FC<UserActivityPageProps> = ({ profile }) => {
     const [logs, setLogs] = useState<UserActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -19,18 +23,27 @@ const UserActivityPage: React.FC = () => {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            const isGlobalAdmin = profile?.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
+
+            let query = supabase
                 .from('user_activity_logs')
                 .select(`
                     *,
-                    profile:profiles(
+                    profile:profiles!inner(
                         first_name, 
                         surname, 
                         email, 
                         role,
+                        company_id,
                         company:companies(name)
                     )
-                `)
+                `);
+
+            if (!isGlobalAdmin && profile?.company_id) {
+                query = query.eq('profile.company_id', profile.company_id);
+            }
+
+            const { data, error } = await query
                 .order('created_at', { ascending: false })
                 .limit(1000);
 
