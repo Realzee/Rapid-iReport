@@ -10,7 +10,7 @@ export default async function handler(req: any, res: any) {
         return res.status(500).json({ error: 'Server configuration error: Missing Service Role Key' });
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = req.supabaseAdmin || createClient(supabaseUrl, supabaseServiceKey);
 
     if (req.method === 'POST') {
         // Save (create or update) announcement

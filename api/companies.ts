@@ -1,16 +1,29 @@
 import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
 
 export default async function handler(req: any, res: any) {
-    
+    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co').trim();
+    const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'dummy_key_to_prevent_crash').trim();
 
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co';
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'dummy_key_to_prevent_crash';
+    const logMsg = `[API Companies Handler DB Config at ${new Date().toISOString()}]: ` + JSON.stringify({
+        supabaseUrl,
+        serviceKeyLength: supabaseServiceKey.length,
+        serviceKeyStart: supabaseServiceKey.substring(0, 15) + '...',
+        serviceKeyEnd: '...' + supabaseServiceKey.substring(supabaseServiceKey.length - 15),
+        hasServiceKeyInEnv: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        hasViteServiceKeyInEnv: !!process.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
+        hasAnonKeyInEnv: !!process.env.VITE_SUPABASE_ANON_KEY,
+        processEnvKeys: Object.keys(process.env).filter(k => k.includes('SUPABASE'))
+    }) + '\n';
+    
+    fs.appendFileSync('./server_debug.log', logMsg);
+    console.log(logMsg);
 
     if (!supabaseServiceKey) {
         return res.status(500).json({ error: 'Server configuration error: Missing Service Role Key' });
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = req.supabaseAdmin || createClient(supabaseUrl, supabaseServiceKey);
 
     if (req.method === 'POST') {
         // Save company
