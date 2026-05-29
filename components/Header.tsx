@@ -183,9 +183,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     const classGetter = mobile ? mobileNavLinkClasses : navLinkClasses;
 
     const isModuleAllowed = (modId: string): boolean => {
-      if (profile.role === UserRole.ADMIN || profile.role === UserRole.MODERATOR) return true;
       if (!profile.company) return true;
-      if (!profile.company.allowed_modules) return true;
+      const isRapid911 = profile.company.name?.toLowerCase().includes('rapid911') || false;
+      if (isRapid911) return true;
+      
+      if (!profile.company.allowed_modules) return false;
       return profile.company.allowed_modules.includes(modId);
     };
 

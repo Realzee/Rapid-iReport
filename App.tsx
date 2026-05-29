@@ -287,9 +287,11 @@ const App: React.FC = () => {
       }
 
       const isModuleAllowed = (modId: string): boolean => {
-        if (profile.role === UserRole.ADMIN || profile.role === UserRole.MODERATOR) return true;
         if (!profile.company) return true;
-        if (!profile.company.allowed_modules) return true;
+        const isRapid911 = profile.company.name?.toLowerCase().includes('rapid911') || false;
+        if (isRapid911) return true;
+        
+        if (!profile.company.allowed_modules) return false;
         return profile.company.allowed_modules.includes(modId);
       };
 
@@ -330,11 +332,23 @@ const App: React.FC = () => {
           setView('dashboard');
           return;
         }
-        if (view === 'controller' && ![UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role)) {
+        if (view === 'controller' && (![UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role) || !isModuleAllowed('controller'))) {
           setView('dashboard');
           return;
         }
-        if (view === 'tech_ops' && ![UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role)) {
+        if (view === 'tech_ops' && (![UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role) || !isModuleAllowed('tech_ops'))) {
+          setView('dashboard');
+          return;
+        }
+        if (view === 'guard_monitoring' && !isModuleAllowed('guard_monitoring')) {
+          setView('dashboard');
+          return;
+        }
+        if (view === 'attendance' && !isModuleAllowed('attendance')) {
+          setView('dashboard');
+          return;
+        }
+        if (view === 'gate_access' && !isModuleAllowed('gate_access')) {
           setView('dashboard');
           return;
         }
