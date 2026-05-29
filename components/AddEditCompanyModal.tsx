@@ -25,6 +25,7 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
     
     const getInitialData = () => {
         return company ? {
+            id: company.id,
             name: company.name || '',
             owners_name: company.owners_name || '',
             address: company.address || '',
