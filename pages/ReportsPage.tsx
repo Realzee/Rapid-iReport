@@ -98,9 +98,21 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         const respondersQuery = supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER);
         const terminalStatuses = [ReportStatus.RESOLVED, ReportStatus.REJECTED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.DELETED];
 
-        if (profile.role !== UserRole.ADMIN && profile.company_id) {
+        const isGlobalAdminValue = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
+
+        if (!isGlobalAdminValue && profile.company_id) {
             usersQuery.eq('company_id', profile.company_id);
             respondersQuery.eq('company_id', profile.company_id);
+        }
+
+        let vehicleQuery = supabase.from('vehicle_reports').select('*').in('status', terminalStatuses);
+        let crimeQuery = supabase.from('crime_reports').select('*').in('status', terminalStatuses);
+        let emergencyQuery = supabase.from('emergency_reports').select('*').in('status', terminalStatuses);
+
+        if (!isGlobalAdminValue && profile.company_id) {
+            vehicleQuery = vehicleQuery.eq('company_id', profile.company_id);
+            crimeQuery = crimeQuery.eq('company_id', profile.company_id);
+            emergencyQuery = emergencyQuery.eq('company_id', profile.company_id);
         }
 
         const [
@@ -111,9 +123,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
             { data: respondersData, error: rError },
             { data: companiesData, error: compError }
         ] = await Promise.all([
-            supabase.from('vehicle_reports').select('*').in('status', terminalStatuses),
-            supabase.from('crime_reports').select('*').in('status', terminalStatuses),
-            supabase.from('emergency_reports').select('*').in('status', terminalStatuses),
+            vehicleQuery,
+            crimeQuery,
+            emergencyQuery,
             usersQuery,
             respondersQuery,
             supabase.from('companies').select('*')
