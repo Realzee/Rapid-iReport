@@ -554,7 +554,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     };
 
     return (
-        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-full">
+        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-auto">
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <div className="flex items-center gap-2 min-w-0">
                     <ReportTypeBadge type={localReport.type as any} className="p-1.5" />
@@ -565,7 +565,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 </button>
             </div>
 
-            <div className="space-y-4 overflow-y-auto flex-grow">
+            <div className="space-y-4 flex-grow">
                 {localReport.evidence_images && localReport.evidence_images.length > 0 && (
                      <div className="grid grid-cols-2 gap-2">
                         {localReport.evidence_images.map((img, index) => (

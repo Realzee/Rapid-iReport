@@ -814,7 +814,7 @@ const ControllerReportDetail: React.FC<{
                 reporterName={reporter ? `${reporter.first_name} ${reporter.surname}` : 'Unknown'}
                 company={profile.company}
             />
-            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex flex-col h-full print:hidden relative">
+            <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex flex-col h-auto print:hidden relative">
             <div className="flex-shrink-0">
                 <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
@@ -852,7 +852,7 @@ const ControllerReportDetail: React.FC<{
                  </div>
             </div>
 
-            <div className="space-y-4 overflow-y-auto flex-grow mt-4 pr-1 min-h-0">
+            <div className="space-y-4 flex-grow mt-4 pr-1 min-h-0">
                 {report.evidence_images && report.evidence_images.length > 0 && (
                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                         {report.evidence_images.map((img, index) => (

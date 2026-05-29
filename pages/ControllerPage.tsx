@@ -634,10 +634,14 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 </div>
 
                 <div className="lg:col-span-9 flex flex-col gap-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-9 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                         <div className={`
                             lg:sticky lg:top-24 h-[60vh] lg:h-[calc(100vh-12rem)] print:hidden relative transition-all duration-300
-                            ${isDetailsVisible ? 'lg:col-span-5' : 'lg:col-span-9'}
+                            ${!isDetailsVisible 
+                                ? 'lg:col-span-12' 
+                                : (activeTab === 'tech' ? !!selectedTechJobId : !!selectedReport)
+                                ? 'lg:col-span-5' 
+                                : 'lg:col-span-7'}
                         `}>
                             <MapView
                                 reports={displayReports}
@@ -661,7 +665,12 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                             </button>
                         </div>
                         {isDetailsVisible && (
-                             <div className="lg:col-span-4 space-y-4 lg:h-[calc(100vh-12rem)]">
+                             <div className={`
+                                space-y-4 ${(activeTab === 'tech' ? !!selectedTechJobId : !!selectedReport) ? 'lg:h-fit lg:min-h-[calc(100vh-12rem)]' : 'lg:h-[calc(100vh-12rem)]'} transition-all duration-300
+                                ${(activeTab === 'tech' ? !!selectedTechJobId : !!selectedReport)
+                                    ? 'lg:col-span-7'
+                                    : 'lg:col-span-5'}
+                             `}>
                                 {activeTab === 'tech' ? (
                                     selectedTechJobId && techJobs.find(j => j.id === selectedTechJobId) ? (
                                         <TechJobDetail

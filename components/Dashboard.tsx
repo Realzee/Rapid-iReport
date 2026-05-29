@@ -535,7 +535,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 </div>
             </div>
             <div className="flex flex-col lg:flex-row gap-6">
-                <div className={`lg:flex-shrink-0 lg:h-[calc(100vh-8.5rem-4.5rem-1.5rem)] flex flex-col transition-all duration-300 ${selectedReport ? 'lg:w-[500px]' : 'lg:w-[400px]'}`}>
+                <div className={`lg:flex-shrink-0 flex flex-col transition-all duration-300 ${selectedReport ? 'lg:w-[500px] lg:h-fit lg:min-h-[calc(100vh-8.5rem-4.5rem-1.5rem)]' : 'lg:w-[400px] lg:h-[calc(100vh-8.5rem-4.5rem-1.5rem)]'}`}>
                     <div className="flex justify-between items-center mb-2 px-1">
                         <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
                             {showIdleReports ? 'Showing archives' : 'Showing live stack (top 20)'}
