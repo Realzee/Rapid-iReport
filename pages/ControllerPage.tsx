@@ -181,6 +181,12 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         let crimeQuery = supabase.from('crime_reports').select('*');
         let emergencyQuery = supabase.from('emergency_reports').select('*');
 
+        if (!isGlobalAdmin && profile.company_id) {
+            vehicleQuery = vehicleQuery.eq('company_id', profile.company_id);
+            crimeQuery = crimeQuery.eq('company_id', profile.company_id);
+            emergencyQuery = emergencyQuery.eq('company_id', profile.company_id);
+        }
+
         const [
             { data: vehicleData, error: vError },
             { data: crimeData, error: cError },
