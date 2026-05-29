@@ -32,8 +32,7 @@ export default async function handler(req: any, res: any) {
                     .upsert({
                         id: authData.user.id,
                         email,
-                        ...profileData,
-                        created_at: new Date().toISOString()
+                        ...profileData
                     }, { onConflict: 'id' });
 
                 if (profileError) {
@@ -47,8 +46,7 @@ export default async function handler(req: any, res: any) {
                                 id: authData.user.id,
                                 email,
                                 role: profileData.role || 'user',
-                                status: 'active',
-                                created_at: new Date().toISOString()
+                                status: 'active'
                             }, { onConflict: 'id' });
                         
                         if (!fallbackError) return res.status(200).json({ success: true, user: authData.user, warning: 'Some fields skipped due to schema mismatch' });
