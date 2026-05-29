@@ -68,15 +68,34 @@ export default async function handler(req: any, res: any) {
     } else if (req.method === 'DELETE') {
          const { id } = req.body;
          try {
-             const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id);
-             if (authError) throw authError;
+             // 1. Set logged_by in gate_access_logs to null to avoid foreign key restrict violations
+             try {
+                 await supabaseAdmin
+                     .from('gate_access_logs')
+                     .update({ logged_by: null })
+                     .eq('logged_by', id);
+             } catch (err) {
+                 console.warn("Could not nullify gate_access_logs reference:", err);
+             }
 
-             const { error: dbError } = await supabaseAdmin.from('profiles').delete().eq('id', id);
-             if (dbError) throw dbError;
+             // 2. Delete the auth user (it should cascade to profiles as profiles references auth.users(id) ON DELETE CASCADE)
+             const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id);
+             if (authError) {
+                 console.error("Auth User Delete Error:", authError);
+                 throw authError;
+             }
+
+             // 3. Delete profile manually if cascade didn't run
+             try {
+                 await supabaseAdmin.from('profiles').delete().eq('id', id);
+             } catch (err) {
+                 // Already deleted via cascade
+             }
 
              return res.status(200).json({ success: true });
          } catch (error: any) {
-             return res.status(400).json({ error: error.message });
+              console.error("Handler Delete Error:", error);
+              return res.status(400).json({ error: error.message || "Database error deleting user" });
          }
     }
 

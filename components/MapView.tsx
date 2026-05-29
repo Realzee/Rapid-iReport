@@ -148,13 +148,26 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
     useEffect(() => {
         // Use a timeout to allow CSS transitions on the container to finish before recalculating map size and position
         const timer = setTimeout(() => {
-            map.invalidateSize();
+            try {
+                map.invalidateSize();
+                const size = map.getSize();
+                if (size.x === 0 || size.y === 0) {
+                    return;
+                }
+            } catch (e) {
+                console.warn("Could not invalidate map size or get size", e);
+                return;
+            }
 
             if (selectedResponder?.location_coords) {
                 const lat = Number(selectedResponder.location_coords.lat);
                 const lng = Number(selectedResponder.location_coords.lng);
                 if (!isNaN(lat) && !isNaN(lng)) {
-                    map.flyTo([lat, lng], 16, { animate: true, duration: 1.0 });
+                    try {
+                        map.flyTo([lat, lng], 16, { animate: true, duration: 1.0 });
+                    } catch (e) {
+                        console.error("Error flying to responder:", e);
+                    }
                 }
             } else if (activeTab === 'responders' && selectedResponderId) {
                 // If we are in responders tab and have a selected responder but no coords, 
@@ -181,7 +194,9 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
                     }
                 } else {
                     // Default view if no responders have coordinates.
-                    map.flyTo([-26.2041, 28.0473], 11, { animate: true, duration: 1.0 });
+                    try {
+                        map.flyTo([-26.2041, 28.0473], 11, { animate: true, duration: 1.0 });
+                    } catch (e) {}
                 }
             } else if (selectedReport?.location_coords) {
                 const lat = Number(selectedReport.location_coords.lat);
@@ -203,14 +218,20 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
                                 ];
                                 map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0 });
                             } catch (e) {
-                                map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
+                                try {
+                                    map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
+                                } catch (err) {}
                             }
                         } else {
-                             map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
+                            try {
+                                map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
+                            } catch (err) {}
                         }
                     } else {
                         // Otherwise, just fly to the specific point.
-                        map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
+                        try {
+                            map.flyTo(reportLocation, 15, { animate: true, duration: 1.0 });
+                        } catch (err) {}
                     }
                 }
             } else {
@@ -236,7 +257,9 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
                     }
                 } else {
                     // Default view if no reports have coordinates.
-                    map.flyTo([-26.2041, 28.0473], 11, { animate: true, duration: 1.0 });
+                    try {
+                        map.flyTo([-26.2041, 28.0473], 11, { animate: true, duration: 1.0 });
+                    } catch (err) {}
                 }
             }
         }, 310); // A little longer than the 300ms transition of the side panel.
