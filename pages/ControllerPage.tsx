@@ -36,6 +36,13 @@ const ACTIVE_STATUSES = [
 
 const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportId, onInitialReportHandled }) => {
     const { requestWakeLock, releaseWakeLock } = useWakeLock();
+    const isModuleAllowed = (modId: string): boolean => {
+        if (!profile.company) return true;
+        const isRapid911 = profile.company.name?.toLowerCase().includes('rapid911') || false;
+        if (isRapid911) return true;
+        if (!profile.company.allowed_modules) return false;
+        return profile.company.allowed_modules.includes(modId);
+    };
     const [reports, setReports] = useState<Report[]>([]);
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
     const allUsersRef = useRef<Profile[]>([]);
@@ -578,7 +585,9 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                             <div className="flex flex-wrap gap-1">
                                 <button onClick={() => setActiveTab('events')} className={`flex-grow py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${activeTab === 'events' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}><ZapIcon className="w-4 h-4" /> Events</button>
                                 <button onClick={() => setActiveTab('responders')} className={`flex-grow py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${activeTab === 'responders' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}><UsersIcon className="w-4 h-4" /> Response</button>
-                                <button onClick={() => setActiveTab('tech')} className={`flex-grow py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${activeTab === 'tech' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}><WrenchIcon className="w-4 h-4" /> Tech Ops</button>
+                                {isModuleAllowed('tech_ops') && (
+                                    <button onClick={() => setActiveTab('tech')} className={`flex-grow py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${activeTab === 'tech' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}><WrenchIcon className="w-4 h-4" /> Tech Ops</button>
+                                )}
                             </div>
                         </div>
                         

@@ -495,16 +495,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                         <p className="text-gray-500 dark:text-gray-400 mt-1">Live operational overview of community safety.</p>
                     </div>
                     <div className="mt-4 md:mt-0 flex items-center gap-4">
-                        {setView && (
-                            <button
-                                onClick={() => setView('technician_dashboard')}
-                                className="px-6 py-3.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold rounded-xl shadow-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-2"
-                                title="Open technical operations console"
-                            >
-                                <WrenchIcon className="w-5 h-5" />
-                                <span>Tech Ops</span>
-                            </button>
-                        )}
                         <button
                             onClick={() => openChat(CONTROLLER_CHANNEL_REPORT)}
                             className="px-6 py-3.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold rounded-xl shadow-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-2"
