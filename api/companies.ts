@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: any, res: any) {
-    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://yglwdwhwpbqawunbkzyy.supabase.co').trim();
-    const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'dummy_key_to_prevent_crash').trim();
-
-    if (!supabaseServiceKey) {
-        return res.status(500).json({ error: 'Server configuration error: Missing Service Role Key' });
+    const SERVICE_ROLE_KEY_VAL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlnbHdkd2h3cGJxYXd1bmJrenl5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODI3NTc4OSwiZXhwIjoyMDgzODUxNzg5fQ.h8tD0STrVfQ7-eSXYJmDGoGGWKoNDr4o0SmGsYy0KRo';
+    const supabaseUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co';
+    
+    let supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '').trim();
+    if (!supabaseServiceKey || supabaseServiceKey.length < 50 || supabaseServiceKey.includes('dummy') || supabaseServiceKey === 'undefined' || supabaseServiceKey === 'null') {
+        supabaseServiceKey = SERVICE_ROLE_KEY_VAL;
     }
 
     const supabaseAdmin = req.supabaseAdmin || createClient(supabaseUrl, supabaseServiceKey);
@@ -21,7 +22,9 @@ export default async function handler(req: any, res: any) {
                 ({ data, error } = await supabaseAdmin.from('companies').insert(dbPayload).select().single());
             }
 
-            if (error) throw error;
+            if (error) {
+                return res.status(400).json({ error: error.message });
+            }
             return res.status(200).json(data);
         } catch (error: any) {
             return res.status(400).json({ error: error.message });

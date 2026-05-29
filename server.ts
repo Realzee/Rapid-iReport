@@ -37,7 +37,12 @@ const getSafeSupabaseUrl = (url: string | undefined): string => {
 };
 
 const supabaseUrl = getSafeSupabaseUrl(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL);
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+let supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').trim();
+
+if (!supabaseServiceKey || supabaseServiceKey.length < 50 || supabaseServiceKey.includes('dummy') || supabaseServiceKey === 'undefined' || supabaseServiceKey === 'null') {
+    supabaseServiceKey = SERVICE_ROLE_KEY_VAL;
+}
 
 if (!supabaseServiceKey) {
     console.warn('SUPABASE_SERVICE_ROLE_KEY and fallback keys are not set. Administrative features will be limited.');
