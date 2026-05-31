@@ -5,7 +5,8 @@ export const generateAndShareBolo = async (
     profile: Profile, 
     mainLogoUrl: string, 
     action: 'download' | 'share' | 'whatsapp' = 'download',
-    targetPhone?: string
+    targetPhone?: string,
+    customBgDataUrl?: string
 ): Promise<{ method: 'share' | 'download' | 'clipboard' | 'none' }> => {
     
     const fetchImageAsDataURL = async (url: string) => {
@@ -65,13 +66,14 @@ export const generateAndShareBolo = async (
         ]);
 
         // 3. Load images into HTMLImageElements
-        const [mainImage, companyLogo, qrWww, qrFb, whatsappIcon, rapidLogo] = await Promise.all([
+        const [mainImage, companyLogo, qrWww, qrFb, whatsappIcon, rapidLogo, customBgImg] = await Promise.all([
             mainImageDataUrl ? loadImage(mainImageDataUrl) : Promise.resolve(null),
             companyLogoDataUrl ? loadImage(companyLogoDataUrl) : Promise.resolve(null),
             qrWwwDataUrl ? loadImage(qrWwwDataUrl) : Promise.resolve(null),
             qrFbDataUrl ? loadImage(qrFbDataUrl) : Promise.resolve(null),
             whatsappDataUrl ? loadImage(whatsappDataUrl) : Promise.resolve(null),
-            rapidLogoDataUrl ? loadImage(rapidLogoDataUrl) : Promise.resolve(null)
+            rapidLogoDataUrl ? loadImage(rapidLogoDataUrl) : Promise.resolve(null),
+            customBgDataUrl ? loadImage(customBgDataUrl) : Promise.resolve(null)
         ]);
 
         // 4. Setup Canvas
@@ -104,7 +106,8 @@ export const generateAndShareBolo = async (
         ctx.textBaseline = 'middle';
         
         ctx.font = 'bold 28px sans-serif';
-        ctx.fillText('SA Stolen And Highjacked Vehicles (Pty)Ltd', width / 2, 35);
+        const companyName = profile?.company?.name || 'SA Stolen And Highjacked Vehicles (Pty)Ltd';
+        ctx.fillText(companyName, width / 2, 35);
         
         ctx.fillStyle = '#000000';
         ctx.font = '900 60px Impact, sans-serif';
@@ -189,6 +192,35 @@ export const generateAndShareBolo = async (
         }
 
         // 8. Draw Details Section
+        if (customBgImg) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, 410, width, height - 410);
+            ctx.clip();
+            
+            const bgRatio = customBgImg.width / customBgImg.height;
+            const destHeight = height - 410;
+            const destRatio = width / destHeight;
+            let drawW, drawH, offX, offY;
+            if (bgRatio > destRatio) {
+                drawH = destHeight;
+                drawW = destHeight * bgRatio;
+                offX = (width - drawW) / 2;
+                offY = 0;
+            } else {
+                drawW = width;
+                drawH = width / bgRatio;
+                offX = 0;
+                offY = (destHeight - drawH) / 2;
+            }
+            ctx.drawImage(customBgImg, offX, 410 + offY, drawW, drawH);
+            
+            // Dark overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+            ctx.fillRect(0, 410, width, height - 410);
+            ctx.restore();
+        }
+
         const detailsY = imgY + imgHeight + 25;
         const leftMargin = 30;
         
@@ -286,12 +318,6 @@ export const generateAndShareBolo = async (
         const logoY = bottomY - logoHeight / 2;
 
         const drawLogo = (img: HTMLImageElement | null, x: number) => {
-            ctx.fillStyle = '#000000';
-            ctx.strokeStyle = '#333333';
-            ctx.lineWidth = 1;
-            ctx.fillRect(x, logoY, logoWidth, logoHeight);
-            ctx.strokeRect(x, logoY, logoWidth, logoHeight);
-
             if (img) {
                 const imgRatio = img.width / img.height;
                 const areaRatio = logoWidth / logoHeight;

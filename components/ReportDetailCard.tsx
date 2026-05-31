@@ -26,9 +26,28 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     const [localReport, setLocalReport] = useState<Report>(report);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
+    const [customBgDataUrl, setCustomBgDataUrl] = useState<string | null>(null);
+    const [customBgName, setCustomBgName] = useState<string | null>(null);
     const { addToast } = useToast();
     const { openChat } = useChat();
     const { mainLogoUrl } = useSettings();
+
+    const handleCustomBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setCustomBgName(file.name);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setCustomBgDataUrl(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleClearCustomBg = () => {
+        setCustomBgDataUrl(null);
+        setCustomBgName(null);
+    };
 
     useEffect(() => {
         setLocalReport(report);
@@ -170,13 +189,14 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             ]);
 
             // 3. Load images into HTMLImageElements
-            const [mainImage, companyLogo, qrWww, qrFb, whatsappIcon, rapidLogo] = await Promise.all([
+            const [mainImage, companyLogo, qrWww, qrFb, whatsappIcon, rapidLogo, customBgImg] = await Promise.all([
                 mainImageDataUrl ? loadImage(mainImageDataUrl) : Promise.resolve(null),
                 companyLogoDataUrl ? loadImage(companyLogoDataUrl) : loadImage(logoUrl),
                 qrWwwDataUrl ? loadImage(qrWwwDataUrl) : Promise.resolve(null),
                 qrFbDataUrl ? loadImage(qrFbDataUrl) : Promise.resolve(null),
                 whatsappDataUrl ? loadImage(whatsappDataUrl) : Promise.resolve(null),
-                rapidLogoDataUrl ? loadImage(rapidLogoDataUrl) : Promise.resolve(null)
+                rapidLogoDataUrl ? loadImage(rapidLogoDataUrl) : Promise.resolve(null),
+                customBgDataUrl ? loadImage(customBgDataUrl) : Promise.resolve(null)
             ]);
 
             // 4. Setup Canvas
@@ -209,7 +229,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             ctx.textBaseline = 'middle';
             
             ctx.font = 'bold 28px sans-serif';
-            ctx.fillText('SA Stolen And Highjacked Vehicles (Pty)Ltd', width / 2, 35);
+            const companyName = profile?.company?.name || 'SA Stolen And Highjacked Vehicles (Pty)Ltd';
+            ctx.fillText(companyName, width / 2, 35);
             
             ctx.fillStyle = '#000000';
             ctx.font = '900 60px Impact, sans-serif';
@@ -294,6 +315,35 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             }
 
             // 8. Draw Details Section
+            if (customBgImg) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(0, 410, width, height - 410);
+                ctx.clip();
+                
+                const bgRatio = customBgImg.width / customBgImg.height;
+                const destHeight = height - 410;
+                const destRatio = width / destHeight;
+                let drawW, drawH, offX, offY;
+                if (bgRatio > destRatio) {
+                    drawH = destHeight;
+                    drawW = destHeight * bgRatio;
+                    offX = (width - drawW) / 2;
+                    offY = 0;
+                } else {
+                    drawW = width;
+                    drawH = width / bgRatio;
+                    offX = 0;
+                    offY = (destHeight - drawH) / 2;
+                }
+                ctx.drawImage(customBgImg, offX, 410 + offY, drawW, drawH);
+                
+                // Dark overlay
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+                ctx.fillRect(0, 410, width, height - 410);
+                ctx.restore();
+            }
+
             const detailsY = imgY + imgHeight + 25;
             const leftMargin = 30;
             
@@ -392,12 +442,6 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
             // Helper to draw logo contained
             const drawLogo = (img: HTMLImageElement | null, x: number) => {
-                ctx.fillStyle = '#000000';
-                ctx.strokeStyle = '#333333';
-                ctx.lineWidth = 1;
-                ctx.fillRect(x, logoY, logoWidth, logoHeight);
-                ctx.strokeRect(x, logoY, logoWidth, logoHeight);
-
                 if (img) {
                     const imgRatio = img.width / img.height;
                     const areaRatio = logoWidth / logoHeight;
@@ -788,6 +832,31 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     </button>
                 </div>
             )}
+
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex flex-col gap-1.5 bg-gray-50 dark:bg-gray-800/30 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
+                <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">BOLO Background Option</span>
+                <div className="flex items-center gap-2">
+                    <label className="flex-1 flex items-center justify-between px-3 py-1.5 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700/80 rounded-md cursor-pointer text-xs font-medium border border-gray-200 dark:border-gray-700 transition-colors shadow-sm">
+                        <span className="truncate text-gray-600 dark:text-gray-300 mr-2">{customBgName || 'Choose Background'}</span>
+                        <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold uppercase flex-shrink-0">Browse</span>
+                        <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={handleCustomBgUpload} 
+                        />
+                    </label>
+                    {customBgDataUrl && (
+                        <button 
+                            onClick={handleClearCustomBg} 
+                            className="px-2 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50 rounded-md text-xs font-semibold"
+                            title="Reset to Black"
+                        >
+                            Reset
+                        </button>
+                    )}
+                </div>
+            </div>
 
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 grid grid-cols-2 gap-3">
                 <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold">
