@@ -158,30 +158,55 @@ export default async function handler(req: any, res: any) {
             const data = req.body;
             const formData = new URLSearchParams();
             
-            formData.append('add-vehicle_registration', data.vehicle_registration || '');
-            formData.append('add-make', data.make || '');
-            formData.append('add-model', data.model || '');
-            formData.append('add-color', data.color || '');
-            formData.append('add-reason', data.reason || '');
-            formData.append('add-cos_name', data.cos_name || '');
-            formData.append('add-cos_contact_number', data.cos_contact_number || '');
-            formData.append('add-case_number', data.case_number || '');
-            formData.append('add-station_reported_at', data.station_reported_at || '');
-            formData.append('add-io_name', data.io_name || '');
-            formData.append('add-io_contact', data.io_contact || '');
-            formData.append('add-recovered', data.recovered || '');
-            formData.append('add-tracker', data.tracker || '');
-            formData.append('add-date_of_incident', data.date_of_incident || '');
-            formData.append('submit-add', '');
+            const lowerReason = String(data.reason || '').toLowerCase();
+            const isRecoveredStr = String(data.recovered || '').toLowerCase();
+            const isRecoveredBool = data.recovered === true || data.recovered === 'Yes' || isRecoveredStr === 'yes' || isRecoveredStr === 'recovered';
 
-            const legacyRes = await fetch('https://rapidreportingsa.co.za/WORKING/ob.php', {
+            let typeParam = data.type || 'STOLEN VEHICLE';
+            if (typeParam === 'STOLEN VEHICLE' || typeParam === 'vehicle') {
+                if (isRecoveredBool) {
+                    typeParam = 'RECOVERY LOG';
+                } else if (lowerReason.includes('hijack')) {
+                    typeParam = 'HIJACKING';
+                } else if (lowerReason.includes('theft out of')) {
+                    typeParam = 'THEFT OUT OF MOTOR VEHICLE';
+                } else {
+                    typeParam = 'STOLEN VEHICLE';
+                }
+            }
+
+            let recoveredParam = 'STOLEN';
+            if (isRecoveredBool) {
+                recoveredParam = 'RECOVERED';
+            } else if (isRecoveredStr === 'pending') {
+                recoveredParam = 'PENDING';
+            }
+
+            formData.append('type', typeParam);
+            formData.append('vehicle_registration', data.vehicle_registration || '');
+            formData.append('make', data.make || '');
+            formData.append('model', data.model || '');
+            formData.append('color', data.color || '');
+            formData.append('cos_name', data.cos_name || '');
+            formData.append('cos_contact_number', data.cos_contact_number || '');
+            formData.append('case_number', data.case_number || '');
+            formData.append('station_reported_at', data.station_reported_at || '');
+            formData.append('io_name', data.io_name || '');
+            formData.append('io_contact', data.io_contact || '');
+            formData.append('date_of_incident', data.date_of_incident || new Date().toISOString().split('T')[0]);
+            formData.append('tracker', data.tracker || '');
+            formData.append('recovered', recoveredParam);
+            formData.append('reason', data.reason || '');
+            formData.append('entry_text', data.entry_text || data.reason || 'Auto-entered entry from Rapid911 system.');
+
+            const legacyRes = await fetch('https://rapidreportingsa.co.za/process_vehicle.php', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                     'Origin': 'https://rapidreportingsa.co.za',
-                    'Referer': 'https://rapidreportingsa.co.za/WORKING/ob.php'
+                    'Referer': 'https://rapidreportingsa.co.za/UltimateRegApp.html'
                 },
                 body: formData.toString()
             });

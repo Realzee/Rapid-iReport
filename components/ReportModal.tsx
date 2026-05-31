@@ -158,41 +158,6 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selected, onChange, 
 };
 
 const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit, isQuickAdd = false, onReportSubmitted }) => {
-    const syncToLegacySystem = async (type: string, data: any) => {
-        try {
-            const payload = {
-                action: 'add',
-                vehicle_registration: data.license_plate || '',
-                make: data.vehicle_make || '',
-                model: data.vehicle_model || '',
-                color: data.vehicle_color || '',
-                reason: data.description || '',
-                cos_name: data.cos_name || '',
-                cos_contact_number: data.cos_contact_number || '',
-                case_number: data.cas_number || '',
-                station_reported_at: data.station_name || '',
-                io_name: data.io_name || '',
-                io_contact: data.io_contact || '',
-                recovered: data.status === 'recovered' || data.status === 'RECOVERED' ? 'Yes' : 'No',
-                tracker: data.has_tracker ? 'Yes' : 'No',
-                date_of_incident: data.reported_at ? new Date(data.reported_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
-            };
-
-            const res = await fetch('/api/legacy-api', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (res.ok) {
-                console.log('Successfully auto-added report to legacy database');
-            } else {
-                console.error('Failed to auto-add report to legacy database:', res.status);
-            }
-        } catch (e) {
-            console.error('Error auto-syncing to legacy db:', e);
-        }
-    };
-
     const [reportType, setReportType] = useState<ReportType>('vehicle');
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -707,11 +672,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 }
 
                 logUserAction(user.id, 'CREATE_REPORT', `Created new ${reportType} report ${reportId} (${finalObNumber})`);
-
-                // Auto add to legacy system if it's a vehicle report or has a license plate
-                if (successfulInsertData && (reportType === 'vehicle' || successfulInsertData.license_plate)) {
-                    syncToLegacySystem(reportType, successfulInsertData);
-                }
                 
                 if (profileData) {
                     const reportForBolo = {
