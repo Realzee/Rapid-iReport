@@ -368,6 +368,31 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 reverseGeocode(coords).then(address => {
                     setFormData(prev => ({ ...prev, location: address }));
                 });
+            } else if (value.trim().startsWith('http://') || value.trim().startsWith('https://')) {
+                setFormData({ ...formData, map_link: value, location: 'Resolving map link...', location_coords: null, location_boundary: null, location_boundingbox: null });
+                fetch('/api/resolve-maps-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: value.trim() })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.coords) {
+                        setFormData(prev => ({
+                            ...prev,
+                            location: data.address || prev.location,
+                            location_coords: data.coords,
+                            location_boundary: null,
+                            location_boundingbox: null
+                        }));
+                    } else {
+                        setFormData(prev => ({ ...prev, location: 'Could not extract coordinates' }));
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to resolve maps link:', err);
+                    setFormData(prev => ({ ...prev, location: 'Error resolving link' }));
+                });
             } else {
                 setFormData({ ...formData, map_link: value });
             }
@@ -378,6 +403,31 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 setFormData({ ...formData, location: 'Fetching location...', location_coords: coords, location_boundary: null, location_boundingbox: null });
                 reverseGeocode(coords).then(address => {
                     setFormData(prev => ({ ...prev, location: address }));
+                });
+            } else if (value.trim().startsWith('http://') || value.trim().startsWith('https://')) {
+                setFormData({ ...formData, location: 'Resolving map link...', location_coords: null, location_boundary: null, location_boundingbox: null, map_link: value });
+                fetch('/api/resolve-maps-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: value.trim() })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.coords) {
+                        setFormData(prev => ({
+                            ...prev,
+                            location: data.address || prev.location,
+                            location_coords: data.coords,
+                            location_boundary: null,
+                            location_boundingbox: null
+                        }));
+                    } else {
+                        setFormData(prev => ({ ...prev, location: value }));
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to resolve location maps link:', err);
+                    setFormData(prev => ({ ...prev, location: value }));
                 });
             } else {
                 setFormData({ ...formData, location: processedValue, location_coords: null, location_boundary: null, location_boundingbox: null });
@@ -750,11 +800,27 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                              
                             <div className="md:col-span-2">
                                 <label htmlFor="location" className={labelClasses}>Last Seen Loc</label>
-                                <div className="relative mt-1">
+                                <div className="relative mt-1" ref={suggestionsRef}>
                                     <input type="text" name="location" id="location" value={formData.location || ''} onChange={handleChange} className={`${inputClasses} !mt-0 pr-10`} placeholder="Pin Taken Here" autoComplete="off"/>
                                     <button type="button" onClick={() => setMapVisible(!isMapVisible)} className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 transition-colors" title="Pin location on map">
                                         <MapPinIcon className="w-5 h-5" />
                                     </button>
+                                    
+                                    {/* ADDRESS SUGGESTIONS DROPDOWN */}
+                                    {addressSuggestions.length > 0 && (
+                                        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                            {addressSuggestions.map((suggestion, index) => (
+                                                <button
+                                                    type="button"
+                                                    key={suggestion.place_id || index}
+                                                    onClick={() => handleSuggestionClick(suggestion)}
+                                                    className="w-full text-left p-3 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700/50 last:border-0"
+                                                >
+                                                    {suggestion.display_name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             
@@ -888,6 +954,46 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 </div>
                             </div>
                             
+                            <div className="space-y-4">
+                                <label htmlFor="location" className={labelClasses}>Pindrop of Scene / Location</label>
+                                <div className="relative mt-1" ref={suggestionsRef}>
+                                    <input type="text" name="location" id="location" value={formData.location || ''} onChange={handleChange} className={`${inputClasses} !mt-0 pr-10`} placeholder="Location at Scene" autoComplete="off"/>
+                                    <button type="button" onClick={() => setMapVisible(!isMapVisible)} className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 transition-colors" title="Pin location on map">
+                                        <MapPinIcon className="w-5 h-5" />
+                                    </button>
+                                    
+                                    {/* ADDRESS SUGGESTIONS DROPDOWN */}
+                                    {addressSuggestions.length > 0 && (
+                                        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                            {addressSuggestions.map((suggestion, index) => (
+                                                <button
+                                                    type="button"
+                                                    key={suggestion.place_id || index}
+                                                    onClick={() => handleSuggestionClick(suggestion)}
+                                                    className="w-full text-left p-3 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700/50 last:border-0"
+                                                >
+                                                    {suggestion.display_name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <label htmlFor="map_link" className={labelClasses}>Map Link (Optional)</label>
+                                <input type="text" name="map_link" id="map_link" value={formData.map_link || ''} onChange={handleChange} className={inputClasses} placeholder="Paste Google Maps link here..." />
+                            </div>
+
+                            {isMapVisible && (
+                                <div className="mt-2">
+                                     <LocationPicker
+                                        initialCoords={formData.location_coords}
+                                        onLocationChange={handleLocationChange}
+                                    />
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div><label htmlFor="cas_number" className={labelClasses}>Case Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="Case" /></div>
                                 <div>
@@ -979,11 +1085,27 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
                             <div className="md:col-span-2">
                                 <label htmlFor="location" className={labelClasses}>Pindrop of Scene</label>
-                                <div className="relative mt-1">
+                                <div className="relative mt-1" ref={suggestionsRef}>
                                     <input type="text" name="location" id="location" value={formData.location || ''} onChange={handleChange} className={`${inputClasses} !mt-0 pr-10`} placeholder="Location at Scene" autoComplete="off"/>
                                     <button type="button" onClick={() => setMapVisible(!isMapVisible)} className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 transition-colors" title="Pin location on map">
                                         <MapPinIcon className="w-5 h-5" />
                                     </button>
+                                    
+                                    {/* ADDRESS SUGGESTIONS DROPDOWN */}
+                                    {addressSuggestions.length > 0 && (
+                                        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                            {addressSuggestions.map((suggestion, index) => (
+                                                <button
+                                                    type="button"
+                                                    key={suggestion.place_id || index}
+                                                    onClick={() => handleSuggestionClick(suggestion)}
+                                                    className="w-full text-left p-3 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700/50 last:border-0"
+                                                >
+                                                    {suggestion.display_name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             
