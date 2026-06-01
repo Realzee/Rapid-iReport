@@ -13,8 +13,8 @@ export default async function handler(req: Request, res: Response) {
     const limit = (req.query.limit || req.body.limit || '5') as string;
     
     const doSearch = async (searchQuery: string) => {
-        // Enforce South Africa with countrycodes=za
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&polygon_geojson=1&countrycodes=za&limit=${limit}`;
+        // Enforce South Africa with countrycodes=za and accept-language=en
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&polygon_geojson=1&countrycodes=za&accept-language=en&limit=${limit}`;
         const response = await fetch(url, {
             headers: {
                 'User-Agent': 'Rapid-IReport-App/1.0 (mzwelisto@gmail.com)',
@@ -24,7 +24,18 @@ export default async function handler(req: Request, res: Response) {
         if (!response.ok) {
             throw new Error(`Nominatim failed with status ${response.status}`);
         }
-        return await response.json();
+        const data = await response.json();
+        
+        // Strict country filtering to handle any potential Nominatim ignores or fallback slippage
+        if (Array.isArray(data)) {
+            return data.filter((item: any) => 
+                item.display_name && 
+                (item.display_name.toLowerCase().includes("south africa") || 
+                 item.display_name.toLowerCase().includes(", za") ||
+                 item.display_name.toLowerCase().includes(" suid-afrika"))
+            );
+        }
+        return [];
     };
 
     try {

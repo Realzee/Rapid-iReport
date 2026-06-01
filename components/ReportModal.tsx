@@ -292,6 +292,18 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     }, []);
 
     const handleSuggestionClick = (suggestion: any) => {
+        if (suggestion.is_custom) {
+            setFormData(prev => ({
+                ...prev,
+                location: suggestion.display_name,
+                location_coords: null,
+                location_boundary: null,
+                location_boundingbox: null,
+            }));
+            setAddressSuggestions([]);
+            return;
+        }
+
         const lat = parseFloat(suggestion.lat);
         const lng = parseFloat(suggestion.lon);
         let coords: LocationCoords | null = (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) ? { lat, lng } : null;
@@ -807,7 +819,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     </button>
                                     
                                     {/* ADDRESS SUGGESTIONS DROPDOWN */}
-                                    {addressSuggestions.length > 0 && (
+                                    {((addressSuggestions.length > 0 || (formData.location && formData.location.trim().length >= 3 && !formData.location_coords)) && (
                                         <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                             {addressSuggestions.map((suggestion, index) => (
                                                 <button
@@ -819,8 +831,17 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                                     {suggestion.display_name}
                                                 </button>
                                             ))}
+                                            {formData.location && formData.location.trim().length >= 3 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSuggestionClick({ display_name: formData.location.trim(), is_custom: true })}
+                                                    className="w-full text-left p-3 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-medium transition-colors border-t border-gray-100 dark:border-gray-700/50 last:border-0"
+                                                >
+                                                    Use custom address: "{formData.location.trim()}"
+                                                </button>
+                                            )}
                                         </div>
-                                    )}
+                                    ))}
                                 </div>
                             </div>
                             
@@ -963,7 +984,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     </button>
                                     
                                     {/* ADDRESS SUGGESTIONS DROPDOWN */}
-                                    {addressSuggestions.length > 0 && (
+                                    {((addressSuggestions.length > 0 || (formData.location && formData.location.trim().length >= 3 && !formData.location_coords)) && (
                                         <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                             {addressSuggestions.map((suggestion, index) => (
                                                 <button
@@ -975,8 +996,17 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                                     {suggestion.display_name}
                                                 </button>
                                             ))}
+                                            {formData.location && formData.location.trim().length >= 3 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSuggestionClick({ display_name: formData.location.trim(), is_custom: true })}
+                                                    className="w-full text-left p-3 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-medium transition-colors border-t border-gray-100 dark:border-gray-700/50 last:border-0"
+                                                >
+                                                    Use custom address: "{formData.location.trim()}"
+                                                </button>
+                                            )}
                                         </div>
-                                    )}
+                                    ))}
                                 </div>
                             </div>
 
@@ -1092,7 +1122,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     </button>
                                     
                                     {/* ADDRESS SUGGESTIONS DROPDOWN */}
-                                    {addressSuggestions.length > 0 && (
+                                    {((addressSuggestions.length > 0 || (formData.location && formData.location.trim().length >= 3 && !formData.location_coords)) && (
                                         <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                             {addressSuggestions.map((suggestion, index) => (
                                                 <button
@@ -1104,8 +1134,17 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                                     {suggestion.display_name}
                                                 </button>
                                             ))}
+                                            {formData.location && formData.location.trim().length >= 3 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSuggestionClick({ display_name: formData.location.trim(), is_custom: true })}
+                                                    className="w-full text-left p-3 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-medium transition-colors border-t border-gray-100 dark:border-gray-700/50 last:border-0"
+                                                >
+                                                    Use custom address: "{formData.location.trim()}"
+                                                </button>
+                                            )}
                                         </div>
-                                    )}
+                                    ))}
                                 </div>
                             </div>
                             
