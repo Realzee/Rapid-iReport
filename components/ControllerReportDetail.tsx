@@ -78,28 +78,9 @@ const ControllerReportDetail: React.FC<{
     const [recoveredAt, setRecoveredAt] = useState<string>((report as any).recovered_at || new Date().toISOString().slice(0, 16));
     const [aiInsights, setAiInsights] = useState<RecoveryInsight[] | null>(null);
     const [isLoadingInsights, setIsLoadingInsights] = useState(false);
-    const [customBgDataUrl, setCustomBgDataUrl] = useState<string | null>(null);
-    const [customBgName, setCustomBgName] = useState<string | null>(null);
     const { addToast } = useToast();
     const { openChat } = useChat();
     const { mainLogoUrl } = useSettings();
-
-    const handleCustomBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setCustomBgName(file.name);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setCustomBgDataUrl(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleClearCustomBg = () => {
-        setCustomBgDataUrl(null);
-        setCustomBgName(null);
-    };
 
     const isTerminalStatus = useMemo(() => {
         return [ReportStatus.RESOLVED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.REJECTED, ReportStatus.DELETED].includes(report.status);
@@ -467,7 +448,7 @@ const ControllerReportDetail: React.FC<{
                 qrFbDataUrl ? loadImage(qrFbDataUrl) : Promise.resolve(null),
                 whatsappDataUrl ? loadImage(whatsappDataUrl) : Promise.resolve(null),
                 rapidLogoDataUrl ? loadImage(rapidLogoDataUrl) : Promise.resolve(null),
-                customBgDataUrl ? loadImage(customBgDataUrl) : Promise.resolve(null)
+                Promise.resolve(null)
             ]);
 
             // 4. Setup Canvas

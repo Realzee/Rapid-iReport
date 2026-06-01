@@ -27,28 +27,9 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     const [localReport, setLocalReport] = useState<Report>(report);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
-    const [customBgDataUrl, setCustomBgDataUrl] = useState<string | null>(null);
-    const [customBgName, setCustomBgName] = useState<string | null>(null);
     const { addToast } = useToast();
     const { openChat } = useChat();
     const { mainLogoUrl } = useSettings();
-
-    const handleCustomBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setCustomBgName(file.name);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setCustomBgDataUrl(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleClearCustomBg = () => {
-        setCustomBgDataUrl(null);
-        setCustomBgName(null);
-    };
 
     useEffect(() => {
         setLocalReport(report);
@@ -212,7 +193,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 qrFbDataUrl ? loadImage(qrFbDataUrl) : Promise.resolve(null),
                 whatsappDataUrl ? loadImage(whatsappDataUrl) : Promise.resolve(null),
                 rapidLogoDataUrl ? loadImage(rapidLogoDataUrl) : Promise.resolve(null),
-                customBgDataUrl ? loadImage(customBgDataUrl) : Promise.resolve(null)
+                Promise.resolve(null)
             ]);
 
             // 4. Setup Canvas
