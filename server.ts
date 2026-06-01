@@ -102,6 +102,7 @@ async function runMigrations() {
         "CREATE POLICY \"Allow select tech_chat for authenticated\" ON public.tech_chat_messages FOR SELECT TO authenticated USING (true);",
         "DROP POLICY IF EXISTS \"Allow insert tech_chat for authenticated\" ON public.tech_chat_messages;",
         "CREATE POLICY \"Allow insert tech_chat for authenticated\" ON public.tech_chat_messages FOR INSERT TO authenticated WITH CHECK (true);",
+        "ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS bolo_background_url text;",
         "NOTIFY pgrst, 'reload schema';",
         "SELECT pg_notify('pgrst', 'reload schema');"
     ];

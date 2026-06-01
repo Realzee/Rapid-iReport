@@ -10,6 +10,7 @@ import { logoUrl } from '../assets/logo';
 import { useToast } from '../contexts/ToastContext';
 import { useChat } from '../contexts/ChatContext';
 import { useSettings } from '../contexts/SettingsContext';
+import { generateAndShareBolo } from '../utils/boloUtils';
 
 interface ReportDetailCardProps {
     report: Report;
@@ -131,6 +132,21 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
     const generateBoloImage = async (action: 'download' | 'share' = 'download') => {
         setIsGeneratingBolo(true);
+        try {
+            await generateAndShareBolo(
+                localReport,
+                profile,
+                mainLogoUrl,
+                action
+            );
+            setIsGeneratingBolo(false);
+            return;
+        } catch (error: any) {
+            console.error("BOLO Generation Error:", error);
+            addToast("Failed to generate BOLO card. " + (error.message || String(error)), 'error');
+            setIsGeneratingBolo(false);
+            return;
+        }
 
         const fetchImageAsDataURL = async (url: string) => {
             try {
@@ -833,30 +849,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 </div>
             )}
 
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex flex-col gap-1.5 bg-gray-50 dark:bg-gray-800/30 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
-                <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">BOLO Background Option</span>
-                <div className="flex items-center gap-2">
-                    <label className="flex-1 flex items-center justify-between px-3 py-1.5 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700/80 rounded-md cursor-pointer text-xs font-medium border border-gray-200 dark:border-gray-700 transition-colors shadow-sm">
-                        <span className="truncate text-gray-600 dark:text-gray-300 mr-2">{customBgName || 'Choose Background'}</span>
-                        <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold uppercase flex-shrink-0">Browse</span>
-                        <input 
-                            type="file" 
-                            accept="image/*" 
-                            className="hidden" 
-                            onChange={handleCustomBgUpload} 
-                        />
-                    </label>
-                    {customBgDataUrl && (
-                        <button 
-                            onClick={handleClearCustomBg} 
-                            className="px-2 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50 rounded-md text-xs font-semibold"
-                            title="Reset to Black"
-                        >
-                            Reset
-                        </button>
-                    )}
-                </div>
-            </div>
+
 
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 grid grid-cols-2 gap-3">
                 <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold">

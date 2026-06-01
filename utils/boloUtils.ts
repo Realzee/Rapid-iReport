@@ -49,20 +49,23 @@ export const generateAndShareBolo = async (
         const whatsappIconSvg = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzI1ZDM2NiI+PHBhdGggZD0iTTE3LjQ3MiAzLjQ3OGMtMi42Ny0yLjY3MS02LjIyOC00LjEzMS0xMC4wOC00LjEzMWMtNy44NTMgMC0xNC4yNDEgNi4zODgtMTQuMjQxIDE0LjI0MmMwIDIuNTA4LjY1NSA0Ljk1NCAxLjg5OSA3LjEyM2wtMi4wMTkgNy4zNzIgNy41NDMtMS45NzhjMi4wNzcuMTEzMyA0LjQxNSAxLjczOCA2LjgxNiAxLjczOHYtLjAwMWg1LjQ1OGU3Ljg1NSAwIDE0LjI0NS02LjM5IDE0LjI0NS0xNC4yNDVjMC0zLjgwNC0xLjQ4LTYuMzc2LTQuMTQ0LTkuMDU2em0tMTAuMDggMjEuMjc1Yy0yLjExNSAwLTQuMTg4LS41Ny01Ljk5Ny0xLjYzM2wtLjQyOS0uMjUxLTQuNDU3IDEuMTY5IDEuMTg5LTQuMzQ1LS4yNzgtLjQ0MmMtMS4xNzQtMS44NjUtMS43OTMtNC4wMzEtMS43OTMtNi4yNDcgMC02LjQ5MyA1LjI4My0xMS43NzYgMTEuNzc4LTExLjc3NiA2LjQ5MSAwIDExLjc3NCA1LjI4MyAxMS43NzQgMTEuNzc2IDAgNi40OTUtNS4yODMgMTEuNzc4LTExLjc3OCAxMS43Nzh6bTYuNDQxLTguODI2Yy0uMzUzLS4xNzctMi4wODgtMS4wMjgtMi40MTEtMS4xNDctLjMyMy0uMTE4LS41NTktLjE3Ni0uNzk0LjE3Ni0uMjM1LjM1My0uOTEyIDEuMTQ3LTEuMTE4IDEuMzc5LS4yMDYuMjM1LS40MTIuMjY1LS43NjUuMDg4LS4zNTMtLjE3Ni0xLjQ5MS0uNTUtMi44MzktMS43NTItMS4wNDUtLjkzMi0xLjc1MS0yLjA4My0xLjk1Ni0yLjQzNS0uMjA2LS4zNTMtLjAyMi0uNTQ0LjE1NC0uNzIyLjE1OC0uMTU5LjM1My0uNDEyLjUyOS0uNjE4LjE3Ni0uMjA2LjIzNS0uMzUzLjM1My0uNTg4LjExOC0uMjM1LjA1OS0uNDQxLS4wMjktLjYxOC0uMDg4LS4xNzYtLjc5NC0xLjkxMi0xLjA4OC0yLjYxOC0uMjg3LS42ODUtLjU4MS0uNTkzLS43OTQtLjYwM2wtLjY3Ni0uMDE1Yy0uMjM1IDAtLjYxOC4wODgtLjk0MS40NDEtLjMyMy4zNTMtMS4yMzUgMS4yMDYtMS4yMzUgMi45NDFzMS4yNjUgMi45NDEgMS40NDEgMy4xNzZjLjE3Ni4yMzUgMi40ODggMy43OTYgNi4wMjkgNS4zMjIuODQxLjM2MiAxLjQ5OC41NzggMi4wMDcuNzQxLjg1My4yNzIgMS42My4yMzQgMi4yNDQuMTQyLjY4NS0uMTAzIDIuMDg4LS44NTMgMi4zODItMS42NzYuMjk0LS48MjMuMjk0LTEuNTI9LjIwNi0xLjY3Ni0uMDg4LS4xNDctLjMyMy0uMjM1LS42NzYtLjQxMXoiLz48L3N2Zz4=`;
 
         // 2. Fetch all images as Data URLs in parallel
+        const companyBoloBgUrl = customBgDataUrl || profile.company?.bolo_background_url;
         const [
             mainImageDataUrl,
             companyLogoDataUrl,
             qrWwwDataUrl,
             qrFbDataUrl,
             whatsappDataUrl,
-            rapidLogoDataUrl
+            rapidLogoDataUrl,
+            customBgImgDataUrl
         ] = await Promise.all([
             imageUrl ? fetchImageAsDataURL(imageUrl) : Promise.resolve(null),
             companyLogoUrl ? fetchImageAsDataURL(companyLogoUrl) : Promise.resolve(null),
             fetchImageAsDataURL(qrCodeWwwUrl),
             fetchImageAsDataURL(qrCodeFbUrl),
             fetchImageAsDataURL('https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg'),
-            fetchImageAsDataURL(mainLogoUrl)
+            fetchImageAsDataURL(mainLogoUrl),
+            companyBoloBgUrl ? fetchImageAsDataURL(companyBoloBgUrl) : Promise.resolve(null)
         ]);
 
         // 3. Load images into HTMLImageElements
@@ -73,7 +76,7 @@ export const generateAndShareBolo = async (
             qrFbDataUrl ? loadImage(qrFbDataUrl) : Promise.resolve(null),
             whatsappDataUrl ? loadImage(whatsappDataUrl) : Promise.resolve(null),
             rapidLogoDataUrl ? loadImage(rapidLogoDataUrl) : Promise.resolve(null),
-            customBgDataUrl ? loadImage(customBgDataUrl) : Promise.resolve(null)
+            customBgImgDataUrl ? loadImage(customBgImgDataUrl) : Promise.resolve(null)
         ]);
 
         // 4. Setup Canvas
@@ -82,7 +85,7 @@ export const generateAndShareBolo = async (
         if (!ctx) throw new Error("Could not get canvas context");
 
         const width = 580;
-        const height = 900;
+        const height = 950;
         canvas.width = width;
         canvas.height = height;
 
@@ -90,27 +93,27 @@ export const generateAndShareBolo = async (
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, width, height);
 
-        // 6. Draw Header
-        ctx.fillStyle = '#EF4444';
-        ctx.fillRect(0, 0, width, 120);
-        ctx.strokeStyle = '#991B1B';
-        ctx.lineWidth = 2;
+        // 6. Draw Header (Vibrant Solid Red Banner)
+        ctx.fillStyle = '#FF0000';
+        ctx.fillRect(0, 0, width, 135);
+        
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#000000';
         ctx.beginPath();
-        ctx.moveTo(0, 120);
-        ctx.lineTo(width, 120);
+        ctx.moveTo(0, 135);
+        ctx.lineTo(width, 135);
         ctx.stroke();
 
-        // Header Text
-        ctx.fillStyle = '#FFFFFF';
+        // Header Text - Top Line (Company Name, pure black in mockup)
+        ctx.fillStyle = '#000000';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        
-        ctx.font = 'bold 28px sans-serif';
+        ctx.font = 'bold 22px Arial, Helvetica, sans-serif'; // Clean, elegant, readable
         const companyName = profile?.company?.name || 'SA Stolen And Highjacked Vehicles (Pty)Ltd';
-        ctx.fillText(companyName, width / 2, 35);
-        
-        ctx.fillStyle = '#000000';
-        ctx.font = '900 60px Impact, sans-serif';
+        ctx.fillText(companyName, width / 2, 40);
+
+        // Header Text - Bottom Line (SOUGHT VEHICLE / INCIDENT Title) - Stout impact lettering in pure black
+        ctx.font = '900 64px Impact, "Arial Black", Arial, sans-serif'; 
         const headerTitle = report.type === 'vehicle' ? 'SOUGHT VEHICLE' : (report.title || String(report.type).toUpperCase() + ' INCIDENT');
         let truncatedHeader = headerTitle;
         const maxHeaderWidth = width - 40; // 20 padding on each side
@@ -120,13 +123,13 @@ export const generateAndShareBolo = async (
             }
             truncatedHeader += '...';
         }
-        ctx.fillText(truncatedHeader, width / 2, 90);
+        ctx.fillText(truncatedHeader, width / 2, 95);
         ctx.textBaseline = 'alphabetic';
 
         // 7. Draw Main Image Area
-        const imgY = 120;
-        const imgHeight = 290;
-        ctx.fillStyle = '#333333';
+        const imgY = 135;
+        const imgHeight = 310; // Prominent large photo area
+        ctx.fillStyle = '#111111';
         ctx.fillRect(0, imgY, width, imgHeight);
 
         if (mainImage) {
@@ -192,14 +195,15 @@ export const generateAndShareBolo = async (
         }
 
         // 8. Draw Details Section
+        const detailsBgY = imgY + imgHeight; // 445px
         if (customBgImg) {
             ctx.save();
             ctx.beginPath();
-            ctx.rect(0, 410, width, height - 410);
+            ctx.rect(0, detailsBgY, width, height - detailsBgY);
             ctx.clip();
             
             const bgRatio = customBgImg.width / customBgImg.height;
-            const destHeight = height - 410;
+            const destHeight = height - detailsBgY;
             const destRatio = width / destHeight;
             let drawW, drawH, offX, offY;
             if (bgRatio > destRatio) {
@@ -213,31 +217,33 @@ export const generateAndShareBolo = async (
                 offX = 0;
                 offY = (destHeight - drawH) / 2;
             }
-            ctx.drawImage(customBgImg, offX, 410 + offY, drawW, drawH);
+            ctx.drawImage(customBgImg, offX, detailsBgY + offY, drawW, drawH);
             
-            // Dark overlay
+            // Dark overlay for legibility
             ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-            ctx.fillRect(0, 410, width, height - 410);
+            ctx.fillRect(0, detailsBgY, width, height - detailsBgY);
             ctx.restore();
         }
 
-        const detailsY = imgY + imgHeight + 25;
-        const leftMargin = 30;
+        const detailsY = detailsBgY + 30; // 475px
+        const leftMargin = 35; // Spacing matching mockup
         
         ctx.textAlign = 'left';
         ctx.fillStyle = '#FFFFFF';
         ctx.font = '24px Arial, sans-serif';
-        const lineHeight = 35;
+        const lineHeight = 36;
 
         const statusText = isRecovered ? 'RECOVERED' : (report.status === 'active' || report.status === 'assigned' || report.status === 'in_progress' || report.status === 'on_scene' ? 'HIJACKED' : (report.status || '').toUpperCase());
         
         const drawField = (label: string, value: string, y: number) => {
-            ctx.font = 'normal 24px Arial, sans-serif';
+            ctx.font = 'normal 22px Arial, sans-serif';
             const labelWidth = ctx.measureText(label).width;
+            ctx.fillStyle = '#CCCCCC'; // Soft white for label
             ctx.fillText(label, leftMargin, y);
             
-            ctx.font = 'bold 24px Arial, sans-serif';
-            const maxWidth = width - leftMargin - labelWidth - 10 - 30; // 30 for padding
+            ctx.font = 'bold 22px Arial, sans-serif';
+            ctx.fillStyle = '#FFFFFF'; // Pure white for value
+            const maxWidth = width - leftMargin - labelWidth - 10 - 130; // Stay clear of right QR codes
             let truncatedValue = value;
             if (ctx.measureText(value).width > maxWidth) {
                 while (ctx.measureText(truncatedValue + '...').width > maxWidth && truncatedValue.length > 0) {
@@ -262,9 +268,11 @@ export const generateAndShareBolo = async (
             drawField('Case:', report.cas_number || 'N/A', detailsY + lineHeight * 2);
             drawField('Station:', report.station_name || 'N/A', detailsY + lineHeight * 3);
             
-            ctx.font = 'normal 24px Arial, sans-serif';
+            ctx.font = 'normal 22px Arial, sans-serif';
+            ctx.fillStyle = '#CCCCCC';
             ctx.fillText('Description:', leftMargin, detailsY + lineHeight * 4);
-            ctx.font = 'bold 24px Arial, sans-serif';
+            ctx.font = 'bold 22px Arial, sans-serif';
+            ctx.fillStyle = '#FFFFFF';
             
             const description = report.description || 'N/A';
             const words = description.split(' ');
@@ -273,7 +281,7 @@ export const generateAndShareBolo = async (
             for (let i = 0; i < words.length; i++) {
                 let testLine = line + words[i] + ' ';
                 let metrics = ctx.measureText(testLine);
-                if (metrics.width > width - leftMargin * 2 && i > 0) {
+                if (metrics.width > width - leftMargin - 130 && i > 0) { // Stay clear of right QR codes
                     ctx.fillText(line, leftMargin, y);
                     line = words[i] + ' ';
                     y += lineHeight;
@@ -286,7 +294,7 @@ export const generateAndShareBolo = async (
 
         // 9. Draw QR Codes
         const qrY = detailsY - 5;
-        const qrX = width - 30 - 80; // Right margin 30, width 80
+        const qrX = width - 35 - 80; // Right margin 35, width 80
         
         const drawQr = (img: HTMLImageElement | null, y: number) => {
             ctx.fillStyle = '#FFFFFF';
@@ -297,7 +305,7 @@ export const generateAndShareBolo = async (
         };
 
         drawQr(qrWww, qrY);
-        drawQr(qrFb, qrY + 100);
+        drawQr(qrFb, qrY + 105);
 
         // 10. Draw Footer
         const footerY = height - 160;

@@ -75,6 +75,7 @@ export interface Company {
     cell_number?: string;
     psira_number?: string;
     allowed_modules?: string[];
+    bolo_background_url?: string;
 }
 
 export interface Profile {

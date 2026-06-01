@@ -6,7 +6,7 @@ import { useFormPersistence } from '../useFormPersistence';
 interface AddEditCompanyModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (company: Partial<Company>, logoFile: File | null) => void;
+    onSave: (company: Partial<Company>, logoFile: File | null, boloBgFile: File | null) => void;
     company: Company | null;
     isSaving?: boolean;
 }
@@ -33,7 +33,8 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
             cell_number: company.cell_number || '',
             psira_number: company.psira_number || '',
             allowed_modules: company.allowed_modules || AVAILABLE_MODULES.map(m => m.id),
-            logo_url: company.logo_url
+            logo_url: company.logo_url,
+            bolo_background_url: company.bolo_background_url
         } : {
             name: '',
             owners_name: '',
@@ -49,6 +50,8 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
     const [formData, setFormData] = useState<Partial<Company>>(initialData);
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [boloBgFile, setBoloBgFile] = useState<File | null>(null);
+    const [boloBgPreview, setBoloBgPreview] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -57,6 +60,8 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
             setFormData(data);
             setLogoPreview(company?.logo_url || null);
             setLogoFile(null);
+            setBoloBgPreview(company?.bolo_background_url || null);
+            setBoloBgFile(null);
         }
     }, [isOpen, company]);
     
@@ -80,7 +85,7 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [isDirty]);
     
-    const isFormDirty = isDirty || logoFile !== null;
+    const isFormDirty = isDirty || logoFile !== null || boloBgFile !== null;
 
     const handleClose = () => {
         if (isFormDirty) {
@@ -111,6 +116,20 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
         setFormData(prev => ({...prev, logo_url: undefined }));
     };
 
+    const handleBoloBgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setBoloBgFile(file);
+            setBoloBgPreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleRemoveBoloBg = () => {
+        setBoloBgFile(null);
+        setBoloBgPreview(null);
+        setFormData(prev => ({...prev, bolo_background_url: undefined }));
+    };
+
     const handleModuleToggle = (moduleId: string) => {
         const currentModules = formData.allowed_modules || [];
         let newModules: string[];
@@ -134,9 +153,13 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const dataToSave = { ...formData, logo_url: logoPreview || undefined };
+        const dataToSave = { 
+            ...formData, 
+            logo_url: logoPreview || undefined, 
+            bolo_background_url: boloBgPreview || undefined 
+        };
         clearDraft();
-        onSave(dataToSave, logoFile);
+        onSave(dataToSave, logoFile, boloBgFile);
     };
 
     if (!isOpen) return null;
@@ -235,7 +258,7 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
                                     <img src={logoPreview} alt="Logo preview" className="h-full w-full object-contain rounded-md" />
                                ) : (
                                     <BuildingIcon className="h-8 w-8 text-gray-400" />
-                               )}
+                                )}
                             </div>
                             <div className="flex-grow">
                                 <label htmlFor="logo-upload" className="cursor-pointer inline-flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition">
@@ -247,6 +270,35 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
                                     <button type="button" onClick={handleRemoveLogo} className="mt-1 flex items-center gap-1.5 text-[11px] text-red-600 dark:text-red-400 hover:underline">
                                         <TrashIcon className="w-3 h-3" />
                                         Remove logo
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-gray-100 dark:border-gray-800 pt-3">
+                        <label className={`${labelClasses} font-semibold text-gray-900 dark:text-white`}>BOLO Card Background (For WhatsApp BOLO PDFs/Images)</label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            Set a custom background image for your Be-On-The-Lookout cards:
+                        </p>
+                        <div className="mt-2 flex items-center gap-4">
+                            <div className="h-16 w-32 flex-shrink-0 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center border border-gray-300 dark:border-gray-700 overflow-hidden">
+                                {boloBgPreview ? (
+                                    <img src={boloBgPreview} alt="BOLO Background preview" className="h-full w-full object-cover" />
+                               ) : (
+                                    <span className="text-[10px] text-gray-400 font-mono">Solid Black</span>
+                               )}
+                            </div>
+                            <div className="flex-grow">
+                                <label htmlFor="bolobg-upload" className="cursor-pointer inline-flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition">
+                                    <UploadCloudIcon className="w-4 h-4"/>
+                                    <span>{boloBgFile ? 'Change image' : 'Upload image'}</span>
+                                </label>
+                                <input id="bolobg-upload" name="bolobg-upload" type="file" className="sr-only" accept="image/*" onChange={handleBoloBgChange} />
+                                {boloBgPreview && (
+                                    <button type="button" onClick={handleRemoveBoloBg} className="mt-1 flex items-center gap-1.5 text-[11px] text-red-600 dark:text-red-400 hover:underline">
+                                        <TrashIcon className="w-3 h-3" />
+                                        Reset to black
                                     </button>
                                 )}
                             </div>

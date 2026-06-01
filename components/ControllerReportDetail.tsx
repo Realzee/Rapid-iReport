@@ -12,6 +12,7 @@ import { logoUrl } from '../assets/logo';
 import { useChat } from '../contexts/ChatContext';
 import ImagePreviewModal from './ImagePreviewModal';
 import { useSettings } from '../contexts/SettingsContext';
+import { generateAndShareBolo } from '../utils/boloUtils';
 import { logUserAction } from '../utils/logger';
 import { LocationPicker } from './LocationPicker';
 import { getRecoveryInsights, RecoveryInsight } from '../utils/aiService';
@@ -386,6 +387,21 @@ const ControllerReportDetail: React.FC<{
 
     const generateBoloImage = async (action: 'download' | 'share' = 'download') => {
         setIsGeneratingBolo(true);
+        try {
+            await generateAndShareBolo(
+                report,
+                profile,
+                mainLogoUrl,
+                action
+            );
+            setIsGeneratingBolo(false);
+            return;
+        } catch (error: any) {
+            console.error("BOLO Generation Error:", error);
+            addToast("Failed to generate BOLO card. " + (error.message || String(error)), 'error');
+            setIsGeneratingBolo(false);
+            return;
+        }
 
         const fetchImageAsDataURL = async (url: string) => {
             try {
@@ -1085,30 +1101,7 @@ const ControllerReportDetail: React.FC<{
             </div>
             
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 space-y-3 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm -mx-4 px-4 pb-2 sticky bottom-0">
-                <div className="flex flex-col gap-1.5 bg-gray-50 dark:bg-gray-800/30 p-2 rounded-lg border border-gray-150 dark:border-gray-800">
-                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">BOLO Background Option</span>
-                    <div className="flex items-center gap-2">
-                        <label className="flex-1 flex items-center justify-between px-2.5 py-1 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700/80 rounded-md cursor-pointer text-xs font-medium border border-gray-200 dark:border-gray-700 transition-colors shadow-sm">
-                            <span className="truncate text-gray-600 dark:text-gray-300 mr-2">{customBgName || 'Choose Background'}</span>
-                            <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold uppercase flex-shrink-0">Browse</span>
-                            <input 
-                                type="file" 
-                                accept="image/*" 
-                                className="hidden" 
-                                onChange={handleCustomBgUpload} 
-                            />
-                        </label>
-                        {customBgDataUrl && (
-                            <button 
-                                onClick={handleClearCustomBg} 
-                                className="px-2 py-1 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50 rounded-md text-[11px] font-semibold"
-                                title="Reset to Black"
-                            >
-                                Reset
-                            </button>
-                        )}
-                    </div>
-                </div>
+
                  <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => openChat(report)} className="w-full py-2 px-4 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition disabled:opacity-50">Open Live Chat</button>
                     <button onClick={() => setAssignmentModalOpen(true)} disabled={!canManageReport || isTerminalStatus || (report as any).is_legacy || report.id.startsWith('legacy-')} className="w-full py-2 px-4 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 transition disabled:opacity-50 disabled:cursor-not-allowed">Manage Status</button>

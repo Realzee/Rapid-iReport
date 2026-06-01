@@ -154,13 +154,16 @@ const CompaniesPage: React.FC = () => {
         setViewCompany(company);
     };
 
-    const handleSaveCompany = async (companyData: Partial<Company>, logoFile: File | null) => {
+    const handleSaveCompany = async (companyData: Partial<Company>, logoFile: File | null, boloBgFile: File | null) => {
         setIsSavingCompany(true);
         let finalLogoUrl = companyData.logo_url;
+        let finalBoloBgUrl = companyData.bolo_background_url;
 
         try {
+            const companyId = companyData.id || crypto.randomUUID();
+            const dataToSave = { ...companyData, id: companyId };
+
             if (logoFile) {
-                const companyId = companyData.id || crypto.randomUUID();
                 const fileExt = logoFile.name.split('.').pop();
                 const filePath = `${companyId}/logo.${fileExt}`;
 
@@ -174,12 +177,30 @@ const CompaniesPage: React.FC = () => {
                 finalLogoUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
             }
 
+            if (boloBgFile) {
+                const fileExt = boloBgFile.name.split('.').pop();
+                const filePath = `${companyId}/bolo_background.${fileExt}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('company-logos')
+                    .upload(filePath, boloBgFile, { upsert: true });
+
+                if (uploadError) throw uploadError;
+
+                const { data: urlData } = supabase.storage.from('company-logos').getPublicUrl(filePath);
+                finalBoloBgUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+            }
+
             let savedCompany: Company | null = null;
             
             const response = await fetch('/api/companies', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...companyData, logo_url: finalLogoUrl })
+                body: JSON.stringify({ 
+                    ...dataToSave, 
+                    logo_url: finalLogoUrl,
+                    bolo_background_url: finalBoloBgUrl
+                })
             });
 
             if (!response.ok) {
