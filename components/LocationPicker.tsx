@@ -9,7 +9,7 @@ import { LayersIcon, CrosshairIcon } from './icons';
 // --- Helper Functions ---
 export const reverseGeocode = async (coords: LocationCoords): Promise<string> => {
     try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
+        const response = await fetch(`/api/reverse-geocode?lat=${coords.lat}&lng=${coords.lng}`);
         if (!response.ok) return "Unknown location";
         
         const data = await response.json();

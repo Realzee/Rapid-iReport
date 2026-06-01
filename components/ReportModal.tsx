@@ -34,7 +34,7 @@ type ReportType = 'vehicle' | 'crime' | 'emergency';
 
 const geocodeLocation = async (location: string): Promise<{coords: LocationCoords | null, boundary: any | null, boundingbox: [number, number, number, number] | null}> => {
     try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&polygon_geojson=1&limit=1`);
+        const response = await fetch(`/api/geocode?q=${encodeURIComponent(location)}&limit=1`);
         if (!response.ok) return { coords: null, boundary: null, boundingbox: null };
 
         const data = await response.json();
@@ -265,7 +265,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         debounceTimeoutRef.current = window.setTimeout(async () => {
             setIsGeocoding(true);
             try {
-                const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(formData.location)}&format=json&polygon_geojson=1&limit=5`);
+                const response = await fetch(`/api/geocode?q=${encodeURIComponent(formData.location)}&limit=5`);
                 if (response.ok) setAddressSuggestions(await response.json());
                 else setAddressSuggestions([]);
             } catch (error) {
