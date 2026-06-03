@@ -61,7 +61,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewPublicDashboard, onViewAbout 
                 <p className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
                     Or,{' '}
                     <button onClick={onViewPublicDashboard} className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 focus:outline-none">
-                        view community notices
+                        view the public community map
                     </button>
                 </p>
             </main>
