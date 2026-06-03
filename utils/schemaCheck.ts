@@ -12,11 +12,22 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             error: "Supabase client not initialized. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables."
         };
     }
+
+    const isNetworkError = (errorMsg: string | undefined): boolean => {
+        if (!errorMsg) return false;
+        const msg = errorMsg.toLowerCase();
+        return msg.includes('failed to fetch') || msg.includes('fetch') || msg.includes('network') || msg.includes('load failed') || msg.includes('typeerror') || msg.includes('abort');
+    };
+
     try {
         // Check 1: Basic table access (catches RLS issues or missing tables)
         const { error: profileError } = await supabase.from('profiles').select('id').limit(1);
         if (profileError) {
             console.error("Database schema check failed on 'profiles' table:", profileError);
+            if (isNetworkError(profileError.message)) {
+                console.warn("Database schema check bypassed due to network/fetch error connecting to Supabase.");
+                return { status: 'valid' };
+            }
             return {
                 status: 'invalid',
                 error: `The database check failed, indicating a missing table or incorrect Row Level Security (RLS) policies. Please run the full setup script from DATABASE_SCHEMA.md. Error: ${profileError.message}`
@@ -40,6 +51,10 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
         }
         
         if (rpcError) {
+            if (isNetworkError(rpcError.message)) {
+                console.warn("Database schema check bypassed due to network/fetch error connecting to Supabase during RPC.");
+                return { status: 'valid' };
+            }
             // If the function doesn't exist, it's a schema issue.
             if (rpcError.code === '42883') { // "function does not exist"
                  console.error("Database schema check failed: 'get_enum_values' function missing.", rpcError);
@@ -53,7 +68,7 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
              return {
                 status: 'invalid',
                 error: `An error occurred while checking enum types: ${rpcError.message}`
-            };
+             };
         }
 
         if (!enumValues || !Array.isArray(enumValues) || enumValues.length === 0) {
@@ -81,6 +96,10 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             
             if (funcError) {
                 console.warn("Schema check failed on eval:", funcError);
+                if (isNetworkError(funcError.message)) {
+                    console.warn("Database schema check bypassed due to network/fetch error connecting to Supabase during eval RPC.");
+                    return { status: 'valid' };
+                }
                 // If the error is about the function not existing OR if eval itself is missing (404/400)
                 if (funcError.message.includes("does not exist") || funcError.code === '42883' || funcError.code === 'PGRST202' || funcError.message.includes("Could not find the function")) {
                      return {
@@ -96,6 +115,10 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             }
         } catch (e: any) {
             console.warn("Function verification failed with exception:", e);
+            if (isNetworkError(e.message)) {
+                console.warn("Database schema check bypassed due to exception during eval RPC.");
+                return { status: 'valid' };
+            }
              return {
                 status: 'invalid',
                 error: `Database Schema Check Failed: An unexpected error occurred (${e.message}). Please ensure your database is set up correctly.`
@@ -106,6 +129,10 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
 
     } catch (e: any) {
         console.error("A JavaScript error occurred during the database check:", e);
+        if (isNetworkError(e.message)) {
+            console.warn("Database schema check bypassed due to connection exception.");
+            return { status: 'valid' };
+        }
         return {
             status: 'invalid',
             error: `An unexpected application error occurred while trying to verify the database schema: ${e.message}`

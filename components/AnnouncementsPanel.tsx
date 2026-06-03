@@ -23,19 +23,23 @@ const AnnouncementIcon: React.FC<{ type: AnnouncementType }> = ({ type }) => {
 
 const AnnouncementsPanel: React.FC<AnnouncementsPanelProps> = ({ announcements }) => {
     return (
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700/50">
-            <h2 className="font-bold text-lg mb-4">Community Notices</h2>
+        <div className="p-1">
+            <h2 className="font-bold text-2xl mb-6 text-gray-950 dark:text-white tracking-tight">Community Notices</h2>
             {announcements.length === 0 ? (
-                <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-4">No active community notices at this time.</p>
+                <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">No active community notices at this time.</p>
             ) : (
                 <div className="space-y-4">
                     {announcements.map(announcement => (
-                        <div key={announcement.id} className="flex items-start gap-4">
+                        <div 
+                            key={announcement.id} 
+                            className="flex items-start gap-4 p-5 rounded-xl border border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/40 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 shadow-sm"
+                        >
                             <AnnouncementIcon type={announcement.type} />
                             <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-sm text-gray-800 dark:text-gray-100">{announcement.title}</p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">{announcement.content}</p>
-                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                <p className="font-semibold text-base text-gray-900 dark:text-gray-100">{announcement.title}</p>
+                                <p className="text-sm text-gray-650 dark:text-gray-300 mt-1.5 leading-relaxed">{announcement.content}</p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></span>
                                     {formatDistanceToNow(new Date(announcement.created_at), { addSuffix: true })}
                                 </p>
                             </div>
