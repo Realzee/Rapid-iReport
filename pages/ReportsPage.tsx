@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, ReportStatus, Severity, VehicleReport, EmergencyReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus, Company } from '../types';
+import { Report, ReportStatus, Severity, VehicleReport, EmergencyReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus, Company, ReportShare } from '../types';
 import { format } from 'date-fns';
 import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, AlertTriangleIcon, GlobeIcon, UsersIcon, HistoryIcon } from '../components/icons';
 import ReportDetailModal from '../components/ReportDetailModal';
@@ -86,6 +86,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     }, [reports]);
     const [reportToRestore, setReportToRestore] = useState<Report | null>(null);
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+    const [incomingShares, setIncomingShares] = useState<ReportShare[]>([]);
     const { addToast } = useToast();
 
     const [currentPage, setCurrentPage] = useState(1);
@@ -121,24 +122,30 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
             { data: emergencyData, error: aError },
             { data: usersData, error: uError },
             { data: respondersData, error: rError },
-            { data: companiesData, error: compError }
+            { data: companiesData, error: compError },
+            { data: sharesData, error: sharesError }
         ] = await Promise.all([
             vehicleQuery,
             crimeQuery,
             emergencyQuery,
             usersQuery,
             respondersQuery,
-            supabase.from('companies').select('*')
+            supabase.from('companies').select('*'),
+            profile.company_id 
+                ? supabase.from('report_shares').select('*').eq('target_company_id', profile.company_id).eq('status', 'pending')
+                : supabase.from('report_shares').select('*').eq('status', 'non-existent')
         ]);
 
-        if (vError || cError || aError || uError || rError || compError) console.error("Error fetching data:", vError || cError || aError || uError || rError || compError);
-        else {
+        if (vError || cError || aError || uError || rError || compError || sharesError) {
+            console.error("Error fetching data:", vError || cError || aError || uError || rError || compError || sharesError);
+        } else {
             const combined = [
                 ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
                 ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
                 ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' }))
             ] as (Report & {type: 'vehicle' | 'crime' | 'emergency'})[];
             setReports(combined);
+            setIncomingShares(sharesData || []);
             setUsers(usersData || []);
             setCompanies(companiesData || []);
             const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
@@ -157,6 +164,67 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     useEffect(() => {
         fetchData();
     }, [profile]);
+
+    const approveShareRequest = async (share: ReportShare) => {
+        try {
+            const { error: shareError } = await supabase
+                .from('report_shares')
+                .update({ status: 'approved', updated_at: new Date().toISOString() })
+                .eq('id', share.id);
+                
+            if (shareError) throw shareError;
+            
+            const tableName = share.report_type === 'vehicle' 
+                ? 'vehicle_reports' 
+                : share.report_type === 'emergency' 
+                    ? 'emergency_reports' 
+                    : 'crime_reports';
+                    
+            const { data: reportData, error: fetchError } = await supabase
+                .from(tableName)
+                .select('shared_with_company_ids')
+                .eq('id', share.report_id)
+                .single();
+                
+            if (fetchError) throw fetchError;
+            
+            const currentSharedIds = reportData.shared_with_company_ids || [];
+            if (!currentSharedIds.includes(share.target_company_id)) {
+                const updatedSharedIds = [...currentSharedIds, share.target_company_id];
+                const { error: updateError } = await supabase
+                    .from(tableName)
+                    .update({ shared_with_company_ids: updatedSharedIds })
+                    .eq('id', share.report_id);
+                    
+                if (updateError) throw updateError;
+            }
+            
+            addToast('Sharing request approved successfully.', 'success');
+            logUserAction(profile.id, 'APPROVE_REPORT_SHARE', `Approved report sharing of ${share.report_id} to company ${share.target_company_id}`);
+            fetchData();
+        } catch (err: any) {
+            console.error("Failed to approve share:", err);
+            addToast('Failed to approve sharing request: ' + err.message, 'error');
+        }
+    };
+
+    const rejectShareRequest = async (share: ReportShare) => {
+        try {
+            const { error } = await supabase
+                .from('report_shares')
+                .update({ status: 'rejected', updated_at: new Date().toISOString() })
+                .eq('id', share.id);
+                
+            if (error) throw error;
+            
+            addToast('Sharing request declined.', 'success');
+            logUserAction(profile.id, 'REJECT_REPORT_SHARE', `Declined report sharing of ${share.report_id} to company ${share.target_company_id}`);
+            fetchData();
+        } catch (err: any) {
+            console.error("Failed to decline share:", err);
+            addToast('Failed to decline sharing request: ' + err.message, 'error');
+        }
+    };
 
     const userMap = useMemo(() => new Map(users.map(u => [u.id, `${u.first_name} ${u.surname}`])), [users]);
     const companyMap = useMemo(() => new Map(companies.map(c => [c.id, c.name])), [companies]);
@@ -322,6 +390,52 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                     Refresh Archives
                 </button>
              </div>
+
+             {/* Incoming Share Requests Inbox (Admins and Moderators only) */}
+             {(profile.role === UserRole.ADMIN || profile.role === UserRole.MODERATOR) && incomingShares.length > 0 && (
+                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 mb-6 shadow-sm backdrop-blur-md">
+                     <div className="flex items-center gap-2 mb-3">
+                         <span className="relative flex h-3 w-3">
+                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                             <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                         </span>
+                         <h3 className="font-bold text-lg text-amber-800 dark:text-amber-400">Incoming Share Requests ({incomingShares.length})</h3>
+                     </div>
+                     <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">The following external security companies are requesting to share live incident reports with your command center. Approve to add to your feed.</p>
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                         {incomingShares.map(share => {
+                             const sourceCompany = companies.find(c => c.id === share.source_company_id);
+                             return (
+                                 <div key={share.id} className="bg-white/80 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-xl p-4 flex flex-col justify-between shadow-sm">
+                                     <div className="mb-3">
+                                         <div className="flex items-center gap-2 mb-1.5">
+                                             {sourceCompany?.logo_url ? (
+                                                 <img src={sourceCompany.logo_url} alt={sourceCompany.name} className="w-5 h-5 object-contain rounded" />
+                                             ) : (
+                                                 <span className="w-5 h-5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded text-center text-xs font-bold leading-5">C</span>
+                                             )}
+                                             <span className="text-xs font-bold text-gray-500 dark:text-gray-400 font-mono tracking-wide">{sourceCompany?.name || 'External Company'}</span>
+                                         </div>
+                                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400">wants to share:</span>
+                                         <div className="text-sm font-bold text-gray-800 dark:text-gray-200 mt-1 flex items-center gap-1.5">
+                                             <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded text-[10px] font-bold uppercase">{share.report_type}</span>
+                                             <span className="truncate max-w-[150px]">ID: {share.report_id.slice(0, 8)}...</span>
+                                         </div>
+                                     </div>
+                                     <div className="flex gap-2">
+                                         <button onClick={() => approveShareRequest(share)} className="flex-1 py-1.5 px-3 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-lg transition-colors shadow">
+                                             Approve
+                                         </button>
+                                         <button onClick={() => rejectShareRequest(share)} className="flex-1 py-1.5 px-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-xs rounded-lg transition-colors border border-gray-200 dark:border-gray-700">
+                                             Decline
+                                         </button>
+                                     </div>
+                                 </div>
+                             );
+                         })}
+                     </div>
+                 </div>
+             )}
              
              <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

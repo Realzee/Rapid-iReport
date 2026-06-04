@@ -554,3 +554,24 @@ export interface TechChatMessage {
     avatar_url?: string;
   };
 }
+
+export interface ReportShare {
+  id: string;
+  report_id: string;
+  report_type: 'crime' | 'vehicle' | 'emergency';
+  source_company_id?: string;
+  target_company_id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at?: string;
+  updated_at?: string;
+  source_company?: {
+    id: string;
+    name: string;
+    logo_url?: string;
+  };
+  target_company?: {
+    id: string;
+    name: string;
+    logo_url?: string;
+  };
+}

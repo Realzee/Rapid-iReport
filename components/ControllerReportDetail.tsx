@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Report, Profile, VehicleReport, EmergencyReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole, LocationCoords } from '../types';
+import { Report, Profile, VehicleReport, EmergencyReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole, LocationCoords, ReportShare } from '../types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '../utils/supabase';
 import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon } from './icons';
@@ -67,6 +67,7 @@ const ControllerReportDetail: React.FC<{
     const [selectedResponder, setSelectedResponder] = useState<string>(report.assigned_to || '');
     const [isGlobal, setIsGlobal] = useState<boolean>(report.is_global || false);
     const [sharedWithCompanyIds, setSharedWithCompanyIds] = useState<string[]>(report.shared_with_company_ids || []);
+    const [reportShares, setReportShares] = useState<ReportShare[]>([]);
     const [companies, setCompanies] = useState<Company[]>([]);
     const [isActionLoading, setIsActionLoading] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -104,13 +105,21 @@ const ControllerReportDetail: React.FC<{
                 { data: updatesData, error: updatesError },
                 { data: historyData, error: historyError },
                 { data: reporterData, error: reporterError },
-                { data: companiesData, error: companiesError }
+                { data: companiesData, error: companiesError },
+                { data: sharesData, error: sharesError }
             ] = await Promise.all([
                 supabase.from('report_updates').select('*, profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at', { ascending: true }),
                 supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(first_name, surname), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(first_name, surname), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(first_name, surname)`).eq('report_id', report.id).order('created_at', { ascending: false }),
                 supabase.from('profiles').select('first_name, surname').eq('id', report.reported_by).maybeSingle(),
-                supabase.from('companies').select('*').order('name')
+                supabase.from('companies').select('*').order('name'),
+                supabase.from('report_shares').select('*, target_company:companies(id, name, logo_url)').eq('report_id', report.id)
             ]);
+
+            if (sharesError) console.error("Error fetching report shares:", sharesError);
+            else {
+                setReportShares(sharesData || []);
+                setSharedWithCompanyIds(sharesData?.map((s: any) => s.target_company_id) || []);
+            }
 
             if (companiesError) console.error("Error fetching companies:", companiesError);
             else setCompanies(companiesData || []);
@@ -280,12 +289,40 @@ const ControllerReportDetail: React.FC<{
             updateContent += `Report visibility changed to: ${isGlobal ? 'Global' : 'Company only'}. `;
         }
         
-        // Check if shared_with_company_ids changed
-        const currentSharedIds = report.shared_with_company_ids || [];
-        const sharedIdsChanged = sharedWithCompanyIds.length !== currentSharedIds.length || !sharedWithCompanyIds.every(id => currentSharedIds.includes(id));
-        if (sharedIdsChanged) {
-            updatePayload.shared_with_company_ids = sharedWithCompanyIds;
-            updateContent += `Shared companies updated. `;
+        // Check if shared_with_company_ids changed, handling report_shares requests
+        const previousShareIds = reportShares.map(s => s.target_company_id);
+        const toAdd = sharedWithCompanyIds.filter(id => !previousShareIds.includes(id));
+        const toRemove = previousShareIds.filter(id => !sharedWithCompanyIds.includes(id));
+
+        for (const companyId of toAdd) {
+            await supabase.from('report_shares').insert({
+                report_id: report.id,
+                report_type: report.type,
+                source_company_id: profile.company_id,
+                target_company_id: companyId,
+                status: 'pending'
+            });
+        }
+
+        if (toRemove.length > 0) {
+            await supabase.from('report_shares').delete().eq('report_id', report.id).in('target_company_id', toRemove);
+        }
+
+        // Compute approved company IDs list
+        // ActiveApprovedShares contains companies that are already approved AND are still selected
+        const activeApprovedShares = reportShares
+            .filter(s => s.status === 'approved' && sharedWithCompanyIds.includes(s.target_company_id))
+            .map(s => s.target_company_id);
+
+        const currentApprovedIds = report.shared_with_company_ids || [];
+        const approvedIdsChanged = activeApprovedShares.length !== currentApprovedIds.length || !activeApprovedShares.every(id => currentApprovedIds.includes(id));
+        
+        if (approvedIdsChanged) {
+            updatePayload.shared_with_company_ids = activeApprovedShares;
+        }
+
+        if (toAdd.length > 0 || toRemove.length > 0) {
+            updateContent += `Report sharing requests updated. `;
         }
 
         if (selectedStatus === ReportStatus.RECOVERED && report.type === 'vehicle') {
@@ -1079,6 +1116,36 @@ const ControllerReportDetail: React.FC<{
                 )}
                 {(report as any).cas_number && <DetailField label="Case"><p className="text-gray-800 dark:text-gray-200">{(report as any).cas_number}</p></DetailField>}
                 {(report as any).station_name && <DetailField label="Station"><p className="text-gray-800 dark:text-gray-200">{(report as any).station_name}</p></DetailField>}
+                
+                {/* Corporate Sharing Pipeline Section */}
+                {!report.is_global && reportShares.length > 0 && (
+                    <div className="p-3 bg-gray-100 dark:bg-gray-800/40 rounded-lg space-y-2 border border-gray-200 dark:border-gray-800/60">
+                        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-mono">Corporate Sharing Status</span>
+                        <div className="space-y-1.5 mt-1">
+                            {reportShares.map(share => {
+                                const companyName = share.target_company?.name || 'Loading Company...';
+                                return (
+                                    <div key={share.id} className="flex justify-between items-center text-xs p-1.5 rounded bg-white/60 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/20">
+                                        <span className="font-semibold text-gray-700 dark:text-gray-300">{companyName}</span>
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                            share.status === 'approved' 
+                                                ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300' 
+                                                : share.status === 'rejected'
+                                                    ? 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300'
+                                                    : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 animate-pulse'
+                                        }`}>
+                                            {share.status === 'approved' 
+                                                ? '● Shared' 
+                                                : share.status === 'rejected' 
+                                                    ? '● Declined' 
+                                                    : '● Waiting Approval'}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
             
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 space-y-3 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm -mx-4 px-4 pb-2 sticky bottom-0">
@@ -1166,24 +1233,57 @@ const ControllerReportDetail: React.FC<{
                                 />
                                 <label htmlFor="isGlobalToggle" className="text-sm font-medium text-gray-900 dark:text-gray-300">Share Globally (Visible to all companies)</label>
                             </div>
-                            
-                            {!isGlobal && (
+                                                        {!isGlobal && (
                                 <div className="mt-4">
-                                    <label className="text-sm font-medium">Share with specific companies</label>
-                                    <select 
-                                        multiple 
-                                        value={sharedWithCompanyIds} 
-                                        onChange={(e) => {
-                                            const selectedOptions = Array.from(e.target.selectedOptions, (option: HTMLOptionElement) => option.value);
-                                            setSharedWithCompanyIds(selectedOptions);
-                                        }} 
-                                        className="w-full mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-2 px-3 h-24"
-                                    >
-                                        {companies.filter(c => c.id !== profile.company_id).map(c => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                    <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
+                                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Share with specific companies</label>
+                                    <div className="mt-2 space-y-2 max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-800 rounded-lg p-3 bg-gray-50 dark:bg-gray-900/30">
+                                        {companies.filter(c => c.id !== profile.company_id).map(c => {
+                                            const share = reportShares.find(s => s.target_company_id === c.id);
+                                            const isChecked = sharedWithCompanyIds.includes(c.id);
+                                            return (
+                                                <div key={c.id} className="flex items-center justify-between p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                                                    <div className="flex items-center gap-2">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            id={`share-company-${c.id}`}
+                                                            checked={isChecked}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSharedWithCompanyIds(prev => [...prev, c.id]);
+                                                                } else {
+                                                                    setSharedWithCompanyIds(prev => prev.filter(id => id !== c.id));
+                                                                }
+                                                            }}
+                                                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                                        />
+                                                        <label htmlFor={`share-company-${c.id}`} className="text-sm font-medium cursor-pointer">
+                                                            {c.name}
+                                                        </label>
+                                                    </div>
+                                                    {share ? (
+                                                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                                                            share.status === 'approved' 
+                                                                ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' 
+                                                                : share.status === 'rejected'
+                                                                    ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                                                                    : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 animate-pulse'
+                                                        }`}>
+                                                            {share.status === 'approved' 
+                                                                ? '● Shared' 
+                                                                : share.status === 'rejected' 
+                                                                    ? '● Request Declined' 
+                                                                    : '● Waiting Approval'}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">Not Shared</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                        {companies.filter(c => c.id !== profile.company_id).length === 0 && (
+                                            <p className="text-xs text-gray-500 text-center py-4">No other companies available to share with.</p>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
