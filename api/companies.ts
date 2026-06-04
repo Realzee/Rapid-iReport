@@ -12,6 +12,22 @@ export default async function handler(req: any, res: any) {
     const supabaseAdmin = req.supabaseAdmin || createClient(supabaseUrl, supabaseServiceKey);
 
     if (req.method === 'POST') {
+        const { key, value } = req.body;
+        if (key && value !== undefined) {
+            try {
+                const { data, error } = await supabaseAdmin.from('app_settings').upsert({ key, value }).select().single();
+                if (error) throw error;
+                return res.status(200).json(data);
+            } catch (error: any) {
+                console.error('Error updating setting in companies handler:', error);
+                let msg = error.message || 'Failed to update setting';
+                if (msg === 'Invalid API key') {
+                    msg = 'Invalid API key. Please ensure your SUPABASE_SERVICE_ROLE_KEY is a valid service_role key.';
+                }
+                return res.status(400).json({ error: msg });
+            }
+        }
+
         // Save company
         const { id, ...dbPayload } = req.body;
         try {

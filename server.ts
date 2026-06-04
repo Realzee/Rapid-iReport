@@ -149,10 +149,37 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Backend is running', timestamp: new Date().toISOString(), supabaseUrl: supabaseUrl.replace(/:\/\/.*@/, '://***@') });
 });
 
+// Specific API Route Aliases for consolidated endpoints
+const ALIASES: Record<string, string> = {
+    '/api/update-profile': 'profiles',
+    '/api/update-setting': 'companies',
+    '/api/reverse-geocode': 'geocode'
+};
+
 // Dynamic API Route Loader
 const apiDir = process.env.NODE_ENV === 'production' 
     ? path.resolve(currentDir, 'dist', 'api') 
     : path.resolve(currentDir, 'api');
+
+for (const [aliasPath, targetFileBase] of Object.entries(ALIASES)) {
+    app.all([aliasPath, `${aliasPath}/`], async (req, res) => {
+        try {
+            const ext = process.env.NODE_ENV === 'production' ? 'cjs' : 'ts';
+            const fileName = `${targetFileBase}.${ext}`;
+            const modulePath = path.resolve(apiDir, fileName);
+            const { default: handler } = await import(pathToFileURL(modulePath).href);
+            if (typeof handler === 'function') {
+                (req as any).supabaseAdmin = supabaseAdmin;
+                await handler(req, res);
+            } else {
+                res.status(500).json({ error: 'Invalid API handler' });
+            }
+        } catch (error: any) {
+            console.error(`Error in Aliased API route ${aliasPath}:`, error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    });
+}
 
 if (fs.existsSync(apiDir)) {
     console.log(`Loading API routes from ${apiDir}...`);
