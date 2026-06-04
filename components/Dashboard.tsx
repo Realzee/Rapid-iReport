@@ -53,6 +53,49 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const [pendingShares, setPendingShares] = useState<ReportShare[]>([]);
     const [isSharingModalOpen, setIsSharingModalOpen] = useState(false);
 
+    const [myStatus, setMyStatus] = useState<ResponderStatus>(profile.responder_status || ResponderStatus.OFF_DUTY);
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+    // Dynamic state synchronization with profiles real-time changes
+    useEffect(() => {
+        const matchedUser = allUsers.find(u => u.id === profile.id);
+        if (matchedUser && matchedUser.responder_status) {
+            setMyStatus(matchedUser.responder_status);
+        } else if (profile.responder_status) {
+            setMyStatus(profile.responder_status);
+        }
+    }, [allUsers, profile]);
+
+    const handleMyStatusChange = async (newStatus: ResponderStatus) => {
+        setIsUpdatingStatus(true);
+        try {
+            const response = await fetch('/api/update-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: profile.id,
+                    updates: { responder_status: newStatus }
+                }),
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || 'Failed to update status');
+            }
+
+            addToast(`Operational status updated to ${newStatus.replace(/_/g, ' ')}.`, 'success');
+            setMyStatus(newStatus);
+            
+            // Trigger fetch to reload counts/responders list immediately
+            fetchData();
+        } catch (err: any) {
+            console.error("Failed to update status:", err);
+            addToast(`Failed to update status: ${err.message}`, 'error');
+        } finally {
+            setIsUpdatingStatus(false);
+        }
+    };
+
     useEffect(() => {
         if (!profile || !profile.company_id) return;
 
@@ -545,6 +588,63 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                             <PlusIcon className="w-5 h-5" />
                             <span>New Report</span>
                         </button>
+                    </div>
+                </div>
+
+                {/* My Operational Status Manager */}
+                <div className={`p-4 mb-6 bg-white/85 dark:bg-gray-950/80 border-l-4 rounded-xl shadow-xs backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-300 ${
+                    myStatus === ResponderStatus.AVAILABLE ? 'border-emerald-500' :
+                    myStatus === ResponderStatus.EN_ROUTE ? 'border-blue-500' :
+                    myStatus === ResponderStatus.ON_SCENE ? 'border-amber-500' : 'border-gray-300 dark:border-gray-750'
+                }`}>
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <div className={`w-3.5 h-3.5 rounded-full ${
+                                myStatus === ResponderStatus.AVAILABLE ? 'bg-emerald-500 animate-pulse' :
+                                myStatus === ResponderStatus.EN_ROUTE ? 'bg-blue-500 animate-pulse' :
+                                myStatus === ResponderStatus.ON_SCENE ? 'bg-amber-500 animate-pulse' : 'bg-gray-400'
+                            }`} />
+                            {isUpdatingStatus && (
+                                <div className="absolute inset-0 bg-white/50 rounded-full flex items-center justify-center">
+                                    <div className="w-3.5 h-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            <span className="text-[10px] font-bold tracking-wider uppercase text-gray-400 dark:text-gray-500">
+                                My Operational Presence
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-extrabold text-sm text-gray-800 dark:text-white capitalize">
+                                    {myStatus.replace(/_/g, ' ')}
+                                </h3>
+                                <span className="text-xs text-gray-400 dark:text-gray-500">
+                                    • {profile.first_name} {profile.surname} ({profile.role.toUpperCase()})
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Duty Status:</span>
+                        <div className="relative">
+                            <select
+                                value={myStatus}
+                                onChange={(e) => handleMyStatusChange(e.target.value as ResponderStatus)}
+                                disabled={isUpdatingStatus}
+                                className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl py-1.5 pl-3 pr-8 text-xs font-bold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-75 appearance-none cursor-pointer"
+                            >
+                                <option value={ResponderStatus.AVAILABLE}>🟢 Available / On Duty</option>
+                                <option value={ResponderStatus.EN_ROUTE}>🔵 En Route</option>
+                                <option value={ResponderStatus.ON_SCENE}>🟡 On Scene</option>
+                                <option value={ResponderStatus.OFF_DUTY}>⚪ Off Duty</option>
+                            </select>
+                            <div className="absolute top-1/2 right-3 -translate-y-1/2 pointer-events-none text-gray-400">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
