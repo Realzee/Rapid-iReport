@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, memo } from 'react';
-import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, GlobeIcon, RadioTowerIcon, BuildingIcon, HistoryIcon, SearchIcon, ChartBarIcon, MapIcon, UsersIcon, ClipboardCheckIcon, ScanIcon, WrenchIcon } from './icons';
+import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, GlobeIcon, RadioTowerIcon, BuildingIcon, HistoryIcon, SearchIcon, ChartBarIcon, MapIcon, UsersIcon, ClipboardCheckIcon, ScanIcon, WrenchIcon, ShareIcon } from './icons';
 import { Profile, UserRole, Notification } from '../types';
 import { supabase } from '../utils/supabase';
 import { useSettings } from '../contexts/SettingsContext';
@@ -9,6 +9,7 @@ import PTTModal from './PTTModal';
 import LedClock from './LedClock';
 import { updateFaviconBadge, updateDocumentTitle, playNotificationSound } from '../utils/notificationUtils';
 import { logUserAction } from '../utils/logger';
+import { CorporateSharingModal } from './CorporateSharingModal';
 
 interface HeaderProps {
     currentView: string;
@@ -23,6 +24,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isPTTModalOpen, setIsPTTModalOpen] = useState(false);
+  const [pendingSharesCount, setPendingSharesCount] = useState(0);
+  const [isSharingModalOpen, setIsSharingModalOpen] = useState(false);
   const { mainLogoUrl, faviconUrl, defaultLogoUrl } = useSettings();
 
   const notificationsRef = useRef<HTMLDivElement>(null);
@@ -31,6 +34,46 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   
   const unreadCount = useMemo(() => notifications.filter(n => !n.is_read).length, [notifications]);
   const canAccessAdminPages = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
+
+  // Subscribe and fetch pending report shares count dynamically
+  useEffect(() => {
+    if (!profile || !profile.company_id) return;
+    
+    const fetchPendingShares = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('report_shares')
+                .select('id')
+                .eq('target_company_id', profile.company_id)
+                .eq('status', 'pending');
+            if (error) console.error("Error fetching pending shares in Header:", error);
+            else setPendingSharesCount(data ? data.length : 0);
+        } catch (err) {
+            console.error("Header: Error fetching pending shares:", err);
+        }
+    };
+    
+    fetchPendingShares();
+
+    if (!supabase) return;
+
+    const sharesChannel = supabase
+        .channel(`shares-${profile.company_id}`)
+        .on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: 'report_shares'
+        }, () => {
+            fetchPendingShares();
+        })
+        .subscribe();
+
+    return () => {
+        if (supabase) {
+            supabase.removeChannel(sharesChannel);
+        }
+    };
+  }, [profile]);
 
   // Handle notification enhancements (Favicon, Title, Sound)
   useEffect(() => {
@@ -369,6 +412,22 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
                   <RadioTowerIcon className="w-8 h-8 sm:w-10 sm:h-10" />
                 </button>
             )}
+            {profile.company_id && (
+                <button 
+                  onClick={() => setIsSharingModalOpen(true)} 
+                  className={`relative p-1.5 rounded-xl transition-all duration-350 ${
+                    pendingSharesCount > 0 
+                      ? 'text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 animate-pulse' 
+                      : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800/40'
+                  }`} 
+                  title="Corporate Sharing Hub (Incoming Requests & Approvals)"
+                >
+                  <ShareIcon className="w-5 h-5 sm:w-6.5 sm:h-6.5" />
+                  {pendingSharesCount > 0 && (
+                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-600 rounded-full text-[9px] flex items-center justify-center text-white font-black">{pendingSharesCount}</span>
+                  )}
+                </button>
+            )}
             <div ref={notificationsRef} className="relative">
                 <button onClick={toggleNotifications} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300">
                   <BellIcon className="w-5 h-5 sm:w-6 h-6" />
@@ -425,6 +484,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       </div>
     </header>
     <PTTModal isOpen={isPTTModalOpen} onClose={() => setIsPTTModalOpen(false)} profile={profile} />
+    <CorporateSharingModal isOpen={isSharingModalOpen} onClose={() => setIsSharingModalOpen(false)} profile={profile} />
     </>
   );
 };

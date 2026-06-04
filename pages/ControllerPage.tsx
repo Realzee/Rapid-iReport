@@ -1,18 +1,19 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Report, Profile, Responder, ResponderStatus, UserRole, Severity, ReportStatus, CrimeReport, VehicleReport, TechJob } from '../types';
+import { Report, Profile, Responder, ResponderStatus, UserRole, Severity, ReportStatus, CrimeReport, VehicleReport, TechJob, ReportShare } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
 import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
 import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
-import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, MapIcon, ChatAlt2Icon, RadioTowerIcon, WrenchIcon } from '../components/icons';
+import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, MapIcon, ChatAlt2Icon, RadioTowerIcon, WrenchIcon, ShareIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
 import CirculationListManager from '../components/CirculationListManager';
 import { useChat } from '../contexts/ChatContext';
 import { useToast } from '../contexts/ToastContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { CorporateSharingModal } from '../components/CorporateSharingModal';
 
 import TechStack from '../components/TechStack';
 import TechJobDetail from '../components/TechJobDetail';
@@ -44,6 +45,40 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         return profile.company.allowed_modules.includes(modId);
     };
     const [reports, setReports] = useState<Report[]>([]);
+    const [pendingShares, setPendingShares] = useState<ReportShare[]>([]);
+    const [isSharingModalOpen, setIsSharingModalOpen] = useState(false);
+
+    useEffect(() => {
+        if (!profile || !profile.company_id) return;
+
+        const loadPendingShares = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('report_shares')
+                    .select('*')
+                    .eq('target_company_id', profile.company_id)
+                    .eq('status', 'pending');
+                if (error) console.error("Error loading pending shares on ControllerPage:", error);
+                else setPendingShares(data || []);
+            } catch (err) {
+                console.error("ControllerPage: Error fetching pending shares:", err);
+            }
+        };
+
+        loadPendingShares();
+
+        const channel = supabase
+            .channel(`controller-shares-${profile.company_id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'report_shares' }, () => {
+                loadPendingShares();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [profile]);
+
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
     const allUsersRef = useRef<Profile[]>([]);
 
@@ -584,6 +619,27 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                     </button>
                 </div>
             </div>
+
+            {pendingShares.length > 0 && (
+                <div className="bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/25 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 shadow-sm animate-pulse">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center font-bold">
+                      <ShareIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200">Pending Corporate Sharing Approvals</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">You have {pendingShares.length} incoming report sharing solicitation(s) requiring response authorization.</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setIsSharingModalOpen(true)}
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all"
+                  >
+                    Review Share Requests
+                  </button>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
                 <div className="lg:col-span-3 print:hidden lg:h-[calc(100vh-12rem)]">
                     <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex flex-col backdrop-blur-lg h-full">
@@ -746,6 +802,12 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 onClose={() => setIsTechDispatchOpen(false)}
                 allUsers={allUsers}
                 onJobDispatched={fetchTechJobs}
+            />
+            <CorporateSharingModal
+                isOpen={isSharingModalOpen}
+                onClose={() => setIsSharingModalOpen(false)}
+                profile={profile}
+                onUpdate={fetchData}
             />
         </div>
     );

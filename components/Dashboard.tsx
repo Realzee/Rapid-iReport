@@ -1,7 +1,7 @@
 
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport, ReportStatus, Company } from '../types';
+import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport, ReportStatus, Company, ReportShare } from '../types';
 import StatCard from './StatCard';
 import ReportList from './ReportList';
 import MapView from './MapView';
@@ -9,12 +9,13 @@ import ReportModal from './ReportModal';
 import ArchiveReportModal from './ArchiveReportModal';
 import ReportDetailCard from './ReportDetailCard';
 import MapModal from './MapModal';
-import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon, ChatAlt2Icon, CarIcon, CrimeIcon, WrenchIcon } from './icons';
+import { CheckCircleIcon, AlertTriangleIcon, ZapIcon, PlusIcon, ChatAlt2Icon, CarIcon, CrimeIcon, WrenchIcon, ShareIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
 import { useChat } from '../contexts/ChatContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
 import { isSameDay, parseISO } from 'date-fns';
+import { CorporateSharingModal } from './CorporateSharingModal';
 
 interface DashboardProps {
     profile: Profile;
@@ -48,6 +49,40 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
     const { addToast } = useToast();
     const { openChat } = useChat();
+
+    const [pendingShares, setPendingShares] = useState<ReportShare[]>([]);
+    const [isSharingModalOpen, setIsSharingModalOpen] = useState(false);
+
+    useEffect(() => {
+        if (!profile || !profile.company_id) return;
+
+        const loadPendingShares = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('report_shares')
+                    .select('*')
+                    .eq('target_company_id', profile.company_id)
+                    .eq('status', 'pending');
+                if (error) console.error("Error loading pending shares on Dashboard:", error);
+                else setPendingShares(data || []);
+            } catch (err) {
+                console.error("Dashboard: Error fetching pending shares:", err);
+            }
+        };
+
+        loadPendingShares();
+
+        const channel = supabase
+            .channel(`dashboard-shares-${profile.company_id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'report_shares' }, () => {
+                loadPendingShares();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [profile]);
 
     useEffect(() => {
         const savedId = localStorage.getItem('editing-report-id');
@@ -512,6 +547,27 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                         </button>
                     </div>
                 </div>
+
+                {pendingShares.length > 0 && (
+                    <div className="bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/25 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 shadow-sm animate-pulse">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center font-bold">
+                          <ShareIcon className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200">Pending Corporate Sharing Approvals</h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">You have {pendingShares.length} incoming report sharing solicitation(s) requiring response authorization.</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setIsSharingModalOpen(true)}
+                        className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all"
+                      >
+                        Review Share Requests
+                      </button>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                     <StatCard title="Total Reports" value={(reportCounts.vehicle + reportCounts.crime + reportCounts.emergency).toString()} icon={<ZapIcon />} color="primary" />
                     <StatCard title="Vehicle" value={reportCounts.vehicle.toString()} icon={<CarIcon />} color="yellow" />
@@ -559,6 +615,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             <ReportModal isOpen={isReportModalOpen} onClose={handleCloseReportModal} reportToEdit={reportToEdit} onReportSubmitted={fetchData} />
             <ArchiveReportModal isOpen={!!reportToDelete} onClose={() => setReportToDelete(null)} onConfirm={confirmDeleteReport} reportIdentifier={reportToDelete ? (reportToDelete.type === 'vehicle' ? (reportToDelete as any).license_plate : reportToDelete.title) : ''} />
             <MapModal isOpen={isMapModalOpen} onClose={() => setIsMapModalOpen(false)} report={selectedReport} />
+            <CorporateSharingModal isOpen={isSharingModalOpen} onClose={() => setIsSharingModalOpen(false)} profile={profile} onUpdate={fetchData} />
         </div>
     );
 };
