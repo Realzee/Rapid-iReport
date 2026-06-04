@@ -1119,26 +1119,33 @@ const ControllerReportDetail: React.FC<{
                 
                 {/* Corporate Sharing Pipeline Section */}
                 {!report.is_global && reportShares.length > 0 && (
-                    <div className="p-3 bg-gray-100 dark:bg-gray-800/40 rounded-lg space-y-2 border border-gray-200 dark:border-gray-800/60">
-                        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-mono">Corporate Sharing Status</span>
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl space-y-2 border border-gray-200 dark:border-gray-800/60 font-sans">
+                        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-mono flex items-center gap-1.1">Corporate Sharing Status</span>
                         <div className="space-y-1.5 mt-1">
                             {reportShares.map(share => {
                                 const companyName = share.target_company?.name || 'Loading Company...';
                                 return (
-                                    <div key={share.id} className="flex justify-between items-center text-xs p-1.5 rounded bg-white/60 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/20">
+                                    <div key={share.id} className="flex justify-between items-center text-xs p-2 rounded-lg bg-white dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800/20 hover:border-gray-200 dark:hover:border-gray-700/65 transition-colors">
                                         <span className="font-semibold text-gray-700 dark:text-gray-300">{companyName}</span>
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border ${
                                             share.status === 'approved' 
-                                                ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300' 
+                                                ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-500/20' 
                                                 : share.status === 'rejected'
-                                                    ? 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300'
-                                                    : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 animate-pulse'
+                                                    ? 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 border-rose-500/20'
+                                                    : 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 border-amber-500/20 animate-pulse'
                                         }`}>
+                                            <span className={`h-1.5 w-1.5 rounded-full ${
+                                                share.status === 'approved' 
+                                                    ? 'bg-emerald-500' 
+                                                    : share.status === 'rejected' 
+                                                        ? 'bg-rose-500' 
+                                                        : 'bg-amber-500'
+                                            }`} />
                                             {share.status === 'approved' 
-                                                ? '● Shared' 
+                                                ? 'Shared' 
                                                 : share.status === 'rejected' 
-                                                    ? '● Declined' 
-                                                    : '● Waiting Approval'}
+                                                    ? 'Declined' 
+                                                    : 'Waiting Approval'}
                                         </span>
                                     </div>
                                 );

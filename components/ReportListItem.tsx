@@ -3,7 +3,7 @@ import { Report, VehicleReport, Severity, Profile, UserRole, ReportStatus } from
 import StatusBadge from './StatusBadge';
 import ReportTypeBadge from './ReportTypeBadge';
 import { formatDistanceToNow } from 'date-fns';
-import { CarIcon, AlertTriangleIcon, CrimeIcon } from './icons';
+import { CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon, UsersIcon } from './icons';
 
 interface ReportListItemProps {
   report: Report;
@@ -83,9 +83,17 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                     <div className="flex-1 min-w-0 flex items-center gap-2">
                         <ReportTypeBadge type={report.type as any} showText={false} className="p-1.5" />
                         <div className="min-w-0">
-                            <p className={`font-bold text-base ${textColor} group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate`}>
-                                {report.type === 'vehicle' ? (report as any).license_plate : report.title}
-                            </p>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                                <p className={`font-bold text-base ${textColor} group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate`}>
+                                    {report.type === 'vehicle' ? (report as any).license_plate : report.title}
+                                </p>
+                                {report.is_global && (
+                                    <GlobeIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Globally Shared Report" />
+                                )}
+                                {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
+                                    <UsersIcon className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" title="Shared with partner companies" />
+                                )}
+                            </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</p>
                         </div>
                     </div>

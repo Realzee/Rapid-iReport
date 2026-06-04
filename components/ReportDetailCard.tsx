@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Report, Profile, VehicleReport, EmergencyReport, UserRole, ReportStatus } from '../types';
+import { Report, Profile, VehicleReport, EmergencyReport, UserRole, ReportStatus, ReportShare, Company } from '../types';
 import StatusBadge from './StatusBadge';
 import ReportTypeBadge from './ReportTypeBadge';
-import { MapPinIcon, WhatsappIcon, DownloadIcon, XIcon, EditIcon, TrashIcon } from './icons';
+import { MapPinIcon, WhatsappIcon, DownloadIcon, XIcon, EditIcon, TrashIcon, GlobeIcon, ShareIcon, UsersIcon } from './icons';
 import { format } from 'date-fns';
 import { supabase } from '../utils/supabase';
 import { logoUrl } from '../assets/logo';
@@ -31,9 +31,113 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     const { openChat } = useChat();
     const { mainLogoUrl } = useSettings();
 
+    // Corporate Sharing states
+    const [reportShares, setReportShares] = useState<ReportShare[]>([]);
+    const [companies, setCompanies] = useState<Company[]>([]);
+    const [isGlobal, setIsGlobal] = useState<boolean>(report.is_global || false);
+    const [sharedWithCompanyIds, setSharedWithCompanyIds] = useState<string[]>(report.shared_with_company_ids || []);
+    const [isSavingShares, setIsSavingShares] = useState(false);
+
     useEffect(() => {
         setLocalReport(report);
+        setIsGlobal(report.is_global || false);
+        setSharedWithCompanyIds(report.shared_with_company_ids || []);
     }, [report]);
+
+    useEffect(() => {
+        const fetchSharingData = async () => {
+            if ((localReport as any).is_legacy || localReport.id.startsWith('legacy-')) {
+                return;
+            }
+            try {
+                const [sharesRes, companiesRes] = await Promise.all([
+                    supabase.from('report_shares').select('*, target_company:companies(id, name, logo_url)').eq('report_id', localReport.id),
+                    supabase.from('companies').select('*').order('name')
+                ]);
+
+                if (sharesRes.data) {
+                    setReportShares(sharesRes.data || []);
+                }
+                if (companiesRes.data) {
+                    setCompanies(companiesRes.data || []);
+                }
+            } catch (err) {
+                console.error("Error fetching sharing data in ReportDetailCard:", err);
+            }
+        };
+        fetchSharingData();
+    }, [localReport.id]);
+
+    const handleSaveSharing = async () => {
+        setIsSavingShares(true);
+        try {
+            const tableName = localReport.type === 'vehicle' ? 'vehicle_reports' : (localReport.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
+            
+            // 1. Update is_global in report table
+            const { error: reportErr } = await supabase
+                .from(tableName)
+                .update({ is_global: isGlobal })
+                .eq('id', localReport.id);
+                
+            if (reportErr) throw reportErr;
+            
+            // 2. If transitioning/adding specific shares:
+            if (!isGlobal) {
+                const previousShareIds = reportShares.map(s => s.target_company_id);
+                const toAdd = sharedWithCompanyIds.filter(id => !previousShareIds.includes(id));
+                const toRemove = previousShareIds.filter(id => !sharedWithCompanyIds.includes(id));
+
+                for (const companyId of toAdd) {
+                    await supabase.from('report_shares').insert({
+                        report_id: localReport.id,
+                        report_type: localReport.type,
+                        source_company_id: profile.company_id,
+                        target_company_id: companyId,
+                        status: 'pending'
+                    });
+                }
+
+                if (toRemove.length > 0) {
+                    await supabase.from('report_shares').delete().eq('report_id', localReport.id).in('target_company_id', toRemove);
+                }
+
+                // Compute approved company IDs list
+                const activeApprovedShares = reportShares
+                    .filter(s => s.status === 'approved' && sharedWithCompanyIds.includes(s.target_company_id))
+                    .map(s => s.target_company_id);
+
+                const { error: shareIdUpdateError } = await supabase
+                    .from(tableName)
+                    .update({ shared_with_company_ids: activeApprovedShares })
+                    .eq('id', localReport.id);
+
+                if (shareIdUpdateError) throw shareIdUpdateError;
+            } else {
+                // Clear any report shares if it is now global
+                await supabase.from('report_shares').delete().eq('report_id', localReport.id);
+            }
+
+            addToast('Sharing options updated successfully.', 'success');
+            
+            // Refresh data
+            const [sharesRes, reportRes] = await Promise.all([
+                supabase.from('report_shares').select('*, target_company:companies(id, name, logo_url)').eq('report_id', localReport.id),
+                supabase.from(tableName).select('*').eq('id', localReport.id).single()
+            ]);
+
+            if (sharesRes.data) {
+                setReportShares(sharesRes.data);
+            }
+            if (reportRes.data) {
+                setLocalReport({ ...reportRes.data, type: localReport.type });
+            }
+        } catch (err: any) {
+            console.error("Failed to save sharing:", err);
+            addToast("Failed to update sharing: " + err.message, "error");
+        } finally {
+            setIsSavingShares(false);
+        }
+    };
 
     useEffect(() => {
         const fetchLatestReport = async () => {
@@ -820,6 +924,156 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                         <p className="text-gray-700 dark:text-gray-300">{reporter.first_name} {reporter.surname} ({reporter.email})</p>
                     </div>
                  )}
+
+                {/* Corporate Sharing Pipeline Section */}
+                {!(localReport as any).is_legacy && !localReport.id.startsWith('legacy-') && (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800/40 rounded-xl space-y-3 border border-gray-200 dark:border-gray-800/60 mt-4">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                                <ShareIcon className="w-4 h-4 text-primary-500" />
+                                Corporate Sharing
+                            </span>
+                            {isGlobal ? (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 border border-blue-500/20 flex items-center gap-1">
+                                    <GlobeIcon className="w-3 h-3" /> Global
+                                </span>
+                            ) : (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-500/20 flex items-center gap-1">
+                                    <UsersIcon className="w-3 h-3" /> Targeted
+                                </span>
+                            )}
+                        </div>
+
+                        {canManageReport ? (
+                            <div className="space-y-3 pt-1">
+                                <label className="flex items-center gap-2 cursor-pointer group">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={isGlobal}
+                                        onChange={(e) => setIsGlobal(e.target.checked)}
+                                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4"
+                                    />
+                                    <div className="text-xs">
+                                        <p className="font-bold text-gray-800 dark:text-gray-200 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">Make Report Globally Visible</p>
+                                        <p className="text-gray-500 dark:text-gray-400 leading-normal">Allows all companies in the network to immediately see this incident.</p>
+                                    </div>
+                                </label>
+
+                                {!isGlobal && (
+                                    <div className="space-y-2 pt-2 border-t border-gray-200/50 dark:border-gray-700/50">
+                                        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-mono">Select Partner Companies</span>
+                                        <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                                            {companies
+                                                .filter(c => c.id !== profile.company_id)
+                                                .map(comp => {
+                                                    const isChecked = sharedWithCompanyIds.includes(comp.id);
+                                                    const shareInfo = reportShares.find(s => s.target_company_id === comp.id);
+                                                    
+                                                    return (
+                                                        <div key={comp.id} className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800/40 hover:border-gray-200 dark:hover:border-gray-700/65 transition-colors gap-2">
+                                                            <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                                                                <input 
+                                                                    type="checkbox"
+                                                                    checked={isChecked}
+                                                                    onChange={(e) => {
+                                                                        if (e.target.checked) {
+                                                                            setSharedWithCompanyIds(prev => [...prev, comp.id]);
+                                                                        } else {
+                                                                            setSharedWithCompanyIds(prev => prev.filter(id => id !== comp.id));
+                                                                        }
+                                                                    }}
+                                                                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-3.5 h-3.5"
+                                                                />
+                                                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{comp.name}</span>
+                                                            </label>
+
+                                                            {isChecked && (
+                                                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border ${
+                                                                    shareInfo?.status === 'approved' 
+                                                                        ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-500/20' 
+                                                                        : shareInfo?.status === 'rejected'
+                                                                            ? 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 border-rose-500/20'
+                                                                            : 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 border-amber-500/20 animate-pulse'
+                                                                }`}>
+                                                                    <span className={`h-1.5 w-1.5 rounded-full ${
+                                                                        shareInfo?.status === 'approved' 
+                                                                            ? 'bg-emerald-500' 
+                                                                            : shareInfo?.status === 'rejected' 
+                                                                                ? 'bg-rose-500' 
+                                                                                : 'bg-amber-500'
+                                                                    }`} />
+                                                                    {shareInfo?.status === 'approved' 
+                                                                        ? 'Shared' 
+                                                                        : shareInfo?.status === 'rejected' 
+                                                                            ? 'Declined' 
+                                                                            : 'Pending'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <button
+                                    onClick={handleSaveSharing}
+                                    disabled={isSavingShares}
+                                    className="w-full btn-primary text-xs py-1.5 font-bold flex items-center justify-center gap-1"
+                                >
+                                    {isSavingShares ? (
+                                        <>
+                                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            Updating Sharing Settings...
+                                        </>
+                                    ) : (
+                                        'Save Sharing Settings'
+                                    )}
+                                </button>
+                            </div>
+                        ) : (
+                            /* Read-only sharing list for normal users/responders */
+                            <div className="space-y-1.5">
+                                {isGlobal ? (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-normal">This report is marked as globally visible across the RAPID iREPORT network.</p>
+                                ) : reportShares.length > 0 ? (
+                                    <div className="space-y-1.5 pt-1">
+                                        {reportShares.map(share => {
+                                            const companyName = share.target_company?.name || 'Loading Company...';
+                                            return (
+                                                <div key={share.id} className="flex justify-between items-center text-xs p-2 rounded-lg bg-white/60 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/20">
+                                                    <span className="font-semibold text-gray-700 dark:text-gray-300">{companyName}</span>
+                                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border ${
+                                                        share.status === 'approved' 
+                                                            ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-500/20' 
+                                                            : share.status === 'rejected' 
+                                                                ? 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 border-rose-500/20'
+                                                                : 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 border-amber-500/20 animate-pulse'
+                                                    }`}>
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${
+                                                            share.status === 'approved' 
+                                                                ? 'bg-emerald-500' 
+                                                                : share.status === 'rejected' 
+                                                                    ? 'bg-rose-500' 
+                                                                    : 'bg-amber-500'
+                                                        }`} />
+                                                        {share.status === 'approved' 
+                                                            ? 'Shared' 
+                                                            : share.status === 'rejected' 
+                                                                ? 'Declined' 
+                                                                : 'Pending'}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 italic">This report is only visible to your company.</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {[ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(localReport.status) && (
