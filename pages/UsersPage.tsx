@@ -11,6 +11,7 @@ import UserDetailModal from '../components/UserDetailModal';
 import StatCard from '../components/StatCard';
 import { format } from 'date-fns';
 import { logUserAction } from '../utils/logger';
+import ConfirmModal from '../components/ConfirmModal';
 
 const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<Profile[]>([]);
@@ -27,6 +28,7 @@ const UsersPage: React.FC = () => {
     const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
     const [updatingCompanyId, setUpdatingCompanyId] = useState<string | null>(null);
     const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+    const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
     const [userReportCounts, setUserReportCounts] = useState<Record<string, number>>({});
 
     // Filters
@@ -244,105 +246,138 @@ const UsersPage: React.FC = () => {
         setViewUser(user);
     }, []);
     
-    const handleRoleChange = useCallback(async (userId: string, newRole: UserRole) => {
-        setUpdatingRoleId(userId);
-        try {
-            const response = await fetch('/api/update-profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, role: newRole })
-            });
+    const handleRoleChange = useCallback((userId: string, newRole: UserRole) => {
+        const userObj = users.find(u => u.id === userId);
+        const nameText = userObj ? `${userObj.first_name || ''} ${userObj.surname || ''}`.trim() || userObj.email : userId;
+        
+        setConfirmAction({
+            title: 'Change User Role',
+            message: `Are you sure you want to change the role of <strong>${nameText}</strong> to <strong>${newRole}</strong>?`,
+            onConfirm: async () => {
+                setUpdatingRoleId(userId);
+                try {
+                    const response = await fetch('/api/update-profile', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId, role: newRole })
+                    });
 
-            const contentType = response.headers.get('content-type');
-            let result;
-            if (contentType && contentType.includes('application/json')) {
-                result = await response.json();
-            } else {
-                const text = await response.text();
-                console.error('Non-JSON response received from /api/update-profile:', text);
-                throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`);
-            }
+                    const contentType = response.headers.get('content-type');
+                    let result;
+                    if (contentType && contentType.includes('application/json')) {
+                        result = await response.json();
+                    } else {
+                        const text = await response.text();
+                        console.error('Non-JSON response received from /api/update-profile:', text);
+                        throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`);
+                    }
 
-            if (!response.ok) {
-                throw new Error(result?.error || `Failed to update role (Status: ${response.status})`);
-            }
+                    if (!response.ok) {
+                        throw new Error(result?.error || `Failed to update role (Status: ${response.status})`);
+                    }
 
-            addToast(`User role updated successfully.`, 'success');
-            if (currentUserProfile) {
-                logUserAction(currentUserProfile.id, 'UPDATE_USER_ROLE', `Updated role for user ${userId} to ${newRole}`);
+                    addToast(`User role updated successfully.`, 'success');
+                    if (currentUserProfile) {
+                        logUserAction(currentUserProfile.id, 'UPDATE_USER_ROLE', `Updated role for user ${userId} to ${newRole}`);
+                    }
+                } catch (error: any) {
+                    addToast(`Error updating role: ${error.message}`, 'error');
+                }
+                setUpdatingRoleId(null);
             }
-        } catch (error: any) {
-            addToast(`Error updating role: ${error.message}`, 'error');
-        }
-        setUpdatingRoleId(null);
-    }, [addToast, currentUserProfile]);
+        });
+    }, [addToast, currentUserProfile, users]);
     
-    const handleStatusChange = useCallback(async (userId: string, newStatus: UserStatus) => {
-        setUpdatingStatusId(userId);
-        try {
-            const response = await fetch('/api/update-profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, status: newStatus })
-            });
+    const handleStatusChange = useCallback((userId: string, newStatus: UserStatus) => {
+        const userObj = users.find(u => u.id === userId);
+        const nameText = userObj ? `${userObj.first_name || ''} ${userObj.surname || ''}`.trim() || userObj.email : userId;
+        const statusMap: Record<UserStatus, string> = {
+            [UserStatus.ACTIVE]: 'approve',
+            [UserStatus.PENDING]: 'set to pending',
+            [UserStatus.SUSPENDED]: 'suspend',
+        };
+        const actionVerb = statusMap[newStatus] || newStatus;
 
-            const contentType = response.headers.get('content-type');
-            let result;
-            if (contentType && contentType.includes('application/json')) {
-                result = await response.json();
-            } else {
-                const text = await response.text();
-                console.error('Non-JSON response received from /api/update-profile:', text);
-                throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`);
+        setConfirmAction({
+            title: 'Confirm User Status Change',
+            message: `Are you sure you want to <strong>${actionVerb}</strong> user <strong>${nameText}</strong>?`,
+            onConfirm: async () => {
+                setUpdatingStatusId(userId);
+                try {
+                    const response = await fetch('/api/update-profile', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId, status: newStatus })
+                    });
+
+                    const contentType = response.headers.get('content-type');
+                    let result;
+                    if (contentType && contentType.includes('application/json')) {
+                        result = await response.json();
+                    } else {
+                        const text = await response.text();
+                        console.error('Non-JSON response received from /api/update-profile:', text);
+                        throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`);
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(result?.error || `Failed to update status (Status: ${response.status})`);
+                    }
+
+                    addToast(`User status updated to ${newStatus}.`, 'success');
+                    if (currentUserProfile) {
+                        logUserAction(currentUserProfile.id, 'UPDATE_USER_STATUS', `Updated status for user ${userId} to ${newStatus}`);
+                    }
+                } catch (error: any) {
+                    addToast(`Error updating status: ${error.message}`, 'error');
+                }
+                setUpdatingStatusId(null);
             }
+        });
+    }, [addToast, currentUserProfile, users]);
 
-            if (!response.ok) {
-                throw new Error(result?.error || `Failed to update status (Status: ${response.status})`);
+    const handleCompanyChange = useCallback((userId: string, newCompanyId: string | null) => {
+        const userObj = users.find(u => u.id === userId);
+        const nameText = userObj ? `${userObj.first_name || ''} ${userObj.surname || ''}`.trim() || userObj.email : userId;
+        const companyName = companies.find(c => c.id === newCompanyId)?.name || 'None';
+
+        setConfirmAction({
+            title: 'Change User Company',
+            message: `Are you sure you want to transfer <strong>${nameText}</strong> to company "<strong>${companyName}</strong>"?`,
+            onConfirm: async () => {
+                setUpdatingCompanyId(userId);
+                try {
+                    const response = await fetch('/api/update-profile', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId, company_id: newCompanyId })
+                    });
+
+                    const contentType = response.headers.get('content-type');
+                    let result;
+                    if (contentType && contentType.includes('application/json')) {
+                        result = await response.json();
+                    } else {
+                        const text = await response.text();
+                        console.error('Non-JSON response received from /api/update-profile:', text);
+                        throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`);
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(result?.error || `Failed to update company (Status: ${response.status})`);
+                    }
+
+                    addToast(`User company updated successfully.`, 'success');
+                    if (currentUserProfile) {
+                        logUserAction(currentUserProfile.id, 'UPDATE_USER_COMPANY', `Updated company for user ${userId} to ${companyName}`);
+                    }
+                } catch (error: any) {
+                    addToast(`Error updating company: ${error.message}`, 'error');
+                }
+                setUpdatingCompanyId(null);
             }
-
-            addToast(`User status updated to ${newStatus}.`, 'success');
-            if (currentUserProfile) {
-                logUserAction(currentUserProfile.id, 'UPDATE_USER_STATUS', `Updated status for user ${userId} to ${newStatus}`);
-            }
-        } catch (error: any) {
-            addToast(`Error updating status: ${error.message}`, 'error');
-        }
-        setUpdatingStatusId(null);
-    }, [addToast, currentUserProfile]);
-
-    const handleCompanyChange = useCallback(async (userId: string, newCompanyId: string | null) => {
-        setUpdatingCompanyId(userId);
-        try {
-            const response = await fetch('/api/update-profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, company_id: newCompanyId })
-            });
-
-            const contentType = response.headers.get('content-type');
-            let result;
-            if (contentType && contentType.includes('application/json')) {
-                result = await response.json();
-            } else {
-                const text = await response.text();
-                console.error('Non-JSON response received from /api/update-profile:', text);
-                throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`);
-            }
-
-            if (!response.ok) {
-                throw new Error(result?.error || `Failed to update company (Status: ${response.status})`);
-            }
-
-            addToast(`User company updated successfully.`, 'success');
-            if (currentUserProfile) {
-                const companyName = companies.find(c => c.id === newCompanyId)?.name || 'None';
-                logUserAction(currentUserProfile.id, 'UPDATE_USER_COMPANY', `Updated company for user ${userId} to ${companyName}`);
-            }
-        } catch (error: any) {
-            addToast(`Error updating company: ${error.message}`, 'error');
-        }
-        setUpdatingCompanyId(null);
-    }, [addToast, currentUserProfile, companies]);
+        });
+    }, [addToast, currentUserProfile, companies, users]);
 
     const handleSaveUser = useCallback(async (userToSave: Profile, password?: string, avatarFile?: File | null) => {
         // UPDATE user
@@ -709,6 +744,20 @@ const UsersPage: React.FC = () => {
                 onConfirm={confirmDeleteUser}
                 userName={selectedUser ? `${selectedUser.first_name} ${selectedUser.surname}` : ''}
             />
+
+            {confirmAction && (
+                <ConfirmModal
+                    isOpen={!!confirmAction}
+                    onClose={() => setConfirmAction(null)}
+                    onConfirm={() => {
+                        confirmAction.onConfirm();
+                        setConfirmAction(null);
+                    }}
+                    title={confirmAction.title}
+                    message={confirmAction.message}
+                    confirmText="Confirm"
+                />
+            )}
             
             <UserDetailModal
                 isOpen={!!viewUser}

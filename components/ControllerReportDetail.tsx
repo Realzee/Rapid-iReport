@@ -71,6 +71,7 @@ const ControllerReportDetail: React.FC<{
     const [companies, setCompanies] = useState<Company[]>([]);
     const [isActionLoading, setIsActionLoading] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const [isTimelineVisible, setIsTimelineVisible] = useState(true);
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
@@ -1298,7 +1299,7 @@ const ControllerReportDetail: React.FC<{
                         </div>
                         <div className="mt-6 flex justify-end gap-3">
                             <button onClick={() => setAssignmentModalOpen(false)} className="px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 transition-colors">Cancel</button>
-                            <button onClick={handleAssignmentUpdate} disabled={isActionLoading} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">{isActionLoading ? 'Saving...' : 'Save Changes'}</button>
+                            <button onClick={() => setConfirmSaveOpen(true)} disabled={isActionLoading} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">{isActionLoading ? 'Saving...' : 'Save Changes'}</button>
                         </div>
                     </div>
                 </div>
@@ -1311,6 +1312,18 @@ const ControllerReportDetail: React.FC<{
                 message={`Are you sure you want to delete this report? This will move it to the archives.`}
                 confirmText="Confirm Delete"
                 confirmVariant="danger"
+            />
+            <ConfirmModal
+                isOpen={confirmSaveOpen}
+                onClose={() => setConfirmSaveOpen(false)}
+                onConfirm={() => {
+                    setConfirmSaveOpen(false);
+                    handleAssignmentUpdate();
+                }}
+                title="Save Report Changes"
+                message="Are you sure you want to apply these status and responder assignment changes to this report?"
+                confirmText="Apply Changes"
+                confirmVariant="primary"
             />
             <ImagePreviewModal isOpen={!!previewImageUrl} onClose={() => setPreviewImageUrl(null)} imageUrl={previewImageUrl} />
         </div>

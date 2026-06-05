@@ -63,6 +63,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     const [isSyncing, setIsSyncing] = useState(false);
     const [lastSyncTimestamp, setLastSyncTimestamp] = useState<Date | null>(null);
     const [anprFoundReport, setAnprFoundReport] = useState<VehicleReport | null>(null);
+    const [localConfirmModal, setLocalConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void } | null>(null);
 
     const isInitialLoad = useRef(true);
     const audioContextRef = useRef<AudioContext | null>(null);
@@ -440,45 +441,53 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         }
     };
 
-    const handleSelfAssign = async (report: Report) => {
+    const handleSelfAssign = (report: Report) => {
         if (report.assigned_to === profile.id) {
             addToast('You are already assigned to this incident.', 'info');
             setAnprFoundReport(null);
             return;
         }
 
-        const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
+        setLocalConfirmModal({
+            isOpen: true,
+            title: 'Assign Incident to Yourself',
+            message: `Are you sure you want to assign the incident (OB: ${report.ob_number || report.id.slice(0, 8)}) to yourself?`,
+            onConfirm: async () => {
+                setLocalConfirmModal(null);
+                const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
 
-        const { error } = await supabase
-            .from(tableName)
-            .update({ 
-                assigned_to: profile.id,
-                status: ReportStatus.ASSIGNED 
-            })
-            .eq('id', report.id);
+                const { error } = await supabase
+                    .from(tableName)
+                    .update({ 
+                        assigned_to: profile.id,
+                        status: ReportStatus.ASSIGNED 
+                    })
+                    .eq('id', report.id);
 
-        if (error) {
-            addToast(`Failed to assign report: ${error.message}`, 'error');
-        } else {
-            addToast('Incident successfully assigned to you.', 'success');
-            // Log assignment
-            await supabase.from('assignment_logs').insert({
-                report_id: report.id,
-                assigned_from: report.assigned_to,
-                assigned_to: profile.id,
-                assigned_by: profile.id
-            });
-            // Add update
-            await supabase.from('report_updates').insert({
-                report_id: report.id,
-                user_id: profile.id,
-                content: `Responder ${profile.first_name} ${profile.surname} self-assigned to this incident.`
-            });
-            
-            setAnprFoundReport(null);
-            setSelectedReportId(report.id);
-            fetchData();
-        }
+                if (error) {
+                    addToast(`Failed to assign report: ${error.message}`, 'error');
+                } else {
+                    addToast('Incident successfully assigned to you.', 'success');
+                    // Log assignment
+                    await supabase.from('assignment_logs').insert({
+                        report_id: report.id,
+                        assigned_from: report.assigned_to,
+                        assigned_to: profile.id,
+                        assigned_by: profile.id
+                    });
+                    // Add update
+                    await supabase.from('report_updates').insert({
+                        report_id: report.id,
+                        user_id: profile.id,
+                        content: `Responder ${profile.first_name} ${profile.surname} self-assigned to this incident.`
+                    });
+                    
+                    setAnprFoundReport(null);
+                    setSelectedReportId(report.id);
+                    fetchData();
+                }
+            }
+        });
     };
 
     return (
@@ -683,6 +692,21 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             reportToEdit={null}
             onReportSubmitted={fetchData}
         />
+
+        {localConfirmModal && (
+            <ConfirmModal
+                isOpen={!!localConfirmModal}
+                onClose={() => setLocalConfirmModal(null)}
+                onConfirm={() => {
+                    localConfirmModal.onConfirm();
+                    setLocalConfirmModal(null);
+                }}
+                title={localConfirmModal.title}
+                message={localConfirmModal.message}
+                confirmText="Self Assign"
+                confirmVariant="primary"
+            />
+        )}
 
         </>
     );

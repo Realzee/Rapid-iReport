@@ -54,6 +54,7 @@ const CompaniesPage: React.FC = () => {
     // Backup Modal State
     const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
     const [isSavingCompany, setIsSavingCompany] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
     const dbHost = useMemo(() => {
         const supabaseUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co';
@@ -329,36 +330,42 @@ const CompaniesPage: React.FC = () => {
         }
     };
 
-    const handleResetGlobalLogo = async () => {
-        setIsUploadingGlobalLogo(true);
-        try {
-            const response = await fetch('/api/update-setting', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: 'main_logo_url', value: null })
-            });
-            
-            if (!response.ok) {
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.indexOf("application/json") !== -1) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Unknown error');
-                } else {
-                    const errorText = await response.text();
-                    console.error("Non-JSON error response:", errorText);
-                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+    const handleResetGlobalLogo = () => {
+        setConfirmAction({
+            title: 'Reset Global Logo',
+            message: 'Are you sure you want to reset the global application logo to the default value?',
+            onConfirm: async () => {
+                setIsUploadingGlobalLogo(true);
+                try {
+                    const response = await fetch('/api/update-setting', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key: 'main_logo_url', value: null })
+                    });
+                    
+                    if (!response.ok) {
+                        const contentType = response.headers.get("content-type");
+                        if (contentType && contentType.indexOf("application/json") !== -1) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || 'Unknown error');
+                        } else {
+                            const errorText = await response.text();
+                            console.error("Non-JSON error response:", errorText);
+                            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                        }
+                    }
+
+                    setMainLogoUrl(defaultLogoUrl);
+                    setLogoPreview(defaultLogoUrl);
+                    setNewLogoFile(null);
+                    addToast('Main logo reset to default.', 'info');
+                } catch (error: any) {
+                     addToast('Error resetting logo: ' + error.message, 'error');
+                } finally {
+                    setIsUploadingGlobalLogo(false);
                 }
             }
-
-            setMainLogoUrl(defaultLogoUrl);
-            setLogoPreview(defaultLogoUrl);
-            setNewLogoFile(null);
-            addToast('Main logo reset to default.', 'info');
-        } catch (error: any) {
-             addToast('Error resetting logo: ' + error.message, 'error');
-        } finally {
-            setIsUploadingGlobalLogo(false);
-        }
+        });
     };
     
     const handleFaviconFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -417,36 +424,42 @@ const CompaniesPage: React.FC = () => {
         }
     };
 
-    const handleResetFavicon = async () => {
-        setIsUploadingFavicon(true);
-        try {
-            const response = await fetch('/api/update-setting', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: 'favicon_url', value: null })
-            });
-            
-            if (!response.ok) {
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.indexOf("application/json") !== -1) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Unknown error');
-                } else {
-                    const errorText = await response.text();
-                    console.error("Non-JSON error response:", errorText);
-                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+    const handleResetFavicon = () => {
+        setConfirmAction({
+            title: 'Reset App Icon',
+            message: 'Are you sure you want to reset the application icon to the default value?',
+            onConfirm: async () => {
+                setIsUploadingFavicon(true);
+                try {
+                    const response = await fetch('/api/update-setting', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key: 'favicon_url', value: null })
+                    });
+                    
+                    if (!response.ok) {
+                        const contentType = response.headers.get("content-type");
+                        if (contentType && contentType.indexOf("application/json") !== -1) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || 'Unknown error');
+                        } else {
+                            const errorText = await response.text();
+                            console.error("Non-JSON error response:", errorText);
+                            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                        }
+                    }
+
+                    setFaviconUrl(defaultFaviconUrl);
+                    setFaviconPreview(defaultFaviconUrl);
+                    setNewFaviconFile(null);
+                    addToast('App icon reset to default.', 'info');
+                } catch (error: any) {
+                     addToast('Error resetting app icon: ' + error.message, 'error');
+                } finally {
+                    setIsUploadingFavicon(false);
                 }
             }
-
-            setFaviconUrl(defaultFaviconUrl);
-            setFaviconPreview(defaultFaviconUrl);
-            setNewFaviconFile(null);
-            addToast('App icon reset to default.', 'info');
-        } catch (error: any) {
-             addToast('Error resetting app icon: ' + error.message, 'error');
-        } finally {
-            setIsUploadingFavicon(false);
-        }
+        });
     };
     
     // Announcement handlers
@@ -825,6 +838,19 @@ const CompaniesPage: React.FC = () => {
                 onClose={() => setIsBackupModalOpen(false)}
                 dbHost={dbHost}
             />
+            {confirmAction && (
+                <ConfirmModal
+                    isOpen={!!confirmAction}
+                    onClose={() => setConfirmAction(null)}
+                    onConfirm={() => {
+                        confirmAction.onConfirm();
+                        setConfirmAction(null);
+                    }}
+                    title={confirmAction.title}
+                    message={confirmAction.message}
+                    confirmText="Confirm"
+                />
+            )}
         </div>
     );
 };
