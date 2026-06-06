@@ -13,6 +13,8 @@ interface ReportListItemProps {
   reporterName: string;
   onStatusUpdate: (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime' | 'emergency') => Promise<void>;
   companyLogoUrl?: string;
+  showCheckbox?: boolean;
+  checked?: boolean;
 }
 
 const severityStyles: Record<Severity, string> = {
@@ -29,7 +31,7 @@ const severityBorderColors: Record<Severity, string> = {
     [Severity.LOW]: 'border-green-500'
 };
 
-const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onClick, profile, reporterName, onStatusUpdate, companyLogoUrl }) => {
+const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onClick, profile, reporterName, onStatusUpdate, companyLogoUrl, showCheckbox, checked }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   
   const canUpdateStatus = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role) || 
@@ -60,6 +62,16 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
         onClick={onClick}
         className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4 group ${bgColor} ${borderColor} hover:bg-gray-100 dark:hover:bg-gray-800 flex items-start space-x-4 ${isTerminalStatus ? 'opacity-70' : ''}`}
     >
+        {showCheckbox && (
+            <div className="flex-shrink-0 self-center pr-1" onClick={(e) => e.stopPropagation()}>
+                <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={onClick}
+                    className="rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                />
+            </div>
+        )}
         {hasImage && (
             <div className="flex-shrink-0">
                 <img 

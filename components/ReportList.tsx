@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect, memo } from 'react';
 import { Report, ReportStatus, Profile, Company } from '../types';
 import ReportListItem from './ReportListItem';
-import { ChevronUpIcon } from './icons';
+import { ChevronUpIcon, ShareIcon } from './icons';
+import { BulkShareModal } from './BulkShareModal';
 
 interface ReportListProps {
   reports: Report[];
@@ -21,6 +22,14 @@ const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onRe
     const [showUnreadIndicator, setShowUnreadIndicator] = useState(false);
     const prevFilteredReportsLengthRef = useRef(0);
     const prevFilterRef = useRef(activeFilter);
+
+    const [isBulkMode, setIsBulkMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [isBulkShareOpen, setIsBulkShareOpen] = useState(false);
+
+    const selectedReports = useMemo(() => {
+        return reports.filter(r => selectedIds.includes(r.id));
+    }, [reports, selectedIds]);
     
     const userMap = useMemo(() => {
         return allUsers.reduce((acc, user) => {
@@ -80,8 +89,28 @@ const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onRe
   return (
     <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-full">
         <div className="flex-shrink-0">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reports</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Showing {filteredReports.length} reports.</p>
+            <div className="flex justify-between items-center mb-1">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reports</h3>
+                {reports.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setIsBulkMode(!isBulkMode);
+                            setSelectedIds([]);
+                        }}
+                        className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition cursor-pointer ${
+                            isBulkMode
+                                ? 'bg-blue-600 border-blue-500 text-white hover:bg-blue-700'
+                                : 'bg-gray-100 dark:bg-gray-850 hover:bg-gray-200 dark:hover:bg-gray-800 border-gray-200 dark:border-gray-805 text-gray-700 dark:text-gray-300'
+                        }`}
+                    >
+                        {isBulkMode ? 'Cancel' : 'Select Multiple'}
+                    </button>
+                )}
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                {isBulkMode ? `${selectedIds.length} of ${filteredReports.length} selected` : `Showing ${filteredReports.length} reports.`}
+            </p>
             
             <div className="flex space-x-2 mb-4">
                 {statusFilters.map(filter => (
@@ -117,20 +146,61 @@ const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onRe
                     const company = reporter?.company_id ? companyMap[reporter.company_id] : undefined;
                     const companyLogoUrl = company?.logo_url;
 
+                    const isChecked = selectedIds.includes(report.id);
+                    const isSelected = isBulkMode ? isChecked : (report.id === selectedReportId);
+
+                    const handleItemClick = () => {
+                        if (isBulkMode) {
+                            setSelectedIds(prev => 
+                                prev.includes(report.id) 
+                                    ? prev.filter(id => id !== report.id) 
+                                    : [...prev, report.id]
+                            );
+                        } else {
+                            onReportSelect(report.id);
+                        }
+                    };
+
                     return (
                         <ReportListItem 
                             key={report.id} 
                             report={report} 
-                            isSelected={report.id === selectedReportId}
-                            onClick={() => onReportSelect(report.id)}
+                            isSelected={isSelected}
+                            onClick={handleItemClick}
                             profile={profile}
                             reporterName={reporterName}
                             onStatusUpdate={onStatusUpdate}
                             companyLogoUrl={companyLogoUrl}
+                            showCheckbox={isBulkMode}
+                            checked={isChecked}
                         />
                     )
                 })}
             </div>
+
+            {isBulkMode && selectedIds.length > 0 && (
+                <div className="flex-shrink-0 mt-3 pt-3 border-t border-gray-200 dark:border-gray-800 transition-all">
+                    <button
+                        type="button"
+                        onClick={() => setIsBulkShareOpen(true)}
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow cursor-pointer"
+                    >
+                        <ShareIcon className="w-3.5 h-3.5" />
+                        Share Selected ({selectedIds.length})
+                    </button>
+                </div>
+            )}
+
+            <BulkShareModal
+                isOpen={isBulkShareOpen}
+                onClose={() => {
+                    setIsBulkShareOpen(false);
+                    setSelectedIds([]);
+                    setIsBulkMode(false);
+                }}
+                selectedReports={selectedReports}
+                profile={profile}
+            />
         </div>
     </div>
   );

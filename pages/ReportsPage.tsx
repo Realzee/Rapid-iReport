@@ -3,12 +3,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, ReportStatus, Severity, VehicleReport, EmergencyReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus, Company, ReportShare } from '../types';
 import { format } from 'date-fns';
-import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, AlertTriangleIcon, GlobeIcon, UsersIcon, HistoryIcon } from '../components/icons';
+import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, AlertTriangleIcon, GlobeIcon, UsersIcon, HistoryIcon, ShareIcon } from '../components/icons';
 import ReportDetailModal from '../components/ReportDetailModal';
 import ReportModal from '../components/ReportModal';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import { logUserAction } from '../utils/logger';
+import { BulkShareModal } from '../components/BulkShareModal';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
@@ -88,6 +89,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
     const [incomingShares, setIncomingShares] = useState<ReportShare[]>([]);
     const { addToast } = useToast();
+
+    const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
+    const [isBulkShareOpen, setIsBulkShareOpen] = useState(false);
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(15);
@@ -285,6 +289,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
 
     const totalPages = Math.ceil(processedReports.length / itemsPerPage);
 
+    const selectedReports = useMemo(() => {
+        return reports.filter(r => selectedReportIds.includes(r.id));
+    }, [reports, selectedReportIds]);
+
     const handleSort = (key: SortKey) => {
         let direction: 'ascending' | 'descending' = 'ascending';
         if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -465,6 +473,22 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead className="bg-gray-50 dark:bg-gray-800/50">
                             <tr>
+                                <th scope="col" className="px-4 py-3 text-left w-10">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={paginatedReports.length > 0 && paginatedReports.every(r => selectedReportIds.includes(r.id))}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                const paginatedIds = paginatedReports.map(r => r.id);
+                                                setSelectedReportIds(prev => Array.from(new Set([...prev, ...paginatedIds])));
+                                            } else {
+                                                const paginatedIds = paginatedReports.map(r => r.id);
+                                                setSelectedReportIds(prev => prev.filter(id => !paginatedIds.includes(id)));
+                                            }
+                                        }}
+                                        className="rounded border-gray-300 dark:border-gray-750 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                    />
+                                </th>
                                 <SortableHeader label="Type" sortKey="type" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="OB Number / Title" sortKey="ob_number" sortConfig={sortConfig} onSort={handleSort} />
                                 {isGlobalAdmin && <SortableHeader label="Company" sortKey="company_name" sortConfig={sortConfig} onSort={handleSort} />}
@@ -479,6 +503,20 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                         <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                             {paginatedReports.map(report => (
                                 <tr key={report.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                                    <td className="px-4 py-4 whitespace-nowrap w-10">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedReportIds.includes(report.id)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setSelectedReportIds(prev => [...prev, report.id]);
+                                                } else {
+                                                    setSelectedReportIds(prev => prev.filter(id => id !== report.id));
+                                                }
+                                            }}
+                                            className="rounded border-gray-300 dark:border-gray-750 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                        />
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             <div className={`p-1.5 rounded-full ${report.type === 'vehicle' ? 'bg-yellow-500/20' : (report.type === 'emergency' ? 'bg-orange-500/20' : 'bg-red-500/20')}`}>
@@ -585,6 +623,43 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                     confirmVariant="danger"
                 />
             )}
+
+            {/* Floating Bulk Actions Bar */}
+            {selectedReportIds.length > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-gray-900/95 dark:bg-gray-950/95 text-white rounded-full px-6 py-3 border border-gray-800 shadow-2xl flex items-center gap-6 animate-fade-in-up backdrop-blur-md">
+                    <div className="flex items-center gap-2">
+                        <span className="bg-blue-600 text-white font-black text-xs px-2.5 py-1 rounded-full">{selectedReportIds.length}</span>
+                        <span className="text-xs font-bold tracking-wide text-gray-200">Incident report{selectedReportIds.length > 1 ? 's' : ''} selected</span>
+                    </div>
+                    <div className="flex items-center gap-2.5 border-l border-gray-800 pl-4">
+                        <button 
+                            type="button"
+                            onClick={() => setIsBulkShareOpen(true)} 
+                            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-black px-4.5 py-2 rounded-full transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+                        >
+                            <ShareIcon className="w-3.5 h-3.5" /> Share Selected
+                        </button>
+                        <button 
+                            type="button"
+                            onClick={() => setSelectedReportIds([])} 
+                            className="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-extrabold px-4 py-2 rounded-full transition-all border border-gray-700 cursor-pointer"
+                        >
+                            Clear Selection
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <BulkShareModal
+                isOpen={isBulkShareOpen}
+                onClose={() => {
+                    setIsBulkShareOpen(false);
+                    setSelectedReportIds([]);
+                }}
+                selectedReports={selectedReports}
+                profile={profile}
+                onBulkShared={fetchData}
+            />
         </div>
     );
 };
