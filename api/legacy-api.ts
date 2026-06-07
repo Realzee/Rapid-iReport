@@ -183,9 +183,12 @@ export default async function handler(req: any, res: any) {
             }
 
             formData.append('type', typeParam);
+            formData.append('company', data.company || '');
             formData.append('vehicle_registration', data.vehicle_registration || '');
             formData.append('make', data.make || '');
             formData.append('model', data.model || '');
+            formData.append('vin_number', data.vin_number || '');
+            formData.append('engine_number', data.engine_number || '');
             formData.append('color', data.color || '');
             formData.append('cos_name', data.cos_name || '');
             formData.append('cos_contact_number', data.cos_contact_number || '');
@@ -232,9 +235,12 @@ export default async function handler(req: any, res: any) {
 
             const formData = new URLSearchParams();
             formData.append('edit-id', rawId);
+            formData.append('edit-company', data.company || '');
             formData.append('edit-vehicle_registration', data.vehicle_registration || '');
             formData.append('edit-make', data.make || '');
             formData.append('edit-model', data.model || '');
+            formData.append('edit-vin_number', data.vin_number || '');
+            formData.append('edit-engine_number', data.engine_number || '');
             formData.append('edit-color', data.color || '');
             formData.append('edit-reason', data.reason || '');
             formData.append('edit-cos_name', data.cos_name || '');

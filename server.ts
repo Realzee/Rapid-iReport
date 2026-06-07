@@ -103,6 +103,7 @@ async function runMigrations() {
         "DROP POLICY IF EXISTS \"Allow insert tech_chat for authenticated\" ON public.tech_chat_messages;",
         "CREATE POLICY \"Allow insert tech_chat for authenticated\" ON public.tech_chat_messages FOR INSERT TO authenticated WITH CHECK (true);",
         "ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS bolo_background_url text;",
+        "ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS alias text;",
         `CREATE TABLE IF NOT EXISTS public.report_shares (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
             report_id uuid NOT NULL,

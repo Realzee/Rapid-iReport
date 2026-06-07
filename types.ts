@@ -76,6 +76,7 @@ export interface Company {
     psira_number?: string;
     allowed_modules?: string[];
     bolo_background_url?: string;
+    alias?: string;
 }
 
 export interface Profile {

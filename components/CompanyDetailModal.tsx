@@ -37,13 +37,17 @@ const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({ isOpen, onClose
                         )}
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{company.name}</h3>
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                            {company.name}
+                            {company.alias && <span className="ml-2.5 text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 align-middle uppercase tracking-wider">{company.alias}</span>}
+                        </h3>
                         <p className="text-gray-500 dark:text-gray-400">Company Details</p>
                     </div>
                 </div>
 
                 <div className="flex-grow overflow-y-auto pr-4 -mr-4 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                        <DetailItem label="Company Alias / Short Name" value={company.alias} />
                         <DetailItem label="Owner's Name" value={company.owners_name} />
                         <DetailItem label="PSIRA Number" value={company.psira_number} />
                         <DetailItem label="Contact Person" value={company.contact_person} />

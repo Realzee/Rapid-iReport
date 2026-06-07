@@ -6,17 +6,25 @@ interface AddLegacyReportModalProps {
     onClose: () => void;
     onSuccess: () => void;
     report?: any; // If provided, we are in Edit mode
+    profile?: any;
 }
 
-const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onClose, onSuccess, report }) => {
+const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onClose, onSuccess, report, profile }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const getCompanyAlias = () => {
+        return profile?.company?.alias || profile?.company?.name || '';
+    };
+
     const [formData, setFormData] = useState({
         type: report?.type || 'STOLEN VEHICLE',
+        company: report?.company || getCompanyAlias(),
         vehicle_registration: report?.license_plate || '',
         make: report?.vehicle_make || '',
         model: report?.vehicle_model || '',
+        vin_number: report?.vin_number || '',
+        engine_number: report?.engine_number || '',
         color: report?.vehicle_color || '',
         reason: report?.description?.replace('[LEGACY SYSTEM REPORT]\n', '') || '',
         entry_text: report?.entry_text || '',
@@ -31,14 +39,17 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
         date_of_incident: report?.reported_at ? new Date(report.reported_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
     });
 
-    // Reset form when report changes
+    // Reset form when report changes or profile loads
     React.useEffect(() => {
         if (report) {
             setFormData({
                 type: report.type || 'STOLEN VEHICLE',
+                company: report.company || getCompanyAlias(),
                 vehicle_registration: report.license_plate || '',
                 make: report.vehicle_make || '',
                 model: report.vehicle_model || '',
+                vin_number: report.vin_number || '',
+                engine_number: report.engine_number || '',
                 color: report.vehicle_color || '',
                 reason: report.description?.replace('[LEGACY SYSTEM REPORT]\n', '') || '',
                 entry_text: report.entry_text || '',
@@ -55,9 +66,12 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
         } else {
             setFormData({
                 type: 'STOLEN VEHICLE',
+                company: getCompanyAlias(),
                 vehicle_registration: '',
                 make: '',
                 model: '',
+                vin_number: '',
+                engine_number: '',
                 color: '',
                 reason: '',
                 entry_text: '',
@@ -72,7 +86,7 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
                 date_of_incident: new Date().toISOString().split('T')[0]
             });
         }
-    }, [report]);
+    }, [report, profile]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -155,6 +169,10 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
                                 </select>
                             </div>
                             <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reporting Company Alias *</label>
+                                <input type="text" name="company" required placeholder="E.G. ADVANCED OST" value={formData.company} onChange={handleChange} className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                            </div>
+                            <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Registration Number *</label>
                                 <input type="text" name="vehicle_registration" required placeholder="e.g., KT13XDGP" value={formData.vehicle_registration} onChange={handleChange} className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                             </div>
@@ -169,6 +187,14 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color *</label>
                                 <input type="text" name="color" required placeholder="e.g., MATTE WHITE" value={formData.color} onChange={handleChange} className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">VIN Number</label>
+                                <input type="text" name="vin_number" placeholder="ENTER VIN..." value={formData.vin_number} onChange={handleChange} className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Engine Number</label>
+                                <input type="text" name="engine_number" placeholder="ENTER ENGINE NO..." value={formData.engine_number} onChange={handleChange} className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Operational Status *</label>

@@ -43,7 +43,12 @@ const CompanyManagementTable: React.FC<CompanyManagementTableProps> = ({ compani
                                         )}
                                     </div>
                                     <div className="ml-4">
-                                        <div className="text-sm font-medium text-gray-900 dark:text-white">{company.name}</div>
+                                        <div className="text-sm font-bold text-gray-900 dark:text-white">{company.name}</div>
+                                        {company.alias && (
+                                            <div className="text-xs font-semibold bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-md border border-blue-500/20 inline-block mt-1">
+                                                Alias: {company.alias}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </td>

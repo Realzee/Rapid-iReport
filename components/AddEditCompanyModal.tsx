@@ -27,6 +27,7 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
         return company ? {
             id: company.id,
             name: company.name || '',
+            alias: company.alias || '',
             owners_name: company.owners_name || '',
             address: company.address || '',
             contact_person: company.contact_person || '',
@@ -37,6 +38,7 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
             bolo_background_url: company.bolo_background_url
         } : {
             name: '',
+            alias: '',
             owners_name: '',
             address: '',
             contact_person: '',
@@ -185,11 +187,17 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
                             <input type="text" name="name" id="name" value={formData.name || ''} onChange={handleChange} required className={inputClasses}/>
                         </div>
                         <div>
+                            <label htmlFor="alias" className={labelClasses}>Company Alias Name</label>
+                            <input type="text" name="alias" id="alias" value={formData.alias || ''} onChange={handleChange} required className={inputClasses} placeholder="e.g. RSS, COSA"/>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
                             <label htmlFor="owners_name" className={labelClasses}>Owner's Name</label>
                             <input type="text" name="owners_name" id="owners_name" value={formData.owners_name || ''} onChange={handleChange} required className={inputClasses}/>
                         </div>
                     </div>
-                     <div>
+                    <div>
                         <label htmlFor="address" className={labelClasses}>Address</label>
                         <input type="text" name="address" id="address" value={formData.address || ''} onChange={handleChange} required className={inputClasses}/>
                     </div>
