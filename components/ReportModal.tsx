@@ -707,6 +707,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         status: reportData.status || ReportStatus.ACTIVE,
                         reported_by: user.id,
                         reported_at: now.toISOString(),
+                        company_id: companyId,
+                        cos_name: tableName === 'vehicle_reports' ? companyName : undefined,
                     };
 
                     const { error: insertError } = await supabase.from(tableName).insert(insertData);
@@ -721,6 +723,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             try {
                                 const compObj = Array.isArray(profileData?.company) ? profileData.company[0] : profileData?.company;
                                 const companyAlias = (compObj as any)?.alias || (compObj as any)?.name || '';
+                                const companyFullName = (compObj as any)?.name || '';
                                 
                                 const legacyPayload = {
                                     action: 'add',
@@ -734,8 +737,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     color: insertData.vehicle_color || '',
                                     reason: insertData.description || '',
                                     entry_text: insertData.description || 'Auto-entered entry from Rapid911 system.',
-                                    cos_name: insertData.cos_name || '',
-                                    cos_contact_number: insertData.cos_contact_number || '',
+                                    cos_name: companyFullName || '', // Company Alias Name goes to Complainant Name
+                                    cos_contact_number: (compObj as any)?.cell_number || '',
                                     case_number: insertData.cas_number || '',
                                     station_reported_at: insertData.station_name || '',
                                     io_name: insertData.io_name || '',

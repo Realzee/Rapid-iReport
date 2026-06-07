@@ -17,6 +17,10 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
         return profile?.company?.alias || profile?.company?.name || '';
     };
 
+    const getCompanyName = () => {
+        return profile?.company?.name || '';
+    };
+
     const [formData, setFormData] = useState({
         type: report?.type || 'STOLEN VEHICLE',
         company: report?.company || getCompanyAlias(),
@@ -28,7 +32,7 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
         color: report?.vehicle_color || '',
         reason: report?.description?.replace('[LEGACY SYSTEM REPORT]\n', '') || '',
         entry_text: report?.entry_text || '',
-        cos_name: report?.cos_name || '',
+        cos_name: report?.cos_name || getCompanyName(),
         cos_contact_number: report?.cos_contact_number || '',
         case_number: report?.cas_number || '',
         station_reported_at: report?.station_name || '',
@@ -53,7 +57,7 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
                 color: report.vehicle_color || '',
                 reason: report.description?.replace('[LEGACY SYSTEM REPORT]\n', '') || '',
                 entry_text: report.entry_text || '',
-                cos_name: report.cos_name || '',
+                cos_name: report.cos_name || getCompanyName(),
                 cos_contact_number: report.cos_contact_number || '',
                 case_number: report.cas_number || '',
                 station_reported_at: report.station_name || '',
@@ -75,7 +79,7 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
                 color: '',
                 reason: '',
                 entry_text: '',
-                cos_name: '',
+                cos_name: getCompanyName(),
                 cos_contact_number: '',
                 case_number: '',
                 station_reported_at: '',
