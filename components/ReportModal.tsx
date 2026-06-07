@@ -715,6 +715,51 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         success = true;
                         finalObNumber = ob_number;
                         successfulInsertData = insertData;
+
+                        // Save new vehicle report to the legacy system
+                        if (tableName === 'vehicle_reports') {
+                            try {
+                                const compObj = Array.isArray(profileData?.company) ? profileData.company[0] : profileData?.company;
+                                const companyAlias = (compObj as any)?.alias || (compObj as any)?.name || '';
+                                
+                                const legacyPayload = {
+                                    action: 'add',
+                                    type: 'STOLEN VEHICLE',
+                                    company: companyAlias, // Crucial: company alias saved as reporting company
+                                    vehicle_registration: insertData.license_plate || '',
+                                    make: insertData.vehicle_make || '',
+                                    model: insertData.vehicle_model || '',
+                                    vin_number: insertData.vin_number || '',
+                                    engine_number: insertData.engine_number || '',
+                                    color: insertData.vehicle_color || '',
+                                    reason: insertData.description || '',
+                                    entry_text: insertData.description || 'Auto-entered entry from Rapid911 system.',
+                                    cos_name: insertData.cos_name || '',
+                                    cos_contact_number: insertData.cos_contact_number || '',
+                                    case_number: insertData.cas_number || '',
+                                    station_reported_at: insertData.station_name || '',
+                                    io_name: insertData.io_name || '',
+                                    io_contact: insertData.io_contact || '',
+                                    recovered: insertData.status === 'recovered' ? 'RECOVERED' : 'STOLEN',
+                                    tracker: insertData.has_tracker ? 'Yes' : 'No',
+                                    date_of_incident: insertData.reported_at ? new Date(insertData.reported_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+                                };
+
+                                const legacyRes = await fetch('/api/legacy-api', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(legacyPayload)
+                                });
+                                if (!legacyRes.ok) {
+                                    console.error('Failed to sync to legacy system:', await legacyRes.text());
+                                } else {
+                                    console.log('Successfully synced new vehicle report to legacy system');
+                                }
+                            } catch (legacyErr) {
+                                console.error('Error syncing to legacy system:', legacyErr);
+                            }
+                        }
+
                         break;
                     }
 

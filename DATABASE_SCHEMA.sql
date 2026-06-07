@@ -48,7 +48,9 @@ END$$;
 CREATE TABLE IF NOT EXISTS public.companies (
     id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
     name text NOT NULL,
+    alias text,
     logo_url text,
+    bolo_background_url text,
     owners_name text,
     address text,
     contact_person text,
