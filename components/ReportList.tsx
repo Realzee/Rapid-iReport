@@ -143,7 +143,7 @@ const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onRe
                 {filteredReports.map((report) => {
                     const reporter = userMap[report.reported_by];
                     const reporterName = reporter ? `${reporter.first_name} ${reporter.surname}` : 'Unknown User';
-                    const company = reporter?.company_id ? companyMap[reporter.company_id] : undefined;
+                    const company = report.company_id ? companyMap[report.company_id] : (reporter?.company_id ? companyMap[reporter.company_id] : undefined);
                     const companyLogoUrl = company?.logo_url;
 
                     const isChecked = selectedIds.includes(report.id);
@@ -173,6 +173,7 @@ const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onRe
                             companyLogoUrl={companyLogoUrl}
                             showCheckbox={isBulkMode}
                             checked={isChecked}
+                            sharingCompany={company}
                         />
                     )
                 })}

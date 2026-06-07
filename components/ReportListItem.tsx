@@ -1,5 +1,5 @@
 import React, { useState, useMemo, memo } from 'react';
-import { Report, VehicleReport, Severity, Profile, UserRole, ReportStatus } from '../types';
+import { Report, VehicleReport, Severity, Profile, UserRole, ReportStatus, Company } from '../types';
 import StatusBadge from './StatusBadge';
 import ReportTypeBadge from './ReportTypeBadge';
 import { formatDistanceToNow } from 'date-fns';
@@ -15,6 +15,7 @@ interface ReportListItemProps {
   companyLogoUrl?: string;
   showCheckbox?: boolean;
   checked?: boolean;
+  sharingCompany?: Company;
 }
 
 const severityStyles: Record<Severity, string> = {
@@ -31,7 +32,7 @@ const severityBorderColors: Record<Severity, string> = {
     [Severity.LOW]: 'border-green-500'
 };
 
-const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onClick, profile, reporterName, onStatusUpdate, companyLogoUrl, showCheckbox, checked }) => {
+const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onClick, profile, reporterName, onStatusUpdate, companyLogoUrl, showCheckbox, checked, sharingCompany }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   
   const canUpdateStatus = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role) || 
@@ -56,6 +57,9 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
   const bgColor = isSelected ? 'bg-blue-500/10 dark:bg-blue-500/30' : (isTerminalStatus ? 'bg-gray-200/50 dark:bg-gray-900/50' : 'bg-gray-50/50 dark:bg-gray-800/60');
   const textColor = isTerminalStatus ? 'text-gray-500 dark:text-gray-500' : 'text-gray-800 dark:text-white';
   const hasImage = report.evidence_images && report.evidence_images.length > 0;
+
+  const isSharedFromOtherCompany = profile.company_id && report.company_id && report.company_id !== profile.company_id;
+  const sharingCompanyName = sharingCompany?.name || report.company_name;
 
   return (
     <div 
@@ -104,6 +108,11 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                                 )}
                                 {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
                                     <UsersIcon className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" title="Shared with partner companies" />
+                                )}
+                                {isSharedFromOtherCompany && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 border border-blue-200 dark:border-blue-800 leading-none flex-shrink-0" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
+                                        Shared
+                                    </span>
                                 )}
                             </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</p>
@@ -164,6 +173,11 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                <div className="text-xs text-gray-400 dark:text-gray-500 truncate pr-2">
                     <p className="truncate">{report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</p>
                     <p className="mt-1">By: <span className="font-medium text-gray-500 dark:text-gray-400">{reporterName}</span></p>
+                    {isSharedFromOtherCompany && (
+                         <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                             Shared by: <span className="font-semibold">{sharingCompanyName || 'Partner Company'}</span>
+                         </p>
+                    )}
                 </div>
               <p className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
                   {formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}

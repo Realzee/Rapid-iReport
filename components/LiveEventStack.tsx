@@ -36,12 +36,16 @@ const LiveEventItem: React.FC<{
     onSelect: () => void;
     responderMap: Map<string, string>;
     reporterName: string;
-}> = ({ report, isSelected, isPanic, isUnviewed, onSelect, responderMap, reporterName }) => {
+    profile: Profile;
+}> = ({ report, isSelected, isPanic, isUnviewed, onSelect, responderMap, reporterName, profile }) => {
     const title = report.type === 'vehicle' ? (report as any).license_plate : report.title;
     
     // Age-based coloring
     const ageBorderClass = getAgeColorClass(report.reported_at);
     const ageTextClass = getAgeTextClass(report.reported_at);
+
+    const isSharedFromOtherCompany = profile.company_id && report.company_id && report.company_id !== profile.company_id;
+    const sharingCompanyName = report.company_name || '';
 
     const borderClass = isSelected 
         ? 'border-blue-500 ring-2 ring-blue-500/50' 
@@ -85,6 +89,11 @@ const LiveEventItem: React.FC<{
                                     {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
                                         <UsersIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Shared with specific companies" />
                                     )}
+                                    {isSharedFromOtherCompany && (
+                                        <span className="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200 border border-blue-200 dark:border-blue-900 leading-none flex-shrink-0" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
+                                            Shared
+                                        </span>
+                                    )}
                                     {isUnviewed && (
                                         <span className="px-1.5 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded-full animate-bounce">
                                             NEW
@@ -123,6 +132,12 @@ const LiveEventItem: React.FC<{
                                 <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{assignedResponderName}</span>
                             </div>
                         )}
+                        {isSharedFromOtherCompany && (
+                            <div className="flex items-center gap-1 truncate text-blue-600 dark:text-blue-400 font-medium" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
+                                <UsersIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                                <span className="truncate">From: {sharingCompanyName || 'Partner'}</span>
+                            </div>
+                        )}
                         <div className={`flex items-center gap-1 ml-auto ${ageTextClass}`}>
                             <ClockIcon className="w-3.5 h-3.5" />
                             <span>{format(new Date(report.reported_at), 'HH:mm')}</span>
@@ -143,9 +158,10 @@ interface LiveEventStackProps {
     selectedReportId: string | null;
     newPanicReportId?: string | null;
     unviewedReportIds?: Set<string>;
+    profile: Profile;
 }
 
-const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, allUsers, onReportSelect, selectedReportId, newPanicReportId, unviewedReportIds }) => {
+const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, allUsers, onReportSelect, selectedReportId, newPanicReportId, unviewedReportIds, profile }) => {
     
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [showUnreadIndicator, setShowUnreadIndicator] = useState(false);
@@ -227,6 +243,7 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, al
                             onSelect={() => onReportSelect(report.id)}
                             responderMap={responderMap}
                             reporterName={userMap.get(report.reported_by) || 'Unknown User'}
+                            profile={profile}
                         />
                     ))}
                 </div>

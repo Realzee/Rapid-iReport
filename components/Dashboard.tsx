@@ -182,7 +182,16 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         let crimeCountQuery = supabase.from('crime_reports').select('*', { count: 'exact', head: true });
         let emergencyCountQuery = supabase.from('emergency_reports').select('*', { count: 'exact', head: true });
 
-        if (allowedReporterIds) {
+        if (!isGlobalAdmin && profile.company_id) {
+            const filterStr = `company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`;
+            vehicleQuery = vehicleQuery.or(filterStr);
+            crimeQuery = crimeQuery.or(filterStr);
+            emergencyQuery = emergencyQuery.or(filterStr);
+
+            vehicleCountQuery = vehicleCountQuery.or(filterStr);
+            crimeCountQuery = crimeCountQuery.or(filterStr);
+            emergencyCountQuery = emergencyCountQuery.or(filterStr);
+        } else if (allowedReporterIds) {
             vehicleQuery = vehicleQuery.in('reported_by', allowedReporterIds);
             crimeQuery = crimeQuery.in('reported_by', allowedReporterIds);
             emergencyQuery = emergencyQuery.in('reported_by', allowedReporterIds);
@@ -213,10 +222,24 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         ]);
         if (vError || cError || aError || uError || companiesError) console.error('Data fetch error:', vError || cError || aError || uError || companiesError);
 
+        const companiesMap = new Map((companiesData || []).map(c => [c.id, c.name]));
+
         const combinedReports = [
-            ...(vehicleData || []).map(r => ({...r, type: 'vehicle' as const})), 
-            ...(crimeData || []).map(r => ({...r, type: 'crime' as const})),
-            ...(emergencyData || []).map(r => ({...r, type: 'emergency' as const}))
+            ...(vehicleData || []).map(r => ({
+                ...r, 
+                type: 'vehicle' as const,
+                company_name: r.company_id ? companiesMap.get(r.company_id) : undefined
+            })), 
+            ...(crimeData || []).map(r => ({
+                ...r, 
+                type: 'crime' as const,
+                company_name: r.company_id ? companiesMap.get(r.company_id) : undefined
+            })),
+            ...(emergencyData || []).map(r => ({
+                ...r, 
+                type: 'emergency' as const,
+                company_name: r.company_id ? companiesMap.get(r.company_id) : undefined
+            }))
         ];
         
         setReports(combinedReports);

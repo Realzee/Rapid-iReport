@@ -115,9 +115,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         let emergencyQuery = supabase.from('emergency_reports').select('*').in('status', terminalStatuses);
 
         if (!isGlobalAdminValue && profile.company_id) {
-            vehicleQuery = vehicleQuery.eq('company_id', profile.company_id);
-            crimeQuery = crimeQuery.eq('company_id', profile.company_id);
-            emergencyQuery = emergencyQuery.eq('company_id', profile.company_id);
+            const filterStr = `company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`;
+            vehicleQuery = vehicleQuery.or(filterStr);
+            crimeQuery = crimeQuery.or(filterStr);
+            emergencyQuery = emergencyQuery.or(filterStr);
         }
 
         const [
@@ -491,7 +492,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                 </th>
                                 <SortableHeader label="Type" sortKey="type" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="OB Number / Title" sortKey="ob_number" sortConfig={sortConfig} onSort={handleSort} />
-                                {isGlobalAdmin && <SortableHeader label="Company" sortKey="company_name" sortConfig={sortConfig} onSort={handleSort} />}
+                                <SortableHeader label="Company" sortKey="company_name" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Severity" sortKey="severity" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Reported At" sortKey="reported_at" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Reported By" sortKey="reported_by_name" sortConfig={sortConfig} onSort={handleSort} />
@@ -529,17 +530,20 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                             {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
                                                 <UsersIcon className="w-4 h-4 text-blue-500 ml-1" title="Shared with specific companies" />
                                             )}
+                                            {profile.company_id && report.company_id && report.company_id !== profile.company_id && (
+                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 border border-blue-200 dark:border-blue-800 leading-none flex-shrink-0" title={`Shared by ${(report as any).company_name || 'Partner Company'}`}>
+                                                    Shared
+                                                </span>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm font-medium text-gray-900 dark:text-white">{isVehicleReport(report) ? report.license_plate : report.title}</div>
                                         <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</div>
                                     </td>
-                                    {isGlobalAdmin && (
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                            {(report as any).company_name}
-                                        </td>
-                                    )}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-medium">
+                                        {(report as any).company_name || <span className="text-gray-400 text-xs italic">Unknown</span>}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className={`inline-block px-3 py-1 text-xs font-bold rounded-full capitalize border ${severityStyles[report.severity]}`}>
                                             {report.severity}

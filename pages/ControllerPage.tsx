@@ -217,9 +217,10 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         let emergencyQuery = supabase.from('emergency_reports').select('*');
 
         if (!isGlobalAdmin && profile.company_id) {
-            vehicleQuery = vehicleQuery.eq('company_id', profile.company_id);
-            crimeQuery = crimeQuery.eq('company_id', profile.company_id);
-            emergencyQuery = emergencyQuery.eq('company_id', profile.company_id);
+            const filterStr = `company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`;
+            vehicleQuery = vehicleQuery.or(filterStr);
+            crimeQuery = crimeQuery.or(filterStr);
+            emergencyQuery = emergencyQuery.or(filterStr);
         }
 
         const [
@@ -242,10 +243,12 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         if (uError) console.error('Error fetching users:', uError);
         if (compError) console.error('Error fetching companies:', compError);
 
+        const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
+
         const combinedReports = [
-            ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
-            ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
-            ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' })),
+            ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
+            ...(crimeData || []).map(r => ({ ...r, type: 'crime' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
+            ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
         ];
 
         // Ensure we have profiles for all reporters
@@ -254,8 +257,6 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         const missingReporterIds = reporterIds.filter(id => !loadedUserIds.has(id));
         
         setReports(combinedReports);
-
-        const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
         
         let additionalProfiles: Profile[] = [];
         if (missingReporterIds.length > 0) {
@@ -681,6 +682,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                     allUsers={allUsers}
                                     newPanicReportId={newPanicReportId}
                                     unviewedReportIds={unviewedReportIds}
+                                    profile={profile}
                                 />
                             </>
                         ) : activeTab === 'responders' ? (

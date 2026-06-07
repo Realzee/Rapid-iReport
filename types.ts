@@ -151,6 +151,7 @@ export interface VehicleReport {
   engine_number?: string;
   year?: string;
   company_id?: string;
+  company_name?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];
   cos_name?: string;
@@ -199,6 +200,7 @@ export interface CrimeReport {
   cas_number?: string;
   station_name?: string;
   company_id?: string;
+  company_name?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];
   crime_outcome?: string;
@@ -280,6 +282,7 @@ export interface EmergencyReport {
   has_arrests?: boolean;
   has_firearms?: boolean;
   company_id?: string;
+  company_name?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];
 }
