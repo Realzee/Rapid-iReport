@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { LocationCoords } from '../types';
@@ -160,13 +160,96 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
         url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
         attribution: ''
     };
+    
+    // Address suggestion states
+    const [searchQuery, setSearchQuery] = useState('');
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
+    const searchRef = useRef<HTMLDivElement>(null);
+    const debounceTimeoutRef = useRef<number | null>(null);
+
+    // Dynamic initial address lookup
+    useEffect(() => {
+        if (initialCoords) {
+            reverseGeocode(initialCoords).then(address => {
+                if (address && address !== 'Unknown location' && address !== 'Could not fetch location name') {
+                    setSearchQuery(address);
+                }
+            });
+        } else {
+            setSearchQuery('');
+        }
+    }, [initialCoords]);
+
+    // Handle suggestions lookup as user types
+    useEffect(() => {
+        if (!searchQuery || searchQuery.trim().length < 3) {
+            setSuggestions([]);
+            return;
+        }
+
+        // Skip searching if current query matches the coordinates display name exactly
+        if (initialCoords) {
+            reverseGeocode(initialCoords).then(addr => {
+                if (addr === searchQuery) {
+                    setSuggestions([]);
+                }
+            });
+        }
+
+        if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+
+        debounceTimeoutRef.current = window.setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const response = await fetch(`/api/geocode?q=${encodeURIComponent(searchQuery)}&limit=5`);
+                if (response.ok) {
+                    setSuggestions(await response.json());
+                } else {
+                    setSuggestions([]);
+                }
+            } catch (error) {
+                console.error("Address suggestions lookup failed:", error);
+                setSuggestions([]);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 400);
+
+        return () => {
+            if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+        };
+    }, [searchQuery]);
+
+    // Close suggestions dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const handleCoordsAndAddressSelected = (coords: LocationCoords, address: string) => {
+        setSearchQuery(address);
         if (onLocationChange) {
             onLocationChange(coords, address);
         }
         if (onLocationSelect) {
             onLocationSelect(coords);
+        }
+    };
+
+    const handleSuggestionClick = (suggestion: any) => {
+        const lat = parseFloat(suggestion.lat);
+        const lng = parseFloat(suggestion.lon);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            const coords = { lat, lng };
+            handleCoordsAndAddressSelected(coords, suggestion.display_name);
+            setIsOpen(false);
         }
     };
 
@@ -220,6 +303,43 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
                 <MapViewUpdater coords={initialCoords} />
             </MapContainer>
             
+            {/* ABSOLUTE POSITIONED ADDRESS SEARCH BAR */}
+            <div className="absolute top-2 left-14 right-14 z-[1000]" ref={searchRef}>
+                <div className="relative">
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setIsOpen(true);
+                        }}
+                        onFocus={() => setIsOpen(true)}
+                        placeholder={placeholder || "Search address..."}
+                        className="w-full text-[11px] py-1.5 px-3 pr-8 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 font-sans leading-tight"
+                    />
+                    {isSearching && (
+                        <div className="absolute right-2.5 top-2.5">
+                            <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                    )}
+                </div>
+                
+                {isOpen && suggestions.length > 0 && (
+                    <div className="absolute w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-xl max-h-40 overflow-y-auto z-[2000] font-sans">
+                        {suggestions.map((s, idx) => (
+                            <button
+                                key={s.place_id || idx}
+                                type="button"
+                                onClick={() => handleSuggestionClick(s)}
+                                className="w-full text-left px-3 py-1.5 text-[10px] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors border-b border-gray-100 dark:border-gray-700/50 last:border-0 truncate"
+                            >
+                                {s.display_name}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             <button
                 type="button"
                 onClick={() => setMapStyle(s => s === 'street' ? 'satellite' : 'street')}
@@ -237,7 +357,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
                 title="Use my current location"
             >
                 {isLocating ? (
-                     <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                     <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
                 ) : (
                     <CrosshairIcon className="w-5 h-5" />
                 )}
