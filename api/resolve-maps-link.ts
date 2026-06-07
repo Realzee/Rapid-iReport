@@ -1,30 +1,38 @@
 import { Request, Response } from 'express';
 
 const extractCoordsFromUrl = (url: string): { lat: number; lng: number } | null => {
+    // Decode URL to parse coordinates with URL-encoded tags like %40 (@) and %2C (,)
+    let decodedUrl = url;
+    try {
+        decodedUrl = decodeURIComponent(url);
+    } catch (e) {
+        console.warn("Failed to decode URL in extractCoordsFromUrl:", e);
+    }
+
     // 1. Check for @lat,lng pattern (most common in Google Maps)
     const atRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
-    const atMatch = url.match(atRegex);
+    const atMatch = decodedUrl.match(atRegex);
     if (atMatch && atMatch[1] && atMatch[2]) {
         return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
     }
 
     // 2. Check for query parameter q=lat,lng or query=lat,lng
     const qRegex = /[?&](?:q|query)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/;
-    const qMatch = url.match(qRegex);
+    const qMatch = decodedUrl.match(qRegex);
     if (qMatch && qMatch[1] && qMatch[2]) {
         return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
     }
 
     // 3. Look for ll=lat,lng
     const llRegex = /ll=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/;
-    const llMatch = url.match(llRegex);
+    const llMatch = decodedUrl.match(llRegex);
     if (llMatch && llMatch[1] && llMatch[2]) {
         return { lat: parseFloat(llMatch[1]), lng: parseFloat(llMatch[2]) };
     }
 
     // 4. Fallback search for any "lat,lng" matching numbers
     const fallbackRegex = /(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/;
-    const fallbackMatch = url.match(fallbackRegex);
+    const fallbackMatch = decodedUrl.match(fallbackRegex);
     if (fallbackMatch && fallbackMatch[1] && fallbackMatch[2]) {
         const lat = parseFloat(fallbackMatch[1]);
         const lng = parseFloat(fallbackMatch[2]);
@@ -63,6 +71,15 @@ export default async function handler(req: Request, res: Response) {
                 });
                 clearTimeout(id);
                 finalUrl = response.url;
+
+                // Handle cookie consent redirect pattern
+                if (finalUrl.includes('consent.google.com')) {
+                    const parsedUrl = new URL(finalUrl);
+                    const continueUrl = parsedUrl.searchParams.get('continue');
+                    if (continueUrl) {
+                        finalUrl = decodeURIComponent(continueUrl);
+                    }
+                }
             } catch (fetchErr) {
                 clearTimeout(id);
                 console.error('Failed to follow shortened URL redirect:', fetchErr);

@@ -53,12 +53,29 @@ export default async function handler(req: Request, res: Response) {
         
         // Strict country filtering to handle any potential Nominatim ignores or fallback slippage
         if (Array.isArray(data)) {
-            return data.filter((item: any) => 
-                item.display_name && 
-                (item.display_name.toLowerCase().includes("south africa") || 
-                 item.display_name.toLowerCase().includes(", za") ||
-                 item.display_name.toLowerCase().includes(" suid-afrika"))
-            );
+            return data.filter((item: any) => {
+                if (!item.display_name) return false;
+                const displayNameLower = item.display_name.toLowerCase();
+                
+                // Check if the display name explicitly references South Africa cues
+                const hasZaCue = displayNameLower.includes("south africa") || 
+                                 displayNameLower.includes(", za") || 
+                                 displayNameLower.includes("suid-afrika") || 
+                                 displayNameLower.includes("south-africa") ||
+                                 displayNameLower.includes("zaf");
+                
+                if (hasZaCue) return true;
+                
+                // Coordinates check for South Africa bounds: Latitude: -35 to -22, Longitude: 16 to 33
+                const lat = parseFloat(item.lat);
+                const lon = parseFloat(item.lon);
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    if (lat >= -35.2 && lat <= -21.9 && lon >= 16.2 && lon <= 33.1) {
+                        return true;
+                    }
+                }
+                return false;
+            });
         }
         return [];
     };

@@ -22,19 +22,74 @@ export const reverseGeocode = async (coords: LocationCoords): Promise<string> =>
 
 export const parseLocationInput = (input: string): LocationCoords | null => {
     try {
+        const cleanInput = input.trim();
+        if (!cleanInput) return null;
+
+        // 1. Check for standard @lat,lng pattern (Google Maps)
+        const atRegex = /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/;
+        const atMatch = cleanInput.match(atRegex);
+        if (atMatch && atMatch[1] && atMatch[2]) {
+            return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+        }
+
+        // 2. Try parsing Degrees Minutes Seconds (DMS) format e.g. 26°12'34.5"S, 28°12'34.5"E
+        // or 26d 12m 34s S, 28d 12m 34s E
+        const dmsRegex = /(\d+)[°d\s]+(\d+)['m\s]+(\d+(?:\.\d+)?)["s\s]*(S|N|[+-]?)[,\s]+(\d+)[°d\s]+(\d+)['m\s]+(\d+(?:\.\d+)?)["s\s]*(E|W|[+-]?)/i;
+        const dmsMatch = cleanInput.match(dmsRegex);
+        if (dmsMatch) {
+            let latDeg = parseInt(dmsMatch[1]), latMin = parseInt(dmsMatch[2]), latSec = parseFloat(dmsMatch[3]);
+            let latDir = dmsMatch[4].toUpperCase();
+            let lngDeg = parseInt(dmsMatch[5]), lngMin = parseInt(dmsMatch[6]), lngSec = parseFloat(dmsMatch[7]);
+            let lngDir = dmsMatch[8].toUpperCase();
+
+            let lat = latDeg + latMin / 60 + latSec / 3600;
+            let lng = lngDeg + lngMin / 60 + lngSec / 3600;
+
+            if (latDir === 'S' || latDir === '-') lat = -lat;
+            if (lngDir === 'W' || lngDir === '-') lng = -lng;
+
+            return { lat, lng };
+        }
+
+        // 3. Try parsing decimal coordinates with Cardinal directions (S/N/E/W) e.g., 26.1234 S 28.5432 E
+        const cardinalRegex = /(?:([SN])\s*)?(-?\d+(?:\.\d+)?)\s*(?:([SN])\s*)?[,\s/|]+(?:([EW])\s*)?(-?\d+(?:\.\d+)?)\s*(?:([EW])\s*)?/i;
+        const cardinalMatch = cleanInput.match(cardinalRegex);
+        if (cardinalMatch) {
+            let latVal = parseFloat(cardinalMatch[2]);
+            let latDir = (cardinalMatch[1] || cardinalMatch[3] || '').toUpperCase();
+            let lngVal = parseFloat(cardinalMatch[5]);
+            let lngDir = (cardinalMatch[4] || cardinalMatch[6] || '').toUpperCase();
+
+            // S is negative latitude, W is negative longitude
+            if (latDir === 'S' && latVal > 0) latVal = -latVal;
+            if (lngDir === 'W' && lngVal > 0) lngVal = -lngVal;
+            
+            // Also default positive latitude to negative if it fits South African bounds (between 20 and 35)
+            // since South Africa is entirely in the southern hemisphere, positive coords pasted are almost always a typo
+            if (latVal >= 20 && latVal <= 35) {
+                latVal = -latVal;
+            }
+
+            if (!isNaN(latVal) && !isNaN(lngVal) && latVal >= -90 && latVal <= 90 && lngVal >= -180 && lngVal <= 180) {
+                return { lat: latVal, lng: lngVal };
+            }
+        }
+
+        // 4. Fallback standard decimal coordinates lat,lng (e.g. -26.1234, 28.1234)
         const coordRegex = /(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)/;
-        const coordMatch = input.match(coordRegex);
+        const coordMatch = cleanInput.match(coordRegex);
         if (coordMatch && coordMatch[1] && coordMatch[2]) {
-            const lat = parseFloat(coordMatch[1]);
-            const lng = parseFloat(coordMatch[2]);
+            let lat = parseFloat(coordMatch[1]);
+            let lng = parseFloat(coordMatch[2]);
+
+            // Auto-correct positive South Africa latitude to negative
+            if (lat >= 20 && lat <= 35) {
+                lat = -lat;
+            }
+
             if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
                 return { lat, lng };
             }
-        }
-        const atRegex = /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/;
-        const atMatch = input.match(atRegex);
-        if (atMatch && atMatch[1] && atMatch[2]) {
-            return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
         }
     } catch (e) {
         console.error("Error parsing location input:", e);
@@ -82,11 +137,13 @@ const MapViewUpdater: React.FC<{ coords?: LocationCoords | null }> = ({ coords }
 // --- Main Exported Component ---
 export interface LocationPickerProps {
     initialCoords?: LocationCoords | null;
-    onLocationChange: (coords: LocationCoords, address: string) => void;
+    onLocationChange?: (coords: LocationCoords, address: string) => void;
+    onLocationSelect?: (coords: LocationCoords) => void;
+    placeholder?: string;
     height?: string;
 }
 
-export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, onLocationChange, height = '256px' }) => {
+export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, onLocationChange, onLocationSelect, placeholder, height = '256px' }) => {
     const { addToast } = useToast();
     const [isLocating, setIsLocating] = useState(false);
     const [mapStyle, setMapStyle] = useState<'street' | 'satellite'>('street');
@@ -104,6 +161,15 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
         attribution: ''
     };
 
+    const handleCoordsAndAddressSelected = (coords: LocationCoords, address: string) => {
+        if (onLocationChange) {
+            onLocationChange(coords, address);
+        }
+        if (onLocationSelect) {
+            onLocationSelect(coords);
+        }
+    };
+
     const handleGetCurrentLocation = () => {
         setIsLocating(true);
         navigator.geolocation.getCurrentPosition(
@@ -112,7 +178,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
                 if (typeof latitude === 'number' && !isNaN(latitude) && typeof longitude === 'number' && !isNaN(longitude)) {
                     const coords = { lat: latitude, lng: longitude };
                     const address = await reverseGeocode(coords);
-                    onLocationChange(coords, address);
+                    handleCoordsAndAddressSelected(coords, address);
                 } else {
                     addToast("Received invalid coordinates from your device.", 'error');
                 }
@@ -128,7 +194,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
     
     return (
         <div className="relative w-full rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700" style={{ height }}>
-            <MapContainer center={initialCoords ? [initialCoords.lat, initialCoords.lng] : [-1.286389, 36.817223]} zoom={initialCoords ? 16 : 13} style={{ height: '100%', width: '100%' }}>
+            <MapContainer center={initialCoords ? [initialCoords.lat, initialCoords.lng] : [-30.5595, 22.9375]} zoom={initialCoords ? 16 : 5} style={{ height: '100%', width: '100%' }}>
                 {mapStyle === 'street' ? (
                     <TileLayer
                         key="street-tile"
@@ -149,7 +215,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
                         />
                     </>
                 )}
-                <MapClickHandler onLocationChange={onLocationChange} />
+                <MapClickHandler onLocationChange={handleCoordsAndAddressSelected} />
                 {initialCoords && <Marker position={[initialCoords.lat, initialCoords.lng]} icon={markerIcon} />}
                 <MapViewUpdater coords={initialCoords} />
             </MapContainer>
