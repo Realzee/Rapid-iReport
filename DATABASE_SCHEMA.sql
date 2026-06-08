@@ -38,11 +38,19 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN CREATE TYPE public.user_role AS ENUM ('user', 'admin', 'moderator', 'controller', 'responder'); END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN CREATE TYPE public.user_status AS ENUM ('pending', 'active', 'suspended'); END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN CREATE TYPE public.report_status AS ENUM ('pending', 'active', 'assigned', 'in_progress', 'on_scene', 'resolved', 'rejected', 'recovered', 'closed', 'deleted'); END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN CREATE TYPE public.report_status AS ENUM ('pending', 'active', 'assigned', 'in_progress', 'on_scene', 'resolved', 'rejected', 'recovered', 'closed', 'deleted', 'stolen', 'suspicious', 'bolo', 'sought', 'hijacked', 'used_in_commission_of_crime'); END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'severity') THEN CREATE TYPE public.severity AS ENUM ('low', 'medium', 'high', 'critical'); END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responder_status') THEN CREATE TYPE public.responder_status AS ENUM ('off_duty', 'available', 'en_route', 'on_scene'); END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'announcement_type') THEN CREATE TYPE public.announcement_type AS ENUM ('notice', 'alert', 'safety_tip'); END IF;
 END$$;
+
+-- Ensure new report_status values are added if the ENUM already exists
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'stolen';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'suspicious';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'bolo';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'sought';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'hijacked';
+ALTER TYPE public.report_status ADD VALUE IF NOT EXISTS 'used_in_commission_of_crime';
 
 -- 2. Create Core Tables
 CREATE TABLE IF NOT EXISTS public.companies (
