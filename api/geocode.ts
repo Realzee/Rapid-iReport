@@ -5,8 +5,8 @@ export default async function handler(req: Request, res: Response) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const lat = (req.query.lat || req.body.lat) as string;
-    const lng = (req.query.lng || req.body.lng || req.query.lon || req.body.lon) as string;
+    const lat = (req.query.lat || req.body?.lat) as string;
+    const lng = (req.query.lng || req.body?.lng || req.query.lon || req.body?.lon) as string;
 
     if (lat && lng) {
         try {
@@ -30,12 +30,12 @@ export default async function handler(req: Request, res: Response) {
         }
     }
 
-    const q = (req.query.q || req.body.q) as string;
+    const q = (req.query.q || req.body?.q) as string;
     if (!q || typeof q !== 'string' || q.trim().length === 0) {
         return res.status(200).json([]);
     }
 
-    const limit = (req.query.limit || req.body.limit || '5') as string;
+    const limit = (req.query.limit || req.body?.limit || '5') as string;
     
     const doSearch = async (searchQuery: string) => {
         // Enforce South Africa with countrycodes=za and accept-language=en
