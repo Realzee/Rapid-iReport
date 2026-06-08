@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, EmergencyReport, ReportUpdate, Profile as UserProfile, UserRole } from '../types';
+import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, EmergencyReport, ReportUpdate, Profile as UserProfile, UserRole, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES } from '../types';
 import { supabase } from '../utils/supabase';
 import { format, formatDistanceToNow } from 'date-fns';
 import StatusBadge from '../components/StatusBadge';
@@ -85,12 +85,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
 
     // A responder is "engaged" if they have any reports that are not in a terminal state.
     const isEngaged = useMemo(() => 
-        assignedReports.some(r => ![
-            ReportStatus, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES.RESOLVED,
-            ReportStatus.RECOVERED,
-            ReportStatus.CLOSED,
-            ReportStatus.REJECTED,
-        ].includes(r.status)),
+        assignedReports.some(r => !TERMINAL_REPORT_STATUSES.includes(r.status)),
     [assignedReports]);
 
     useEffect(() => {

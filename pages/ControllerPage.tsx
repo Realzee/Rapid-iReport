@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Report, Profile, Responder, ResponderStatus, UserRole, Severity, ReportStatus, CrimeReport, VehicleReport, TechJob, ReportShare } from '../types';
+import { Report, Profile, Responder, ResponderStatus, UserRole, Severity, ReportStatus, CrimeReport, VehicleReport, TechJob, ReportShare, ACTIVE_REPORT_STATUSES } from '../types';
 import LiveEventStack from '../components/LiveEventStack';
 import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
@@ -27,13 +27,7 @@ interface ControllerPageProps {
 
 type ControllerTab = 'events' | 'responders' | 'tech';
 
-const ACTIVE_STATUSES = [
-    ReportStatus, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES.PENDING,
-    ReportStatus.ACTIVE,
-    ReportStatus.ASSIGNED,
-    ReportStatus.IN_PROGRESS,
-    ReportStatus.ON_SCENE,
-];
+const ACTIVE_STATUSES = ACTIVE_REPORT_STATUSES;
 
 const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportId, onInitialReportHandled }) => {
     const { requestWakeLock, releaseWakeLock } = useWakeLock();

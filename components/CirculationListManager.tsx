@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { VehicleReport, ReportStatus, Severity, Profile, UserRole } from '../types';
+import { VehicleReport, ReportStatus, Severity, Profile, UserRole, ACTIVE_REPORT_STATUSES } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { PlusIcon, SearchIcon, AlertTriangleIcon, FilterIcon, TrashIcon, EyeIcon } from './icons';
 import ConfirmModal from './ConfirmModal';

@@ -227,6 +227,8 @@ export interface CrimeReport {
   resolved_at?: string; // ISO date string
   cas_number?: string;
   station_name?: string;
+  io_name?: string;
+  io_contact?: string;
   company_id?: string;
   company_name?: string;
   is_global?: boolean;

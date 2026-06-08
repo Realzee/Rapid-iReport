@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { Report, ReportStatus, Severity, VehicleReport, EmergencyReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus, Company, ReportShare } from '../types';
+import { Report, ReportStatus, Severity, VehicleReport, EmergencyReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus, Company, ReportShare, TERMINAL_REPORT_STATUSES } from '../types';
 import { format } from 'date-fns';
 import { CarIcon, CrimeIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, AlertTriangleIcon, GlobeIcon, UsersIcon, HistoryIcon, ShareIcon } from '../components/icons';
 import ReportDetailModal from '../components/ReportDetailModal';
@@ -101,7 +101,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
 
         const usersQuery = supabase.from('profiles').select('*');
         const respondersQuery = supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER);
-        const terminalStatuses = [ReportStatus, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES.RESOLVED, ReportStatus.REJECTED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.DELETED];
+        const terminalStatuses = TERMINAL_REPORT_STATUSES;
 
         const isGlobalAdminValue = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 

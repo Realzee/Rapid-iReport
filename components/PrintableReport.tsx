@@ -69,6 +69,8 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
               {(report as any).engine_number && <div><p className="font-bold text-gray-500">Engine Number</p><p>{(report as any).engine_number}</p></div>}
               {(report as any).cas_number && <div><p className="font-bold text-gray-500">Case</p><p>{(report as any).cas_number}</p></div>}
               {(report as any).station_name && <div><p className="font-bold text-gray-500">Station</p><p>{(report as any).station_name}</p></div>}
+              {(report as any).io_name && <div><p className="font-bold text-gray-500">IO Name</p><p>{(report as any).io_name}</p></div>}
+              {(report as any).io_contact && <div><p className="font-bold text-gray-500">IO Contact</p><p>{(report as any).io_contact}</p></div>}
               <div className="col-span-2"><p className="font-bold text-gray-500">Last Seen Location</p><p>{(report as any).last_seen_location}</p></div>
             </>
           ) : report.type === 'emergency' ? (

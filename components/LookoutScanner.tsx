@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createWorker } from 'tesseract.js';
 import type { Worker, Bbox } from 'tesseract.js';
 import { supabase } from '../utils/supabase';
-import { VehicleReport, ReportStatus, Severity, UserRole } from '../types';
+import { VehicleReport, ReportStatus, Severity, UserRole, ACTIVE_REPORT_STATUSES } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { ScanIcon, AlertTriangleIcon, CarIcon, CameraIcon, EyeIcon } from './icons';
 import { format } from 'date-fns';

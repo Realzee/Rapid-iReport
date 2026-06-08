@@ -1119,6 +1119,8 @@ const ControllerReportDetail: React.FC<{
                 )}
                 {(report as any).cas_number && <DetailField label="Case"><p className="text-gray-800 dark:text-gray-200">{(report as any).cas_number}</p></DetailField>}
                 {(report as any).station_name && <DetailField label="Station"><p className="text-gray-800 dark:text-gray-200">{(report as any).station_name}</p></DetailField>}
+                {(report as any).io_name && <DetailField label="IO Name"><p className="text-gray-800 dark:text-gray-200">{(report as any).io_name}</p></DetailField>}
+                {(report as any).io_contact && <DetailField label="IO Contact"><p className="text-gray-800 dark:text-gray-200">{(report as any).io_contact}</p></DetailField>}
                 
                 {/* Corporate Sharing Pipeline Section */}
                 {!report.is_global && reportShares.length > 0 && (

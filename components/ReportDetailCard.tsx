@@ -756,12 +756,24 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     </div>
                     <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Case</p>
-                        <p className="text-gray-900 dark:text-white">{(localReport as any).cas_number}</p>
+                        <p className="text-gray-900 dark:text-white">{(localReport as any).cas_number || 'N/A'}</p>
                     </div>
                     {(localReport as any).station_name && (
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Station</p>
                             <p className="text-gray-900 dark:text-white">{(localReport as any).station_name}</p>
+                        </div>
+                    )}
+                    {(localReport as any).io_name && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">IO Name</p>
+                            <p className="text-gray-900 dark:text-white">{(localReport as any).io_name}</p>
+                        </div>
+                    )}
+                    {(localReport as any).io_contact && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">IO Contact</p>
+                            <p className="text-gray-900 dark:text-white">{(localReport as any).io_contact}</p>
                         </div>
                     )}
                     {localReport.type === 'vehicle' && (localReport as any).vin_number && (

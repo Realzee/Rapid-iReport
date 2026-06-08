@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
-import { Profile, GateAccessLog, VehicleReport, ReportStatus, Severity } from '../types';
+import { Profile, GateAccessLog, VehicleReport, ReportStatus, Severity, ACTIVE_REPORT_STATUSES } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { SearchIcon, ScanIcon, LogOutIcon, LogInIcon, AlertTriangleIcon, CarIcon, ClockIcon, HistoryIcon, MapPinIcon, ChartBarIcon } from '../components/icons';
 import { format } from 'date-fns';
@@ -89,7 +89,7 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 .from('vehicle_reports')
                 .select('*')
                 .eq('license_plate', plate.trim().toUpperCase())
-                .in('status', [ReportStatus, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES.PENDING, ReportStatus.ACTIVE, ReportStatus.IN_PROGRESS])
+                .in('status', ACTIVE_REPORT_STATUSES)
                 .order('reported_at', { ascending: false })
                 .limit(1);
 

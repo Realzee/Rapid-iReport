@@ -984,6 +984,15 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     )}
                                 </div>
                             </div>
+                            
+                            <div>
+                                <label htmlFor="io_name" className={labelClasses}>IO Name</label>
+                                <input type="text" name="io_name" id="io_name" value={formData.io_name || ''} onChange={handleChange} className={inputClasses} placeholder="Investigating Officer Name" />
+                            </div>
+                            <div>
+                                <label htmlFor="io_contact" className={labelClasses}>IO Contact</label>
+                                <input type="text" name="io_contact" id="io_contact" value={formData.io_contact || ''} onChange={handleChange} className={inputClasses} placeholder="IO Contact Number" />
+                            </div>
 
                             <div>
                                 <label htmlFor="severity" className={labelClasses}>Severity</label>
@@ -1194,6 +1203,15 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 </div>
                             </div>
                             
+                            <div>
+                                <label htmlFor="io_name" className={labelClasses}>IO Name</label>
+                                <input type="text" name="io_name" id="io_name" value={formData.io_name || ''} onChange={handleChange} className={inputClasses} placeholder="Investigating Officer Name" />
+                            </div>
+                            <div>
+                                <label htmlFor="io_contact" className={labelClasses}>IO Contact</label>
+                                <input type="text" name="io_contact" id="io_contact" value={formData.io_contact || ''} onChange={handleChange} className={inputClasses} placeholder="IO Contact Number" />
+                            </div>
+
                             <div className="md:col-span-2">
                                 <label htmlFor="vehicle_involved" className={labelClasses}>Vehicle Involved?</label>
                                 <select name="vehicle_involved" id="vehicle_involved" value={formData.vehicle_involved || 'false'} onChange={handleChange} className={inputClasses}>

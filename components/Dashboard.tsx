@@ -1,7 +1,7 @@
 
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport, ReportStatus, Company, ReportShare } from '../types';
+import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport, ReportStatus, Company, ReportShare, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES } from '../types';
 import StatCard from './StatCard';
 import ReportList from './ReportList';
 import MapView from './MapView';
@@ -24,13 +24,7 @@ interface DashboardProps {
     setView?: (view: any) => void;
 }
 
-const ACTIVE_STATUSES = [
-    ReportStatus, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES.PENDING,
-    ReportStatus.ACTIVE,
-    ReportStatus.ASSIGNED,
-    ReportStatus.IN_PROGRESS,
-    ReportStatus.ON_SCENE,
-];
+const ACTIVE_STATUSES = ACTIVE_REPORT_STATUSES;
 
 const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onInitialReportHandled, setView }) => {
     const [reports, setReports] = useState<Report[]>([]);

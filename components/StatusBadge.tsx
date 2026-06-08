@@ -16,6 +16,12 @@ const statusStyles: Record<ReportStatus, string> = {
   [ReportStatus.ON_SCENE]: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30',
   [ReportStatus.CLOSED]: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-500/20 dark:text-gray-400 dark:border-gray-500/30',
   [ReportStatus.DELETED]: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-500/20 dark:text-gray-400 dark:border-gray-500/30',
+  [ReportStatus.STOLEN]: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30 font-bold',
+  [ReportStatus.SUSPICIOUS]: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30',
+  [ReportStatus.BOLO]: 'bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-500/20 dark:text-pink-400 dark:border-pink-500/30',
+  [ReportStatus.SOUGHT]: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200 dark:bg-fuchsia-500/20 dark:text-fuchsia-400 dark:border-fuchsia-500/30',
+  [ReportStatus.HIJACKED]: 'bg-red-200 text-red-800 border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800/40 font-bold',
+  [ReportStatus.USED_IN_COMMISSION_OF_CRIME]: 'bg-purple-200 text-purple-800 border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800/40',
 };
 
 const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
