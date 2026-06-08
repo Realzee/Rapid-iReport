@@ -665,6 +665,55 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         type: reportType,
                         company: Array.isArray(profileData.company) ? profileData.company[0] : profileData.company
                     };
+
+                    // Sync update to legacy system as a new entry log
+                    if (tableName === 'vehicle_reports') {
+                        try {
+                            const compObj = Array.isArray(profileData.company) ? profileData.company[0] : profileData.company;
+                            const companyAlias = (compObj as any)?.alias || (compObj as any)?.name || '';
+                            const companyFullName = (compObj as any)?.name || '';
+                            
+                            const legacyPayload = {
+                                action: 'add', // Push as add since we don't track legacy IDs
+                                type: 'STOLEN VEHICLE',
+                                company: companyAlias, // Crucial: company alias saved as reporting company
+                                vehicle_registration: reportData.license_plate || formData.license_plate || '',
+                                make: reportData.vehicle_make || formData.vehicle_make || '',
+                                model: reportData.vehicle_model || formData.vehicle_model || '',
+                                vin_number: formData.vin_number || '',
+                                engine_number: formData.engine_number || '',
+                                color: formData.vehicle_color || '',
+                                reason: `UPDATE LOG: ${reportToEdit.ob_number} - ${formData.description || reportData.description || ''}`.trim(),
+                                entry_text: formData.description || reportData.description || 'Auto-entered update entry from Rapid911 system.',
+                                cos_name: companyFullName || '', 
+                                cos_contact_number: (compObj as any)?.cell_number || '',
+                                case_number: formData.cas_number || '',
+                                station_reported_at: formData.station_name || '',
+                                io_name: formData.io_name || '',
+                                io_contact: formData.io_contact || '',
+                                recovered: reportData.status === 'recovered' ? 'RECOVERED' : 'STOLEN',
+                                tracker: formData.has_tracker ? 'Yes' : 'No',
+                                date_of_incident: reportData.reported_at ? new Date(reportData.reported_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+                            };
+
+                            fetch('/api/legacy-api', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(legacyPayload)
+                            }).then(legacyRes => {
+                                if (!legacyRes.ok) {
+                                    legacyRes.text().then(text => console.error('Failed to sync update to legacy system:', text));
+                                } else {
+                                    console.log('Successfully synced vehicle report update to legacy system');
+                                }
+                            }).catch(legacyErr => {
+                                console.error('Error syncing update to legacy system:', legacyErr);
+                            });
+                        } catch (legacyErr) {
+                            console.error('Error preparing legacy sync info:', legacyErr);
+                        }
+                    }
+
                     setPendingBoloData({ 
                         report: reportForBolo, 
                         profile: { ...profileData, company: Array.isArray(profileData.company) ? profileData.company[0] : profileData.company } as any 

@@ -174,7 +174,7 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reporting Company Alias *</label>
-                                <input type="text" name="company" required placeholder="E.G. ADVANCED OST" value={formData.company} onChange={handleChange} className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                                <input type="text" name="company" required readOnly placeholder="E.G. ADVANCED OST" value={formData.company} className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800/50 text-gray-900 dark:text-white cursor-not-allowed opacity-80" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Registration Number *</label>
