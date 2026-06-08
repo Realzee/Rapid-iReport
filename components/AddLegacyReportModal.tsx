@@ -201,11 +201,16 @@ const AddLegacyReportModal: React.FC<AddLegacyReportModalProps> = ({ isOpen, onC
                                 <input type="text" name="engine_number" placeholder="ENTER ENGINE NO..." value={formData.engine_number} onChange={handleChange} className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Operational Status *</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Incident Status</label>
                                 <select name="recovered" required value={formData.recovered} onChange={handleChange} className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
                                     <option value="STOLEN">STOLEN</option>
+                                    <option value="SUSPICIOUS">SUSPICIOUS</option>
+                                    <option value="BOLO">BOLO</option>
                                     <option value="RECOVERED">RECOVERED</option>
                                     <option value="PENDING">PENDING</option>
+                                    <option value="SOUGHT">SOUGHT</option>
+                                    <option value="HIJACKED">HIJACKED</option>
+                                    <option value="USED IN COMMISSION OF CRIME">USED IN COMMISSION OF CRIME</option>
                                 </select>
                             </div>
                             <div>

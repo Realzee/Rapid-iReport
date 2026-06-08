@@ -175,11 +175,11 @@ export default async function handler(req: any, res: any) {
                 }
             }
 
-            let recoveredParam = 'STOLEN';
-            if (isRecoveredBool) {
+            let recoveredParam = data.recovered ? String(data.recovered).toUpperCase() : 'STOLEN';
+            
+            // Still cleanly fallback to boolean/string variants if provided loosely
+            if (isRecoveredBool && recoveredParam !== 'RECOVERED') {
                 recoveredParam = 'RECOVERED';
-            } else if (isRecoveredStr === 'pending') {
-                recoveredParam = 'PENDING';
             }
 
             formData.append('type', typeParam);
