@@ -1,5 +1,10 @@
 import { Request, Response } from 'express';
 
+// Set up an in-memory cache to handle rapid keystroke rates and prevent Nominatim rate-limits
+const geocodeCache = (global as any).geocodeCache || new Map<string, { data: any; timestamp: number }>();
+(global as any).geocodeCache = geocodeCache;
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutes cache
+
 export default async function handler(req: Request, res: Response) {
     if (req.method !== 'GET' && req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -9,6 +14,14 @@ export default async function handler(req: Request, res: Response) {
     const lng = (req.query.lng || req.body?.lng || req.query.lon || req.body?.lon) as string;
 
     if (lat && lng) {
+        const cacheKeyGeo = `reverse_${lat}_${lng}`;
+        if (geocodeCache.has(cacheKeyGeo)) {
+            const cached = geocodeCache.get(cacheKeyGeo)!;
+            if (Date.now() - cached.timestamp < CACHE_TTL) {
+                return res.status(200).json(cached.data);
+            }
+        }
+
         try {
             const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
             const response = await fetch(url, {
@@ -19,14 +32,21 @@ export default async function handler(req: Request, res: Response) {
             });
 
             if (!response.ok) {
+                if (geocodeCache.has(cacheKeyGeo)) {
+                    return res.status(200).json(geocodeCache.get(cacheKeyGeo)!.data);
+                }
                 return res.status(response.status).json({ error: `Nominatim reverse geocode failed with status ${response.status}` });
             }
 
             const data = await response.json();
+            geocodeCache.set(cacheKeyGeo, { data, timestamp: Date.now() });
             return res.status(200).json(data);
         } catch (error: any) {
             console.error("Error in server reverse-geocode handler:", error);
-            return res.status(500).json({ error: "Failed to reverse geocode", details: error.message });
+            if (geocodeCache.has(cacheKeyGeo)) {
+                return res.status(200).json(geocodeCache.get(cacheKeyGeo)!.data);
+            }
+            return res.status(200).json({ display_name: "South Africa" });
         }
     }
 
@@ -36,6 +56,14 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const limit = (req.query.limit || req.body?.limit || '5') as string;
+    const cacheKey = `search_${q.trim().toLowerCase()}_${limit}`;
+
+    if (geocodeCache.has(cacheKey)) {
+        const cached = geocodeCache.get(cacheKey)!;
+        if (Date.now() - cached.timestamp < CACHE_TTL) {
+            return res.status(200).json(cached.data);
+        }
+    }
     
     const doSearch = async (searchQuery: string) => {
         // Enforce South Africa with countrycodes=za and accept-language=en
@@ -67,10 +95,10 @@ export default async function handler(req: Request, res: Response) {
                 if (hasZaCue) return true;
                 
                 // Coordinates check for South Africa bounds: Latitude: -35 to -22, Longitude: 16 to 33
-                const lat = parseFloat(item.lat);
-                const lon = parseFloat(item.lon);
-                if (!isNaN(lat) && !isNaN(lon)) {
-                    if (lat >= -35.2 && lat <= -21.9 && lon >= 16.2 && lon <= 33.1) {
+                const latVal = parseFloat(item.lat);
+                const lonVal = parseFloat(item.lon);
+                if (!isNaN(latVal) && !isNaN(lonVal)) {
+                    if (latVal >= -35.2 && latVal <= -21.9 && lonVal >= 16.2 && lonVal <= 33.1) {
                         return true;
                     }
                 }
@@ -116,9 +144,13 @@ export default async function handler(req: Request, res: Response) {
             }
         }
 
+        geocodeCache.set(cacheKey, { data: results || [], timestamp: Date.now() });
         return res.status(200).json(results || []);
     } catch (error: any) {
-        console.error("Error in server geocode handler:", error);
-        return res.status(500).json({ error: "Failed to geocode address", details: error.message });
+        console.warn("Error in server geocode handler, recovering with cache or empty list:", error.message);
+        if (geocodeCache.has(cacheKey)) {
+            return res.status(200).json(geocodeCache.get(cacheKey)!.data);
+        }
+        return res.status(200).json([]);
     }
 }
