@@ -183,26 +183,26 @@ export default async function handler(req: any, res: any) {
             }
 
             formData.append('type', typeParam);
-            formData.append('company', data.company || '');
-            formData.append('vehicle_registration', data.vehicle_registration || '');
-            formData.append('make', data.make || '');
-            formData.append('model', data.model || '');
-            formData.append('vin_number', data.vin_number || '');
-            formData.append('engine_number', data.engine_number || '');
-            formData.append('color', data.color || '');
-            formData.append('cos_name', data.cos_name || '');
-            formData.append('cos_contact_number', data.cos_contact_number || '');
-            formData.append('case_number', data.case_number || '');
-            formData.append('station_reported_at', data.station_reported_at || '');
-            formData.append('io_name', data.io_name || '');
-            formData.append('io_contact', data.io_contact || '');
+            formData.append('company', data.company || '-');
+            formData.append('vehicle_registration', data.vehicle_registration || '-');
+            formData.append('make', data.make || '-');
+            formData.append('model', data.model || '-');
+            formData.append('vin_number', data.vin_number || '-');
+            formData.append('engine_number', data.engine_number || '-');
+            formData.append('color', data.color || '-');
+            formData.append('cos_name', data.cos_name || '-');
+            formData.append('cos_contact_number', data.cos_contact_number || '-');
+            formData.append('case_number', data.case_number || '-');
+            formData.append('station_reported_at', data.station_reported_at || '-');
+            formData.append('io_name', data.io_name || '-');
+            formData.append('io_contact', data.io_contact || '-');
             formData.append('date_of_incident', data.date_of_incident || new Date().toISOString().split('T')[0]);
-            formData.append('tracker', data.tracker || '');
+            formData.append('tracker', data.tracker || '-');
             formData.append('recovered', recoveredParam);
-            formData.append('reason', data.reason || '');
+            formData.append('reason', data.reason || '-');
             formData.append('entry_text', data.entry_text || data.reason || 'Auto-entered entry from Rapid911 system.');
 
-            const legacyRes = await fetch('https://rapidreportingsa.co.za/process_vehicle.php', {
+            const legacyRes = await fetch('https://rapidreportingsa.co.za/process_intake.php', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -220,6 +220,13 @@ export default async function handler(req: any, res: any) {
                 throw new Error(`Legacy system status ${legacyRes.status}${snippet ? ': ' + snippet : ''}`);
             }
 
+            // check if response contains SYSTEM ERROR
+            const resTextForError = await legacyRes.text().catch(() => '');
+            if (resTextForError.includes('SYSTEM ERROR:')) {
+                const snippet = resTextForError.split('SYSTEM ERROR:')[1].split('<')[0].trim();
+                throw new Error(`Legacy system error: ${snippet}`);
+            }
+
             res.status(200).json({ success: true, message: 'Added successfully to legacy database' });
         } catch (error: any) {
             console.error(`Error in legacy-api [${action}]:`, error);
@@ -234,27 +241,30 @@ export default async function handler(req: any, res: any) {
             const rawId = String(data.id).startsWith('legacy-') ? data.id.replace('legacy-', '') : data.id;
 
             const formData = new URLSearchParams();
-            formData.append('edit-id', rawId);
-            formData.append('edit-company', data.company || '');
-            formData.append('edit-vehicle_registration', data.vehicle_registration || '');
-            formData.append('edit-make', data.make || '');
-            formData.append('edit-model', data.model || '');
-            formData.append('edit-vin_number', data.vin_number || '');
-            formData.append('edit-engine_number', data.engine_number || '');
-            formData.append('edit-color', data.color || '');
-            formData.append('edit-reason', data.reason || '');
-            formData.append('edit-cos_name', data.cos_name || '');
-            formData.append('edit-cos_contact_number', data.cos_contact_number || '');
-            formData.append('edit-case_number', data.case_number || '');
-            formData.append('edit-station_reported_at', data.station_reported_at || '');
-            formData.append('edit-io_name', data.io_name || '');
-            formData.append('edit-io_contact', data.io_contact || '');
-            formData.append('edit-recovered', data.recovered || '');
-            formData.append('edit-tracker', data.tracker || '');
-            formData.append('edit-date_of_incident', data.date_of_incident || '');
+            formData.append('id', rawId);
+            formData.append('ob_number', data.ob_number || '');
+            formData.append('company',   data.company || '-');
+            formData.append('vehicle_registration', data.vehicle_registration || '-');
+            formData.append('make', data.make || '-');
+            formData.append('model', data.model || '-');
+            formData.append('vin_number', data.vin_number || '-');
+            formData.append('engine_number', data.engine_number || '-');
+            formData.append('color', data.color || '-');
+            formData.append('reason', data.reason || '-');
+            formData.append('cos_name', data.cos_name || '-');
+            formData.append('cos_contact_number', data.cos_contact_number || '-');
+            formData.append('case_number', data.case_number || '-');
+            formData.append('station_reported_at', data.station_reported_at || '-');
+            formData.append('io_name', data.io_name || '-');
+            formData.append('io_contact', data.io_contact || '-');
+            formData.append('recovered', data.recovered || '-');
+            formData.append('tracker', data.tracker || '-');
+            formData.append('date_of_incident', data.date_of_incident || '');
+            formData.append('entry_text', data.entry_text || '');
             formData.append('submit-edit', '');
 
-            const legacyRes = await fetch('https://rapidreportingsa.co.za/WORKING/ob.php', {
+            // Use the process_vehicle.php endpoint with action=update parameter for editing
+            const legacyRes = await fetch('https://rapidreportingsa.co.za/process_vehicle.php?action=update', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/x-www-form-urlencoded',
