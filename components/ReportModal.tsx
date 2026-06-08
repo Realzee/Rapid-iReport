@@ -190,6 +190,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         }
         return { 
             severity: isQuickAdd ? Severity.HIGH : '',
+            status: isQuickAdd ? ReportStatus.SOUGHT : (reportType === 'vehicle' ? ReportStatus.STOLEN : ReportStatus.ACTIVE),
             vehicle_involved: 'false',
             vehicles_involved: '1',
             injuries_reported: 'false',
@@ -204,7 +205,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             pound_name: '',
             year: ''
         };
-    }, [reportToEdit, isQuickAdd]);
+    }, [reportToEdit, isQuickAdd, reportType]);
 
     const [initialData, setInitialData] = useState(getInitialData);
     const [formData, setFormData] = useState<any>(initialData);
@@ -604,6 +605,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 reportData = {
                     ...emergencyCommonData,
                     title: formData.title,
+                    status: formData.status || (reportToEdit ? reportToEdit.status : ReportStatus.ACTIVE),
                     emergency_type: formData.emergency_type,
                     location: formData.location || 'Unknown Location',
                     vehicle_involved: formData.vehicle_involved === 'true' || formData.emergency_type === 'Kidnapping (taken with vehicle)',
@@ -631,6 +633,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     ...commonData,
                     title: formData.title,
                     crime_type: formData.crime_type,
+                    status: formData.status || (reportToEdit ? reportToEdit.status : ReportStatus.ACTIVE),
                     location: formData.location || 'Unknown Location',
                     cas_number: formData.cas_number,
                     station_name: formData.station_name,
@@ -892,9 +895,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 {(!reportToEdit && !isQuickAdd) && (
                     <div className="mb-6">
                         <div className="flex bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
-                            <button type="button" onClick={() => setReportType('vehicle')} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'vehicle' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-5 h-5" /> Vehicle</button>
-                            <button type="button" onClick={() => setReportType('emergency')} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'emergency' ? 'bg-orange-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><AlertTriangleIcon className="w-5 h-5" /> Emergency</button>
-                            <button type="button" onClick={() => setReportType('crime')} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'crime' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CrimeIcon className="w-5 h-5" /> Crime</button>
+                            <button type="button" onClick={() => { setReportType('vehicle'); setFormData(prev => ({ ...prev, status: ReportStatus.STOLEN })); }} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'vehicle' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-5 h-5" /> Vehicle</button>
+                            <button type="button" onClick={() => { setReportType('emergency'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE })); }} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'emergency' ? 'bg-orange-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><AlertTriangleIcon className="w-5 h-5" /> Emergency</button>
+                            <button type="button" onClick={() => { setReportType('crime'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE })); }} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'crime' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CrimeIcon className="w-5 h-5" /> Crime</button>
                         </div>
                     </div>
                 )}
@@ -1007,16 +1010,14 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 <textarea name="description" id="description" rows={3} value={formData.description || ''} onChange={handleChange} className={inputClasses} />
                             </div>
 
-                            {reportToEdit && (
-                                <div className="md:col-span-2">
-                                    <label htmlFor="status" className={labelClasses}>Report Status</label>
-                                    <select name="status" id="status" value={formData.status} onChange={handleChange} className={inputClasses}>
-                                        {Object.values(ReportStatus).filter(s => s !== ReportStatus.DELETED).map(s => (
-                                            <option key={s} value={s}>{s.replace(/_/g, ' ').toUpperCase()}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
+                            <div className="md:col-span-2">
+                                <label htmlFor="status" className={labelClasses}>Incident Status</label>
+                                <select name="status" id="status" value={formData.status || ReportStatus.STOLEN} onChange={handleChange} className={inputClasses}>
+                                    {Object.values(ReportStatus).filter(s => s !== ReportStatus.DELETED).map(s => (
+                                        <option key={s} value={s}>{s.replace(/_/g, ' ').toUpperCase()}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     ) : reportType === 'emergency' ? (
                         <div className="space-y-4">
@@ -1286,6 +1287,15 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 <select name="severity" id="severity" value={formData.severity || ''} onChange={handleChange} className={inputClasses}>
                                     <option value="">Select Severity</option>
                                     {Object.values(Severity).map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label htmlFor="status" className={labelClasses}>Incident Status</label>
+                                <select name="status" id="status" value={formData.status || ReportStatus.ACTIVE} onChange={handleChange} className={inputClasses}>
+                                    {Object.values(ReportStatus).filter(s => s !== ReportStatus.DELETED).map(s => (
+                                        <option key={s} value={s}>{s.replace(/_/g, ' ').toUpperCase()}</option>
+                                    ))}
                                 </select>
                             </div>
 
