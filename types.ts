@@ -27,7 +27,35 @@ export enum ReportStatus {
   RECOVERED = 'recovered', // specific to vehicle
   CLOSED = 'closed',
   DELETED = 'deleted',
+  STOLEN = 'stolen',
+  SUSPICIOUS = 'suspicious',
+  BOLO = 'bolo',
+  SOUGHT = 'sought',
+  HIJACKED = 'hijacked',
+  USED_IN_COMMISSION_OF_CRIME = 'used_in_commission_of_crime',
 }
+
+export const TERMINAL_REPORT_STATUSES = [
+  ReportStatus.RESOLVED,
+  ReportStatus.CLOSED,
+  ReportStatus.REJECTED,
+  ReportStatus.RECOVERED,
+  ReportStatus.DELETED,
+];
+
+export const ACTIVE_REPORT_STATUSES = [
+  ReportStatus.PENDING,
+  ReportStatus.ACTIVE,
+  ReportStatus.ASSIGNED,
+  ReportStatus.IN_PROGRESS,
+  ReportStatus.ON_SCENE,
+  ReportStatus.STOLEN,
+  ReportStatus.SUSPICIOUS,
+  ReportStatus.BOLO,
+  ReportStatus.SOUGHT,
+  ReportStatus.HIJACKED,
+  ReportStatus.USED_IN_COMMISSION_OF_CRIME,
+];
 
 export enum Severity {
   CRITICAL = 'critical',

@@ -101,7 +101,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
 
         const usersQuery = supabase.from('profiles').select('*');
         const respondersQuery = supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER);
-        const terminalStatuses = [ReportStatus.RESOLVED, ReportStatus.REJECTED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.DELETED];
+        const terminalStatuses = [ReportStatus, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES.RESOLVED, ReportStatus.REJECTED, ReportStatus.RECOVERED, ReportStatus.CLOSED, ReportStatus.DELETED];
 
         const isGlobalAdminValue = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 

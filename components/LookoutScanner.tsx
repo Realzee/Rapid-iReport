@@ -84,7 +84,7 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
 
     // Circulation list management effect
     useEffect(() => {
-        const activeStatuses = [ReportStatus.PENDING, ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE];
+        const activeStatuses = ACTIVE_REPORT_STATUSES;
         const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 
         const fetchCirculationList = async (showLoading = false) => {

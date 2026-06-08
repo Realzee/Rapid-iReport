@@ -25,7 +25,7 @@ interface DashboardProps {
 }
 
 const ACTIVE_STATUSES = [
-    ReportStatus.PENDING,
+    ReportStatus, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES.PENDING,
     ReportStatus.ACTIVE,
     ReportStatus.ASSIGNED,
     ReportStatus.IN_PROGRESS,
@@ -512,19 +512,19 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                 .from('vehicle_reports')
                 .select('*', { count: 'exact', head: true })
                 .eq('assigned_to', responderId)
-                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+                .in('status', ACTIVE_REPORT_STATUSES);
             
             const { count: activeCrimeAssignments } = await supabase
                 .from('crime_reports')
                 .select('*', { count: 'exact', head: true })
                 .eq('assigned_to', responderId)
-                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+                .in('status', ACTIVE_REPORT_STATUSES);
 
             const { count: activeEmergencyAssignments } = await supabase
                 .from('emergency_reports')
                 .select('*', { count: 'exact', head: true })
                 .eq('assigned_to', responderId)
-                .in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+                .in('status', ACTIVE_REPORT_STATUSES);
     
             if ((activeVehicleAssignments === null || activeVehicleAssignments === 0) && 
                 (activeCrimeAssignments === null || activeCrimeAssignments === 0) &&

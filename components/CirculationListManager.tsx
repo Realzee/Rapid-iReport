@@ -20,7 +20,7 @@ const CirculationListManager: React.FC<CirculationListManagerProps> = ({ profile
     const { addToast } = useToast();
 
     const circulationListReports = useMemo(() => {
-        const activeStatuses = [ReportStatus.PENDING, ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE];
+        const activeStatuses = ACTIVE_REPORT_STATUSES;
         return reports.filter(r => activeStatuses.includes(r.status));
     }, [reports]);
     

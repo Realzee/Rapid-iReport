@@ -89,7 +89,7 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 .from('vehicle_reports')
                 .select('*')
                 .eq('license_plate', plate.trim().toUpperCase())
-                .in('status', [ReportStatus.PENDING, ReportStatus.ACTIVE, ReportStatus.IN_PROGRESS])
+                .in('status', [ReportStatus, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES.PENDING, ReportStatus.ACTIVE, ReportStatus.IN_PROGRESS])
                 .order('reported_at', { ascending: false })
                 .limit(1);
 

@@ -579,7 +579,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             if (reportType === 'vehicle') {
                 reportData = {
                     ...commonData,
-                    status: formData.status || (reportToEdit ? reportToEdit.status : ReportStatus.ACTIVE),
+                    status: formData.status || (reportToEdit ? reportToEdit.status : (reportType === 'vehicle' ? ReportStatus.STOLEN : ReportStatus.ACTIVE)),
                     license_plate: formData.license_plate,
                     vehicle_make: formData.vehicle_make,
                     vehicle_model: formData.vehicle_model,
@@ -691,7 +691,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 station_reported_at: formData.station_name || '',
                                 io_name: formData.io_name || '',
                                 io_contact: formData.io_contact || '',
-                                recovered: reportData.status === 'recovered' ? 'RECOVERED' : 'STOLEN',
+                                recovered: ['stolen', 'suspicious', 'bolo', 'sought', 'hijacked', 'used_in_commission_of_crime', 'pending', 'recovered'].includes(reportData.status) 
+                                    ? reportData.status.toUpperCase().replace(/_/g, ' ') 
+                                    : (['resolved', 'closed', 'deleted'].includes(reportData.status) ? 'RECOVERED' : 'STOLEN'),
                                 tracker: formData.has_tracker ? 'Yes' : 'No',
                                 date_of_incident: reportData.reported_at ? new Date(reportData.reported_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
                             };
@@ -753,7 +755,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         ...reportData,
                         id: reportId,
                         ob_number: ob_number,
-                        status: reportData.status || ReportStatus.ACTIVE,
+                        status: reportData.status || (tableName === 'vehicle_reports' ? ReportStatus.STOLEN : ReportStatus.ACTIVE),
                         reported_by: user.id,
                         reported_at: now.toISOString(),
                         company_id: companyId,
@@ -792,7 +794,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     station_reported_at: insertData.station_name || '',
                                     io_name: insertData.io_name || '',
                                     io_contact: insertData.io_contact || '',
-                                    recovered: insertData.status === 'recovered' ? 'RECOVERED' : 'STOLEN',
+                                    recovered: ['stolen', 'suspicious', 'bolo', 'sought', 'hijacked', 'used_in_commission_of_crime', 'pending', 'recovered'].includes(insertData.status as any) 
+                                        ? (insertData.status as any).toUpperCase().replace(/_/g, ' ') 
+                                        : (['resolved', 'closed', 'deleted'].includes(insertData.status as any) ? 'RECOVERED' : 'STOLEN'),
                                     tracker: insertData.has_tracker ? 'Yes' : 'No',
                                     date_of_incident: insertData.reported_at ? new Date(insertData.reported_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
                                 };

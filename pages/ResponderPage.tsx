@@ -86,7 +86,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     // A responder is "engaged" if they have any reports that are not in a terminal state.
     const isEngaged = useMemo(() => 
         assignedReports.some(r => ![
-            ReportStatus.RESOLVED,
+            ReportStatus, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES.RESOLVED,
             ReportStatus.RECOVERED,
             ReportStatus.CLOSED,
             ReportStatus.REJECTED,
@@ -126,7 +126,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         const { data: usersData, error: usersError } = await supabase.from('profiles').select('*').eq('company_id', profile.company_id);
 
         // Fetch Circulation List (Active Vehicle Reports)
-        const activeStatuses = [ReportStatus.PENDING, ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE];
+        const activeStatuses = ACTIVE_REPORT_STATUSES;
         let circQuery = supabase.from('vehicle_reports').select('*').in('status', activeStatuses);
         
         if (!isGlobalAdmin && profile.company_id) {
@@ -211,7 +211,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             const oldReport = payload.old as VehicleReport;
             const eventType = payload.eventType;
 
-            const activeStatuses = [ReportStatus.PENDING, ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE];
+            const activeStatuses = ACTIVE_REPORT_STATUSES;
             
             const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
             const isRelevant = (report: VehicleReport) => {
@@ -411,13 +411,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     }, []);
     
     const activeAssignments = useMemo(() => {
-        const activeStatuses = [
-            ReportStatus.PENDING,
-            ReportStatus.ACTIVE,
-            ReportStatus.ASSIGNED,
-            ReportStatus.IN_PROGRESS,
-            ReportStatus.ON_SCENE,
-        ];
+        const activeStatuses = ACTIVE_REPORT_STATUSES;
         return assignedReports.filter(r => activeStatuses.includes(r.status));
     }, [assignedReports]);
 
@@ -767,9 +761,9 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
         } else if (status === ReportStatus.ON_SCENE) {
             newResponderStatus = ResponderStatus.ON_SCENE;
         } else if (isResolving) {
-            const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
-            const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
-            const { count: emergencyCount } = await supabase.from('emergency_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+            const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
+            const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
+            const { count: emergencyCount } = await supabase.from('emergency_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
             
             const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0) || (emergencyCount !== null && emergencyCount > 0);
             if (!hasOtherActiveAssignments) {
@@ -817,9 +811,9 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                     }));
                     updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Responder ${profile.first_name} ${profile.surname} has stood down.` }));
 
-                    const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
-                    const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
-                    const { count: emergencyCount } = await supabase.from('emergency_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', [ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE]);
+                    const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
+                    const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
+                    const { count: emergencyCount } = await supabase.from('emergency_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
 
                     const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0) || (emergencyCount !== null && emergencyCount > 0);
                     if (!hasOtherActiveAssignments) {

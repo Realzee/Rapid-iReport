@@ -28,7 +28,7 @@ interface ControllerPageProps {
 type ControllerTab = 'events' | 'responders' | 'tech';
 
 const ACTIVE_STATUSES = [
-    ReportStatus.PENDING,
+    ReportStatus, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES.PENDING,
     ReportStatus.ACTIVE,
     ReportStatus.ASSIGNED,
     ReportStatus.IN_PROGRESS,
