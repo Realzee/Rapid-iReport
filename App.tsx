@@ -86,6 +86,44 @@ const App: React.FC = () => {
   const { theme } = useTheme();
 
   useEffect(() => {
+    const handleCopy = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target && 
+        (target.tagName === 'INPUT' || 
+         target.tagName === 'TEXTAREA' || 
+         target.tagName === 'SELECT' || 
+         target.isContentEditable)
+      ) {
+        return;
+      }
+      e.preventDefault();
+      addToast("Copying of application details is disabled for data protection.", "warning");
+    };
+
+    const handleCut = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target && 
+        (target.tagName === 'INPUT' || 
+         target.tagName === 'TEXTAREA' || 
+         target.tagName === 'SELECT' || 
+         target.isContentEditable)
+      ) {
+        return;
+      }
+      e.preventDefault();
+    };
+
+    document.addEventListener('copy', handleCopy);
+    document.addEventListener('cut', handleCut);
+    return () => {
+      document.removeEventListener('copy', handleCopy);
+      document.removeEventListener('cut', handleCut);
+    };
+  }, [addToast]);
+
+  useEffect(() => {
     // Automatically trigger a background schema reload to ensure report_updates and patrol_logs are fully synced
     fetch('/api/guard-monitoring', {
         method: 'POST',

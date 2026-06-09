@@ -188,6 +188,8 @@ export interface VehicleReport {
   io_contact?: string;
   has_tracker?: boolean;
   circulation_number?: string;
+  date_of_incident?: string;
+  tracker_company?: string;
   recovered_location_coords?: LocationCoords;
   recovered_at?: string; // ISO date string
   crime_outcome?: string;
@@ -227,6 +229,7 @@ export interface CrimeReport {
   resolved_at?: string; // ISO date string
   cas_number?: string;
   station_name?: string;
+  date_of_incident?: string;
   io_name?: string;
   io_contact?: string;
   company_id?: string;
@@ -300,6 +303,7 @@ export interface EmergencyReport {
   engine_number?: string;
   cas_number?: string;
   station_name?: string;
+  date_of_incident?: string;
   crime_outcome?: string;
   cit_success?: boolean;
   arrests?: number;

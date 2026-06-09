@@ -106,6 +106,10 @@ async function runMigrations() {
         "ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS alias text;",
         "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS cos_name text;",
         "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS cos_contact_number text;",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS date_of_incident date;",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS tracker_company text;",
+        "ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS date_of_incident date;",
+        "ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS date_of_incident date;",
         `CREATE TABLE IF NOT EXISTS public.report_shares (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
             report_id uuid NOT NULL,

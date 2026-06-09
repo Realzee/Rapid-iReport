@@ -15,6 +15,10 @@ async function main() {
         "ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;",
         "DROP POLICY IF EXISTS \"Enable all for authenticated on updates\" ON public.report_updates;",
         "CREATE POLICY \"Enable all for authenticated on updates\" ON public.report_updates FOR ALL TO authenticated USING (true) WITH CHECK (true);",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS date_of_incident date;",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS tracker_company text;",
+        "ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS date_of_incident date;",
+        "ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS date_of_incident date;",
         "NOTIFY pgrst, 'reload schema';",
         "SELECT pg_notify('pgrst', 'reload schema');"
     ];

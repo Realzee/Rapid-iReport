@@ -754,6 +754,23 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported</p>
                         <p className="text-gray-900 dark:text-white">{format(new Date(localReport.reported_at), 'MMM d, yyyy HH:mm')}</p>
                     </div>
+                    {(localReport as any).date_of_incident && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Incident Date</p>
+                            <p className="text-gray-900 dark:text-white">
+                                {(() => {
+                                    const d = new Date((localReport as any).date_of_incident);
+                                    return isNaN(d.getTime()) ? (localReport as any).date_of_incident : format(d, 'MMM d, yyyy');
+                                })()}
+                            </p>
+                        </div>
+                    )}
+                    {localReport.type === 'vehicle' && (localReport as any).tracker_company && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Tracker Company</p>
+                            <p className="text-gray-900 dark:text-white">{(localReport as any).tracker_company}</p>
+                        </div>
+                    )}
                     <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Case</p>
                         <p className="text-gray-900 dark:text-white">{(localReport as any).cas_number || 'N/A'}</p>

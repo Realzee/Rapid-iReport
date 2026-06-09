@@ -220,6 +220,8 @@ const UserReportDetail: React.FC<{
                         {(report as any).io_name && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">IO Name</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).io_name}</p></div>}
                         {(report as any).io_contact && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">IO Contact</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).io_contact}</p></div>}
                         {(report as any).has_tracker !== undefined && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Tracker</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).has_tracker ? 'Yes' : 'No'}</p></div>}
+                        {(report as any).tracker_company && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Tracker Company</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).tracker_company}</p></div>}
+                        {(report as any).date_of_incident && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Incident Date</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).date_of_incident}</p></div>}
                     </div>
                 )}
                 

@@ -136,6 +136,8 @@ CREATE TABLE IF NOT EXISTS public.vehicle_reports (
     evidence_images text[],
     location_boundary jsonb,
     location_boundingbox real[4],
+    date_of_incident date,
+    tracker_company text,
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     deleted_at timestamp with time zone
 );
@@ -156,6 +158,7 @@ CREATE TABLE IF NOT EXISTS public.crime_reports (
     evidence_images text[],
     location_boundary jsonb,
     location_boundingbox real[4],
+    date_of_incident date,
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     deleted_at timestamp with time zone
 );

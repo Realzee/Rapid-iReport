@@ -963,6 +963,8 @@ const ControllerReportDetail: React.FC<{
                         {(report as any).io_name && <DetailField label="IO Name">{(report as any).io_name}</DetailField>}
                         {(report as any).io_contact && <DetailField label="IO Contact">{(report as any).io_contact}</DetailField>}
                         {(report as any).has_tracker !== undefined && <DetailField label="Tracker">{(report as any).has_tracker ? 'Yes' : 'No'}</DetailField>}
+                        {(report as any).tracker_company && <DetailField label="Tracker Company">{(report as any).tracker_company}</DetailField>}
+                        {(report as any).date_of_incident && <DetailField label="Incident Date">{(report as any).date_of_incident}</DetailField>}
                     </div>
                 )}
 

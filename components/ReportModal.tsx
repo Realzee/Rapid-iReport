@@ -186,7 +186,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     const getInitialData = useCallback(() => {
         if (reportToEdit) {
             const location = reportToEdit.type === 'vehicle' ? (reportToEdit as any).last_seen_location : (reportToEdit as any).location;
-            return { ...reportToEdit, location };
+            return {
+                date_of_incident: (reportToEdit as any).date_of_incident || ((reportToEdit as any).reported_at ? new Date((reportToEdit as any).reported_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+                tracker_company: (reportToEdit as any).tracker_company || '',
+                ...reportToEdit,
+                location
+            };
         }
         return { 
             severity: isQuickAdd ? Severity.HIGH : '',
@@ -203,7 +208,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             other_recoveries: '',
             saps_13: '',
             pound_name: '',
-            year: ''
+            year: '',
+            date_of_incident: new Date().toISOString().split('T')[0],
+            tracker_company: ''
         };
     }, [reportToEdit, isQuickAdd, reportType]);
 
@@ -253,6 +260,25 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [isDirty]);
+
+    useEffect(() => {
+        if (!reportToEdit && reportType === 'vehicle') {
+            const statusStr = (formData.status || 'stolen').toUpperCase().replace(/_/g, ' ');
+            const dateFormatted = formData.date_of_incident ? (() => {
+                const parts = formData.date_of_incident.split('-');
+                return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : formData.date_of_incident;
+            })() : '';
+            
+            const expectedDefault = dateFormatted ? `${statusStr} ON THE ${dateFormatted}` : statusStr;
+            
+            if (!formData.description || formData.description === '' || formData.description.endsWith(' ON THE ') || /^(STOLEN|SUSPICIOUS|BOLO|SOUGHT|HIJACKED|USED IN COMMISSION OF CRIME)( ON THE \d{2}\/\d{2}\/\d{4})?$/.test(formData.description)) {
+                setFormData(prev => ({
+                    ...prev,
+                    description: expectedDefault
+                }));
+            }
+        }
+    }, [formData.status, formData.date_of_incident, reportType, reportToEdit]);
     
     // Address suggestion logic
     useEffect(() => {
@@ -369,7 +395,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             'saps_13',
             'pound_name',
             'cas_number',
-            'circulation_number'
+            'circulation_number',
+            'vin_number',
+            'engine_number',
+            'station_name',
+            'io_name'
         ];
 
         const processedValue = fieldsToUppercase.includes(name) ? value.toUpperCase() : value;
@@ -598,6 +628,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     arrests: parseInt(formData.arrests || '0'),
                     guns_recovered: parseInt(formData.guns_recovered || '0'),
                     other_recoveries: formData.other_recoveries || '',
+                    date_of_incident: formData.date_of_incident || null,
+                    tracker_company: formData.tracker_company || null,
                 };
             } else if (reportType === 'emergency') {
                 // Exclude location_boundary and location_boundingbox for emergency reports as the table might not support them yet
@@ -627,6 +659,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     other_recoveries: formData.other_recoveries || '',
                     recovered_location_coords: (formData as any).recovered_location_coords,
                     recovered_at: (formData as any).recovered_at,
+                    date_of_incident: formData.date_of_incident || null,
                 };
             } else {
                  reportData = {
@@ -651,6 +684,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     other_recoveries: formData.other_recoveries || '',
                     recovered_location_coords: (formData as any).recovered_location_coords,
                     recovered_at: (formData as any).recovered_at,
+                    date_of_incident: formData.date_of_incident || null,
                 };
             }
 
@@ -686,7 +720,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 vin_number: formData.vin_number || '',
                                 engine_number: formData.engine_number || '',
                                 color: formData.vehicle_color || '',
-                                reason: `UPDATE LOG: ${reportToEdit.ob_number} - ${formData.description || reportData.description || ''}`.trim(),
+                                reason: ['stolen', 'suspicious', 'bolo', 'sought', 'hijacked', 'used_in_commission_of_crime', 'pending', 'recovered'].includes(reportData.status as any) 
+                                    ? (reportData.status as any).toUpperCase().replace(/_/g, ' ') 
+                                    : (['resolved', 'closed', 'deleted'].includes(reportData.status as any) ? 'RECOVERED' : 'STOLEN'),
                                 entry_text: formData.description || reportData.description || 'Auto-entered update entry from Rapid911 system.',
                                 cos_name: companyFullName || '', 
                                 cos_contact_number: (compObj as any)?.cell_number || '',
@@ -697,8 +733,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 recovered: ['stolen', 'suspicious', 'bolo', 'sought', 'hijacked', 'used_in_commission_of_crime', 'pending', 'recovered'].includes(reportData.status) 
                                     ? reportData.status.toUpperCase().replace(/_/g, ' ') 
                                     : (['resolved', 'closed', 'deleted'].includes(reportData.status) ? 'RECOVERED' : 'STOLEN'),
-                                tracker: formData.has_tracker ? 'Yes' : 'No',
-                                date_of_incident: reportData.reported_at ? new Date(reportData.reported_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+                                tracker: formData.tracker_company || 'No',
+                                date_of_incident: formData.date_of_incident || (reportToEdit.date_of_incident ? new Date(reportToEdit.date_of_incident).toISOString().split('T')[0] : (reportData.reported_at ? new Date(reportData.reported_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]))
                             };
 
                             fetch('/api/legacy-api', {
@@ -789,7 +825,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     vin_number: insertData.vin_number || '',
                                     engine_number: insertData.engine_number || '',
                                     color: insertData.vehicle_color || '',
-                                    reason: insertData.description || '',
+                                    reason: ['stolen', 'suspicious', 'bolo', 'sought', 'hijacked', 'used_in_commission_of_crime', 'pending', 'recovered'].includes(insertData.status as any) 
+                                        ? (insertData.status as any).toUpperCase().replace(/_/g, ' ') 
+                                        : (['resolved', 'closed', 'deleted'].includes(insertData.status as any) ? 'RECOVERED' : 'STOLEN'),
                                     entry_text: insertData.description || 'Auto-entered entry from Rapid911 system.',
                                     cos_name: companyFullName || '', // Company Alias Name goes to Complainant Name
                                     cos_contact_number: (compObj as any)?.cell_number || '',
@@ -800,8 +838,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     recovered: ['stolen', 'suspicious', 'bolo', 'sought', 'hijacked', 'used_in_commission_of_crime', 'pending', 'recovered'].includes(insertData.status as any) 
                                         ? (insertData.status as any).toUpperCase().replace(/_/g, ' ') 
                                         : (['resolved', 'closed', 'deleted'].includes(insertData.status as any) ? 'RECOVERED' : 'STOLEN'),
-                                    tracker: insertData.has_tracker ? 'Yes' : 'No',
-                                    date_of_incident: insertData.reported_at ? new Date(insertData.reported_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+                                    tracker: formData.tracker_company || 'No',
+                                    date_of_incident: formData.date_of_incident || (insertData.reported_at ? new Date(insertData.reported_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0])
                                 };
 
                                 const legacyRes = await fetch('/api/legacy-api', {
@@ -998,6 +1036,15 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             </div>
 
                             <div>
+                                <label htmlFor="date_of_incident" className={labelClasses}>Date of Incident</label>
+                                <input type="date" name="date_of_incident" id="date_of_incident" value={formData.date_of_incident || ''} onChange={handleChange} className={inputClasses} />
+                            </div>
+                            <div>
+                                <label htmlFor="tracker_company" className={labelClasses}>Tracker Company</label>
+                                <input type="text" name="tracker_company" id="tracker_company" value={formData.tracker_company || ''} onChange={handleChange} className={inputClasses} placeholder="Tracker Company (e.g. CARTRACK)" />
+                            </div>
+
+                            <div>
                                 <label htmlFor="severity" className={labelClasses}>Severity</label>
                                 <select name="severity" id="severity" value={formData.severity || ''} onChange={handleChange} className={inputClasses}>
                                     <option value="">Select Severity</option>
@@ -1137,7 +1184,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div><label htmlFor="cas_number" className={labelClasses}>Case Number</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="Case" /></div>
-                                <div>
+                                <div><label htmlFor="date_of_incident" className={labelClasses}>Date of Incident</label><input type="date" name="date_of_incident" id="date_of_incident" value={formData.date_of_incident || ''} onChange={handleChange} className={inputClasses} /></div>
+                                <div className="md:col-span-2">
                                     <label htmlFor="station_name" className={labelClasses}>Station Name</label>
                                     <div className="relative" ref={stationSuggestionsRef}>
                                         <input type="text" name="station_name" id="station_name" value={formData.station_name || ''} onChange={handleChange} className={inputClasses} placeholder="Station" autoComplete="off" />
@@ -1211,6 +1259,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             <div>
                                 <label htmlFor="io_contact" className={labelClasses}>IO Contact</label>
                                 <input type="text" name="io_contact" id="io_contact" value={formData.io_contact || ''} onChange={handleChange} className={inputClasses} placeholder="IO Contact Number" />
+                            </div>
+
+                            <div>
+                                <label htmlFor="date_of_incident" className={labelClasses}>Date of Incident</label>
+                                <input type="date" name="date_of_incident" id="date_of_incident" value={formData.date_of_incident || ''} onChange={handleChange} className={inputClasses} />
                             </div>
 
                             <div className="md:col-span-2">

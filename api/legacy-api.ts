@@ -122,7 +122,9 @@ export default async function handler(req: any, res: any) {
                                 io_name: row.io_name || '',
                                 io_contact: row.io_contact || '',
                                 status: isRecovered ? 'recovered' : 'stolen',
-                                has_tracker: String(row.tracker).toLowerCase() === 'yes',
+                                has_tracker: String(row.tracker).toLowerCase() === 'yes' || (!!row.tracker && String(row.tracker).toLowerCase() !== 'no'),
+                                tracker_company: (row.tracker && String(row.tracker).toLowerCase() !== 'yes' && String(row.tracker).toLowerCase() !== 'no') ? row.tracker : '',
+                                date_of_incident: row.date_of_incident || null,
                                 reported_at: (() => {
                                     if (!row.date_of_incident) return new Date().toISOString();
                                     const d = new Date(row.date_of_incident);
