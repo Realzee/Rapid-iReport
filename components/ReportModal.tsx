@@ -210,7 +210,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             pound_name: '',
             year: '',
             date_of_incident: new Date().toISOString().split('T')[0],
-            tracker_company: ''
+            tracker_company: '',
+            io_name: '',
+            io_contact: ''
         };
     }, [reportToEdit, isQuickAdd, reportType]);
 
@@ -630,6 +632,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     other_recoveries: formData.other_recoveries || '',
                     date_of_incident: formData.date_of_incident || null,
                     tracker_company: formData.tracker_company || null,
+                    io_name: formData.io_name || null,
+                    io_contact: formData.io_contact || null,
                 };
             } else if (reportType === 'emergency') {
                 // Exclude location_boundary and location_boundingbox for emergency reports as the table might not support them yet

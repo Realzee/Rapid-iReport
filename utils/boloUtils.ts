@@ -132,29 +132,12 @@ export const generateAndShareBolo = async (
         ctx.fillRect(0, imgY, width, imgHeight);
 
         if (mainImage) {
-            // Simulate object-fit: cover
-            const imgRatio = mainImage.width / mainImage.height;
-            const areaRatio = width / imgHeight;
-            
-            let drawWidth, drawHeight, offsetX, offsetY;
-
-            if (imgRatio > areaRatio) {
-                drawHeight = imgHeight;
-                drawWidth = imgHeight * imgRatio;
-                offsetX = (width - drawWidth) / 2;
-                offsetY = 0;
-            } else {
-                drawWidth = width;
-                drawHeight = width / imgRatio;
-                offsetX = 0;
-                offsetY = (imgHeight - drawHeight) / 2;
-            }
-            
+            // Stretch the image directly to fit the available area, making sure the full image is entirely visible
             ctx.save();
             ctx.beginPath();
             ctx.rect(0, imgY, width, imgHeight);
             ctx.clip();
-            ctx.drawImage(mainImage, offsetX, imgY + offsetY, drawWidth, drawHeight);
+            ctx.drawImage(mainImage, 0, imgY, width, imgHeight);
             ctx.restore();
         } else {
             ctx.fillStyle = '#666666';

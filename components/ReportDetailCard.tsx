@@ -11,6 +11,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useChat } from '../contexts/ChatContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { generateAndShareBolo } from '../utils/boloUtils';
+import ImagePreviewModal from './ImagePreviewModal';
 
 interface ReportDetailCardProps {
     report: Report;
@@ -27,6 +28,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     const [localReport, setLocalReport] = useState<Report>(report);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
+    const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
     const { addToast } = useToast();
     const { openChat } = useChat();
     const { mainLogoUrl } = useSettings();
@@ -716,7 +718,13 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 {localReport.evidence_images && localReport.evidence_images.length > 0 && (
                      <div className="grid grid-cols-2 gap-2">
                         {localReport.evidence_images.map((img, index) => (
-                             <img key={index} src={img} alt={`Evidence ${index+1}`} className="w-full h-24 object-cover rounded-md border border-gray-200 dark:border-gray-700" />
+                             <button 
+                                 key={index} 
+                                 onClick={() => setPreviewImageUrl(img)} 
+                                 className="block w-full h-24 bg-gray-200 dark:bg-gray-700/60 rounded-md overflow-hidden group relative cursor-pointer hover:opacity-85 transition-all border border-gray-200 dark:border-gray-700"
+                             >
+                                 <img src={img} alt={`Evidence ${index+1}`} className="w-full h-full object-cover" />
+                             </button>
                         ))}
                     </div>
                 )}
@@ -1140,6 +1148,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     </button>
                 </div>
             )}
+            <ImagePreviewModal isOpen={!!previewImageUrl} onClose={() => setPreviewImageUrl(null)} imageUrl={previewImageUrl} />
         </div>
     );
 };
