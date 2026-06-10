@@ -53,7 +53,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             }
             try {
                 const [sharesRes, companiesRes] = await Promise.all([
-                    supabase.from('report_shares').select('*, target_company:companies(id, name, logo_url)').eq('report_id', localReport.id),
+                    supabase.from('report_shares').select('*, target_company:companies!report_shares_target_company_id_fkey(id, name, logo_url)').eq('report_id', localReport.id),
                     supabase.from('companies').select('*').order('name')
                 ]);
 
@@ -123,7 +123,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             
             // Refresh data
             const [sharesRes, reportRes] = await Promise.all([
-                supabase.from('report_shares').select('*, target_company:companies(id, name, logo_url)').eq('report_id', localReport.id),
+                supabase.from('report_shares').select('*, target_company:companies!report_shares_target_company_id_fkey(id, name, logo_url)').eq('report_id', localReport.id),
                 supabase.from(tableName).select('*').eq('id', localReport.id).single()
             ]);
 

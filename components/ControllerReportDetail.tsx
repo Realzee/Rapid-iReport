@@ -113,7 +113,7 @@ const ControllerReportDetail: React.FC<{
                 supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(first_name, surname), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(first_name, surname), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(first_name, surname)`).eq('report_id', report.id).order('created_at', { ascending: false }),
                 supabase.from('profiles').select('first_name, surname').eq('id', report.reported_by).maybeSingle(),
                 supabase.from('companies').select('*').order('name'),
-                supabase.from('report_shares').select('*, target_company:companies(id, name, logo_url)').eq('report_id', report.id)
+                supabase.from('report_shares').select('*, target_company:companies!report_shares_target_company_id_fkey(id, name, logo_url)').eq('report_id', report.id)
             ]);
 
             if (sharesError) console.error("Error fetching report shares:", sharesError);
