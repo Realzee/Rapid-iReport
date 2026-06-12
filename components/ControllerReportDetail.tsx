@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Report, Profile, VehicleReport, EmergencyReport, ReportStatus, Responder, ReportUpdate, ResponderStatus, AssignmentLog, Company, UserRole, LocationCoords, ReportShare } from '../types';
-import { format, formatDistanceToNow } from 'date-fns';
+import { safeFormat, safeFormatDistanceToNow } from '../utils/dateUtils';
 import { supabase } from '../utils/supabase';
 import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon } from './icons';
 import PrintableReport from './PrintableReport';
@@ -916,13 +916,13 @@ const ControllerReportDetail: React.FC<{
                  <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isTimelineVisible ? 'max-h-[500px] mt-4' : 'max-h-0'}`}>
                     <h4 className="font-bold text-sm mb-2">Incident Timeline</h4>
                     <div className="space-y-1 max-h-48 overflow-y-auto bg-gray-100 dark:bg-gray-800/50 p-2 rounded-md">
-                        <TimelineItem icon={<CheckCircleIcon className="w-4 h-4 text-green-500" />} time={format(new Date(report.reported_at), 'MMM d, HH:mm')}>
+                        <TimelineItem icon={<CheckCircleIcon className="w-4 h-4 text-green-500" />} time={safeFormat(report.reported_at, 'MMM d, HH:mm')}>
                             Report filed by <span className="font-semibold">{reporter?.first_name || '...'} {reporter?.surname || ''}</span>
                         </TimelineItem>
                         {timelineEvents.map((event) => (
                            <TimelineItem
                                 key={`${event.type}-${event.id}`}
-                                time={formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+                                time={safeFormatDistanceToNow(event.created_at, { addSuffix: true })}
                                 author={event.author}
                                 icon={event.type === 'assignment' ? <AssignResponderIcon className="w-4 h-4 text-gray-500" /> : <ZapIcon className="w-4 h-4 text-gray-500" />}
                             >
@@ -990,7 +990,7 @@ const ControllerReportDetail: React.FC<{
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <DetailField label="Recovered At">
-                                {format(new Date((report as any).recovered_at || report.updated_at), 'PPPp')}
+                                {safeFormat((report as any).recovered_at || report.updated_at, 'PPPp')}
                             </DetailField>
                             <DetailField label="Recovery Coords">
                                 {(report as any).recovered_location_coords.lat.toFixed(4)}, {(report as any).recovered_location_coords.lng.toFixed(4)}

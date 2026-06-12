@@ -4,7 +4,7 @@ import { Report, Profile, VehicleReport, EmergencyReport, UserRole, ReportStatus
 import StatusBadge from './StatusBadge';
 import ReportTypeBadge from './ReportTypeBadge';
 import { MapPinIcon, WhatsappIcon, DownloadIcon, XIcon, EditIcon, TrashIcon, GlobeIcon, ShareIcon, UsersIcon } from './icons';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/dateUtils';
 import { supabase } from '../utils/supabase';
 import { logoUrl } from '../assets/logo';
 import { useToast } from '../contexts/ToastContext';
@@ -760,16 +760,13 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     </div>
                      <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported</p>
-                        <p className="text-gray-900 dark:text-white">{format(new Date(localReport.reported_at), 'MMM d, yyyy HH:mm')}</p>
+                        <p className="text-gray-900 dark:text-white">{safeFormat(localReport.reported_at, 'MMM d, yyyy HH:mm')}</p>
                     </div>
                     {(localReport as any).date_of_incident && (
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Incident Date</p>
                             <p className="text-gray-900 dark:text-white">
-                                {(() => {
-                                    const d = new Date((localReport as any).date_of_incident);
-                                    return isNaN(d.getTime()) ? (localReport as any).date_of_incident : format(d, 'MMM d, yyyy');
-                                })()}
+                                {safeFormat((localReport as any).date_of_incident, 'MMM d, yyyy', (localReport as any).date_of_incident)}
                             </p>
                         </div>
                     )}
@@ -864,7 +861,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     {(localReport as any).recovered_at && (
                         <div className="col-span-2">
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Recovered At</p>
-                            <p className="text-gray-900 dark:text-white">{format(new Date((localReport as any).recovered_at), 'MMM d, yyyy HH:mm')}</p>
+                            <p className="text-gray-900 dark:text-white">{safeFormat((localReport as any).recovered_at, 'MMM d, yyyy HH:mm')}</p>
                         </div>
                     )}
                     {(localReport as any).other_recoveries && (

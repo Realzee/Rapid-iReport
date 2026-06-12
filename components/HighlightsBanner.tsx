@@ -4,7 +4,8 @@ import { Report, Severity, VehicleReport, EmergencyReport } from '../types';
 import { CarIcon, CrimeIcon, AlertTriangleIcon } from './icons';
 import ReportTypeBadge from './ReportTypeBadge';
 // FIX: Reverted `sub` to `subDays` to resolve compatibility issues with the current date-fns version.
-import { formatDistanceToNow, subDays } from 'date-fns';
+import { subDays } from 'date-fns';
+import { safeFormatDistanceToNow } from '../utils/dateUtils';
 
 interface HighlightsBannerProps {
     onSelectReport: (reportId: string) => void;
@@ -26,7 +27,7 @@ const HighlightCard: React.FC<{ report: Report, onSelect: (id: string) => void }
                     <AlertTriangleIcon className={`w-3 h-3 ${report.severity === Severity.CRITICAL ? 'text-red-400' : 'text-orange-400'}`} />
                     <span className="capitalize">{report.severity}</span>
                     <span>&middot;</span>
-                    <span className="whitespace-nowrap">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</span>
+                    <span className="whitespace-nowrap">{safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}</span>
                 </div>
             </div>
         </div>

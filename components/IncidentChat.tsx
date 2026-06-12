@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
 import { ChatMessage, Profile, UserRole } from '../types';
-import { formatDistanceToNow } from 'date-fns';
+import { safeFormatDistanceToNow } from '../utils/dateUtils';
 import { TrashIcon, CheckIcon, CheckAllIcon } from './icons';
 import ConfirmModal from './ConfirmModal';
 import { useToast } from '../contexts/ToastContext';
@@ -53,7 +53,7 @@ const ChatMessageItem: React.FC<{
     }, [msg, isCurrentUser, currentUserProfile.id]);
 
     const isReadByOthers = msg.read_by && msg.read_by.length > 0;
-    const timeAgo = formatDistanceToNow(new Date(msg.created_at), { addSuffix: true });
+    const timeAgo = safeFormatDistanceToNow(msg.created_at, { addSuffix: true });
 
     return (
         <div ref={msgRef} className={`flex items-start gap-2.5 ${isCurrentUser ? 'justify-end' : ''}`}>

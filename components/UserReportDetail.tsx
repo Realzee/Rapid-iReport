@@ -4,7 +4,7 @@ import { supabase } from '../utils/supabase';
 import { Report, Profile, VehicleReport, EmergencyReport, ReportUpdate, ReportStatus, AssignmentLog } from '../types';
 import StatusBadge from './StatusBadge';
 import { MapPinIcon, EditIcon, AssignResponderIcon, ZapIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon, UsersIcon } from './icons';
-import { format, formatDistanceToNow } from 'date-fns';
+import { safeFormat, safeFormatDistanceToNow } from '../utils/dateUtils';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import { useTheme } from '../contexts/ThemeContext';
@@ -197,7 +197,7 @@ const UserReportDetail: React.FC<{
                     </div>
                      <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported</p>
-                        <p className="text-gray-900 dark:text-white">{format(new Date(report.reported_at), 'MMM d, yyyy HH:mm')}</p>
+                        <p className="text-gray-900 dark:text-white">{safeFormat(report.reported_at, 'MMM d, yyyy HH:mm')}</p>
                     </div>
                 </div>
 
@@ -289,7 +289,7 @@ const UserReportDetail: React.FC<{
                         {timelineEvents.length > 0 ? timelineEvents.map(event => (
                            <TimelineItem
                                 key={`${event.type}-${event.id}`}
-                                time={formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+                                time={safeFormatDistanceToNow(event.created_at, { addSuffix: true })}
                                 author={event.author}
                                 icon={event.type === 'assignment' ? <AssignResponderIcon className="w-4 h-4 text-gray-500" /> : <ZapIcon className="w-4 h-4 text-gray-500" />}
                             >

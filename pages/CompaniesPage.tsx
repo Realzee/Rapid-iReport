@@ -12,7 +12,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import AddEditAnnouncementModal from '../components/AddEditAnnouncementModal';
 import ConfirmModal from '../components/ConfirmModal';
 import DatabaseBackupModal from '../components/DatabaseBackupModal';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/dateUtils';
 import CompanyDetailModal from '../components/CompanyDetailModal';
 
 const AnnouncementTypeIcon: React.FC<{ type: AnnouncementType, className?: string }> = ({ type, className="w-6 h-6" }) => {
@@ -746,7 +746,7 @@ const CompaniesPage: React.FC = () => {
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                                    {announcement.expires_at ? format(new Date(announcement.expires_at), 'MMM d, yyyy HH:mm') : 'Never'}
+                                                    {announcement.expires_at ? safeFormat(announcement.expires_at, 'MMM d, yyyy HH:mm') : 'Never'}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <div className="flex items-center justify-end space-x-4">

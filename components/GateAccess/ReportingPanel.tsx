@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabase';
 import { GateAccessLog } from '../../types';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { safeFormat } from '../../utils/dateUtils';
 import { ChartBarIcon, DownloadIcon, AlertTriangleIcon } from '../icons';
 
 const ReportingPanel: React.FC<{ profileId: string, companyId?: string }> = ({ profileId, companyId }) => {
@@ -52,7 +53,7 @@ const ReportingPanel: React.FC<{ profileId: string, companyId?: string }> = ({ p
         const csvRows = [headers.join(',')];
         
         for (const log of logs) {
-            const time = format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss');
+            const time = safeFormat(log.created_at, 'yyyy-MM-dd HH:mm:ss');
             const row = [
                 time,
                 log.license_plate,
@@ -68,7 +69,7 @@ const ReportingPanel: React.FC<{ profileId: string, companyId?: string }> = ({ p
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `gate_access_report_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`);
+        link.setAttribute("download", `gate_access_report_${safeFormat(new Date(), 'yyyyMMdd_HHmmss')}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -150,7 +151,7 @@ const ReportingPanel: React.FC<{ profileId: string, companyId?: string }> = ({ p
                                         {logs.slice(0, 100).map((log) => (
                                             <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                                 <td className="px-6 py-3 text-sm text-gray-500 whitespace-nowrap">
-                                                    {format(new Date(log.created_at), 'dd MMM yyyy, HH:mm')}
+                                                    {safeFormat(log.created_at, 'dd MMM yyyy, HH:mm')}
                                                 </td>
                                                 <td className="px-6 py-3">
                                                     <span className="font-mono font-bold text-gray-900 dark:text-white">{log.license_plate}</span>

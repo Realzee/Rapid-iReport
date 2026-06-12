@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, EmergencyReport, ReportUpdate, Profile as UserProfile, UserRole, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES } from '../types';
 import { supabase } from '../utils/supabase';
-import { format, formatDistanceToNow } from 'date-fns';
+import { safeFormatDistanceToNow } from '../utils/dateUtils';
 import StatusBadge from '../components/StatusBadge';
 import { NavigationIcon, CameraIcon, ScanIcon, XIcon, ChatAlt2Icon, PlusIcon, AlertTriangleIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
@@ -528,7 +528,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                             
                             {isSharingLocation && lastSyncTimestamp && (
                                 <p className="text-xs text-right text-gray-400 dark:text-gray-500">
-                                    Synced {formatDistanceToNow(lastSyncTimestamp, { addSuffix: true })}
+                                    Synced {safeFormatDistanceToNow(lastSyncTimestamp, { addSuffix: true })}
                                 </p>
                             )}
                         </div>
@@ -597,7 +597,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                                     </p>
                                     
                                     <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-2 mt-2">
-                                        <span>{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</span>
+                                        <span>{safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}</span>
                                         <span className="group-hover:text-blue-500 transition-colors">View Details →</span>
                                     </div>
                                 </div>
@@ -1072,7 +1072,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                                 <div key={u.id} className="flex flex-col">
                                     <div className="flex items-baseline justify-between mb-1">
                                         <span className="font-semibold text-xs text-gray-700 dark:text-gray-300">{u.user_full_name}</span>
-                                        <span className="text-[10px] text-gray-400 font-mono">{formatDistanceToNow(new Date(u.created_at), {addSuffix: true})}</span>
+                                        <span className="text-[10px] text-gray-400 font-mono">{safeFormatDistanceToNow(u.created_at, {addSuffix: true})}</span>
                                     </div>
                                     <p className="text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700/50 shadow-sm">
                                         {u.content}

@@ -3,7 +3,7 @@ import { supabase } from '../utils/supabase';
 import { TechJob, Profile, TechChatMessage, UserRole, UserStatus } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { format, formatDistanceToNow } from 'date-fns';
+import { safeFormatDistanceToNow } from '../utils/dateUtils';
 import { 
     WrenchIcon, 
     SearchIcon, 
@@ -464,7 +464,7 @@ const TechOpsPage: React.FC = () => {
                                                 {tech.last_seen_at && (
                                                     <div className="text-[9px] text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800/40 pt-1.5 flex items-center gap-1">
                                                         <ClockIcon className="w-3 h-3 text-gray-400" />
-                                                        <span>Checked In: {formatDistanceToNow(new Date(tech.last_seen_at))} ago</span>
+                                                        <span>Checked In: {safeFormatDistanceToNow(tech.last_seen_at)} ago</span>
                                                     </div>
                                                 )}
                                             </div>

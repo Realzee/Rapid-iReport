@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip, GeoJSON, Circl
 import L, { LatLngBoundsExpression } from 'leaflet';
 import { Report, Responder, VehicleReport, ReportStatus, Severity, ResponderStatus, Profile } from '../types';
 import StatusBadge from './StatusBadge';
-import { formatDistanceToNow } from 'date-fns';
+import { safeFormatDistanceToNow } from '../utils/dateUtils';
 import { CheckCircleIcon, ShareIcon, GlobeIcon, UsersIcon } from './icons';
 import MapStyleToggle, { MapStyle } from './MapStyleToggle';
 import { useTheme } from '../contexts/ThemeContext';
@@ -456,7 +456,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                                         
                                         <hr className="border-gray-200 dark:border-gray-600 my-2" />
                                         <div className="flex justify-between items-center">
-                                            <p className="text-xs text-gray-400 dark:text-gray-500">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
+                                            <p className="text-xs text-gray-400 dark:text-gray-500">{safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}</p>
                                             <button onClick={() => handleShareReport(report.id)} className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors disabled:opacity-50" disabled={copiedReportId === report.id}>
                                                 {copiedReportId === report.id ? <><CheckCircleIcon className="w-4 h-4 text-green-400" /><span className="text-green-400">Copied!</span></> : <><ShareIcon className="w-4 h-4" /><span>Share</span></>}
                                             </button>
@@ -486,7 +486,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                                                 <p className="font-bold text-green-600 mb-1 flex items-center gap-1">
                                                     <CheckCircleIcon className="w-4 h-4" /> RECOVERED LOCATION
                                                 </p>
-                                                <p className="text-sm">Recovered at: {formatDistanceToNow(new Date((report as any).recovered_at || report.updated_at), { addSuffix: true })}</p>
+                                                <p className="text-sm">Recovered at: {safeFormatDistanceToNow((report as any).recovered_at || report.updated_at, { addSuffix: true })}</p>
                                                 <p className="text-xs text-gray-500 mt-2">Vehicle/Subject from OB: {report.ob_number}</p>
                                             </div>
                                         </Popup>

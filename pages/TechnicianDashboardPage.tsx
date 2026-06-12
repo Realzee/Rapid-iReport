@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Profile, TechJob, TechChatMessage, UserRole } from '../types';
 import { supabase } from '../utils/supabase';
-import { format, formatDistanceToNow } from 'date-fns';
+import { safeFormat, safeFormatDistanceToNow } from '../utils/dateUtils';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { useToast } from '../contexts/ToastContext';
 import { WrenchIcon } from '../components/icons';
@@ -342,7 +342,7 @@ const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = ({ profi
                                             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">{job.description}</p>
                                             
                                             <div className="flex justify-between items-center text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-                                                <span>📅 {format(new Date(job.created_at), 'yyyy/MM/dd HH:mm')}</span>
+                                                <span>📅 {safeFormat(job.created_at, 'yyyy/MM/dd HH:mm')}</span>
                                                 <span className="flex items-center gap-1 font-bold">
                                                     Priority: <span className={severityColor}>{job.severity.toUpperCase()}</span>
                                                 </span>
@@ -469,7 +469,7 @@ const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = ({ profi
                                                 <div className="flex justify-between">
                                                     <span className="text-gray-400 dark:text-gray-500">Reported</span>
                                                     <span className="font-semibold text-gray-900 dark:text-white">
-                                                        {formatDistanceToNow(new Date(selectedJob.created_at))} ago
+                                                        {safeFormatDistanceToNow(selectedJob.created_at)} ago
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between">
@@ -654,7 +654,7 @@ const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = ({ profi
                                                             </span>
                                                             <p className="whitespace-pre-wrap">{msg.content}</p>
                                                             <span className="text-[8px] opacity-60 text-right mt-1.5 block">
-                                                                {format(new Date(msg.created_at), 'HH:mm')}
+                                                                {safeFormat(msg.created_at, 'HH:mm')}
                                                             </span>
                                                         </div>
                                                     );

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Report, VehicleReport, EmergencyReport, Company } from '../types';
 import { logoUrl } from '../assets/logo';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/dateUtils';
 import { AssignResponderIcon, ZapIcon } from './icons';
 
 interface PrintableReportProps {
@@ -21,7 +21,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
       <header className="flex justify-between items-center pb-4 border-b-2 border-gray-800">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">INCIDENT REPORT</h1>
-          <p className="text-gray-600">Generated: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}</p>
+          <p className="text-gray-600">Generated: {safeFormat(new Date(), 'yyyy-MM-dd HH:mm:ss')}</p>
         </div>
         <img src={company?.logo_url || logoUrl} alt="Logo" className="w-32 h-auto object-contain" />
       </header>
@@ -52,7 +52,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
           </div>
           <div>
             <p className="font-bold text-gray-500">Reported At</p>
-            <p>{format(new Date(report.reported_at), 'yyyy-MM-dd HH:mm:ss')}</p>
+            <p>{safeFormat(report.reported_at, 'yyyy-MM-dd HH:mm:ss')}</p>
           </div>
            <div>
             <p className="font-bold text-gray-500">Reported By</p>
@@ -127,7 +127,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
                     <div className="text-xs text-gray-500 mt-1">
                         {event.author && <span className="font-semibold">{event.author}</span>}
                         {event.author && ' · '}
-                        <span>{format(new Date(event.created_at), 'yyyy-MM-dd HH:mm:ss')}</span>
+                        <span>{safeFormat(event.created_at, 'yyyy-MM-dd HH:mm:ss')}</span>
                     </div>
                 </div>
             </div>

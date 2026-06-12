@@ -5,7 +5,7 @@ import { supabase } from '../utils/supabase';
 import { VehicleReport, ReportStatus, Severity, UserRole, ACTIVE_REPORT_STATUSES } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { ScanIcon, AlertTriangleIcon, CarIcon, CameraIcon, EyeIcon } from './icons';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/dateUtils';
 
 interface LookoutScannerProps {
     profile: any;
@@ -515,7 +515,7 @@ const LookoutScanner: React.FC<LookoutScannerProps> = ({ profile, onReportHit })
                                                 <p className={`font-mono font-bold text-lg ${isPartial ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-700 dark:text-red-400'}`}>{report.license_plate}</p>
                                                 {isPartial && <span className="text-[10px] font-bold bg-yellow-500 text-white px-1.5 py-0.5 rounded">PARTIAL MATCH</span>}
                                             </div>
-                                            <p className={`text-xs ${isPartial ? 'text-yellow-600/70 dark:text-yellow-400/70' : 'text-red-600/70 dark:text-red-400/70'}`}>Detected at {format(timestamp, 'HH:mm:ss')}</p>
+                                            <p className={`text-xs ${isPartial ? 'text-yellow-600/70 dark:text-yellow-400/70' : 'text-red-600/70 dark:text-red-400/70'}`}>Detected at {safeFormat(timestamp, 'HH:mm:ss')}</p>
                                         </div>
                                         <button onClick={() => onReportHit(report.id)} className={`px-3 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-colors ${isPartial ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'}`}>
                                             View Report

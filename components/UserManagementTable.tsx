@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Profile, Company, UserRole, UserStatus } from '../types';
 import { EditIcon, TrashIcon, EyeIcon, UsersIcon } from './icons';
-import { formatDistanceToNow } from 'date-fns';
+import { safeFormatDistanceToNow } from '../utils/dateUtils';
 
 interface RoleBadgeProps { role: UserRole; }
 const RoleBadge: React.FC<RoleBadgeProps> = memo(({ role }) => {
@@ -60,7 +60,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
         if (isOnline(lastSeen)) {
             return <span className="text-green-500 dark:text-green-400 font-medium">Online</span>;
         }
-        return lastSeen ? formatDistanceToNow(new Date(lastSeen), { addSuffix: true }) : 'Never';
+        return lastSeen ? safeFormatDistanceToNow(lastSeen, { addSuffix: true }) : 'Never';
     };
 
     return (

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Announcement, AnnouncementType } from '../types';
-import { formatDistanceToNow } from 'date-fns';
+import { safeFormatDistanceToNow } from '../utils/dateUtils';
 import { MegaphoneIcon, AlertTriangleIcon, LightbulbIcon } from './icons';
 
 interface AnnouncementsPanelProps {
@@ -36,7 +36,7 @@ const AnnouncementsPanel: React.FC<AnnouncementsPanelProps> = ({ announcements }
                                 <p className="font-semibold text-sm text-gray-800 dark:text-gray-100">{announcement.title}</p>
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">{announcement.content}</p>
                                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                    {formatDistanceToNow(new Date(announcement.created_at), { addSuffix: true })}
+                                    {safeFormatDistanceToNow(announcement.created_at, { addSuffix: true })}
                                 </p>
                             </div>
                         </div>

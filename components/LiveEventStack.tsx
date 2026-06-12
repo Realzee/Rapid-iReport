@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { Report, VehicleReport, Severity, Responder, Profile, CrimeReport } from '../types';
-import { format, differenceInMinutes } from 'date-fns';
+import { differenceInMinutes } from 'date-fns';
+import { safeFormat, safeGetDate } from '../utils/dateUtils';
 import StatusBadge from './StatusBadge';
 import ReportTypeBadge from './ReportTypeBadge';
 import { CameraIcon, UserIcon, ClockIcon, NavigationIcon, ChevronUpIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon, UsersIcon } from './icons';
@@ -13,7 +14,9 @@ const severityTagStyles: Record<Severity, string> = {
 };
 
 const getAgeColorClass = (date: string) => {
-    const minutes = differenceInMinutes(new Date(), new Date(date));
+    const d = safeGetDate(date);
+    if (!d) return 'border-l-gray-300';
+    const minutes = differenceInMinutes(new Date(), d);
     if (minutes < 10) return 'border-l-green-500';
     if (minutes < 30) return 'border-l-blue-500';
     if (minutes < 60) return 'border-l-yellow-500';
@@ -21,7 +24,9 @@ const getAgeColorClass = (date: string) => {
 };
 
 const getAgeTextClass = (date: string) => {
-    const minutes = differenceInMinutes(new Date(), new Date(date));
+    const d = safeGetDate(date);
+    if (!d) return 'text-gray-400';
+    const minutes = differenceInMinutes(new Date(), d);
     if (minutes < 10) return 'text-green-600 dark:text-green-400 font-bold';
     if (minutes < 30) return 'text-blue-600 dark:text-blue-400 font-medium';
     if (minutes < 60) return 'text-yellow-600 dark:text-yellow-400';
@@ -140,7 +145,7 @@ const LiveEventItem: React.FC<{
                         )}
                         <div className={`flex items-center gap-1 ml-auto ${ageTextClass}`}>
                             <ClockIcon className="w-3.5 h-3.5" />
-                            <span>{format(new Date(report.reported_at), 'HH:mm')}</span>
+                            <span>{safeFormat(report.reported_at, 'HH:mm')}</span>
                         </div>
                     </div>
                 </div>

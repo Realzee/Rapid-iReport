@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Report, VehicleReport, EmergencyReport } from '../types';
 import { XIcon, MapPinIcon } from './icons';
 import StatusBadge from './StatusBadge';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/dateUtils';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import { useTheme } from '../contexts/ThemeContext';
@@ -78,7 +78,7 @@ const PublicReportDetailModal: React.FC<PublicReportDetailModalProps> = ({ isOpe
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                             <DetailItem label="Severity" value={<span className="font-semibold capitalize">{report.severity}</span>} />
-                            <DetailItem label="Reported At" value={format(new Date(report.reported_at), 'MMM d, yyyy HH:mm')} />
+                            <DetailItem label="Reported At" value={safeFormat(report.reported_at, 'MMM d, yyyy HH:mm')} />
                             {report.type === 'vehicle' ? (
                                 <DetailItem label="Vehicle" value={`${(report as any).vehicle_color} ${(report as any).vehicle_make} ${(report as any).vehicle_model}`} />
                             ) : report.type === 'emergency' ? (

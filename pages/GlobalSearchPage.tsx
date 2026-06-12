@@ -3,7 +3,7 @@ import { supabase } from '../utils/supabase';
 import { VehicleReport, ReportStatus } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { SearchIcon, CarIcon, MapPinIcon, CheckCircleIcon } from '../components/icons';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/dateUtils';
 import ReportDetailModal from '../components/ReportDetailModal';
 import AddLegacyReportModal from '../components/AddLegacyReportModal';
 
@@ -281,7 +281,7 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
                                              if (!report.reported_at) return 'Unknown Date';
                                              const d = new Date(report.reported_at);
                                              if (isNaN(d.getTime())) return 'Invalid Date';
-                                             return format(d, 'MMM d, yyyy');
+                                             return safeFormat(d, 'MMM d, yyyy');
                                          })()}
                                     </div>
                                 </div>

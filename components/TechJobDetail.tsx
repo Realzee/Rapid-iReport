@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../utils/supabase';
 import { TechJob, Profile, TechChatMessage, UserRole } from '../types';
-import { format, formatDistanceToNow } from 'date-fns';
+import { safeFormat, safeFormatDistanceToNow } from '../utils/dateUtils';
 import { useToast } from '../contexts/ToastContext';
 
 interface TechJobDetailProps {
@@ -208,7 +208,7 @@ const TechJobDetail: React.FC<TechJobDetailProps> = ({
                             <div>
                                 <span className="block text-gray-400 dark:text-gray-500 mb-1">Created Time</span>
                                 <span className="font-semibold text-gray-800 dark:text-gray-300">
-                                    {formatDistanceToNow(new Date(job.created_at))} ago
+                                    {safeFormatDistanceToNow(job.created_at)} ago
                                 </span>
                             </div>
                         </div>
@@ -334,7 +334,7 @@ const TechJobDetail: React.FC<TechJobDetailProps> = ({
                                             </span>
                                             <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                                             <span className="text-[7px] opacity-60 text-right mt-1 block">
-                                                {format(new Date(msg.created_at), 'HH:mm')}
+                                                {safeFormat(msg.created_at, 'HH:mm')}
                                             </span>
                                         </div>
                                     );

@@ -4,7 +4,7 @@ import { supabase } from '../utils/supabase';
 import { Profile, GateAccessLog, VehicleReport, ReportStatus, Severity, ACTIVE_REPORT_STATUSES } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { SearchIcon, ScanIcon, LogOutIcon, LogInIcon, AlertTriangleIcon, CarIcon, ClockIcon, HistoryIcon, MapPinIcon, ChartBarIcon } from '../components/icons';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/dateUtils';
 import { logUserAction } from '../utils/logger';
 import ReportingPanel from '../components/GateAccess/ReportingPanel';
 
@@ -417,7 +417,7 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 text-right tabular-nums">
-                                                        {format(new Date(log.created_at), 'HH:mm:ss')}
+                                                        {safeFormat(log.created_at, 'HH:mm:ss')}
                                                     </td>
                                                 </tr>
                                             ))}

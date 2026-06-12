@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { UserActivityLog, UserRole, Profile } from '../types';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/dateUtils';
 import { DownloadIcon, FilterIcon, ClockIcon, SearchIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
 
@@ -197,7 +197,7 @@ const UserActivityPage: React.FC<UserActivityPageProps> = ({ profile }) => {
                                     return (
                                         <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                                                {log.created_at ? format(new Date(log.created_at), 'MMM d, HH:mm:ss') : 'N/A'}
+                                                {log.created_at ? safeFormat(log.created_at, 'MMM d, HH:mm:ss') : 'N/A'}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex flex-col">
