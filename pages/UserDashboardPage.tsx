@@ -6,7 +6,7 @@ import { PlusIcon, ZapIcon, CarIcon, CrimeIcon, AlertTriangleIcon, GlobeIcon, Us
 import ReportModal from '../components/ReportModal';
 import UserReportDetail from '../components/UserReportDetail';
 import StatusBadge from '../components/StatusBadge';
-import { formatDistanceToNow } from 'date-fns';
+import { safeFormatDistanceToNow } from '../utils/dateUtils';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
@@ -182,7 +182,7 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                                     <StatusBadge status={report.status} />
                                 </div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isEmergencyReport(report) ? report.emergency_type : report.crime_type)}</p>
-                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}</p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}</p>
                             </div>
                         ))}
                     </div>

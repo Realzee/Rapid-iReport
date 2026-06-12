@@ -2,7 +2,7 @@ import React, { useState, useMemo, memo } from 'react';
 import { Report, VehicleReport, Severity, Profile, UserRole, ReportStatus, Company } from '../types';
 import StatusBadge from './StatusBadge';
 import ReportTypeBadge from './ReportTypeBadge';
-import { formatDistanceToNow } from 'date-fns';
+import { safeFormatDistanceToNow } from '../utils/dateUtils';
 import { CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon, UsersIcon } from './icons';
 
 interface ReportListItemProps {
@@ -180,7 +180,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                     )}
                 </div>
               <p className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
-                  {formatDistanceToNow(new Date(report.reported_at), { addSuffix: true })}
+                  {safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}
               </p>
             </div>
         </div>

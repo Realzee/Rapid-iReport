@@ -10,6 +10,7 @@ import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import { logUserAction } from '../utils/logger';
 import { BulkShareModal } from '../components/BulkShareModal';
+import { safeFormat } from '../utils/dateUtils';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
@@ -549,11 +550,11 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                             {report.severity}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{format(new Date(report.reported_at), 'MMM d, yyyy HH:mm')}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{safeFormat(report.reported_at, 'MMM d, yyyy HH:mm')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{(report as any).reported_by_name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize">{report.status.replace(/_/g, ' ')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {(report as any).achieved_at ? format(new Date((report as any).achieved_at), 'MMM d, yyyy HH:mm') : 'N/A'}
+                                        {safeFormat((report as any).achieved_at, 'MMM d, yyyy HH:mm', 'N/A')}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex items-center justify-end space-x-4">

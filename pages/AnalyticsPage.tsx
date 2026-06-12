@@ -14,6 +14,7 @@ import {
 } from '../components/icons';
 import { Calendar, Filter } from 'lucide-react';
 import StatCard from '../components/StatCard';
+import { safeFormat, safeGetDate } from '../utils/dateUtils';
 
 // Type Guard
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
@@ -265,8 +266,9 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
         if (completedReports.length === 0) return 'N/A';
 
         const totalMinutes = completedReports.reduce((acc, r) => {
-            const start = new Date(r.reported_at);
-            const end = new Date(r.completed_at!);
+            const start = safeGetDate(r.reported_at);
+            const end = safeGetDate(r.completed_at);
+            if (!start || !end) return acc;
             return acc + differenceInMinutes(end, start);
         }, 0);
 
@@ -320,7 +322,8 @@ const TrendsReport: React.FC<{ reports: Report[], theme: string }> = ({ reports,
         const grouped = reports.reduce((acc, report) => {
             if (!report.reported_at) return acc;
             try {
-                const date = format(new Date(report.reported_at), 'yyyy-MM-dd');
+                const date = safeFormat(report.reported_at, 'yyyy-MM-dd');
+                if (date === 'N/A') return acc;
                 if (!acc[date]) acc[date] = { date, vehicle: 0, crime: 0, emergency: 0, total: 0 };
                 
                 if (isVehicleReport(report)) acc[date].vehicle++;
@@ -361,13 +364,13 @@ const TrendsReport: React.FC<{ reports: Report[], theme: string }> = ({ reports,
                         <XAxis 
                             dataKey="date" 
                             stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'} 
-                            tickFormatter={(str) => format(parseISO(str), 'MMM d')}
+                            tickFormatter={(str) => safeFormat(str, 'MMM d')}
                         />
                         <YAxis stroke={theme === 'dark' ? '#9CA3AF' : '#6B7280'} />
                         <Tooltip 
                             contentStyle={{ backgroundColor: theme === 'dark' ? '#1F2937' : '#FFFFFF', borderColor: theme === 'dark' ? '#374151' : '#E5E7EB' }}
                             itemStyle={{ color: theme === 'dark' ? '#E5E7EB' : '#111827' }}
-                            labelFormatter={(label) => format(parseISO(label as string), 'MMM d, yyyy')}
+                            labelFormatter={(label) => safeFormat(label, 'MMM d, yyyy')}
                         />
                         <Legend />
                         <Area type="monotone" dataKey="vehicle" name="Vehicle Incidents" stroke="#EAB308" fillOpacity={1} fill="url(#colorVehicle)" />
