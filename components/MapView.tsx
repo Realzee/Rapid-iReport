@@ -302,10 +302,12 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
             html: `
                 <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;">
                     <span class="animate-pulse" style="position: absolute; display: inline-flex; width: 22px; height: 22px; border-radius: 9999px; background-color: #3b82f6; opacity: 0.25;"></span>
-                    <div style="width: 26px; height: 26px; background-color: #1e3a8a; border: 2px solid #ffffff; border-radius: 9999px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                        </svg>
+                    <div style="width: 26px; height: 26px; background-color: #ffffff; border: 2px solid #1e3a8a; border-radius: 9999px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3); overflow: hidden;">
+                        <img 
+                            src="https://upload.wikimedia.org/wikipedia/commons/2/2a/SAPS_badge.svg" 
+                            style="width: 19px; height: 19px; object-fit: contain;" 
+                            alt="SAPS"
+                        />
                     </div>
                 </div>
             `,
@@ -371,10 +373,12 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 layer.bindPopup(`
                     <div style="font-family: sans-serif; padding: 4px; max-width: 250px;">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                            <div style="background-color: #dbeafe; padding: 4px; border-radius: 4px; display: inline-flex;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                </svg>
+                            <div style="background-color: #f3f4f6; padding: 3px; border-radius: 4px; display: inline-flex; border: 1px solid #e5e7eb;">
+                                <img 
+                                    src="https://upload.wikimedia.org/wikipedia/commons/2/2a/SAPS_badge.svg" 
+                                    style="width: 20px; height: 20px; object-fit: contain;" 
+                                    alt="SAPS Badge" 
+                                />
                             </div>
                             <span style="font-weight: bold; font-size: 13px; color: #1e1b4b;">${stationName}</span>
                         </div>
