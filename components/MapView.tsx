@@ -322,10 +322,10 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
         if (feature.properties && feature.properties.type === 'boundary') {
             return {
                 fillColor: '#3b82f6', // SAPS Blue
-                fillOpacity: 0.04,
-                color: '#1e3a8a',
-                weight: 1.2,
-                dashArray: '3, 4'
+                fillOpacity: 0.1,
+                color: '#1e40af', // Vibrant royal blue
+                weight: 2,
+                dashArray: '' // solid border for crisp boundaries
             };
         }
         return {
@@ -349,16 +349,19 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 layer.on({
                     mouseover: (e: any) => {
                         e.target.setStyle({
-                            fillOpacity: 0.15,
-                            weight: 2,
-                            color: '#3b82f6'
+                            fillOpacity: 0.3,
+                            weight: 3.5,
+                            color: '#2563eb'
                         });
+                        if (typeof e.target.bringToFront === 'function') {
+                            e.target.bringToFront();
+                        }
                     },
                     mouseout: (e: any) => {
                         e.target.setStyle({
-                            fillOpacity: 0.04,
-                            weight: 1.2,
-                            color: '#1e3a8a'
+                            fillOpacity: 0.1,
+                            weight: 2,
+                            color: '#1e40af'
                         });
                     }
                 });
