@@ -273,6 +273,136 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
     const [copiedReportId, setCopiedReportId] = useState<string | null>(null);
     const [mapStyle, setMapStyle] = useState<MapStyle>('street');
     const { theme } = useTheme();
+    const [showSapsPrecincts, setShowSapsPrecincts] = useState<boolean>(true);
+    const [sapsGeoJson, setSapsGeoJson] = useState<any>(null);
+
+    useEffect(() => {
+        let isMounted = true;
+        const fetchSaps = async () => {
+            try {
+                const response = await fetch('/api/saps-boundaries');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (isMounted) {
+                        setSapsGeoJson(data);
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching SAPS boundaries:', err);
+            }
+        };
+        fetchSaps();
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const createSapsStationIcon = () => {
+        return new L.DivIcon({
+            html: `
+                <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;">
+                    <span class="animate-pulse" style="position: absolute; display: inline-flex; width: 22px; height: 22px; border-radius: 9999px; background-color: #3b82f6; opacity: 0.25;"></span>
+                    <div style="width: 26px; height: 26px; background-color: #1e3a8a; border: 2px solid #ffffff; border-radius: 9999px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                    </div>
+                </div>
+            `,
+            className: '',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16]
+        });
+    };
+
+    const sapsBoundaryStyle = (feature: any) => {
+        if (feature.properties && feature.properties.type === 'boundary') {
+            return {
+                fillColor: '#3b82f6', // SAPS Blue
+                fillOpacity: 0.04,
+                color: '#1e3a8a',
+                weight: 1.2,
+                dashArray: '3, 4'
+            };
+        }
+        return {
+            stroke: false,
+            fill: false
+        };
+    };
+
+    const onEachSapsFeature = (feature: any, layer: any) => {
+        if (feature.properties) {
+            if (feature.properties.type === 'boundary') {
+                layer.bindTooltip(`
+                    <div style="font-family: sans-serif; padding: 2px 4px;">
+                        <span style="font-weight: bold; color: #1e3a8a;">SAPS:</span> ${feature.properties.name}
+                    </div>
+                `, {
+                    sticky: true,
+                    className: 'rounded shadow border bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-1 text-xs border-blue-200 dark:border-blue-900'
+                });
+                
+                layer.on({
+                    mouseover: (e: any) => {
+                        e.target.setStyle({
+                            fillOpacity: 0.15,
+                            weight: 2,
+                            color: '#3b82f6'
+                        });
+                    },
+                    mouseout: (e: any) => {
+                        e.target.setStyle({
+                            fillOpacity: 0.04,
+                            weight: 1.2,
+                            color: '#1e3a8a'
+                        });
+                    }
+                });
+            } else if (feature.properties.type === 'station') {
+                const stationName = feature.properties.name || 'SAPS Station';
+                const stationDesc = feature.properties.description || '';
+                
+                const formattedDesc = stationDesc
+                    ? stationDesc.split('\n').map((line: string) => `<div>${line.trim()}</div>`).join('')
+                    : 'Gauteng Policing Station';
+
+                layer.bindPopup(`
+                    <div style="font-family: sans-serif; padding: 4px; max-width: 250px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <div style="background-color: #dbeafe; padding: 4px; border-radius: 4px; display: inline-flex;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                </svg>
+                            </div>
+                            <span style="font-weight: bold; font-size: 13px; color: #1e1b4b;">${stationName}</span>
+                        </div>
+                        <div style="font-size: 10px; color: #9ca3af; font-weight: bold; text-transform: uppercase; margin-bottom: 6px;">Contact & Location</div>
+                        <div style="font-size: 11px; color: #4b5563; line-height: 1.4; background-color: #f9fafb; padding: 6px; border-radius: 4px; border: 1px solid #e5e7eb; max-height: 150px; overflow-y: auto;">
+                            ${formattedDesc}
+                        </div>
+                    </div>
+                `, {
+                    maxWidth: 280
+                });
+
+                layer.bindTooltip(`
+                    <div style="font-weight: bold; font-size: 10px; color: #1e3a8a;">SAPS: ${feature.properties.name}</div>
+                `, {
+                    direction: 'top',
+                    offset: [0, -10]
+                });
+            }
+        }
+    };
+
+    const pointToLayer = (feature: any, latlng: L.LatLng) => {
+        if (feature.properties && feature.properties.type === 'station') {
+            return L.marker(latlng, { icon: createSapsStationIcon() });
+        }
+        return L.marker(latlng);
+    };
 
     const handleShareReport = (reportId: string) => {
         const shareUrl = `${window.location.origin}/report/${reportId}`;
@@ -350,6 +480,15 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 
                 {showHighRiskAreas && (
                     <GeoJSON data={HIGH_RISK_POLYGONS as any} style={getHighRiskStyle as any} />
+                )}
+
+                {showSapsPrecincts && sapsGeoJson && (
+                    <GeoJSON 
+                        data={sapsGeoJson} 
+                        style={sapsBoundaryStyle as any}
+                        onEachFeature={onEachSapsFeature}
+                        pointToLayer={pointToLayer as any}
+                    />
                 )}
 
                 {responders.map(responder => (
@@ -502,6 +641,22 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 )}
             </MapContainer>
             <MapStyleToggle currentStyle={mapStyle} onStyleChange={setMapStyle} />
+            
+            <div className="absolute top-2 right-12 z-[1000] leaflet-control">
+                <button
+                    onClick={() => setShowSapsPrecincts(prev => !prev)}
+                    className={`p-2 backdrop-blur-sm rounded-lg shadow-lg border transition-all ${
+                        showSapsPrecincts 
+                            ? 'bg-blue-600 border-blue-750 text-white hover:bg-blue-700' 
+                            : 'bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-800 text-gray-750 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800'
+                    }`}
+                    title="Toggle SAPS Gauteng Precincts and Station Points"
+                >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                    </svg>
+                </button>
+            </div>
         </div>
     );
 };
