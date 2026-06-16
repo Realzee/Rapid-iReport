@@ -41,6 +41,33 @@ const isInsideHighRisk = (coords: { lat: number; lng: number }): boolean => {
     return HIGH_RISK_POLYGONS.features.some(feature => booleanPointInPolygon(pt, feature as any));
 };
 
+const getSapsColor = (name: string): string => {
+    const colors = [
+        '#ef4444', // Red
+        '#f97316', // Orange
+        '#f59e0b', // Amber
+        '#84cc16', // Lime
+        '#10b981', // Emerald
+        '#06b6d4', // Cyan
+        '#3b82f6', // Blue
+        '#6366f1', // Indigo
+        '#8b5cf6', // Violet
+        '#a855f7', // Purple
+        '#ec4899', // Pink
+        '#22c55e', // Grass Green
+        '#14b8a6', // Teal
+        '#0284c7'  // Sky Blue
+    ];
+    if (!name) return '#3b82f6';
+    const cleanName = name.replace(/\s+/g, '').toUpperCase();
+    let hash = 0;
+    for (let i = 0; i < cleanName.length; i++) {
+        hash = cleanName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+};
+
 const createIncidentIcon = (report: Report, isSelected: boolean, isInHighRisk: boolean) => {
     const typeColors: Record<string, string> = {
         'vehicle': '#3b82f6', // blue-500
@@ -320,12 +347,14 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
 
     const sapsBoundaryStyle = (feature: any) => {
         if (feature.properties && feature.properties.type === 'boundary') {
+            const name = feature.properties.name || '';
+            const boundaryColor = getSapsColor(name);
             return {
-                fillColor: '#3b82f6', // SAPS Blue
-                fillOpacity: 0.1,
-                color: '#1e40af', // Vibrant royal blue
+                fillColor: boundaryColor,
+                fillOpacity: 0.22, // Fills are transparent but visible, contrasting nicely
+                color: boundaryColor, // Solid line of matching color for clean borders
                 weight: 2,
-                dashArray: '' // solid border for crisp boundaries
+                dashArray: '' 
             };
         }
         return {
@@ -337,9 +366,12 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
     const onEachSapsFeature = (feature: any, layer: any) => {
         if (feature.properties) {
             if (feature.properties.type === 'boundary') {
+                const name = feature.properties.name || '';
+                const boundaryColor = getSapsColor(name);
+                
                 layer.bindTooltip(`
                     <div style="font-family: sans-serif; padding: 2px 4px;">
-                        <span style="font-weight: bold; color: #1e3a8a;">SAPS:</span> ${feature.properties.name}
+                        <span style="font-weight: bold; color: ${boundaryColor};">SAPS:</span> ${name}
                     </div>
                 `, {
                     sticky: true,
@@ -349,9 +381,9 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                 layer.on({
                     mouseover: (e: any) => {
                         e.target.setStyle({
-                            fillOpacity: 0.3,
+                            fillOpacity: 0.45,
                             weight: 3.5,
-                            color: '#2563eb'
+                            color: boundaryColor
                         });
                         if (typeof e.target.bringToFront === 'function') {
                             e.target.bringToFront();
@@ -359,9 +391,9 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                     },
                     mouseout: (e: any) => {
                         e.target.setStyle({
-                            fillOpacity: 0.1,
+                            fillOpacity: 0.22,
                             weight: 2,
-                            color: '#1e40af'
+                            color: boundaryColor
                         });
                     }
                 });
@@ -491,6 +523,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
 
                 {showSapsPrecincts && sapsGeoJson && (
                     <GeoJSON 
+                        key={sapsGeoJson ? `saps-boundaries-${sapsGeoJson.features?.length || 0}` : 'saps-boundaries-empty'}
                         data={sapsGeoJson} 
                         style={sapsBoundaryStyle as any}
                         onEachFeature={onEachSapsFeature}
