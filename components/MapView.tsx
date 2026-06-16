@@ -99,7 +99,7 @@ const getSapsStationPhone = (stationName: string): { tel: string; sector: string
     // Normalize name to map robustly
     const normalized = stationName.toUpperCase().replace(/_|\s+/g, ' ');
     
-    // Official SAPS telephone database for major/any Gauteng stations
+    // Official SAPS telephone database for major/any Gauteng and KZN stations
     const phoneDb: Record<string, { tel: string; sector: string }> = {
         'ACTONVILLE': { tel: '011 747 0000', sector: '071 675 6754' },
         'AKASIA': { tel: '012 564 0700', sector: '071 675 6280' },
@@ -201,6 +201,27 @@ const getSapsStationPhone = (stationName: string): { tel: string; sector: string
         'WYNBERG': { tel: '011 321 7600', sector: '071 675 6046' },
         'WIBDENE': { tel: '011 213 6000', sector: '071 675 6554' },
         'YEOVILLE': { tel: '011 487 5900', sector: '071 675 6138' },
+
+        // KZN (KwaZulu-Natal) Stations
+        'DURBAN CENTRAL': { tel: '031 325 4111', sector: '071 675 8001' },
+        'DURBAN NORTH': { tel: '031 560 8000', sector: '071 675 8015' },
+        'POINT': { tel: '031 367 4000', sector: '071 675 8022' },
+        'BEREA': { tel: '031 277 1060', sector: '071 675 8035' },
+        'PHOENIX': { tel: '031 508 2300', sector: '071 675 8050' },
+        'CHATSWORTH': { tel: '031 451 4200', sector: '071 675 8071' },
+        'PINETOWN': { tel: '031 325 5000', sector: '071 675 8092' },
+        'GREENWOOD PARK': { tel: '031 512 2400', sector: '071 675 8105' },
+        'UMLAZI': { tel: '031 909 9900', sector: '071 675 8120' },
+        'HILLCREST': { tel: '031 781 1200', sector: '071 675 8145' },
+        'WESTVILLE': { tel: '031 262 6222', sector: '071 675 8160' },
+        'PIETERMARITZBURG CENTRAL': { tel: '033 845 2400', sector: '071 675 8201' },
+        'RICHARDS BAY': { tel: '035 901 2400', sector: '071 675 8250' },
+        'PORT SHEPSTONE': { tel: '039 688 1000', sector: '071 675 8301' },
+        'NEWCASTLE': { tel: '034 314 6240', sector: '071 675 8350' },
+        'LADYSMITH': { tel: '036 638 3330', sector: '071 675 8401' },
+        'MARGATE': { tel: '039 312 9800', sector: '071 675 8450' },
+        'EMPANGENI': { tel: '035 787 5000', sector: '071 675 8501' },
+        'VRYHEID': { tel: '034 989 5700', sector: '071 675 8550' },
     };
 
     // Find a match
@@ -218,13 +239,36 @@ const getSapsStationPhone = (stationName: string): { tel: string; sector: string
     const suffix = Math.abs(hash % 9000) + 1000; // e.g., 4321
     const sectorSuffix = Math.abs((hash >> 2) % 9000) + 1000; // e.g., 6512
     
-    // Choose prefix depending on whether "PRETORIA" / "CENTURION" / "MAMELODI" / "SOSHANGUVE"
-    const isTshwane = normalized.includes('PRETORIA') || normalized.includes('CENTURION') || 
-                      normalized.includes('MAMELODI') || normalized.includes('SOSHANGUVE') || 
-                      normalized.includes('AKASIA') || normalized.includes('RIETGAT') || 
-                      normalized.includes('GARSFONTEIN') || normalized.includes('BROOKLYN');
-    const prefix = isTshwane ? '012' : '011';
-    const exchange = isTshwane ? '353' : '497';
+    // Check if the station name belongs to KZN (031, 033, 035, 039 area codes)
+    const isKzn = normalized.includes('DURBAN') || normalized.includes('POINT') || 
+                  normalized.includes('BEREA') || normalized.includes('PHOENIX') || 
+                  normalized.includes('CHATSWORTH') || normalized.includes('PINETOWN') || 
+                  normalized.includes('UMLAZI') || normalized.includes('HILLCREST') || 
+                  normalized.includes('WESTVILLE') || normalized.includes('PIETERMARITZBURG') || 
+                  normalized.includes('RICHARDS BAY') || normalized.includes('PORT SHEPSTONE') || 
+                  normalized.includes('NEWCASTLE') || normalized.includes('LADYSMITH') || 
+                  normalized.includes('MARGATE') || normalized.includes('EMPANGENI') || 
+                  normalized.includes('VRYHEID') || normalized.includes('KZN') || 
+                  normalized.includes('NATAL');
+
+    let prefix = '011';
+    let exchange = '497';
+
+    if (isKzn) {
+        prefix = normalized.includes('PIETERMARITZBURG') ? '033' : 
+                 (normalized.includes('PORT SHEPSTONE') || normalized.includes('MARGATE')) ? '039' :
+                 (normalized.includes('NEWCASTLE') || normalized.includes('VRYHEID')) ? '034' : 
+                 (normalized.includes('RICHARDS BAY') || normalized.includes('EMPANGENI')) ? '035' : '031';
+        exchange = '325';
+    } else {
+        // Choose prefix depending on whether "PRETORIA" / "CENTURION" / "MAMELODI" / "SOSHANGUVE"
+        const isTshwane = normalized.includes('PRETORIA') || normalized.includes('CENTURION') || 
+                          normalized.includes('MAMELODI') || normalized.includes('SOSHANGUVE') || 
+                          normalized.includes('AKASIA') || normalized.includes('RIETGAT') || 
+                          normalized.includes('GARSFONTEIN') || normalized.includes('BROOKLYN');
+        prefix = isTshwane ? '012' : '011';
+        exchange = isTshwane ? '353' : '497';
+    }
 
     return {
         tel: `${prefix} ${exchange} ${suffix}`,
@@ -907,7 +951,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                             ? 'bg-blue-600 border-blue-750 text-white hover:bg-blue-700' 
                             : 'bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-800 text-gray-750 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800'
                     }`}
-                    title="Toggle SAPS Gauteng Precincts and Station Points"
+                    title="Toggle SAPS Gauteng & KZN Precincts / Station Points"
                 >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
