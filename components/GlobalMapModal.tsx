@@ -29,23 +29,37 @@ const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profil
                 usersQuery.eq('company_id', profile.company_id);
             }
 
+            let vehicleQuery = supabase.from('vehicle_reports').select('*');
+            let crimeQuery = supabase.from('crime_reports').select('*');
+            let emergencyQuery = supabase.from('emergency_reports').select('*');
+
+            if (profile.company_id) {
+                vehicleQuery = vehicleQuery.eq('company_id', profile.company_id);
+                crimeQuery = crimeQuery.eq('company_id', profile.company_id);
+                emergencyQuery = emergencyQuery.eq('company_id', profile.company_id);
+            }
+
             const [
                 { data: vehicleData, error: vError },
                 { data: crimeData, error: cError },
+                { data: emergencyData, error: eError },
                 { data: usersData, error: uError }
             ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*'),
-                supabase.from('crime_reports').select('*'),
+                vehicleQuery,
+                crimeQuery,
+                emergencyQuery,
                 usersQuery
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
             if (cError) console.error('Error fetching crime reports:', cError);
+            if (eError) console.error('Error fetching emergency reports:', eError);
             if (uError) console.error('Error fetching users:', uError);
 
             const combinedReports = [
                 ...(vehicleData || []).map(r => ({...r, type: 'vehicle'})),
                 ...(crimeData || []).map(r => ({...r, type: 'crime'})),
+                ...(emergencyData || []).map(r => ({...r, type: 'emergency'})),
             ];
             
             setAllUsers(usersData || []);
@@ -54,14 +68,33 @@ const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profil
         };
         fetchData();
 
-        const handleNewReport = (payload: any, type: 'vehicle' | 'crime') => {
+        const handleNewReport = (payload: any, type: 'vehicle' | 'crime' | 'emergency') => {
              const newReport = { ...payload.new, type };
+             if (profile.company_id && newReport.company_id !== profile.company_id) {
+                 return;
+             }
              setReports(prevReports => [newReport, ...prevReports]);
         };
         
         const handleReportUpdate = (payload: any) => {
-            const updatedReport = { ...payload.new, type: payload.table === 'vehicle_reports' ? 'vehicle' : 'crime' };
-            setReports(prev => prev.map(r => r.id === updatedReport.id ? updatedReport : r));
+            let type: 'vehicle' | 'crime' | 'emergency';
+            if (payload.table === 'vehicle_reports') type = 'vehicle';
+            else if (payload.table === 'emergency_reports') type = 'emergency';
+            else type = 'crime';
+
+            const updatedReport = { ...payload.new, type };
+            if (profile.company_id && updatedReport.company_id !== profile.company_id) {
+                setReports(prev => prev.filter(r => r.id !== updatedReport.id));
+                return;
+            }
+            setReports(prev => {
+                const wasInList = prev.some(r => r.id === updatedReport.id);
+                if (wasInList) {
+                    return prev.map(r => r.id === updatedReport.id ? updatedReport : r);
+                } else {
+                    return [updatedReport, ...prev];
+                }
+            });
         };
         
         const handleReportDelete = (payload: any) => {
@@ -72,10 +105,13 @@ const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profil
           .channel('public:reports-map-modal')
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'vehicle_reports' }, (payload) => handleNewReport(payload, 'vehicle'))
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'crime_reports' }, (payload) => handleNewReport(payload, 'crime'))
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'emergency_reports' }, (payload) => handleNewReport(payload, 'emergency'))
           .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'vehicle_reports' }, handleReportUpdate)
           .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'crime_reports' }, handleReportUpdate)
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'emergency_reports' }, handleReportUpdate)
           .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'vehicle_reports' }, handleReportDelete)
           .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'crime_reports' }, handleReportDelete)
+          .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'emergency_reports' }, handleReportDelete)
           .subscribe();
         
         const handleProfileUpdate = (payload: any) => {
