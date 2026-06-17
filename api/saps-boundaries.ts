@@ -24,6 +24,28 @@ const kznStations = [
     { name: "VRYHEID", lng: 30.79310, lat: -27.76610 }
 ];
 
+const wcStations = [
+    { name: "CAPE TOWN CENTRAL", lng: 18.4241, lat: -33.9249 },
+    { name: "SEA POINT", lng: 18.3922, lat: -33.9142 },
+    { name: "CAMPS BAY", lng: 18.3789, lat: -33.9515 },
+    { name: "WOODSTOCK", lng: 18.4485, lat: -33.9288 },
+    { name: "CLAREMONT", lng: 18.4651, lat: -33.9802 },
+    { name: "RONDEBOSCH", lng: 18.4722, lat: -33.9654 },
+    { name: "WYNBERG WC", lng: 18.4682, lat: -34.0084 },
+    { name: "MITCHELLS PLAIN", lng: 18.6253, lat: -34.0494 },
+    { name: "KHAYELITSHA", lng: 18.6792, lat: -34.0371 },
+    { name: "NYANGA", lng: 18.5873, lat: -33.9983 },
+    { name: "GUGULETHU", lng: 18.5714, lat: -33.9774 },
+    { name: "BELLVILLE", lng: 18.6294, lat: -33.8943 },
+    { name: "MILNERTON", lng: 18.4965, lat: -33.8752 },
+    { name: "TABLE VIEW", lng: 18.4891, lat: -33.8213 },
+    { name: "STELLENBOSCH", lng: 18.8602, lat: -33.9321 },
+    { name: "PAARL", lng: 18.9621, lat: -33.7242 },
+    { name: "HERMANUS", lng: 19.2341, lat: -34.4162 },
+    { name: "GEORGE", lng: 22.4504, lat: -33.9599 },
+    { name: "KNYSNA", lng: 23.0471, lat: -34.0351 }
+];
+
 const getPrecinctPolygon = (lng: number, lat: number, name: string): [number, number][][] => {
     const vertices: [number, number][] = [];
     const numPoints = 12; // 12-sided polygon for a smoother organic shape
@@ -92,15 +114,49 @@ export default async function handler(req: Request, res: Response) {
             });
         });
 
+        // Generate Western Cape Features
+        const wcFeatures: any[] = [];
+        wcStations.forEach((station) => {
+            // 1. Station Point
+            wcFeatures.push({
+                type: "Feature",
+                geometry: {
+                    type: "Point",
+                    coordinates: [station.lng, station.lat]
+                },
+                properties: {
+                    name: `${station.name} STATION`,
+                    description: `description: ${station.name} POLICE STATION<br>COMPNT_NM: ${station.name}<br>LOCATION_X: ${station.lng}<br>LOCATION_Y: ${station.lat}<br>CREATE_DT: 20240319<br>VERSION: 1.3.1`,
+                    type: "station"
+                }
+            });
+
+            // 2. Boundary Polygon
+            const polygonCoords = getPrecinctPolygon(station.lng, station.lat, station.name);
+            wcFeatures.push({
+                type: "Feature",
+                geometry: {
+                    type: "Polygon",
+                    coordinates: polygonCoords
+                },
+                properties: {
+                    name: station.name,
+                    description: `description: ${station.name}<br>COMPNT_NM: ${station.name}<br>CREATE_DT: 20240319<br>VERSION: 1.3.1`,
+                    type: "boundary"
+                }
+            });
+        });
+
         // Combine features
         const combinedFeatures = [
             ...(gautengCollection.features || []),
-            ...kznFeatures
+            ...kznFeatures,
+            ...wcFeatures
         ];
 
         const combinedCollection = {
             type: "FeatureCollection",
-            name: "SAPS_Gauteng_KZN_Boundaries_and_Stations",
+            name: "SAPS_Gauteng_KZN_WC_Boundaries_and_Stations",
             features: combinedFeatures
         };
 

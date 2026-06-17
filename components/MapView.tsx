@@ -99,7 +99,7 @@ const getSapsStationPhone = (stationName: string): { tel: string; sector: string
     // Normalize name to map robustly
     const normalized = stationName.toUpperCase().replace(/_|\s+/g, ' ');
     
-    // Official SAPS telephone database for major/any Gauteng and KZN stations
+    // Official SAPS telephone database for major/any Gauteng, KZN, and Western Cape stations
     const phoneDb: Record<string, { tel: string; sector: string }> = {
         'ACTONVILLE': { tel: '011 747 0000', sector: '071 675 6754' },
         'AKASIA': { tel: '012 564 0700', sector: '071 675 6280' },
@@ -222,6 +222,27 @@ const getSapsStationPhone = (stationName: string): { tel: string; sector: string
         'MARGATE': { tel: '039 312 9800', sector: '071 675 8450' },
         'EMPANGENI': { tel: '035 787 5000', sector: '071 675 8501' },
         'VRYHEID': { tel: '034 989 5700', sector: '071 675 8550' },
+
+        // WC (Western Cape) Stations
+        'CAPE TOWN CENTRAL': { tel: '021 467 8001', sector: '071 680 1102' },
+        'SEA POINT': { tel: '021 430 3700', sector: '071 680 1130' },
+        'CAMPS BAY': { tel: '021 437 8140', sector: '071 680 1145' },
+        'WOODSTOCK': { tel: '021 442 3100', sector: '071 680 1155' },
+        'CLAREMONT': { tel: '021 657 2250', sector: '071 680 1205' },
+        'RONDEBOSCH': { tel: '021 685 7345', sector: '071 680 1215' },
+        'WYNBERG WC': { tel: '021 797 4000', sector: '071 680 1230' },
+        'MITCHELLS PLAIN': { tel: '021 370 1600', sector: '071 680 1500' },
+        'KHAYELITSHA': { tel: '021 360 5500', sector: '071 680 1600' },
+        'NYANGA': { tel: '021 380 3000', sector: '071 680 1650' },
+        'GUGULETHU': { tel: '021 684 1500', sector: '071 680 1700' },
+        'BELLVILLE': { tel: '021 918 3000', sector: '071 680 2000' },
+        'MILNERTON': { tel: '021 528 3800', sector: '071 680 2100' },
+        'TABLE VIEW': { tel: '021 521 3300', sector: '071 680 2200' },
+        'STELLENBOSCH': { tel: '021 809 5012', sector: '071 680 3000' },
+        'PAARL': { tel: '021 807 4000', sector: '071 680 3100' },
+        'HERMANUS': { tel: '028 313 5300', sector: '071 680 3500' },
+        'GEORGE': { tel: '044 803 4733', sector: '071 680 4000' },
+        'KNYSNA': { tel: '044 302 6608', sector: '071 680 4100' },
     };
 
     // Find a match
@@ -251,6 +272,18 @@ const getSapsStationPhone = (stationName: string): { tel: string; sector: string
                   normalized.includes('VRYHEID') || normalized.includes('KZN') || 
                   normalized.includes('NATAL');
 
+    // Check if the station belongs to WC (021, 028, 044 area codes)
+    const isWc = normalized.includes('CAPE TOWN') || normalized.includes('SEA POINT') || 
+                 normalized.includes('CAMPS BAY') || normalized.includes('WOODSTOCK') || 
+                 normalized.includes('CLAREMONT') || normalized.includes('RONDEBOSCH') || 
+                 normalized.includes('WYNBERG') || normalized.includes('MITCHELLS') || 
+                 normalized.includes('KHAYELITSHA') || normalized.includes('NYANGA') || 
+                 normalized.includes('GUGULETHU') || normalized.includes('BELLVILLE') || 
+                 normalized.includes('MILNERTON') || normalized.includes('TABLE VIEW') || 
+                 normalized.includes('STELLENBOSCH') || normalized.includes('PAARL') || 
+                 normalized.includes('HERMANUS') || normalized.includes('GEORGE') || 
+                 normalized.includes('KNYSNA');
+
     let prefix = '011';
     let exchange = '497';
 
@@ -260,6 +293,10 @@ const getSapsStationPhone = (stationName: string): { tel: string; sector: string
                  (normalized.includes('NEWCASTLE') || normalized.includes('VRYHEID')) ? '034' : 
                  (normalized.includes('RICHARDS BAY') || normalized.includes('EMPANGENI')) ? '035' : '031';
         exchange = '325';
+    } else if (isWc) {
+        prefix = normalized.includes('GEORGE') || normalized.includes('KNYSNA') ? '044' :
+                 normalized.includes('HERMANUS') ? '028' : '021';
+        exchange = '467';
     } else {
         // Choose prefix depending on whether "PRETORIA" / "CENTURION" / "MAMELODI" / "SOSHANGUVE"
         const isTshwane = normalized.includes('PRETORIA') || normalized.includes('CENTURION') || 
@@ -951,7 +988,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                             ? 'bg-blue-600 border-blue-750 text-white hover:bg-blue-700' 
                             : 'bg-white/80 dark:bg-gray-900/80 border-gray-200 dark:border-gray-800 text-gray-750 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-800'
                     }`}
-                    title="Toggle SAPS Gauteng & KZN Precincts / Station Points"
+                    title="Toggle SAPS Gauteng, KZN & WC Precincts / Station Points"
                 >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
