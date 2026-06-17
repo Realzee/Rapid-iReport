@@ -32,10 +32,19 @@ export default async function handler(req: any, res: any) {
         const { id, ...dbPayload } = req.body;
         try {
             let data, error;
+            let exists = false;
             if (id) {
+                const { data: existing } = await supabaseAdmin.from('companies').select('id').eq('id', id).maybeSingle();
+                if (existing) {
+                    exists = true;
+                }
+            }
+
+            if (exists) {
                 ({ data, error } = await supabaseAdmin.from('companies').update(dbPayload).eq('id', id).select().single());
             } else {
-                ({ data, error } = await supabaseAdmin.from('companies').insert(dbPayload).select().single());
+                const insertPayload = id ? { id, ...dbPayload } : dbPayload;
+                ({ data, error } = await supabaseAdmin.from('companies').insert(insertPayload).select().single());
             }
 
             if (error) {
