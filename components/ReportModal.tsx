@@ -7,7 +7,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../utils/supabase';
 import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport, EmergencyReport } from '../types';
-import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon, CheckCircleIcon } from '../components/icons';
+import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon, CheckCircleIcon, TrashIcon } from '../components/icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
 import { sapsStations } from '../data/policeStations';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
@@ -1416,7 +1416,24 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 <div><label htmlFor="pound_name" className={labelClasses}>Pound Name</label><input type="text" name="pound_name" id="pound_name" value={formData.pound_name || ''} onChange={handleChange} className={inputClasses} placeholder="POUND NAME" /></div>
                                 
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">LOCATION PIN ON RECOVERY</label>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">LOCATION PIN ON RECOVERY</label>
+                                        {(formData as any).recovered_location_coords && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        recovered_location_coords: null
+                                                    } as any));
+                                                }}
+                                                className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                                                id="remove-recovery-pin-btn"
+                                            >
+                                                <TrashIcon className="w-3.5 h-3.5" /> Remove Pin
+                                            </button>
+                                        )}
+                                    </div>
                                     <LocationPicker 
                                         onLocationSelect={(coords) => {
                                             setFormData(prev => ({
