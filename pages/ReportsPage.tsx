@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../utils/supabase';
 import { Report, ReportStatus, Severity, VehicleReport, EmergencyReport, CrimeReport, Profile, Responder, UserRole, ResponderStatus, Company, ReportShare, TERMINAL_REPORT_STATUSES } from '../types';
 import { format } from 'date-fns';
@@ -74,15 +74,20 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
         return null;
     });
 
+    const hasRestoredEditRef = useRef(false);
+
     useEffect(() => {
+        if (hasRestoredEditRef.current) return;
         const savedId = localStorage.getItem('editing-report-id');
         if (savedId && reports.length > 0) {
             const report = reports.find(r => r.id === savedId);
             if (report) {
                 setReportToEdit(report);
                 setIsReportModalOpen(true);
+                hasRestoredEditRef.current = true;
             } else {
                 localStorage.removeItem('editing-report-id');
+                hasRestoredEditRef.current = true;
             }
         }
     }, [reports]);

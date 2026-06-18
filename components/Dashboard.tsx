@@ -41,6 +41,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         return null;
     });
     const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+    const hasRestoredEditRef = useRef(false);
     const { addToast } = useToast();
     const { openChat } = useChat();
 
@@ -122,14 +123,17 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     }, [profile]);
 
     useEffect(() => {
+        if (hasRestoredEditRef.current) return;
         const savedId = localStorage.getItem('editing-report-id');
         if (savedId && reports.length > 0) {
             const report = reports.find(r => r.id === savedId);
             if (report) {
                 setReportToEdit(report);
                 setIsReportModalOpen(true);
+                hasRestoredEditRef.current = true;
             } else {
                 localStorage.removeItem('editing-report-id');
+                hasRestoredEditRef.current = true;
             }
         }
     }, [reports]);

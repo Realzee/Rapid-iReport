@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../utils/supabase';
 import { Profile, Report, VehicleReport, EmergencyReport, ReportStatus } from '../types';
 import { PlusIcon, ZapIcon, CarIcon, CrimeIcon, AlertTriangleIcon, GlobeIcon, UsersIcon } from '../components/icons';
@@ -24,15 +24,20 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
         return null; // Don't hydrate directly, do it in useEffect
     });
 
+    const hasRestoredEditRef = useRef(false);
+
     useEffect(() => {
+        if (hasRestoredEditRef.current) return;
         const savedId = localStorage.getItem('editing-report-id');
         if (savedId && myReports.length > 0) {
             const report = myReports.find(r => r.id === savedId);
             if (report) {
                 setReportToEdit(report);
                 setIsReportModalOpen(true);
+                hasRestoredEditRef.current = true;
             } else {
                 localStorage.removeItem('editing-report-id');
+                hasRestoredEditRef.current = true;
             }
         }
     }, [myReports]);
