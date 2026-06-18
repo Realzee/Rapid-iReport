@@ -28,17 +28,18 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
 
     useEffect(() => {
         if (hasRestoredEditRef.current) return;
-        const savedId = localStorage.getItem('editing-report-id');
-        if (savedId && myReports.length > 0) {
-            const report = myReports.find(r => r.id === savedId);
-            if (report) {
-                setReportToEdit(report);
-                setIsReportModalOpen(true);
-                hasRestoredEditRef.current = true;
-            } else {
-                localStorage.removeItem('editing-report-id');
-                hasRestoredEditRef.current = true;
+        if (myReports.length > 0) {
+            const savedId = localStorage.getItem('editing-report-id');
+            if (savedId) {
+                const report = myReports.find(r => r.id === savedId);
+                if (report) {
+                    setReportToEdit(report);
+                    setIsReportModalOpen(true);
+                } else {
+                    localStorage.removeItem('editing-report-id');
+                }
             }
+            hasRestoredEditRef.current = true;
         }
     }, [myReports]);
 

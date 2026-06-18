@@ -109,17 +109,18 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
 
     useEffect(() => {
         if (hasRestoredEditRef.current) return;
-        const savedId = localStorage.getItem('editing-report-id');
-        if (savedId && reports.length > 0) {
-            const report = reports.find(r => r.id === savedId);
-            if (report) {
-                setReportToEdit(report);
-                setIsReportModalOpen(true);
-                hasRestoredEditRef.current = true;
-            } else {
-                localStorage.removeItem('editing-report-id');
-                hasRestoredEditRef.current = true;
+        if (reports.length > 0) {
+            const savedId = localStorage.getItem('editing-report-id');
+            if (savedId) {
+                const report = reports.find(r => r.id === savedId);
+                if (report) {
+                    setReportToEdit(report);
+                    setIsReportModalOpen(true);
+                } else {
+                    localStorage.removeItem('editing-report-id');
+                }
             }
+            hasRestoredEditRef.current = true;
         }
     }, [reports]);
     const [isDetailsVisible, setIsDetailsVisible] = useState(true);
