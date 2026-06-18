@@ -417,6 +417,8 @@ const createResponderIcon = (status: ResponderStatus, isInHighRisk: boolean) => 
 
 const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report | undefined, responders: Responder[], selectedResponder: Responder | undefined, selectedResponderId: string | null, activeTab?: 'events' | 'responders' | 'tech' }> = ({ reports, selectedReport, responders, selectedResponder, selectedResponderId, activeTab }) => {
     const map = useMap();
+    const hasFitInitRef = useRef<boolean>(false);
+
     useEffect(() => {
         // Use a timeout to allow CSS transitions on the container to finish before recalculating map size and position
         const timer = setTimeout(() => {
@@ -508,30 +510,34 @@ const MapFocusController: React.FC<{ reports: Report[], selectedReport: Report |
                 }
             } else {
                 // "Show All" logic: No report is selected, so fit all reports on the map.
-                const reportsWithCoords = reports.filter(r => {
-                    if (!r.location_coords) return false;
-                    const lat = Number(r.location_coords.lat);
-                    const lng = Number(r.location_coords.lng);
-                    return !isNaN(lat) && !isNaN(lng);
-                });
-                
-                if (reportsWithCoords.length > 0) {
-                    try {
-                        const bounds = L.latLngBounds(reportsWithCoords.map(r => [
-                            Number(r.location_coords!.lat), 
-                            Number(r.location_coords!.lng)
-                        ]));
-                        if (bounds.isValid()) {
-                            map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0, maxZoom: 14 });
+                // Only fit bounds initially when reports load, then allow users to freely zoom/pan.
+                if (!hasFitInitRef.current) {
+                    const reportsWithCoords = reports.filter(r => {
+                        if (!r.location_coords) return false;
+                        const lat = Number(r.location_coords.lat);
+                        const lng = Number(r.location_coords.lng);
+                        return !isNaN(lat) && !isNaN(lng);
+                    });
+                    
+                    if (reportsWithCoords.length > 0) {
+                        try {
+                            const bounds = L.latLngBounds(reportsWithCoords.map(r => [
+                                Number(r.location_coords!.lat), 
+                                Number(r.location_coords!.lng)
+                            ]));
+                            if (bounds.isValid()) {
+                                map.flyToBounds(bounds, { padding: [50, 50], animate: true, duration: 1.0, maxZoom: 14 });
+                                hasFitInitRef.current = true;
+                            }
+                        } catch (e) {
+                            console.error("Error calculating report bounds:", e);
                         }
-                    } catch (e) {
-                        console.error("Error calculating report bounds:", e);
+                    } else {
+                        // Keep a default view if no reports with coordinates are loaded yet
+                        try {
+                            map.setView([-26.2041, 28.0473], 11);
+                        } catch (err) {}
                     }
-                } else {
-                    // Default view if no reports have coordinates.
-                    try {
-                        map.flyTo([-26.2041, 28.0473], 11, { animate: true, duration: 1.0 });
-                    } catch (err) {}
                 }
             }
         }, 310); // A little longer than the 300ms transition of the side panel.
