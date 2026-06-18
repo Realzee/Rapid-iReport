@@ -16,9 +16,25 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [mainLogoUrl, setMainLogoUrl] = useState<string>(defaultLogoUrl);
-  const [faviconUrl, setFaviconUrl] = useState<string>(defaultFaviconUrl);
+  const [mainLogoUrl, setMainLogoUrl] = useState<string>(() => {
+    return localStorage.getItem('app_main_logo_url') || defaultLogoUrl;
+  });
+  const [faviconUrl, setFaviconUrl] = useState<string>(() => {
+    return localStorage.getItem('app_favicon_url') || defaultFaviconUrl;
+  });
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (mainLogoUrl) {
+      localStorage.setItem('app_main_logo_url', mainLogoUrl);
+    }
+  }, [mainLogoUrl]);
+
+  useEffect(() => {
+    if (faviconUrl) {
+      localStorage.setItem('app_favicon_url', faviconUrl);
+    }
+  }, [faviconUrl]);
 
   useEffect(() => {
     const fetchSettings = async () => {
