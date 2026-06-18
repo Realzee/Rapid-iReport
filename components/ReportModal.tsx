@@ -195,7 +195,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         }
         return { 
             severity: isQuickAdd ? Severity.HIGH : '',
-            status: isQuickAdd ? ReportStatus.SOUGHT : (reportType === 'vehicle' ? ReportStatus.STOLEN : ReportStatus.ACTIVE),
+            status: isQuickAdd ? ReportStatus.SOUGHT : ReportStatus.STOLEN,
             vehicle_involved: 'false',
             vehicles_involved: '1',
             injuries_reported: 'false',
@@ -214,7 +214,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             io_name: '',
             io_contact: ''
         };
-    }, [reportToEdit, isQuickAdd, reportType]);
+    }, [reportToEdit, isQuickAdd]);
 
     const [initialData, setInitialData] = useState(getInitialData);
     const [formData, setFormData] = useState<any>(initialData);
