@@ -968,7 +968,7 @@ const ControllerReportDetail: React.FC<{
                     </div>
                 )}
 
-                {(report.type === 'vehicle' || report.type === 'crime') && (
+                {report.status === ReportStatus.RECOVERED && (report.type === 'vehicle' || report.type === 'crime') && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
                         <DetailField label="Arrests">{(report as any).arrests || 0}</DetailField>
                         <DetailField label="Guns Recovered">{(report as any).guns_recovered || 0}</DetailField>
@@ -982,7 +982,7 @@ const ControllerReportDetail: React.FC<{
                     </div>
                 )}
 
-                {((report as any).recovered_location_coords) && (
+                {report.status === ReportStatus.RECOVERED && ((report as any).recovered_location_coords) && (
                     <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg space-y-2">
                         <div className="flex items-center gap-2 text-green-700 dark:text-green-400 font-bold text-sm">
                             <CheckCircleIcon className="w-4 h-4" />

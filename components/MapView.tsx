@@ -948,7 +948,7 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
                                 </Popup>
                             </Marker>
 
-                            {(report as any).recovered_location_coords && 
+                            {report.status === ReportStatus.RECOVERED && (report as any).recovered_location_coords && 
                                 typeof (report as any).recovered_location_coords.lat === 'number' && !isNaN((report as any).recovered_location_coords.lat) && 
                                 typeof (report as any).recovered_location_coords.lng === 'number' && !isNaN((report as any).recovered_location_coords.lng) && (
                                 <>

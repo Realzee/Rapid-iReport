@@ -169,6 +169,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         licensePlate: string;
     } | null>(null);
     const [isMapVisible, setMapVisible] = useState(false);
+    const [showRecoveryMap, setShowRecoveryMap] = useState(false);
     const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
     const [isBoloConfirmOpen, setIsBoloConfirmOpen] = useState(false);
     const [pendingBoloData, setPendingBoloData] = useState<{ report: any; profile: any } | null>(null);
@@ -227,6 +228,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
             setReportType(reportToEdit ? (reportToEdit.type as ReportType) : (isQuickAdd ? 'vehicle' : 'vehicle'));
             setMapVisible(false);
+            setShowRecoveryMap(!!(data as any).recovered_location_coords);
             setImagePreviews(reportToEdit?.evidence_images || []);
             setImageFiles([]);
         }
@@ -1403,109 +1405,134 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 <div className="flex gap-2">
                                     <button 
                                         type="button" 
-                                        onClick={() => setFormData(prev => ({ ...prev, status: ReportStatus.RECOVERED }))}
-                                        className={`px-3 py-1 text-xs font-bold rounded-full transition-all ${formData.status === ReportStatus.RECOVERED ? 'bg-green-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}
+                                        onClick={() => {
+                                            const isRecovered = formData.status === ReportStatus.RECOVERED;
+                                            setFormData(prev => ({ 
+                                                ...prev, 
+                                                status: isRecovered 
+                                                    ? (reportType === 'vehicle' ? ReportStatus.STOLEN : ReportStatus.ACTIVE) 
+                                                    : ReportStatus.RECOVERED 
+                                            }));
+                                            if (isRecovered) {
+                                                setShowRecoveryMap(false);
+                                            }
+                                        }}
+                                        className={`px-3 py-1 text-xs font-bold rounded-full transition-all ${formData.status === ReportStatus.RECOVERED ? 'bg-green-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
                                     >
                                         RECOVERED
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label htmlFor="saps_13" className={labelClasses}>SAPS 13</label><input type="text" name="saps_13" id="saps_13" value={formData.saps_13 || ''} onChange={handleChange} className={inputClasses} placeholder="SAPS 13 #" /></div>
-                                <div><label htmlFor="pound_name" className={labelClasses}>Pound Name</label><input type="text" name="pound_name" id="pound_name" value={formData.pound_name || ''} onChange={handleChange} className={inputClasses} placeholder="POUND NAME" /></div>
-                                
-                                <div className="md:col-span-2">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">LOCATION PIN ON RECOVERY</label>
-                                        {(formData as any).recovered_location_coords && (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
+                            {formData.status === ReportStatus.RECOVERED && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div><label htmlFor="saps_13" className={labelClasses}>SAPS 13</label><input type="text" name="saps_13" id="saps_13" value={formData.saps_13 || ''} onChange={handleChange} className={inputClasses} placeholder="SAPS 13 #" /></div>
+                                    <div><label htmlFor="pound_name" className={labelClasses}>Pound Name</label><input type="text" name="pound_name" id="pound_name" value={formData.pound_name || ''} onChange={handleChange} className={inputClasses} placeholder="POUND NAME" /></div>
+                                    
+                                    <div className="md:col-span-2">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">LOCATION PIN ON RECOVERY</label>
+                                            {showRecoveryMap ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            recovered_location_coords: null
+                                                        } as any));
+                                                        setShowRecoveryMap(false);
+                                                    }}
+                                                    className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                                                    id="remove-recovery-pin-btn"
+                                                >
+                                                    <TrashIcon className="w-3.5 h-3.5" /> Remove Pin
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowRecoveryMap(true)}
+                                                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                                                    id="add-recovery-pin-btn"
+                                                >
+                                                    + Pin on Map
+                                                </button>
+                                            )}
+                                        </div>
+                                        {showRecoveryMap && (
+                                            <LocationPicker 
+                                                onLocationSelect={(coords) => {
                                                     setFormData(prev => ({
                                                         ...prev,
-                                                        recovered_location_coords: null
+                                                        recovered_location_coords: coords
                                                     } as any));
                                                 }}
-                                                className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                                                id="remove-recovery-pin-btn"
-                                            >
-                                                <TrashIcon className="w-3.5 h-3.5" /> Remove Pin
-                                            </button>
+                                                initialCoords={(formData as any).recovered_location_coords}
+                                                placeholder="Pin recovery location..."
+                                            />
+                                        )}
+                                        <div className="mt-2">
+                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Recovery Time</label>
+                                            <input
+                                                type="datetime-local"
+                                                name="recovered_at"
+                                                value={(formData as any).recovered_at || ''}
+                                                onChange={handleChange}
+                                                className={inputClasses}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className={labelClasses}>ARRESTS</label>
+                                        <div className="flex gap-4 mt-2">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="radio" name="has_arrests" checked={formData.has_arrests === true} onChange={() => setFormData({...formData, has_arrests: true})} className="text-blue-600" />
+                                                <span className="text-sm dark:text-gray-300">Yes</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="radio" name="has_arrests" checked={formData.has_arrests === false} onChange={() => setFormData({...formData, has_arrests: false})} className="text-blue-600" />
+                                                <span className="text-sm dark:text-gray-300">No</span>
+                                            </label>
+                                        </div>
+                                        {formData.has_arrests && (
+                                            <input type="number" name="arrests" value={formData.arrests || 0} onChange={handleChange} className={`${inputClasses} mt-2`} placeholder="# of suspects" min="0" />
                                         )}
                                     </div>
-                                    <LocationPicker 
-                                        onLocationSelect={(coords) => {
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                recovered_location_coords: coords
-                                            } as any));
-                                        }}
-                                        initialCoords={(formData as any).recovered_location_coords}
-                                        placeholder="Pin recovery location..."
-                                    />
-                                    <div className="mt-2">
-                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Recovery Time</label>
-                                        <input
-                                            type="datetime-local"
-                                            name="recovered_at"
-                                            value={(formData as any).recovered_at || ''}
-                                            onChange={handleChange}
-                                            className={inputClasses}
-                                        />
+
+                                    <div>
+                                        <label className={labelClasses}>FIREARMS</label>
+                                        <div className="flex gap-4 mt-2">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="radio" name="has_firearms" checked={formData.has_firearms === true} onChange={() => setFormData({...formData, has_firearms: true})} className="text-blue-600" />
+                                                <span className="text-sm dark:text-gray-300">Yes</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="radio" name="has_firearms" checked={formData.has_firearms === false} onChange={() => setFormData({...formData, has_firearms: false})} className="text-blue-600" />
+                                                <span className="text-sm dark:text-gray-300">No</span>
+                                            </label>
+                                        </div>
+                                        {formData.has_firearms && (
+                                            <input type="number" name="guns_recovered" value={formData.guns_recovered || 0} onChange={handleChange} className={`${inputClasses} mt-2`} placeholder="# of firearms" min="0" />
+                                        )}
+                                    </div>
+
+                                    <div className="md:col-span-2">
+                                        <label htmlFor="other_recoveries" className={labelClasses}>OTHER NOTES</label>
+                                        <textarea name="other_recoveries" id="other_recoveries" rows={2} value={formData.other_recoveries || ''} onChange={handleChange} className={inputClasses} placeholder="Additional recovery details..." />
+                                    </div>
+
+                                    <div className="md:col-span-2 flex justify-center">
+                                        <button 
+                                            type="submit"
+                                            disabled={loading}
+                                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-green-600/20 transition-all flex items-center gap-2"
+                                        >
+                                            {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                                            {loading ? 'SAVING...' : 'UPDATE'}
+                                        </button>
                                     </div>
                                 </div>
-
-                                <div>
-                                    <label className={labelClasses}>ARRESTS</label>
-                                    <div className="flex gap-4 mt-2">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" name="has_arrests" checked={formData.has_arrests === true} onChange={() => setFormData({...formData, has_arrests: true})} className="text-blue-600" />
-                                            <span className="text-sm dark:text-gray-300">Yes</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" name="has_arrests" checked={formData.has_arrests === false} onChange={() => setFormData({...formData, has_arrests: false})} className="text-blue-600" />
-                                            <span className="text-sm dark:text-gray-300">No</span>
-                                        </label>
-                                    </div>
-                                    {formData.has_arrests && (
-                                        <input type="number" name="arrests" value={formData.arrests || 0} onChange={handleChange} className={`${inputClasses} mt-2`} placeholder="# of suspects" min="0" />
-                                    )}
-                                </div>
-
-                                <div>
-                                    <label className={labelClasses}>FIREARMS</label>
-                                    <div className="flex gap-4 mt-2">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" name="has_firearms" checked={formData.has_firearms === true} onChange={() => setFormData({...formData, has_firearms: true})} className="text-blue-600" />
-                                            <span className="text-sm dark:text-gray-300">Yes</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" name="has_firearms" checked={formData.has_firearms === false} onChange={() => setFormData({...formData, has_firearms: false})} className="text-blue-600" />
-                                            <span className="text-sm dark:text-gray-300">No</span>
-                                        </label>
-                                    </div>
-                                    {formData.has_firearms && (
-                                        <input type="number" name="guns_recovered" value={formData.guns_recovered || 0} onChange={handleChange} className={`${inputClasses} mt-2`} placeholder="# of firearms" min="0" />
-                                    )}
-                                </div>
-
-                                <div className="md:col-span-2">
-                                    <label htmlFor="other_recoveries" className={labelClasses}>OTHER NOTES</label>
-                                    <textarea name="other_recoveries" id="other_recoveries" rows={2} value={formData.other_recoveries || ''} onChange={handleChange} className={inputClasses} placeholder="Additional recovery details..." />
-                                </div>
-
-                                <div className="md:col-span-2 flex justify-center">
-                                    <button 
-                                        type="submit"
-                                        disabled={loading}
-                                        className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-green-600/20 transition-all flex items-center gap-2"
-                                    >
-                                        {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
-                                        {loading ? 'SAVING...' : 'UPDATE'}
-                                    </button>
-                                </div>
-                            </div>
+                            )}
                         </div>
                     )}
 

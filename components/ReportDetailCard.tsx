@@ -846,7 +846,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                             <p className="text-gray-900 dark:text-white">{(localReport as any).circulation_number}</p>
                         </div>
                     )}
-                    {((localReport as any).arrests > 0 || (localReport as any).guns_recovered > 0) && (
+                    {localReport.status === ReportStatus.RECOVERED && ((localReport as any).arrests > 0 || (localReport as any).guns_recovered > 0) && (
                         <>
                             <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Arrests</p>
@@ -858,13 +858,13 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                             </div>
                         </>
                     )}
-                    {(localReport as any).recovered_at && (
+                    {localReport.status === ReportStatus.RECOVERED && (localReport as any).recovered_at && (
                         <div className="col-span-2">
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Recovered At</p>
                             <p className="text-gray-900 dark:text-white">{safeFormat((localReport as any).recovered_at, 'MMM d, yyyy HH:mm')}</p>
                         </div>
                     )}
-                    {(localReport as any).other_recoveries && (
+                    {localReport.status === ReportStatus.RECOVERED && (localReport as any).other_recoveries && (
                         <div className="col-span-2">
                             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Other Recoveries / Notes</p>
                             <p className="text-gray-900 dark:text-white italic">{(localReport as any).other_recoveries}</p>
@@ -938,7 +938,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     View on Map
                 </button>
 
-                {(localReport as any).recovered_location_coords && (
+                {localReport.status === ReportStatus.RECOVERED && (localReport as any).recovered_location_coords && (
                     <div className="pt-2">
                         <button 
                             onClick={onViewOnMap} 
