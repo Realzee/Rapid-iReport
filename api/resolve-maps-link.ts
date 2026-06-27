@@ -118,6 +118,88 @@ const extractCoordsFromHtml = (html: string): { lat: number; lng: number } | nul
     return null;
 };
 
+const getDistanceInKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2)
+        ; 
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+    return R * c;
+};
+
+const getWordOverlap = (str1: string, str2: string): number => {
+    const words1 = new Set(str1.toLowerCase().split(/\W+/).filter(w => w.length > 2));
+    const words2 = new Set(str2.toLowerCase().split(/\W+/).filter(w => w.length > 2));
+    if (words1.size === 0) return 0;
+    let matches = 0;
+    for (const w of words1) {
+        if (words2.has(w)) matches++;
+    }
+    return matches / words1.size;
+};
+
+const extractPlaceNameFromUrl = (url: string): string | null => {
+    let decodedUrl = url;
+    try {
+        decodedUrl = decodeURIComponent(url);
+    } catch (e) {
+        console.warn("Failed to decode URL in extractPlaceNameFromUrl:", e);
+    }
+
+    // 1. Match /maps/place/([^/?#]+)
+    const placeRegex = /\/maps\/place\/([^/?#\s]+)/i;
+    const placeMatch = decodedUrl.match(placeRegex);
+    if (placeMatch && placeMatch[1]) {
+        const value = placeMatch[1].replace(/\+/g, ' ').trim();
+        // Ensure it's not just a pair of coordinates like "-25.123,28.456"
+        const coordRegex = /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/;
+        if (!coordRegex.test(value)) {
+            return value;
+        }
+    }
+
+    // 2. Match /maps/search/([^/?#]+)
+    const searchPathRegex = /\/maps\/search\/([^/?#\s]+)/i;
+    const searchPathMatch = decodedUrl.match(searchPathRegex);
+    if (searchPathMatch && searchPathMatch[1]) {
+        const value = searchPathMatch[1].replace(/\+/g, ' ').trim();
+        const coordRegex = /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/;
+        if (!coordRegex.test(value)) {
+            return value;
+        }
+    }
+
+    // 3. Match q=... query parameter
+    try {
+        const urlObj = new URL(url);
+        const q = urlObj.searchParams.get('q') || urlObj.searchParams.get('query');
+        if (q) {
+            const value = q.replace(/\+/g, ' ').trim();
+            const coordRegex = /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/;
+            if (!coordRegex.test(value)) {
+                return value;
+            }
+        }
+    } catch (e) {
+        // Fallback parameter matching if URL parsing fails
+        const qParamRegex = /[?&](?:q|query)=([^&#\s]+)/i;
+        const qParamMatch = decodedUrl.match(qParamRegex);
+        if (qParamMatch && qParamMatch[1]) {
+            const value = qParamMatch[1].replace(/\+/g, ' ').trim();
+            const coordRegex = /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/;
+            if (!coordRegex.test(value)) {
+                return value;
+            }
+        }
+    }
+
+    return null;
+};
+
 export default async function handler(req: Request, res: Response) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -133,7 +215,9 @@ export default async function handler(req: Request, res: Response) {
         let finalUrl = url;
         let responseBody = '';
 
-        if (!coords) {
+        const isShortened = url.includes('goo.gl') || url.includes('maps.app.goo.gl') || url.includes('t.co') || url.includes('bit.ly') || url.includes('tinyurl');
+
+        if (!coords || isShortened) {
             // It doesn't have coordinates directly in its parameter list, follow redirects and check
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), 8000);
@@ -196,33 +280,34 @@ export default async function handler(req: Request, res: Response) {
             }
         }
 
+        // Extract place name
+        let placeName = extractPlaceNameFromUrl(finalUrl);
+        if (!placeName && url !== finalUrl) {
+            placeName = extractPlaceNameFromUrl(url);
+        }
+
         let address = '';
 
-        // Extract place name as ultimate fallback via Nominatim search
-        if (!coords) {
-            const placeNameRegex = /\/maps\/place\/([^/?#]+)/i;
-            const placeMatch = finalUrl.match(placeNameRegex);
-            if (placeMatch && placeMatch[1]) {
-                const queryText = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
-                try {
-                    const searchResponse = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(queryText)}&format=json&polygon_geojson=1&countrycodes=za&accept-language=en&limit=1`, {
-                        headers: {
-                            'User-Agent': 'Rapid-IReport-App/1.0 (mzwelisto@gmail.com)'
-                        }
-                    });
-                    if (searchResponse.ok) {
-                        const searchData = await searchResponse.json();
-                        if (searchData && searchData.length > 0) {
-                            coords = {
-                                lat: parseFloat(searchData[0].lat),
-                                lng: parseFloat(searchData[0].lon)
-                            };
-                            address = searchData[0].display_name || '';
-                        }
+        // Extract place name as ultimate fallback via Nominatim search if coords are missing
+        if (!coords && placeName) {
+            try {
+                const searchResponse = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&polygon_geojson=1&countrycodes=za&accept-language=en&limit=1`, {
+                    headers: {
+                        'User-Agent': 'Rapid-IReport-App/1.0 (mzwelisto@gmail.com)'
                     }
-                } catch (searchErr) {
-                    console.error('Nominatim search fallback failed:', searchErr);
+                });
+                if (searchResponse.ok) {
+                    const searchData = await searchResponse.json();
+                    if (searchData && searchData.length > 0) {
+                        coords = {
+                            lat: parseFloat(searchData[0].lat),
+                            lng: parseFloat(searchData[0].lon)
+                        };
+                        address = searchData[0].display_name || '';
+                    }
                 }
+            } catch (searchErr) {
+                console.error('Nominatim search fallback failed:', searchErr);
             }
         }
 
@@ -230,7 +315,33 @@ export default async function handler(req: Request, res: Response) {
             return res.status(422).json({ error: 'Could not extract coordinates from the maps link.' });
         }
 
-        // Reverse geocode server-side using Nominatim if not already populated from fallback search
+        // If we have a place name and coords, try Nominatim search first to resolve it to get accurate street/number/suburb structure
+        if (placeName && !address) {
+            try {
+                const searchResponse = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&countrycodes=za&accept-language=en&limit=1`, {
+                    headers: {
+                        'User-Agent': 'Rapid-IReport-App/1.0 (mzwelisto@gmail.com)'
+                    }
+                });
+                if (searchResponse.ok) {
+                    const searchData = await searchResponse.json();
+                    if (searchData && searchData.length > 0) {
+                        const searchLat = parseFloat(searchData[0].lat);
+                        const searchLng = parseFloat(searchData[0].lon);
+                        
+                        // Check if the search result is close to the actual coordinates from the URL (within 1.5 km)
+                        const dist = getDistanceInKm(coords.lat, coords.lng, searchLat, searchLng);
+                        if (dist < 1.5) {
+                            address = searchData[0].display_name || '';
+                        }
+                    }
+                }
+            } catch (searchErr) {
+                console.error('Nominatim pre-search failed:', searchErr);
+            }
+        }
+
+        // If we still don't have an address, do reverse geocoding on coordinates
         if (!address) {
             try {
                 const reverseResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`, {
@@ -240,11 +351,31 @@ export default async function handler(req: Request, res: Response) {
                 });
                 if (reverseResponse.ok) {
                     const data = await reverseResponse.json();
-                    address = data.display_name || '';
+                    const reverseAddress = data.display_name || '';
+                    
+                    if (placeName && reverseAddress) {
+                        // Calculate word overlap between placeName and reverseAddress
+                        const overlap = getWordOverlap(placeName, reverseAddress);
+                        if (overlap > 0.4) {
+                            // If they are very similar, use the clean placeName from Google Maps
+                            address = placeName;
+                        } else {
+                            // If they are different (e.g., placeName is a venue/business name like "KFC Hatfield"
+                            // and reverseAddress is "Burnett St, Hatfield..."), merge them elegantly!
+                            address = `${placeName}, ${reverseAddress}`;
+                        }
+                    } else {
+                        address = reverseAddress || placeName || '';
+                    }
                 }
             } catch (reverseErr) {
                 console.error('Nominatim reverse geocode failed on server:', reverseErr);
             }
+        }
+
+        // Ultimate fallback
+        if (!address && placeName) {
+            address = placeName;
         }
 
         return res.status(200).json({
