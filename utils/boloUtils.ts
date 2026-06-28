@@ -83,310 +83,596 @@ export const generateAndShareBolo = async (
         const ctx = canvas.getContext('2d');
         if (!ctx) throw new Error("Could not get canvas context");
 
-        const width = 580;
-        const height = 950;
+        const width = 1000;
+        const height = 1500;
         canvas.width = width;
         canvas.height = height;
 
+        // Font selection matching typography guide
+        const fontSans = 'Arial, Helvetica, sans-serif';
+        const fontImpact = 'Impact, "Arial Black", Arial, sans-serif';
+
         // 5. Draw Background
-        ctx.fillStyle = '#000000';
+        ctx.fillStyle = '#0a0a0a'; // Premium ultra-deep dark background
         ctx.fillRect(0, 0, width, height);
 
-        // 6. Draw Header (Vibrant Solid Red Banner)
-        ctx.fillStyle = '#FF0000';
-        ctx.fillRect(0, 0, width, 135);
-        
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = '#000000';
-        ctx.beginPath();
-        ctx.moveTo(0, 135);
-        ctx.lineTo(width, 135);
-        ctx.stroke();
-
-        // Header Text - Top Line (Company Name, pure black in mockup)
-        ctx.fillStyle = '#000000';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = 'bold 22px Arial, Helvetica, sans-serif'; // Clean, elegant, readable
-        const companyName = profile?.company?.name || 'SA Stolen And Highjacked Vehicles (Pty)Ltd';
-        ctx.fillText(companyName, width / 2, 40);
-
-        // Header Text - Bottom Line (SOUGHT VEHICLE / INCIDENT Title) - Stout impact lettering in pure black
-        ctx.font = '900 64px Impact, "Arial Black", Arial, sans-serif'; 
-        const headerTitle = report.type === 'vehicle' ? 'SOUGHT VEHICLE' : (report.title || String(report.type).toUpperCase() + ' INCIDENT');
-        let truncatedHeader = headerTitle;
-        const maxHeaderWidth = width - 40; // 20 padding on each side
-        if (ctx.measureText(truncatedHeader).width > maxHeaderWidth) {
-            while (ctx.measureText(truncatedHeader + '...').width > maxHeaderWidth && truncatedHeader.length > 0) {
-                truncatedHeader = truncatedHeader.slice(0, -1);
+        // 6. Draw Header Section with Company Logo and Custom Branding
+        // Draw the company logo in the top right instead of "X"
+        const logoToDraw = companyLogo || rapidLogo;
+        if (logoToDraw) {
+            ctx.save();
+            const maxLogoW = 320;
+            const maxLogoH = 180;
+            const logoX = 940 - maxLogoW; // Right-aligned to 940px (60px right margin)
+            const logoY = 40; // Vertically centered in the header
+            
+            const imgRatio = logoToDraw.width / logoToDraw.height;
+            let drawW = maxLogoW;
+            let drawH = maxLogoW / imgRatio;
+            
+            if (drawH > maxLogoH) {
+                drawH = maxLogoH;
+                drawW = maxLogoH * imgRatio;
             }
-            truncatedHeader += '...';
+            
+            // Align to the absolute right side of our container box
+            const dx = logoX + (maxLogoW - drawW);
+            const dy = logoY + (maxLogoH - drawH) / 2;
+            
+            ctx.drawImage(logoToDraw, dx, dy, drawW, drawH);
+            ctx.restore();
         }
-        ctx.fillText(truncatedHeader, width / 2, 95);
+
+        // Draw company text branding logo (top left)
+        const companyName = profile.company?.name ? profile.company.name.toUpperCase() : 'EXCELLERATE SERVICES';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
 
-        // 7. Draw Main Image Area
-        const imgY = 135;
-        const imgHeight = 310; // Prominent large photo area
-        ctx.fillStyle = '#111111';
-        ctx.fillRect(0, imgY, width, imgHeight);
+        // Word "EXCELLERATE" or custom company name first part
+        const firstWord = companyName.split(' ')[0] || 'EXCELLERATE';
+        const restOfName = companyName.substring(firstWord.length).trim() || 'SERVICES';
 
-        if (mainImage) {
-            // Stretch the image directly to fit the available area, making sure the full image is entirely visible
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(0, imgY, width, imgHeight);
-            ctx.clip();
-            ctx.drawImage(mainImage, 0, imgY, width, imgHeight);
-            ctx.restore();
+        ctx.font = `bold 36px ${fontSans}`;
+        ctx.fillText(firstWord, 60, 80);
+
+        // Word "SERVICES" or second part
+        ctx.font = `bold 20px ${fontSans}`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.fillText(restOfName, 60, 115);
+
+        // Slogan: "WHERE BETTER BEGINS" with "BETTER" in orange
+        const lineY = 150;
+        ctx.font = `bold 16px ${fontSans}`;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('WHERE ', 60, lineY);
+        const whereWidth = ctx.measureText('WHERE ').width;
+        ctx.fillStyle = '#F25A22'; // Brand Orange
+        ctx.fillText('BETTER', 60 + whereWidth, lineY);
+        const betterWidth = ctx.measureText('BETTER').width;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(' BEGINS', 60 + whereWidth + betterWidth, lineY);
+
+        // Thin divider line under the slogan
+        ctx.strokeStyle = '#333333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(60, lineY + 15);
+        ctx.lineTo(600, lineY + 15);
+        ctx.stroke();
+
+        // Determine title text based on report details
+        let titleLine1 = 'STOLEN';
+        let titleLine2 = 'MOTOR VEHICLE';
+
+        if (report.type === 'vehicle') {
+            const isHijacked = String(report.status).toLowerCase() === 'hijacked';
+            titleLine1 = isHijacked ? 'HIJACKED' : 'STOLEN';
+            titleLine2 = 'MOTOR VEHICLE';
         } else {
-            ctx.fillStyle = '#666666';
-            ctx.font = 'bold 24px Arial, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('NO IMAGE AVAILABLE', width / 2, imgY + imgHeight / 2 + 8);
+            titleLine1 = 'SOUGHT';
+            titleLine2 = 'CRIME REPORT';
         }
 
-        // Recovered Stamp
+        // Title text in giant stout display typography
+        const titleY = 240;
+        ctx.font = `900 96px ${fontImpact}`;
+        ctx.fillStyle = '#F25A22'; // Orange Accent
+        ctx.fillText(titleLine1, 60, titleY);
+
+        ctx.font = `900 80px ${fontImpact}`;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(titleLine2, 60, titleY + 95);
+
+        // 7. Orange separator bar 1 (above image)
+        const imageStartY = 370;
+        ctx.fillStyle = '#F25A22';
+        ctx.fillRect(0, imageStartY - 12, width, 12);
+
+        // 8. Draw Main Photo Area (Landscape Cover image)
+        const imageEndY = 750;
+        const imageHeight = imageEndY - imageStartY;
+        ctx.fillStyle = '#111111';
+        ctx.fillRect(0, imageStartY, width, imageHeight);
+
+        if (mainImage) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, imageStartY, width, imageHeight);
+            ctx.clip();
+            
+            const imgRatio = mainImage.width / mainImage.height;
+            const canvasRatio = width / imageHeight;
+            
+            // First, draw a darkened, 15% opacity cover background to act as an elegant, fluid ambient glow
+            let coverW = width;
+            let coverH = imageHeight;
+            let coverX = 0;
+            let coverY = 0;
+            
+            if (imgRatio > canvasRatio) {
+                coverW = imageHeight * imgRatio;
+                coverX = (width - coverW) / 2;
+            } else {
+                coverH = width / imgRatio;
+                coverY = (imageHeight - coverH) / 2;
+            }
+            
+            ctx.globalAlpha = 0.15;
+            ctx.drawImage(mainImage, coverX, imageStartY + coverY, coverW, coverH);
+            ctx.globalAlpha = 1.0;
+            
+            // Then draw the actual contained image so it fits the space and doesn't cut details
+            let drawW = width;
+            let drawH = imageHeight;
+            let offsetX = 0;
+            let offsetY = 0;
+            
+            if (imgRatio > canvasRatio) {
+                // Image is wider than container -> bound by width
+                drawW = width;
+                drawH = width / imgRatio;
+                offsetY = (imageHeight - drawH) / 2;
+            } else {
+                // Image is taller than container -> bound by height
+                drawH = imageHeight;
+                drawW = imageHeight * imgRatio;
+                offsetX = (width - drawW) / 2;
+            }
+            
+            ctx.drawImage(mainImage, offsetX, imageStartY + offsetY, drawW, drawH);
+            ctx.restore();
+        } else {
+            // Elegant empty photo placeholder
+            ctx.fillStyle = '#181818';
+            ctx.fillRect(0, imageStartY, width, imageHeight);
+            
+            ctx.save();
+            ctx.translate(width / 2, imageStartY + imageHeight / 2 - 25);
+            ctx.strokeStyle = '#333333';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, 50, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.fillStyle = '#444444';
+            ctx.font = '50px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🚗', 0, 0);
+            ctx.restore();
+            
+            ctx.fillStyle = '#666666';
+            ctx.font = `bold 24px ${fontSans}`;
+            ctx.textAlign = 'center';
+            ctx.fillText('NO IMAGE AVAILABLE', width / 2, imageStartY + imageHeight / 2 + 55);
+        }
+
+        // Recovered stamp banner overlay
         const isRecovered = ['recovered', 'resolved'].includes(report.status || '');
         if (isRecovered) {
             ctx.save();
-            ctx.translate(width / 2, imgY + imgHeight / 2);
+            ctx.translate(width / 2, imageStartY + imageHeight / 2);
+            ctx.rotate(-15 * Math.PI / 180);
             
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
             const stampText = 'RECOVERED';
-            ctx.font = '900 90px Impact, sans-serif';
+            ctx.font = `900 110px ${fontImpact}`;
             const textMetrics = ctx.measureText(stampText);
             const textWidth = textMetrics.width;
-            const textHeight = 90; // Approx
+            const textHeight = 110;
             
-            // Background box for stamp
-            ctx.fillRect(-textWidth/2 - 20, -textHeight/2 + 10, textWidth + 40, textHeight);
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = '#000000';
-            ctx.strokeRect(-textWidth/2 - 20, -textHeight/2 + 10, textWidth + 40, textHeight);
-
-            ctx.fillStyle = '#FFFF00';
-            ctx.shadowColor = '#000000';
-            ctx.shadowBlur = 8;
-            ctx.shadowOffsetX = 4;
-            ctx.shadowOffsetY = 4;
+            ctx.fillRect(-textWidth/2 - 30, -textHeight/2 - 5, textWidth + 60, textHeight + 20);
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#00C853'; // Solid bright green
+            ctx.strokeRect(-textWidth/2 - 30, -textHeight/2 - 5, textWidth + 60, textHeight + 20);
+            
+            ctx.fillStyle = '#00C853';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(stampText, 0, 15); // Adjustment for baseline
+            ctx.fillText(stampText, 0, 10);
             ctx.restore();
         }
 
-        // 8. Draw Details Section
-        const detailsBgY = imgY + imgHeight; // 445px
+        // 9. Orange separator line 2 (below image)
+        ctx.fillStyle = '#F25A22';
+        ctx.fillRect(0, imageEndY, width, 4);
+
+        // 10. Draw Details Grid Section
+        const gridStartY = imageEndY + 4;
+        const gridHeight = 460;
+        const gridEndY = gridStartY + gridHeight;
+
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, gridStartY, width, gridHeight);
+
+        // Support custom background image if configured in the profile
         if (customBgImg) {
             ctx.save();
             ctx.beginPath();
-            ctx.rect(0, detailsBgY, width, height - detailsBgY);
+            ctx.rect(0, gridStartY, width, gridHeight);
             ctx.clip();
-            
-            const bgRatio = customBgImg.width / customBgImg.height;
-            const destHeight = height - detailsBgY;
-            const destRatio = width / destHeight;
-            let drawW, drawH, offX, offY;
-            if (bgRatio > destRatio) {
-                drawH = destHeight;
-                drawW = destHeight * bgRatio;
-                offX = (width - drawW) / 2;
-                offY = 0;
-            } else {
-                drawW = width;
-                drawH = width / bgRatio;
-                offX = 0;
-                offY = (destHeight - drawH) / 2;
-            }
-            ctx.drawImage(customBgImg, offX, detailsBgY + offY, drawW, drawH);
-            
-            // Dark overlay for legibility
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-            ctx.fillRect(0, detailsBgY, width, height - detailsBgY);
+            ctx.drawImage(customBgImg, 0, gridStartY, width, gridHeight);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Heavy dark overlay for high readability
+            ctx.fillRect(0, gridStartY, width, gridHeight);
             ctx.restore();
         }
 
-        const detailsY = detailsBgY + 30; // 475px
-        const leftMargin = 35; // Spacing matching mockup
-        
-        ctx.textAlign = 'left';
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '24px Arial, sans-serif';
-        const lineHeight = 36;
+        // Grid boundaries and cell setup
+        const rowHeight = 110;
+        const y1 = gridStartY;
+        const y2 = gridStartY + rowHeight;
+        const y3 = gridStartY + rowHeight * 2;
+        const y4 = gridStartY + rowHeight * 3;
+        const y5 = gridStartY + rowHeight * 4;
 
-        const statusText = isRecovered ? 'RECOVERED' : (report.status === 'active' || report.status === 'assigned' || report.status === 'in_progress' || report.status === 'on_scene' ? 'HIJACKED' : (report.status || '').toUpperCase());
-        
-        const drawField = (label: string, value: string, y: number) => {
-            ctx.font = 'normal 22px Arial, sans-serif';
-            const labelWidth = ctx.measureText(label).width;
-            ctx.fillStyle = '#CCCCCC'; // Soft white for label
-            ctx.fillText(label, leftMargin, y);
-            
-            ctx.font = 'bold 22px Arial, sans-serif';
-            ctx.fillStyle = '#FFFFFF'; // Pure white for value
-            const maxWidth = width - leftMargin - labelWidth - 10 - 130; // Stay clear of right QR codes
-            let truncatedValue = value;
-            if (ctx.measureText(value).width > maxWidth) {
-                while (ctx.measureText(truncatedValue + '...').width > maxWidth && truncatedValue.length > 0) {
-                    truncatedValue = truncatedValue.slice(0, -1);
-                }
-                truncatedValue += '...';
+        // Draw horizontal grid lines
+        ctx.strokeStyle = '#1b1b1b';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(50, y2);
+        ctx.lineTo(950, y2);
+        ctx.moveTo(50, y3);
+        ctx.lineTo(950, y3);
+        ctx.moveTo(50, y4);
+        ctx.lineTo(950, y4);
+        ctx.stroke();
+
+        // Draw vertical column divider line
+        ctx.beginPath();
+        ctx.moveTo(500, y1 + 10);
+        ctx.lineTo(500, y4 + rowHeight - 10);
+        ctx.stroke();
+
+        // Format date and time helpers
+        const formatDate = (dateStr: string) => {
+            if (!dateStr) return 'N/A';
+            try {
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return dateStr;
+                const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+            } catch (e) {
+                return dateStr;
             }
-            ctx.fillText(truncatedValue, leftMargin + labelWidth + 10, y);
         };
 
-        if (report.type === 'vehicle') {
-            drawField('Status:', statusText, detailsY);
-            drawField('Reg:', report.license_plate || 'N/A', detailsY + lineHeight);
-            drawField('Make:', report.vehicle_make || 'N/A', detailsY + lineHeight * 2);
-            drawField('Type:', report.vehicle_model || 'N/A', detailsY + lineHeight * 3);
-            drawField('Colour:', report.vehicle_color || 'N/A', detailsY + lineHeight * 4);
-            drawField('Case:', report.cas_number || 'N/A', detailsY + lineHeight * 5);
-            drawField('Station:', report.station_name || 'N/A', detailsY + lineHeight * 6);
-        } else {
-            drawField('Status:', statusText, detailsY);
-            drawField('Location:', report.location || 'N/A', detailsY + lineHeight);
-            drawField('Case:', report.cas_number || 'N/A', detailsY + lineHeight * 2);
-            drawField('Station:', report.station_name || 'N/A', detailsY + lineHeight * 3);
-            
-            ctx.font = 'normal 22px Arial, sans-serif';
-            ctx.fillStyle = '#CCCCCC';
-            ctx.fillText('Description:', leftMargin, detailsY + lineHeight * 4);
-            ctx.font = 'bold 22px Arial, sans-serif';
-            ctx.fillStyle = '#FFFFFF';
-            
-            const description = report.description || 'N/A';
-            const words = description.split(' ');
+        const formatTime = (dateStr: string) => {
+            if (!dateStr) return 'N/A';
+            try {
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return 'N/A';
+                const hrs = String(date.getHours()).padStart(2, '0');
+                const mins = String(date.getMinutes()).padStart(2, '0');
+                return `Approx. ${hrs}:${mins}`;
+            } catch (e) {
+                return 'N/A';
+            }
+        };
+
+        // Prepare detail variables from report
+        const vehicleColor = report.vehicle_color || '';
+        const vehicleMake = report.vehicle_make || '';
+        const vehicleModel = report.vehicle_model || '';
+        const vehicleValue = `${vehicleColor} ${vehicleMake} ${vehicleModel}`.trim() || 'N/A';
+
+        const locationValue = report.last_seen_location || report.location || 'N/A';
+        const directionValue = report.description || 'Unknown';
+        const regValue = (report.license_plate || 'N/A').toUpperCase().replace(/\s+/g, '');
+
+        const dateValue = formatDate(report.date_of_incident || report.reported_at);
+        const timeValue = formatTime(report.date_of_incident || report.reported_at);
+        const casValue = report.cas_number ? `${report.cas_number} ${report.station_name || ''}`.trim() : 'Pending';
+
+        // Draw cell helper function with vector icon rendering
+        const drawCircularIcon = (
+            context: CanvasRenderingContext2D, 
+            cx: number, 
+            cy: number, 
+            r: number, 
+            iconType: string
+        ) => {
+            context.save();
+            context.beginPath();
+            context.arc(cx, cy, r, 0, Math.PI * 2);
+            context.lineWidth = 3;
+            context.strokeStyle = '#F25A22';
+            context.stroke();
+            context.restore();
+
+            context.save();
+            context.translate(cx, cy);
+            context.strokeStyle = '#F25A22';
+            context.fillStyle = '#F25A22';
+            context.lineWidth = 2.5;
+            context.lineCap = 'round';
+            context.lineJoin = 'round';
+
+            if (iconType === 'car') {
+                context.beginPath();
+                context.moveTo(-12, -2);
+                context.lineTo(-8, -10);
+                context.lineTo(8, -10);
+                context.lineTo(12, -2);
+                context.closePath();
+                context.stroke();
+
+                context.beginPath();
+                if (context.roundRect) {
+                    context.roundRect(-16, -2, 32, 10, 3);
+                } else {
+                    context.rect(-16, -2, 32, 10);
+                }
+                context.fill();
+
+                context.fillStyle = '#000000';
+                context.beginPath();
+                context.arc(-11, 3, 2.5, 0, Math.PI * 2);
+                context.arc(11, 3, 2.5, 0, Math.PI * 2);
+                context.fill();
+
+                context.strokeStyle = '#000000';
+                context.lineWidth = 1.5;
+                context.beginPath();
+                context.moveTo(-5, 3);
+                context.lineTo(5, 3);
+                context.stroke();
+
+                context.fillStyle = '#F25A22';
+                context.fillRect(-12, 8, 5, 4);
+                context.fillRect(7, 8, 5, 4);
+            } else if (iconType === 'location') {
+                context.beginPath();
+                context.arc(0, -5, 8, Math.PI, 0, false);
+                context.bezierCurveTo(8, -5, 8, 3, 0, 13);
+                context.bezierCurveTo(-8, 3, -8, -5, -8, -5);
+                context.closePath();
+                context.stroke();
+
+                context.beginPath();
+                context.arc(0, -5, 2.5, 0, Math.PI * 2);
+                context.fill();
+            } else if (iconType === 'question') {
+                context.font = 'bold 30px Arial, sans-serif';
+                context.fillStyle = '#F25A22';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText('?', 0, 0);
+            } else if (iconType === 'registration') {
+                context.beginPath();
+                if (context.roundRect) {
+                    context.roundRect(-18, -10, 36, 20, 4);
+                } else {
+                    context.rect(-18, -10, 36, 20);
+                }
+                context.stroke();
+
+                context.font = 'bold 8px Courier New, monospace';
+                context.fillStyle = '#F25A22';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText('ABC-123', 0, 0);
+            } else if (iconType === 'calendar') {
+                context.beginPath();
+                if (context.roundRect) {
+                    context.roundRect(-13, -8, 26, 18, 3);
+                } else {
+                    context.rect(-13, -8, 26, 18);
+                }
+                context.stroke();
+
+                context.beginPath();
+                context.moveTo(-13, -2);
+                context.lineTo(13, -2);
+                context.stroke();
+
+                context.fillStyle = '#F25A22';
+                context.fillRect(-8, -11, 3, 4);
+                context.fillRect(5, -11, 3, 4);
+
+                context.fillStyle = '#F25A22';
+                context.fillRect(-6, 2, 2, 2);
+                context.fillRect(0, 2, 2, 2);
+                context.fillRect(6, 2, 2, 2);
+                context.fillRect(-6, 7, 2, 2);
+                context.fillRect(0, 7, 2, 2);
+                context.fillRect(6, 7, 2, 2);
+            } else if (iconType === 'clock') {
+                context.beginPath();
+                context.arc(0, 0, 13, 0, Math.PI * 2);
+                context.stroke();
+
+                context.beginPath();
+                context.moveTo(0, 0);
+                context.lineTo(0, -7);
+                context.moveTo(0, 0);
+                context.lineTo(5, 0);
+                context.stroke();
+            } else if (iconType === 'shield') {
+                context.beginPath();
+                context.moveTo(0, -13);
+                context.lineTo(11, -9);
+                context.bezierCurveTo(11, -1, 9, 8, 0, 13);
+                context.bezierCurveTo(-9, 8, -11, -1, -11, -9);
+                context.closePath();
+                context.stroke();
+            }
+
+            context.restore();
+        };
+
+        const drawTextWithWrapping = (
+            context: CanvasRenderingContext2D, 
+            text: string, 
+            x: number, 
+            y: number, 
+            maxWidth: number, 
+            lineHeight: number
+        ) => {
+            const words = text.split(' ');
             let line = '';
-            let y = detailsY + lineHeight * 5;
-            for (let i = 0; i < words.length; i++) {
-                let testLine = line + words[i] + ' ';
-                let metrics = ctx.measureText(testLine);
-                if (metrics.width > width - leftMargin - 130 && i > 0) { // Stay clear of right QR codes
-                    ctx.fillText(line, leftMargin, y);
-                    line = words[i] + ' ';
-                    y += lineHeight;
+            let currentY = y;
+            let linesDrawn = 0;
+            for (let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' ';
+                let metrics = context.measureText(testLine);
+                if (metrics.width > maxWidth && n > 0) {
+                    context.fillText(line.trim(), x, currentY);
+                    line = words[n] + ' ';
+                    currentY += lineHeight;
+                    linesDrawn++;
+                    if (linesDrawn >= 2) return; // Limit to 2 lines max
                 } else {
                     line = testLine;
                 }
             }
-            ctx.fillText(line, leftMargin, y);
-        }
+            context.fillText(line.trim(), x, currentY);
+        };
 
-        // 9. Draw QR Codes
-        const qrY = detailsY - 5;
-        const qrX = width - 35 - 80; // Right margin 35, width 80
-        
-        const drawQr = (img: HTMLImageElement | null, y: number) => {
+        const drawCell = (
+            label: string, 
+            value: string, 
+            iconType: string, 
+            col: 1 | 2, 
+            row: 1 | 2 | 3 | 4
+        ) => {
+            const startX = col === 1 ? 50 : 520;
+            const centerY = gridStartY + (row - 1) * rowHeight + rowHeight / 2;
+            const iconX = startX + 40;
+            
+            // Draw Icon
+            drawCircularIcon(ctx, iconX, centerY, 30, iconType);
+            
+            // Draw Texts
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            
+            // Label
+            ctx.font = `bold 16px ${fontSans}`;
+            ctx.fillStyle = '#F25A22';
+            ctx.fillText(label, iconX + 50, centerY - 15);
+            
+            // Value
+            ctx.font = `bold 22px ${fontSans}`;
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(qrX - 5, y - 5, 90, 90); // White padding
-            if (img) {
-                ctx.drawImage(img, qrX, y, 80, 80);
-            }
+            
+            const maxValWidth = col === 1 ? 500 - (iconX + 50) - 20 : 950 - (iconX + 50) - 20;
+            drawTextWithWrapping(ctx, value, iconX + 50, centerY + 12, maxValWidth, 26);
         };
 
-        drawQr(qrWww, qrY);
-        drawQr(qrFb, qrY + 105);
+        // Draw Left Column Cells
+        drawCell('VEHICLE', vehicleValue, 'car', 1, 1);
+        drawCell('LOCATION', locationValue, 'location', 1, 2);
+        drawCell('DIRECTION & SUSPECTS', directionValue, 'question', 1, 3);
+        drawCell('VEHICLE REGISTRATION', regValue, 'registration', 1, 4);
 
-        // 10. Draw Footer
-        const footerY = height - 160;
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#FFFFFF';
-        
-        ctx.font = '500 18px Arial, sans-serif';
-        ctx.fillText('If spotted please contact SAPS Crime Stop on 08600', width / 2, footerY);
-        ctx.fillText('10111 or your nearest SAPS Station', width / 2, footerY + 22);
+        // Draw Right Column Cells
+        drawCell('DATE STOLEN', dateValue, 'calendar', 2, 1);
+        drawCell('TIME', timeValue, 'clock', 2, 2);
+        drawCell('SAPS CAS', casValue, 'shield', 2, 3);
 
-        ctx.font = 'bold 22px serif';
-        ctx.fillText('"The Smarter Choice"', width / 2, footerY + 50);
-
-        // Logos and Contact
-        const bottomY = height - 60; // Center Y of the footer logos
-        const logoWidth = 100;
-        const logoHeight = 60;
-        const logoY = bottomY - logoHeight / 2;
-
-        const drawLogo = (img: HTMLImageElement | null, x: number) => {
-            if (img) {
-                const imgRatio = img.width / img.height;
-                const areaRatio = logoWidth / logoHeight;
-                let dw, dh, dx, dy;
-
-                if (imgRatio > areaRatio) {
-                    dw = logoWidth;
-                    dh = logoWidth / imgRatio;
-                    dx = x;
-                    dy = logoY + (logoHeight - dh) / 2;
-                } else {
-                    dh = logoHeight;
-                    dw = logoHeight * imgRatio;
-                    dy = logoY;
-                    dx = x + (logoWidth - dw) / 2;
-                }
-                ctx.drawImage(img, dx, dy, dw, dh);
-            }
-        };
-
-        ctx.font = 'bold 24px Arial, sans-serif';
-        const contactNumber = profile.company?.cell_number || '062 031 3134';
-        
-        const iconSize = 28;
-        const iconPadding = 10;
-        const rapidLogoHeight = 60;
-        const logoPadding = 20;
-
-        const textMetrics = ctx.measureText(contactNumber);
-        
-        let rapidLogoWidth = 0;
-        if (rapidLogo) {
-            const ratio = rapidLogo.width / rapidLogo.height;
-            rapidLogoWidth = rapidLogoHeight * ratio;
+        if (report.ob_number) {
+            drawCell('OB NUMBER', report.ob_number, 'registration', 2, 4);
         }
 
-        const totalFooterWidth = logoWidth + logoPadding + iconSize + iconPadding + textMetrics.width + (rapidLogo ? logoPadding + rapidLogoWidth : 0);
-        const startX = (width - totalFooterWidth) / 2;
-        
-        drawLogo(companyLogo, startX);
+        // 11. Draw Footer Section
+        const footerStartY = 1246;
+        ctx.fillStyle = '#F25A22';
+        ctx.fillRect(0, footerStartY, width, 12); // Separation orange thick line
 
-        ctx.textBaseline = 'middle';
-        const contactY = bottomY;
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, footerStartY + 12, width, 242);
 
-        const whatsappX = startX + logoWidth + logoPadding;
-        if (whatsappIcon) {
-            ctx.drawImage(whatsappIcon, whatsappX, contactY - iconSize / 2, iconSize, iconSize);
-        }
-        
-        const textX = whatsappX + iconSize + iconPadding;
-        ctx.fillStyle = '#FFFFFF';
+        // Draw orange corner slant path at bottom right
+        ctx.fillStyle = '#F25A22';
+        ctx.beginPath();
+        ctx.moveTo(850, 1500);
+        ctx.lineTo(1000, footerStartY + 12);
+        ctx.lineTo(1000, 1500);
+        ctx.closePath();
+        ctx.fill();
+
+        // Bottom left Call icon
+        const callCenterY = footerStartY + 122;
+        ctx.beginPath();
+        ctx.arc(110, callCenterY, 45, 0, Math.PI * 2);
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = '#F25A22';
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(110, callCenterY);
+        ctx.fillStyle = '#F25A22';
+        ctx.beginPath();
+        ctx.moveTo(-12, -10);
+        ctx.quadraticCurveTo(-15, -4, -6, 6);
+        ctx.quadraticCurveTo(4, 15, 10, 12);
+        ctx.lineTo(14, 8);
+        ctx.quadraticCurveTo(12, 4, 8, 6);
+        ctx.lineTo(4, 2);
+        ctx.quadraticCurveTo(-2, -4, 0, -8);
+        ctx.lineTo(-2, -12);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // Contact Labels
         ctx.textAlign = 'left';
-        ctx.fillText(contactNumber, textX, contactY);
-
-        if (rapidLogo) {
-            const rightLogoX = textX + textMetrics.width + logoPadding;
-            const rLogoY = bottomY - rapidLogoHeight / 2; 
-            ctx.drawImage(rapidLogo, rightLogoX, rLogoY, rapidLogoWidth, rapidLogoHeight);
-        }
-
-        const copyrightY = height - 20;
-        ctx.font = '12px Arial, sans-serif';
         ctx.textBaseline = 'alphabetic';
-        const copyrightText = `Copyright © ${new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)`;
-        const copyrightMetrics = ctx.measureText(copyrightText);
-        const logoH = 24;
-        const logoW = rapidLogo ? (rapidLogo.width / rapidLogo.height) * logoH : 0;
-        const gap = 8;
-        const totalContentWidth = logoW + gap + copyrightMetrics.width;
-        const copyrightStartX = (width - totalContentWidth) / 2;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `bold 28px ${fontSans}`;
+        ctx.fillText('IF SPOTTED', 180, callCenterY - 10);
 
-        if (rapidLogo) {
-            ctx.drawImage(rapidLogo, copyrightStartX, copyrightY - 18, logoW, logoH); 
-        }
-        ctx.fillStyle = '#AAAAAA';
-        ctx.textAlign = 'left';
-        ctx.fillText(copyrightText, copyrightStartX + logoW + gap, copyrightY);
+        ctx.fillStyle = '#F25A22';
+        ctx.font = `900 52px ${fontImpact}`;
+        ctx.fillText('CONTACT', 180, callCenterY + 42);
 
-        // 11. Export
+        // Vertical grey separator line
+        ctx.strokeStyle = '#222222';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(460, footerStartY + 40);
+        ctx.lineTo(460, footerStartY + 210);
+        ctx.stroke();
+
+        // Right side footer text details
+        const footerCompanyName = profile.company?.name ? profile.company.name.toUpperCase() : 'EXCELLERATE SERVICES';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `bold 26px ${fontSans}`;
+        ctx.fillText(footerCompanyName, 490, footerStartY + 75);
+
+        ctx.fillStyle = '#F25A22';
+        ctx.font = `bold 18px ${fontSans}`;
+        const footerSub = profile.company?.name ? 'SECURITY OPERATIONS CENTRE' : 'NATIONAL COMMAND CENTRE';
+        ctx.fillText(footerSub, 490, footerStartY + 110);
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `900 68px ${fontImpact}`;
+        const companyContact = profile.company?.cell_number || '+278469-10111';
+        ctx.fillText(companyContact, 490, footerStartY + 185);
+
+
+        // 12. Export
         return new Promise<{ method: 'share' | 'download' | 'clipboard' | 'none' }>((resolve, reject) => {
             canvas.toBlob(async (blob) => {
                 if (!blob) {
