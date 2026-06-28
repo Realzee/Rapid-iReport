@@ -101,9 +101,9 @@ export const generateAndShareBolo = async (
         const logoToDraw = companyLogo || rapidLogo;
         if (logoToDraw) {
             ctx.save();
-            const maxLogoW = 320;
-            const maxLogoH = 180;
-            const logoX = 940 - maxLogoW; // Right-aligned to 940px (60px right margin)
+            const maxLogoW = 420;
+            const maxLogoH = 260;
+            const logoX = 950 - maxLogoW; // Right-aligned to 950px (50px right margin)
             const logoY = 40; // Vertically centered in the header
             
             const imgRatio = logoToDraw.width / logoToDraw.height;
