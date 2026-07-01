@@ -34,7 +34,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewPublicDashboard, onViewAbout 
         <div className="min-h-screen flex flex-col relative">
             <div className="absolute top-6 right-6 z-20 flex gap-4">
               <button onClick={onViewAbout} className="text-sm font-medium text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400">
-                  About
+                  User Manual
               </button>
               <ThemeToggle />
             </div>
