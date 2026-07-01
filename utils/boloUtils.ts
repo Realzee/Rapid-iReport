@@ -680,6 +680,25 @@ export const generateAndShareBolo = async (
         const companyContact = profile.company?.cell_number || '+278469-10111';
         ctx.fillText(companyContact, 490, footerStartY + 185);
 
+        // Copyright with main app's logo
+        const copyrightY = height - 20;
+        ctx.font = '12px Arial, sans-serif';
+        ctx.textBaseline = 'alphabetic';
+        const copyrightText = `Copyright © ${new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)`;
+        const copyrightMetrics = ctx.measureText(copyrightText);
+        const logoH = 24;
+        const logoW = rapidLogo ? (rapidLogo.width / rapidLogo.height) * logoH : 0;
+        const gap = 8;
+        const totalContentWidth = logoW + gap + copyrightMetrics.width;
+        const copyrightStartX = (width - totalContentWidth) / 2;
+
+        if (rapidLogo) {
+            ctx.drawImage(rapidLogo, copyrightStartX, copyrightY - 18, logoW, logoH); 
+        }
+        ctx.fillStyle = '#AAAAAA';
+        ctx.textAlign = 'left';
+        ctx.fillText(copyrightText, copyrightStartX + logoW + gap, copyrightY);
+
 
         // 12. Export
         return new Promise<{ method: 'share' | 'download' | 'clipboard' | 'none' }>((resolve, reject) => {
