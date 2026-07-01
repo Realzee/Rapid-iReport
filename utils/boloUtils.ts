@@ -161,11 +161,17 @@ export const generateAndShareBolo = async (
         ctx.lineTo(600, lineY + 15);
         ctx.stroke();
 
-        // Determine title text based on report details
+        // Determine title text based on report details and if case number is supplied
+        const rawCaseNum = report.cas_number || report.case_number || report.caseNumber || report.casenumber;
+        const hasCaseNumber = rawCaseNum && String(rawCaseNum).trim() !== '' && String(rawCaseNum).trim().toUpperCase() !== 'N/A';
+
         let titleLine1 = 'STOLEN';
         let titleLine2 = 'MOTOR VEHICLE';
 
-        if (report.type === 'vehicle') {
+        if (!hasCaseNumber) {
+            titleLine1 = 'BOLO';
+            titleLine2 = '';
+        } else if (report.type === 'vehicle') {
             const isHijacked = String(report.status).toLowerCase() === 'hijacked';
             titleLine1 = isHijacked ? 'HIJACKED' : 'STOLEN';
             titleLine2 = 'MOTOR VEHICLE';
@@ -175,14 +181,16 @@ export const generateAndShareBolo = async (
         }
 
         // Title text in giant stout display typography
-        const titleY = 240;
+        const titleY = titleLine2 ? 240 : 280;
         ctx.font = `900 96px ${fontImpact}`;
         ctx.fillStyle = '#F25A22'; // Orange Accent
         ctx.fillText(titleLine1, 60, titleY);
 
-        ctx.font = `900 80px ${fontImpact}`;
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(titleLine2, 60, titleY + 95);
+        if (titleLine2) {
+            ctx.font = `900 80px ${fontImpact}`;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText(titleLine2, 60, titleY + 95);
+        }
 
         // 7. Orange separator bar 1 (above image)
         const imageStartY = 370;
