@@ -715,15 +715,16 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     </div>
                 </div>
             )}
-            <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                <div className="flex items-center gap-2 min-w-0">
-                    <ReportTypeBadge type={localReport.type as any} className="p-1.5" />
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{localReport.type === 'vehicle' ? (localReport as any).license_plate : localReport.title}</h3>
+            <div className={`flex flex-col flex-grow ${isRecoveredOrDeleted ? 'opacity-50 grayscale' : ''}`}>
+                <div className="flex justify-between items-center mb-4 flex-shrink-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <ReportTypeBadge type={localReport.type as any} className="p-1.5" />
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{localReport.type === 'vehicle' ? (localReport as any).license_plate : localReport.title}</h3>
+                    </div>
+                    <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
+                        <XIcon className="w-6 h-6" />
+                    </button>
                 </div>
-                <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
-                    <XIcon className="w-6 h-6" />
-                </button>
-            </div>
 
             <div className="space-y-4 flex-grow">
                 {localReport.evidence_images && localReport.evidence_images.length > 0 && (
@@ -1156,6 +1157,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     </button>
                 </div>
             )}
+            </div>
             <ImagePreviewModal isOpen={!!previewImageUrl} onClose={() => setPreviewImageUrl(null)} imageUrl={previewImageUrl} />
         </div>
     );

@@ -78,7 +78,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
   return (
     <div 
         onClick={onClick}
-        className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4 relative overflow-hidden group ${bgColor} ${borderColor} hover:bg-gray-100 dark:hover:bg-gray-800 flex items-start space-x-4 ${isRecoveredOrDeleted ? 'opacity-50 grayscale' : (isTerminalStatus ? 'opacity-70' : '')}`}
+        className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4 relative overflow-hidden group ${bgColor} ${borderColor} hover:bg-gray-100 dark:hover:bg-gray-800`}
     >
         {isRecoveredOrDeleted && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 select-none">
@@ -87,27 +87,28 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                 </div>
             </div>
         )}
-        {showCheckbox && (
-            <div className="flex-shrink-0 self-center pr-1" onClick={(e) => e.stopPropagation()}>
-                <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={onClick}
-                    className="rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
-                />
-            </div>
-        )}
-        {hasImage && (
-            <div className="flex-shrink-0">
-                <img 
-                    src={report.evidence_images![0]} 
-                    alt="Evidence" 
-                    className={`w-20 h-20 object-cover rounded-md border border-gray-200 dark:border-gray-700 ${isTerminalStatus ? 'grayscale' : ''}`}
-                />
-            </div>
-        )}
+        <div className={`flex items-start space-x-4 w-full ${isRecoveredOrDeleted ? 'opacity-50 grayscale' : (isTerminalStatus ? 'opacity-70' : '')}`}>
+            {showCheckbox && (
+                <div className="flex-shrink-0 self-center pr-1" onClick={(e) => e.stopPropagation()}>
+                    <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={onClick}
+                        className="rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                    />
+                </div>
+            )}
+            {hasImage && (
+                <div className="flex-shrink-0">
+                    <img 
+                        src={report.evidence_images![0]} 
+                        alt="Evidence" 
+                        className={`w-20 h-20 object-cover rounded-md border border-gray-200 dark:border-gray-700 ${isTerminalStatus ? 'grayscale' : ''}`}
+                    />
+                </div>
+            )}
 
-        <div className={`flex-1 min-w-0 ${!hasImage && 'pl-2'}`}>
+            <div className={`flex-1 min-w-0 ${!hasImage && 'pl-2'}`}>
             <div className="flex justify-between items-start">
                 <div className="flex-1 min-w-0 pr-2 flex items-center gap-3">
                     {companyLogoUrl && (
@@ -204,6 +205,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                   {safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}
               </p>
             </div>
+        </div>
         </div>
     </div>
   );

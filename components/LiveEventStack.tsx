@@ -77,7 +77,7 @@ const LiveEventItem: React.FC<{
     return (
         <div
             onClick={onSelect}
-            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm border-l-4 relative overflow-hidden ${ageBorderClass} ${isSelected ? 'border-blue-500' : ''} ${bgClass} ${pulseClass} ${isRecoveredOrDeleted ? 'opacity-50 grayscale' : ''}`}
+            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm border-l-4 relative overflow-hidden ${ageBorderClass} ${isSelected ? 'border-blue-500' : ''} ${bgClass} ${pulseClass}`}
         >
             {isRecoveredOrDeleted && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 select-none">
@@ -86,7 +86,7 @@ const LiveEventItem: React.FC<{
                     </div>
                 </div>
             )}
-            <div className="flex gap-3">
+            <div className={`flex gap-3 ${isRecoveredOrDeleted ? 'opacity-50 grayscale' : ''}`}>
                 {hasImages && (
                     <div className="flex-shrink-0">
                         <img 
