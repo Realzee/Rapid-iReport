@@ -509,8 +509,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                            {paginatedReports.map(report => (
-                                <tr key={report.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                            {paginatedReports.map(report => {
+                                const isRecoveredOrDeleted = report.status === ReportStatus.RECOVERED || report.status === ReportStatus.DELETED || report.status === 'recovered' || report.status === 'deleted';
+                                return (
+                                    <tr key={report.id} className={`hover:bg-gray-50 dark:hover:bg-gray-800/40 ${isRecoveredOrDeleted ? 'opacity-50 grayscale transition-all' : ''}`}>
                                     <td className="px-4 py-4 whitespace-nowrap w-10">
                                         <input 
                                             type="checkbox" 
@@ -570,7 +572,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                            );
+                        })}
                         </tbody>
                     </table>
                 </div>

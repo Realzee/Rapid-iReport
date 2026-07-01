@@ -53,9 +53,21 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
     status => !(report.type !== 'vehicle' && status === ReportStatus.RECOVERED)
   );
 
-  const borderColor = isSelected ? 'border-blue-500' : (isTerminalStatus ? 'border-gray-300 dark:border-gray-700' : severityBorderColors[report.severity]);
-  const bgColor = isSelected ? 'bg-blue-500/10 dark:bg-blue-500/30' : (isTerminalStatus ? 'bg-gray-200/50 dark:bg-gray-900/50' : 'bg-gray-50/50 dark:bg-gray-800/60');
-  const textColor = isTerminalStatus ? 'text-gray-500 dark:text-gray-500' : 'text-gray-800 dark:text-white';
+  const isRecoveredOrDeleted = useMemo(() => {
+    return report.status === ReportStatus.RECOVERED || report.status === ReportStatus.DELETED || report.status === 'recovered' || report.status === 'deleted';
+  }, [report.status]);
+
+  const borderColor = isSelected 
+    ? 'border-blue-500' 
+    : (isRecoveredOrDeleted 
+      ? 'border-gray-300 dark:border-gray-700' 
+      : (isTerminalStatus ? 'border-gray-300 dark:border-gray-700' : severityBorderColors[report.severity]));
+  const bgColor = isSelected 
+    ? 'bg-blue-500/10 dark:bg-blue-500/30' 
+    : (isRecoveredOrDeleted 
+      ? 'bg-gray-150/50 dark:bg-gray-900/10' 
+      : (isTerminalStatus ? 'bg-gray-200/50 dark:bg-gray-900/50' : 'bg-gray-50/50 dark:bg-gray-800/60'));
+  const textColor = (isTerminalStatus || isRecoveredOrDeleted) ? 'text-gray-500 dark:text-gray-500' : 'text-gray-800 dark:text-white';
   const hasImage = report.evidence_images && report.evidence_images.length > 0;
 
   const isSharedFromOtherCompany = profile.company_id && report.company_id && report.company_id !== profile.company_id;
@@ -64,7 +76,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
   return (
     <div 
         onClick={onClick}
-        className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4 group ${bgColor} ${borderColor} hover:bg-gray-100 dark:hover:bg-gray-800 flex items-start space-x-4 ${isTerminalStatus ? 'opacity-70' : ''}`}
+        className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4 group ${bgColor} ${borderColor} hover:bg-gray-100 dark:hover:bg-gray-800 flex items-start space-x-4 ${isRecoveredOrDeleted ? 'opacity-50 grayscale' : (isTerminalStatus ? 'opacity-70' : '')}`}
     >
         {showCheckbox && (
             <div className="flex-shrink-0 self-center pr-1" onClick={(e) => e.stopPropagation()}>

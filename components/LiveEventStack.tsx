@@ -45,20 +45,26 @@ const LiveEventItem: React.FC<{
 }> = ({ report, isSelected, isPanic, isUnviewed, onSelect, responderMap, reporterName, profile }) => {
     const title = report.type === 'vehicle' ? (report as any).license_plate : report.title;
     
+    const isRecoveredOrDeleted = report.status === 'recovered' || report.status === 'deleted';
+
     // Age-based coloring
-    const ageBorderClass = getAgeColorClass(report.reported_at);
-    const ageTextClass = getAgeTextClass(report.reported_at);
+    const ageBorderClass = isRecoveredOrDeleted ? 'border-l-gray-400 dark:border-l-gray-600' : getAgeColorClass(report.reported_at);
+    const ageTextClass = isRecoveredOrDeleted ? 'text-gray-450' : getAgeTextClass(report.reported_at);
 
     const isSharedFromOtherCompany = profile.company_id && report.company_id && report.company_id !== profile.company_id;
     const sharingCompanyName = report.company_name || '';
 
     const borderClass = isSelected 
         ? 'border-blue-500 ring-2 ring-blue-500/50' 
-        : (isPanic ? 'border-red-500' : 'border-gray-200 dark:border-gray-700/50');
+        : (isRecoveredOrDeleted 
+            ? 'border-gray-200 dark:border-gray-700/50'
+            : (isPanic ? 'border-red-500' : 'border-gray-200 dark:border-gray-700/50'));
         
     const bgClass = isSelected 
         ? 'bg-blue-500/10 dark:bg-gray-900/60' 
-        : (isPanic ? 'bg-red-500/10' : 'bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60');
+        : (isRecoveredOrDeleted
+            ? 'bg-gray-150/50 dark:bg-gray-900/10 hover:bg-gray-200/50 dark:hover:bg-gray-900/20'
+            : (isPanic ? 'bg-red-500/10' : 'bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60'));
         
     // Flash animation for unviewed reports
     const pulseClass = isPanic ? 'animate-pulse' : (isUnviewed ? 'animate-pulse ring-2 ring-yellow-400/50' : '');
@@ -69,7 +75,7 @@ const LiveEventItem: React.FC<{
     return (
         <div
             onClick={onSelect}
-            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm border-l-4 ${ageBorderClass} ${isSelected ? 'border-blue-500' : ''} ${bgClass} ${pulseClass}`}
+            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm border-l-4 ${ageBorderClass} ${isSelected ? 'border-blue-500' : ''} ${bgClass} ${pulseClass} ${isRecoveredOrDeleted ? 'opacity-50 grayscale' : ''}`}
         >
             <div className="flex gap-3">
                 {hasImages && (
