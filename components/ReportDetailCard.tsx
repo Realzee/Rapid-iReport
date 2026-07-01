@@ -702,8 +702,17 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         }
     };
 
+    const isRecoveredOrDeleted = localReport.status === 'recovered' || localReport.status === 'deleted' || localReport.status === ReportStatus.RECOVERED || localReport.status === ReportStatus.DELETED;
+
     return (
-        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-auto">
+        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-auto relative overflow-hidden">
+            {isRecoveredOrDeleted && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 select-none">
+                    <div className={`border-8 border-double ${localReport.status === 'recovered' ? 'border-green-600/90 text-green-600/90 dark:border-green-400/90 dark:text-green-400/90 bg-green-50/90 dark:bg-green-950/90' : 'border-red-600/90 text-red-600/90 dark:border-red-400/90 dark:text-red-400/90 bg-red-50/90 dark:bg-red-950/90'} font-black text-3xl tracking-widest px-6 py-3 uppercase rounded-xl transform -rotate-12 shadow-2xl`}>
+                        {localReport.status}
+                    </div>
+                </div>
+            )}
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <div className="flex items-center gap-2 min-w-0">
                     <ReportTypeBadge type={localReport.type as any} className="p-1.5" />

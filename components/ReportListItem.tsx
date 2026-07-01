@@ -76,8 +76,15 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
   return (
     <div 
         onClick={onClick}
-        className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4 group ${bgColor} ${borderColor} hover:bg-gray-100 dark:hover:bg-gray-800 flex items-start space-x-4 ${isRecoveredOrDeleted ? 'opacity-50 grayscale' : (isTerminalStatus ? 'opacity-70' : '')}`}
+        className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4 relative overflow-hidden group ${bgColor} ${borderColor} hover:bg-gray-100 dark:hover:bg-gray-800 flex items-start space-x-4 ${isRecoveredOrDeleted ? 'opacity-50 grayscale' : (isTerminalStatus ? 'opacity-70' : '')}`}
     >
+        {isRecoveredOrDeleted && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 select-none">
+                <div className={`border-4 border-double ${report.status === 'recovered' ? 'border-green-600/90 text-green-600/90 dark:border-green-400/90 dark:text-green-400/90 bg-green-50/90 dark:bg-green-950/90' : 'border-red-600/90 text-red-600/90 dark:border-red-400/90 dark:text-red-400/90 bg-red-50/90 dark:bg-red-950/90'} font-black text-sm tracking-widest px-3 py-1 uppercase rounded-md transform -rotate-12 shadow-lg`}>
+                    {report.status}
+                </div>
+            </div>
+        )}
         {showCheckbox && (
             <div className="flex-shrink-0 self-center pr-1" onClick={(e) => e.stopPropagation()}>
                 <input
