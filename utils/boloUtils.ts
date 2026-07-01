@@ -164,11 +164,12 @@ export const generateAndShareBolo = async (
         // Determine title text based on report details and if case number is supplied
         const rawCaseNum = report.cas_number || report.case_number || report.caseNumber || report.casenumber;
         const hasCaseNumber = rawCaseNum && String(rawCaseNum).trim() !== '' && String(rawCaseNum).trim().toUpperCase() !== 'N/A';
+        const hasBoloInCaseNum = rawCaseNum && String(rawCaseNum).toLowerCase().includes('bolo');
 
         let titleLine1 = 'STOLEN';
         let titleLine2 = 'MOTOR VEHICLE';
 
-        if (!hasCaseNumber) {
+        if (!hasCaseNumber || hasBoloInCaseNum) {
             titleLine1 = 'BOLO';
             titleLine2 = '';
         } else if (report.type === 'vehicle') {
