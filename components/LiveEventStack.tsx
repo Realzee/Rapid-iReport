@@ -45,7 +45,7 @@ const LiveEventItem: React.FC<{
 }> = ({ report, isSelected, isPanic, isUnviewed, onSelect, responderMap, reporterName, profile }) => {
     const title = report.type === 'vehicle' ? (report as any).license_plate : report.title;
     
-    const isRecoveredOrDeleted = report.status === 'recovered' || report.status === 'deleted';
+    const isRecoveredOrDeleted = report.status === 'recovered' || report.status === 'deleted' || report.status === 'resolved';
 
     // Age-based coloring
     const ageBorderClass = isRecoveredOrDeleted ? 'border-l-gray-400 dark:border-l-gray-600' : getAgeColorClass(report.reported_at);
@@ -72,6 +72,8 @@ const LiveEventItem: React.FC<{
     const hasImages = report.evidence_images && report.evidence_images.length > 0;
     const assignedResponderName = report.assigned_to ? responderMap.get(report.assigned_to) : null;
 
+    const isGreenStamp = report.status === 'recovered' || report.status === 'resolved';
+
     return (
         <div
             onClick={onSelect}
@@ -79,7 +81,7 @@ const LiveEventItem: React.FC<{
         >
             {isRecoveredOrDeleted && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 select-none">
-                    <div className={`border-4 border-double ${report.status === 'recovered' ? 'border-green-600/90 text-green-600/90 dark:border-green-400/90 dark:text-green-400/90 bg-green-50/90 dark:bg-green-950/90' : 'border-red-600/90 text-red-600/90 dark:border-red-400/90 dark:text-red-400/90 bg-red-50/90 dark:bg-red-950/90'} font-black text-sm tracking-widest px-3 py-1 uppercase rounded-md transform -rotate-12 shadow-lg`}>
+                    <div className={`border-4 border-double ${isGreenStamp ? 'border-green-600/90 text-green-600/90 dark:border-green-400/90 dark:text-green-400/90 bg-green-50/90 dark:bg-green-950/90' : 'border-red-600/90 text-red-600/90 dark:border-red-400/90 dark:text-red-400/90 bg-red-50/90 dark:bg-red-950/90'} font-black text-sm tracking-widest px-3 py-1 uppercase rounded-md transform -rotate-12 shadow-lg`}>
                         {report.status}
                     </div>
                 </div>

@@ -54,7 +54,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
   );
 
   const isRecoveredOrDeleted = useMemo(() => {
-    return report.status === ReportStatus.RECOVERED || report.status === ReportStatus.DELETED || report.status === 'recovered' || report.status === 'deleted';
+    return report.status === ReportStatus.RECOVERED || report.status === ReportStatus.DELETED || report.status === ReportStatus.RESOLVED || report.status === 'recovered' || report.status === 'deleted' || report.status === 'resolved';
   }, [report.status]);
 
   const borderColor = isSelected 
@@ -73,6 +73,8 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
   const isSharedFromOtherCompany = profile.company_id && report.company_id && report.company_id !== profile.company_id;
   const sharingCompanyName = sharingCompany?.name || report.company_name;
 
+  const isGreenStamp = report.status === 'recovered' || report.status === 'resolved' || report.status === ReportStatus.RECOVERED || report.status === ReportStatus.RESOLVED;
+
   return (
     <div 
         onClick={onClick}
@@ -80,7 +82,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
     >
         {isRecoveredOrDeleted && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 select-none">
-                <div className={`border-4 border-double ${report.status === 'recovered' ? 'border-green-600/90 text-green-600/90 dark:border-green-400/90 dark:text-green-400/90 bg-green-50/90 dark:bg-green-950/90' : 'border-red-600/90 text-red-600/90 dark:border-red-400/90 dark:text-red-400/90 bg-red-50/90 dark:bg-red-950/90'} font-black text-sm tracking-widest px-3 py-1 uppercase rounded-md transform -rotate-12 shadow-lg`}>
+                <div className={`border-4 border-double ${isGreenStamp ? 'border-green-600/90 text-green-600/90 dark:border-green-400/90 dark:text-green-400/90 bg-green-50/90 dark:bg-green-950/90' : 'border-red-600/90 text-red-600/90 dark:border-red-400/90 dark:text-red-400/90 bg-red-50/90 dark:bg-red-950/90'} font-black text-sm tracking-widest px-3 py-1 uppercase rounded-md transform -rotate-12 shadow-lg`}>
                     {report.status}
                 </div>
             </div>

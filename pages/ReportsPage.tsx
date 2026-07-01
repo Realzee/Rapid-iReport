@@ -510,7 +510,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                         </thead>
                         <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                             {paginatedReports.map(report => {
-                                const isRecoveredOrDeleted = report.status === ReportStatus.RECOVERED || report.status === ReportStatus.DELETED || report.status === 'recovered' || report.status === 'deleted';
+                                const isRecoveredOrDeleted = report.status === ReportStatus.RECOVERED || report.status === ReportStatus.DELETED || report.status === ReportStatus.RESOLVED || report.status === 'recovered' || report.status === 'deleted' || report.status === 'resolved';
                                 return (
                                     <tr key={report.id} className={`hover:bg-gray-50 dark:hover:bg-gray-800/40 ${isRecoveredOrDeleted ? 'opacity-50 grayscale transition-all' : ''}`}>
                                     <td className="px-4 py-4 whitespace-nowrap w-10">
