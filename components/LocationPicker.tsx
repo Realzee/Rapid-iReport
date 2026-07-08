@@ -184,8 +184,53 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
 
     // Handle suggestions lookup as user types
     useEffect(() => {
-        if (!searchQuery || searchQuery.trim().length < 3) {
+        const trimmedQuery = searchQuery.trim();
+        if (!trimmedQuery || trimmedQuery.length < 3) {
             setSuggestions([]);
+            return;
+        }
+
+        // If it's a URL (Google Maps link, etc.), resolve it!
+        if (trimmedQuery.startsWith('http://') || trimmedQuery.startsWith('https://')) {
+            if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+            debounceTimeoutRef.current = window.setTimeout(async () => {
+                setIsSearching(true);
+                try {
+                    const response = await fetch('/api/resolve-maps-link', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: trimmedQuery })
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.coords) {
+                            handleCoordsAndAddressSelected(data.coords, data.address);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Failed to resolve URL in picker search:", error);
+                } finally {
+                    setIsSearching(false);
+                }
+            }, 500);
+            return;
+        }
+
+        // If it's coordinates, parse and resolve them!
+        const parsedCoords = parseLocationInput(trimmedQuery);
+        if (parsedCoords) {
+            if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+            debounceTimeoutRef.current = window.setTimeout(async () => {
+                setIsSearching(true);
+                try {
+                    const address = await reverseGeocode(parsedCoords);
+                    handleCoordsAndAddressSelected(parsedCoords, address);
+                } catch (error) {
+                    console.error("Failed to reverse geocode coordinates in picker search:", error);
+                } finally {
+                    setIsSearching(false);
+                }
+            }, 500);
             return;
         }
 

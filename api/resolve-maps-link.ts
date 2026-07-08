@@ -79,6 +79,21 @@ const extractCoordsFromUrl = (url: string): { lat: number; lng: number } | null 
     return null;
 };
 
+const extractMetaRefreshUrl = (html: string): string | null => {
+    // Match <meta ... http-equiv="refresh" ... content="...url=URL" ...>
+    const match1 = html.match(/<meta[^>]*http-equiv=["']refresh["'][^>]*content=["'][^"']*url=([^"']+)["']/i);
+    if (match1 && match1[1]) return match1[1].trim();
+    
+    const match2 = html.match(/<meta[^>]*content=["'][^"']*url=([^"']+)["'][^>]*http-equiv=["']refresh["']/i);
+    if (match2 && match2[1]) return match2[1].trim();
+    
+    // Also look for window.location or window.location.replace in scripts
+    const scriptMatch = html.match(/window\.location\.replace\(["']([^"']+)["']\)/i);
+    if (scriptMatch && scriptMatch[1]) return scriptMatch[1].trim();
+    
+    return null;
+};
+
 const extractCoordsFromHtml = (html: string): { lat: number; lng: number } | null => {
     // 1. Try static map URLs contained in standard image elements or social meta tags (e.g., center=-26.248,27.755)
     const staticMapUrlRegex = /staticmap\?center=(-?\d+\.\d+)(?:%2C|,)(-?\d+\.\d+)/i;
@@ -115,7 +130,50 @@ const extractCoordsFromHtml = (html: string): { lat: number; lng: number } | nul
         return { lat: parseFloat(metaImageMatch[2]), lng: parseFloat(metaImageMatch[3]) };
     }
 
-    return null;
+    // 6. Look for canonical or og:url links and check if we can extract coordinates from them
+    const ogMatch = html.match(/<meta[^>]*property=["']og:url["'][^>]*content=["']([^"']+)["']/i) ||
+                    html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:url["']/i);
+    if (ogMatch && ogMatch[1]) {
+        const ogCoords = extractCoordsFromUrl(ogMatch[1]);
+        if (ogCoords) return ogCoords;
+    }
+
+    const canonicalMatch = html.match(/<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i) ||
+                           html.match(/<link[^>]*href=["']([^"']+)["'][^>]*rel=["']canonical["']/i);
+    if (canonicalMatch && canonicalMatch[1]) {
+        const canonicalCoords = extractCoordsFromUrl(canonicalMatch[1]);
+        if (canonicalCoords) return canonicalCoords;
+    }
+
+    // 7. Full scan fallback for South African coordinate patterns (Latitude: -35 to -22, Longitude: 16 to 33)
+    const regexSA = /(-3[0-5]\.\d+|-2[1-9]\.\d+)\s*,\s*(1[6-9]\.\d+|2[0-9]\.\d+|3[0-3]\.\d+)/g;
+    let match;
+    while ((match = regexSA.exec(html)) !== null) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (lat >= -35.2 && lat <= -21.9 && lng >= 16.2 && lng <= 33.1) {
+            return { lat, lng };
+        }
+    }
+
+    // 8. General coordinate pairs scanner
+    const regexGeneral = /(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/g;
+    let fallbackMatch: { lat: number; lng: number } | null = null;
+    while ((match = regexGeneral.exec(html)) !== null) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            // Prefer South Africa bounds if possible
+            if (lat >= -35.2 && lat <= -21.9 && lng >= 16.2 && lng <= 33.1) {
+                return { lat, lng };
+            }
+            if (!fallbackMatch) {
+                fallbackMatch = { lat, lng };
+            }
+        }
+    }
+
+    return fallbackMatch;
 };
 
 const getDistanceInKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -142,6 +200,11 @@ const getWordOverlap = (str1: string, str2: string): number => {
     return matches / words1.size;
 };
 
+const isCoordinateString = (str: string): boolean => {
+    const clean = str.replace(/[,\s@()]+/g, '');
+    return /^-?\d+(\.\d+)?$/.test(clean) || /^-?\d+$/.test(clean);
+};
+
 const extractPlaceNameFromUrl = (url: string): string | null => {
     let decodedUrl = url;
     try {
@@ -150,26 +213,32 @@ const extractPlaceNameFromUrl = (url: string): string | null => {
         console.warn("Failed to decode URL in extractPlaceNameFromUrl:", e);
     }
 
-    // 1. Match /maps/place/([^/?#]+)
+    // 1. Match /maps/place/([^/?#\s]+)
     const placeRegex = /\/maps\/place\/([^/?#\s]+)/i;
     const placeMatch = decodedUrl.match(placeRegex);
     if (placeMatch && placeMatch[1]) {
-        const value = placeMatch[1].replace(/\+/g, ' ').trim();
+        let value = placeMatch[1].split('@')[0];
+        value = value.replace(/\/+$/, '').trim();
+        value = value.replace(/,+$/, '').trim();
+        const cleanValue = value.replace(/\+/g, ' ').trim();
+        
         // Ensure it's not just a pair of coordinates like "-25.123,28.456"
-        const coordRegex = /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/;
-        if (!coordRegex.test(value)) {
-            return value;
+        if (!isCoordinateString(cleanValue) && cleanValue.length > 0) {
+            return cleanValue;
         }
     }
 
-    // 2. Match /maps/search/([^/?#]+)
+    // 2. Match /maps/search/([^/?#\s]+)
     const searchPathRegex = /\/maps\/search\/([^/?#\s]+)/i;
     const searchPathMatch = decodedUrl.match(searchPathRegex);
     if (searchPathMatch && searchPathMatch[1]) {
-        const value = searchPathMatch[1].replace(/\+/g, ' ').trim();
-        const coordRegex = /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/;
-        if (!coordRegex.test(value)) {
-            return value;
+        let value = searchPathMatch[1].split('@')[0];
+        value = value.replace(/\/+$/, '').trim();
+        value = value.replace(/,+$/, '').trim();
+        const cleanValue = value.replace(/\+/g, ' ').trim();
+        
+        if (!isCoordinateString(cleanValue) && cleanValue.length > 0) {
+            return cleanValue;
         }
     }
 
@@ -178,10 +247,12 @@ const extractPlaceNameFromUrl = (url: string): string | null => {
         const urlObj = new URL(url);
         const q = urlObj.searchParams.get('q') || urlObj.searchParams.get('query');
         if (q) {
-            const value = q.replace(/\+/g, ' ').trim();
-            const coordRegex = /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/;
-            if (!coordRegex.test(value)) {
-                return value;
+            let value = q.split('@')[0];
+            value = value.replace(/\/+$/, '').trim();
+            value = value.replace(/,+$/, '').trim();
+            const cleanValue = value.replace(/\+/g, ' ').trim();
+            if (!isCoordinateString(cleanValue) && cleanValue.length > 0) {
+                return cleanValue;
             }
         }
     } catch (e) {
@@ -189,10 +260,12 @@ const extractPlaceNameFromUrl = (url: string): string | null => {
         const qParamRegex = /[?&](?:q|query)=([^&#\s]+)/i;
         const qParamMatch = decodedUrl.match(qParamRegex);
         if (qParamMatch && qParamMatch[1]) {
-            const value = qParamMatch[1].replace(/\+/g, ' ').trim();
-            const coordRegex = /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/;
-            if (!coordRegex.test(value)) {
-                return value;
+            let value = qParamMatch[1].split('@')[0];
+            value = value.replace(/\/+$/, '').trim();
+            value = value.replace(/,+$/, '').trim();
+            const cleanValue = value.replace(/\+/g, ' ').trim();
+            if (!isCoordinateString(cleanValue) && cleanValue.length > 0) {
+                return cleanValue;
             }
         }
     }
@@ -227,12 +300,43 @@ export default async function handler(req: Request, res: Response) {
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.5'
+                        'Accept-Language': 'en-US,en;q=0.5',
+                        'Cookie': 'CONSENT=YES+cb.20220301-11-p0.en-GB+424; SOCS=CoYBOgYIKhcNDg'
                     },
                     signal: controller.signal
                 });
                 clearTimeout(id);
                 finalUrl = response.url;
+                if (response.ok) {
+                    responseBody = await response.text();
+                }
+
+                // Follow meta refresh inside the HTML if any
+                const metaRefreshUrl = extractMetaRefreshUrl(responseBody);
+                if (metaRefreshUrl) {
+                    const refreshController = new AbortController();
+                    const refreshId = setTimeout(() => refreshController.abort(), 6000);
+                    try {
+                        const refreshRes = await fetch(metaRefreshUrl, {
+                            method: 'GET',
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                                'Accept-Language': 'en-US,en;q=0.5',
+                                'Cookie': 'CONSENT=YES+cb.20220301-11-p0.en-GB+424; SOCS=CoYBOgYIKhcNDg'
+                            },
+                            signal: refreshController.signal
+                        });
+                        clearTimeout(refreshId);
+                        finalUrl = refreshRes.url;
+                        if (refreshRes.ok) {
+                            responseBody = await refreshRes.text();
+                        }
+                    } catch (refreshErr) {
+                        clearTimeout(refreshId);
+                        console.error('Failed to fetch meta refresh URL:', refreshErr);
+                    }
+                }
 
                 // Handle cookie consent redirect pattern
                 if (finalUrl.includes('consent.google.com')) {
@@ -249,7 +353,8 @@ export default async function handler(req: Request, res: Response) {
                                 headers: {
                                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                                    'Accept-Language': 'en-US,en;q=0.5'
+                                    'Accept-Language': 'en-US,en;q=0.5',
+                                    'Cookie': 'CONSENT=YES+cb.20220301-11-p0.en-GB+424; SOCS=CoYBOgYIKhcNDg'
                                 },
                                 signal: innerController.signal
                             });
@@ -263,8 +368,6 @@ export default async function handler(req: Request, res: Response) {
                             console.error('Failed to fetch continue URL after consent page:', innerErr);
                         }
                     }
-                } else if (response.ok) {
-                    responseBody = await response.text();
                 }
             } catch (fetchErr) {
                 clearTimeout(id);
