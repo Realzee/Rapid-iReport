@@ -586,7 +586,7 @@ const App: React.FC = () => {
       }
       return (
           <Suspense fallback={renderLoadingFallback()}>
-              <AuthPage onViewPublicDashboard={() => setShowPublicView(true)} onViewAbout={() => setShowAboutPage(true)} />
+              <AuthPage onViewAbout={() => setShowAboutPage(true)} />
           </Suspense>
       );
   }

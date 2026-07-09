@@ -487,8 +487,31 @@ export default async function handler(req: Request, res: Response) {
                         const overlap2 = getWordOverlap(reverseAddress, placeName);
                         const highOverlap = Math.max(overlap1, overlap2) > 0.4;
                         
-                        if (isDuplicate || highOverlap) {
-                            // Use whichever is longer/more detailed
+                        // Helper to detect if a string contains address components (so it's not a simple business/venue name)
+                        const isAddressLike = (str: string): boolean => {
+                            const s = str.toLowerCase();
+                            const streetKeywords = [
+                                'street', 'st', 'road', 'rd', 'avenue', 'ave', 'drive', 'dr', 
+                                'lane', 'ln', 'way', 'boulevard', 'blvd', 'crescent', 'cres', 
+                                'highway', 'hwy', 'place', 'pl', 'court', 'ct', 'square', 'sq', 
+                                'close', 'cl', 'terrace', 'ter'
+                            ];
+                            const hasStreetWord = streetKeywords.some(word => {
+                                const regex = new RegExp(`\\b${word}\\b`, 'i');
+                                return regex.test(s);
+                            });
+                            const hasStreetNum = /\b\d+\s+[a-z]/i.test(s);
+                            const partsCount = s.split(',').filter(p => p.trim().length > 0).length;
+                            const hasMultipleParts = partsCount >= 3;
+                            const hasPostalCode = /\b\d{4,5}\b/.test(s);
+                            
+                            return hasStreetWord || hasStreetNum || hasMultipleParts || hasPostalCode;
+                        };
+
+                        const placeIsAddress = isAddressLike(placeName);
+                        
+                        if (isDuplicate || highOverlap || placeIsAddress) {
+                            // Use whichever is longer/more detailed to avoid duplicating address parts
                             address = reverseAddress.length > placeName.length ? reverseAddress : placeName;
                         } else {
                             // If they are different (e.g., placeName is a venue like "KFC" and reverseAddress is "12 Burnett St")
