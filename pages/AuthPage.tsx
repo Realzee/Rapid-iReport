@@ -35,7 +35,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewPublicDashboard, onViewAbout 
             <main className="flex-grow flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
                 <div className="mb-8 text-center">
                    <img src={mainLogoUrl} alt="Rapid911 Logo" className="w-auto h-32 sm:h-40 mx-auto transition-transform duration-300 hover:scale-105" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
-                   <h2 className="mt-6 text-2xl font-bold text-gray-900 dark:text-white">Trusted by organisations worldwide</h2>
+                   <h2 className="mt-6 text-2xl font-bold text-gray-900 dark:text-white">Loved by teams around the world</h2>
                 </div>
 
                 <div className="w-full max-w-md p-8 space-y-8 bg-white/80 dark:bg-gray-950/60 backdrop-blur-2xl border border-gray-200 dark:border-gray-700/50 rounded-2xl shadow-2xl transition-colors duration-300 dark:ring-1 dark:ring-white/10">
