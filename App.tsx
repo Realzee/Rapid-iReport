@@ -547,7 +547,7 @@ const App: React.FC = () => {
                  <img src={mainLogoUrl} alt="Rapid911 Logo" className="max-w-xs md:max-w-md h-auto mx-auto opacity-90 object-contain" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
              </div>
              <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-             <p className="mt-6 text-xs tracking-widest text-gray-400 uppercase font-medium">Loading workspace...</p>
+             <p className="mt-6 text-xs tracking-widest text-gray-400 uppercase font-medium">Loading...</p>
         </div>
     )
   }
