@@ -43,7 +43,7 @@ import { useToast } from './contexts/ToastContext';
 import { useTheme } from './contexts/ThemeContext';
 import MatrixRain from './components/MatrixRain';
 
-type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance';
+type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about';
 
 const isProfileComplete = (profile: Profile) => {
     if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
@@ -462,6 +462,14 @@ const App: React.FC = () => {
 
   const renderView = () => {
     if (!profile) return null;
+
+    if (view === 'about') {
+      return (
+        <Suspense fallback={renderLoadingFallback()}>
+          <AboutPage onBackToLogin={() => handleSetView('dashboard')} />
+        </Suspense>
+      );
+    }
 
     const onInitialReportHandled = () => setInitialReportId(null);
 

@@ -13,7 +13,7 @@ import { CorporateSharingModal } from './CorporateSharingModal';
 
 interface HeaderProps {
     currentView: string;
-    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops') => void;
+    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about') => void;
     profile: Profile;
     onNotificationClick: (notification: Notification) => void;
 }
@@ -187,7 +187,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     setMobileMenuOpen(false);
   };
 
-  const handleMobileLinkClick = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'attendance') => {
+  const handleMobileLinkClick = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'attendance' | 'technician_dashboard' | 'tech_ops' | 'about') => {
       setView(view);
       setMobileMenuOpen(false);
   }
@@ -457,6 +457,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
               {dropdownOpen && (
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white/90 dark:bg-gray-800/80 backdrop-blur-lg rounded-xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 py-1">
                   <button onClick={() => { setView('profile'); setDropdownOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-black dark:hover:text-white">Profile</button>
+                  <button onClick={() => { setView('about'); setDropdownOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-black dark:hover:text-white">User Manual</button>
                   <a href="#" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-black dark:hover:text-white">Settings</a>
                   <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
                   <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-500 dark:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300">Logout</button>
@@ -478,6 +479,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
             <NavLinks mobile={true} />
             <div className="border-t border-gray-200 dark:border-gray-700 my-2 pt-2 space-y-2">
                  <button onClick={() => handleMobileLinkClick('profile')} className={mobileNavLinkClasses('profile')}>Profile</button>
+                 <button onClick={() => handleMobileLinkClick('about')} className={mobileNavLinkClasses('about' as any)}>User Manual</button>
                  <button onClick={handleLogout} className="block w-full text-left px-4 py-3 text-lg text-red-500 dark:text-red-400 hover:bg-red-500/10 rounded-md">Logout</button>
             </div>
           </nav>

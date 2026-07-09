@@ -479,14 +479,19 @@ export default async function handler(req: Request, res: Response) {
                     }
                     
                     if (placeName && reverseAddress) {
-                        // Calculate word overlap between placeName and reverseAddress
-                        const overlap = getWordOverlap(placeName, reverseAddress);
-                        if (overlap > 0.4) {
-                            // If they are very similar, use the clean placeName from Google Maps
-                            address = placeName;
+                        const cleanPlace = placeName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        const cleanReverse = reverseAddress.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        
+                        const isDuplicate = cleanPlace.includes(cleanReverse) || cleanReverse.includes(cleanPlace);
+                        const overlap1 = getWordOverlap(placeName, reverseAddress);
+                        const overlap2 = getWordOverlap(reverseAddress, placeName);
+                        const highOverlap = Math.max(overlap1, overlap2) > 0.4;
+                        
+                        if (isDuplicate || highOverlap) {
+                            // Use whichever is longer/more detailed
+                            address = reverseAddress.length > placeName.length ? reverseAddress : placeName;
                         } else {
-                            // If they are different (e.g., placeName is a venue/business name like "KFC Hatfield"
-                            // and reverseAddress is "Burnett St, Hatfield..."), merge them elegantly!
+                            // If they are different (e.g., placeName is a venue like "KFC" and reverseAddress is "12 Burnett St")
                             address = `${placeName}, ${reverseAddress}`;
                         }
                     } else {
