@@ -201,9 +201,26 @@ const UserReportDetail: React.FC<{
                     </div>
                 </div>
 
-                <div>
-                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{report.type === 'vehicle' ? 'Last Seen Location' : 'Location'}</p>
-                     <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gray-50 dark:bg-gray-800/20 p-2.5 rounded-lg border border-gray-200/50 dark:border-gray-800/50">
+                    <div>
+                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{report.type === 'vehicle' ? 'Last Seen Location' : 'Location'}</p>
+                         <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</p>
+                    </div>
+                    {(report.location_coords || report.map_link) && (
+                        <button 
+                            onClick={() => {
+                                if (report.map_link && (report.map_link.startsWith('http://') || report.map_link.startsWith('https://'))) {
+                                    window.open(report.map_link, '_blank');
+                                } else if (report.location_coords) {
+                                    const url = `https://www.google.com/maps/search/?api=1&query=${report.location_coords.lat},${report.location_coords.lng}`;
+                                    window.open(url, '_blank');
+                                }
+                            }}
+                            className="self-start sm:self-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs flex items-center gap-1 transition shadow-sm"
+                        >
+                            <span>Google Maps ↗</span>
+                        </button>
+                    )}
                 </div>
 
                 {((report as any).license_plate || (report as any).vehicle_make || (report as any).vehicle_model || (report as any).vehicle_color || (report as any).vin_number || (report as any).engine_number || (report as any).circulation_number) && (

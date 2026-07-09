@@ -7,13 +7,52 @@ import { useToast } from '../contexts/ToastContext';
 import { LayersIcon, CrosshairIcon } from './icons';
 
 // --- Helper Functions ---
+export const formatAddress = (data: any): string => {
+    if (!data) return "Unknown location";
+    if (data.address) {
+        const addr = data.address;
+        const parts: string[] = [];
+        
+        // 1. Street address (e.g., "12 Jan Smuts Ave")
+        const streetNum = addr.house_number || addr.street_number;
+        const road = addr.road;
+        if (streetNum && road) {
+            parts.push(`${streetNum} ${road}`);
+        } else if (road) {
+            parts.push(road);
+        }
+        
+        // 2. Suburb / Neighborhood / District
+        const suburb = addr.suburb || addr.neighbourhood || addr.village || addr.suburb_district;
+        if (suburb) {
+            parts.push(suburb);
+        }
+        
+        // 3. City / Town
+        const city = addr.city || addr.town || addr.city_district || addr.municipality;
+        if (city && city !== suburb) {
+            parts.push(city);
+        }
+        
+        // 4. Province/State if we don't have enough details
+        if (parts.length <= 1 && addr.state) {
+            parts.push(addr.state);
+        }
+        
+        if (parts.length > 0) {
+            return parts.join(', ');
+        }
+    }
+    return data.display_name || "Unknown location";
+};
+
 export const reverseGeocode = async (coords: LocationCoords): Promise<string> => {
     try {
         const response = await fetch(`/api/reverse-geocode?lat=${coords.lat}&lng=${coords.lng}`);
         if (!response.ok) return "Unknown location";
         
         const data = await response.json();
-        return data.display_name || "Unknown location";
+        return formatAddress(data);
     } catch (error) {
         console.error("Reverse geocoding failed:", error);
         return "Could not fetch location name";

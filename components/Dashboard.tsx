@@ -29,6 +29,15 @@ const ACTIVE_STATUSES = ACTIVE_REPORT_STATUSES;
 const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onInitialReportHandled, setView }) => {
     const [reports, setReports] = useState<Report[]>([]);
     const [responders, setResponders] = useState<Responder[]>([]);
+    const [isMobile, setIsMobile] = useState(false);
+    const [mobileTab, setMobileTab] = useState<'list' | 'map'>('list');
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
     const [allUsers, setAllUsers] = useState<Profile[]>([]);
     const allUsersRef = useRef<Profile[]>([]);
     const [companies, setCompanies] = useState<Company[]>([]);
@@ -404,7 +413,15 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         return () => clearTimeout(timeoutId);
     }, [reports, allUsers]);
 
-    const handleReportSelect = useCallback((reportId: string) => setSelectedReportId(prevId => prevId === reportId ? null : reportId), []);
+    const handleReportSelect = useCallback((reportId: string) => {
+        setSelectedReportId(prevId => {
+            const nextId = prevId === reportId ? null : reportId;
+            if (nextId && window.innerWidth < 1024) {
+                setMobileTab('list');
+            }
+            return nextId;
+        });
+    }, []);
 
     useEffect(() => {
         if (initialReportId && onInitialReportHandled && reports.some(r => r.id === initialReportId)) {
@@ -690,49 +707,81 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                     <StatCard title="Total Reports" value={(reportCounts.vehicle + reportCounts.crime + reportCounts.emergency).toString()} icon={<ZapIcon />} color="primary" />
                     <StatCard title="Vehicle" value={reportCounts.vehicle.toString()} icon={<CarIcon />} color="yellow" />
                     <StatCard title="Crime" value={reportCounts.crime.toString()} icon={<CrimeIcon />} color="red" />
                     <StatCard title="Emergency" value={reportCounts.emergency.toString()} icon={<AlertTriangleIcon />} color="orange" />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     <StatCard title="Active Incidents" value={reports.filter(r => r.status === 'active' || r.status === 'in_progress').length.toString()} icon={<AlertTriangleIcon />} color="red" />
                     <StatCard title="Resolved Today" value={reports.filter(r => (r.status === 'resolved' || r.status === 'recovered' || r.status === 'closed') && r.completed_at && isSameDay(parseISO(r.completed_at), new Date())).length.toString()} icon={<CheckCircleIcon />} color="green" />
-                    <StatCard title="Available Responders" value={responders.filter(r => r.status === 'available').length.toString()} icon={<ZapIcon />} color="yellow" />
+                    <div className="col-span-2 sm:col-span-1">
+                        <StatCard title="Available Responders" value={responders.filter(r => r.status === 'available').length.toString()} icon={<ZapIcon />} color="yellow" />
+                    </div>
                 </div>
             </div>
+
+            {isMobile && (
+                <div className="flex p-1 bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-750 rounded-xl mb-4">
+                    <button
+                        onClick={() => setMobileTab('list')}
+                        className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
+                            mobileTab === 'list'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                        }`}
+                    >
+                        Incidents ({displayReports.length})
+                    </button>
+                    <button
+                        onClick={() => setMobileTab('map')}
+                        className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
+                            mobileTab === 'map'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                        }`}
+                    >
+                        Live Map
+                    </button>
+                </div>
+            )}
+
             <div className="flex flex-col lg:flex-row gap-6">
-                <div className={`lg:flex-shrink-0 flex flex-col transition-all duration-300 ${selectedReport ? 'lg:w-[500px] lg:h-fit lg:min-h-[calc(100vh-8.5rem-4.5rem-1.5rem)]' : 'lg:w-[400px] lg:h-[calc(100vh-8.5rem-4.5rem-1.5rem)]'}`}>
-                    <div className="flex justify-between items-center mb-2 px-1">
-                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                            {showIdleReports ? 'Showing archives' : 'Showing live stack (top 20)'}
-                        </span>
-                        <button
-                            onClick={() => setShowIdleReports(!showIdleReports)}
-                            className="text-xs font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                        >
-                            {showIdleReports ? 'Show Live Only' : 'Load Archives'}
-                        </button>
+                {(!isMobile || mobileTab === 'list') && (
+                    <div className={`lg:flex-shrink-0 flex flex-col transition-all duration-300 ${selectedReport ? 'lg:w-[500px] lg:h-fit lg:min-h-[calc(100vh-8.5rem-4.5rem-1.5rem)]' : 'lg:w-[400px] lg:h-[calc(100vh-8.5rem-4.5rem-1.5rem)]'}`}>
+                        <div className="flex justify-between items-center mb-2 px-1">
+                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                {showIdleReports ? 'Showing archives' : 'Showing live stack (top 20)'}
+                            </span>
+                            <button
+                                onClick={() => setShowIdleReports(!showIdleReports)}
+                                className="text-xs font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                            >
+                                {showIdleReports ? 'Show Live Only' : 'Load Archives'}
+                            </button>
+                        </div>
+                        {selectedReport ? (
+                            <ReportDetailCard report={selectedReport} onClose={() => setSelectedReportId(null)} profile={profile} onEdit={handleOpenEditReportModal} onDelete={handleOpenDeleteReportModal} onViewOnMap={() => { if (isMobile) { setMobileTab('map'); } else { setIsMapModalOpen(true); } }} allUsers={allUsers} />
+                        ) : (
+                            <ReportList reports={displayReports} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} onStatusUpdate={handleStatusUpdate} companies={companies} />
+                        )}
                     </div>
-                    {selectedReport ? (
-                        <ReportDetailCard report={selectedReport} onClose={() => setSelectedReportId(null)} profile={profile} onEdit={handleOpenEditReportModal} onDelete={handleOpenDeleteReportModal} onViewOnMap={() => setIsMapModalOpen(true)} allUsers={allUsers} />
-                    ) : (
-                        <ReportList reports={displayReports} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} onStatusUpdate={handleStatusUpdate} companies={companies} />
-                    )}
-                </div>
-                <div className="flex-1 min-w-0">
-                    <div className="h-[60vh] lg:h-[calc(100vh-8.5rem-4.5rem-1.5rem)] lg:sticky lg:top-20">
-                        <MapView 
-                            reports={displayReports} 
-                            responders={responders} 
-                            selectedReportId={selectedReportId} 
-                            profile={profile} 
-                            onReportSelect={handleReportSelect}
-                            allUsers={allUsers}
-                        />
+                )}
+                {(!isMobile || mobileTab === 'map') && (
+                    <div className="flex-1 min-w-0">
+                        <div className="h-[60vh] lg:h-[calc(100vh-8.5rem-4.5rem-1.5rem)] lg:sticky lg:top-20">
+                            <MapView 
+                                reports={displayReports} 
+                                responders={responders} 
+                                selectedReportId={selectedReportId} 
+                                profile={profile} 
+                                onReportSelect={handleReportSelect}
+                                allUsers={allUsers}
+                            />
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
             <ReportModal isOpen={isReportModalOpen} onClose={handleCloseReportModal} reportToEdit={reportToEdit} onReportSubmitted={fetchData} />
             <ArchiveReportModal isOpen={!!reportToDelete} onClose={() => setReportToDelete(null)} onConfirm={confirmDeleteReport} reportIdentifier={reportToDelete ? (reportToDelete.type === 'vehicle' ? (reportToDelete as any).license_plate : reportToDelete.title) : ''} />

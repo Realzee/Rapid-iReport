@@ -948,6 +948,27 @@ const ControllerReportDetail: React.FC<{
                 )}
                 <DetailField label="Description"><p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{report.description}</p></DetailField>
                 
+                <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <DetailField label={report.type === 'vehicle' ? "Last Seen Location" : "Location"} className="flex-grow">
+                        <p className="text-gray-800 dark:text-gray-200 font-semibold">{(report as any).location || (report as any).last_seen_location || 'N/A'}</p>
+                    </DetailField>
+                    {(report.location_coords || report.map_link) && (
+                        <button 
+                            onClick={() => {
+                                if (report.map_link && (report.map_link.startsWith('http://') || report.map_link.startsWith('https://'))) {
+                                    window.open(report.map_link, '_blank');
+                                } else if (report.location_coords) {
+                                    const url = `https://www.google.com/maps/search/?api=1&query=${report.location_coords.lat},${report.location_coords.lng}`;
+                                    window.open(url, '_blank');
+                                }
+                            }}
+                            className="self-start sm:self-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs flex items-center gap-1 transition"
+                        >
+                            <span>Google Maps ↗</span>
+                        </button>
+                    )}
+                </div>
+                
                 {((report as any).license_plate || (report as any).vehicle_make || (report as any).vehicle_model || (report as any).vehicle_color || (report as any).year || (report as any).vin_number || (report as any).engine_number || (report as any).circulation_number) && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
                         {(report as any).license_plate && <DetailField label="Reg">{(report as any).license_plate}</DetailField>}

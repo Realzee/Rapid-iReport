@@ -6,7 +6,7 @@ import ResponderStack from '../components/ResponderStack';
 import MapView from '../components/MapView';
 import { supabase } from '../utils/supabase';
 import ControllerReportDetail from '../components/ControllerReportDetail';
-import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, MapIcon, ChatAlt2Icon, RadioTowerIcon, WrenchIcon, ShareIcon } from '../components/icons';
+import { ZapIcon, UsersIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, MapIcon, ChatAlt2Icon, RadioTowerIcon, WrenchIcon, ShareIcon, ClipboardCheckIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
 import CirculationListManager from '../components/CirculationListManager';
 import { useChat } from '../contexts/ChatContext';
@@ -91,6 +91,15 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [selectedResponderId, setSelectedResponderId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<ControllerTab>('events');
+    const [isMobile, setIsMobile] = useState(false);
+    const [mobileView, setMobileView] = useState<'feed' | 'map' | 'detail' | 'bolo'>('feed');
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
     const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
         return !!localStorage.getItem('new-report') || localStorage.getItem('controller_report_modal_open') === 'true';
     });
@@ -458,7 +467,13 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     }, [sortedReports, selectedReportId, loading]);
 
     const handleReportSelect = (id: string) => {
-        setSelectedReportId(prevId => prevId === id ? null : id);
+        setSelectedReportId(prevId => {
+            const nextId = prevId === id ? null : id;
+            if (nextId && window.innerWidth < 1024) {
+                setMobileView('detail');
+            }
+            return nextId;
+        });
         setActiveTab('events');
         if (id === newPanicReportId) {
             setNewPanicReportId(null);
@@ -641,150 +656,220 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-                <div className="lg:col-span-3 print:hidden lg:h-[calc(100vh-12rem)]">
-                    <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex flex-col backdrop-blur-lg h-full">
-                        <div className="flex-shrink-0 mb-4 p-1 bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg">
-                            <div className="flex flex-wrap gap-1">
-                                <button onClick={() => setActiveTab('events')} className={`flex-grow py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${activeTab === 'events' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}><ZapIcon className="w-4 h-4" /> Events</button>
-                                <button onClick={() => setActiveTab('responders')} className={`flex-grow py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${activeTab === 'responders' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}><UsersIcon className="w-4 h-4" /> Response</button>
-                                {isModuleAllowed('tech_ops') && (
-                                    <button onClick={() => setActiveTab('tech')} className={`flex-grow py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${activeTab === 'tech' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}><WrenchIcon className="w-4 h-4" /> Tech Ops</button>
-                                )}
-                            </div>
-                        </div>
-                        
-                        {activeTab === 'events' ? (
-                            <>
-                                <div className="flex justify-between items-center mb-2 px-1">
-                                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                        {showIdleReports ? 'Showing archives' : 'Showing live stack (top 20)'}
-                                    </span>
-                                    <button
-                                        onClick={() => setShowIdleReports(!showIdleReports)}
-                                        className="text-xs font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                                    >
-                                        {showIdleReports ? 'Show Live Only' : 'Load Archives'}
-                                    </button>
-                                </div>
-                                <button 
-                                    onClick={() => setSelectedReportId(null)}
-                                    disabled={!selectedReportId}
-                                    className="w-full mb-4 px-3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700/60 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <MapIcon className="w-5 h-5" /> Show All Incidents
-                                </button>
-                                <LiveEventStack
-                                    reports={displayReports}
-                                    responders={responders}
-                                    onReportSelect={handleReportSelect}
-                                    selectedReportId={selectedReportId}
-                                    allUsers={allUsers}
-                                    newPanicReportId={newPanicReportId}
-                                    unviewedReportIds={unviewedReportIds}
-                                    profile={profile}
-                                />
-                            </>
-                        ) : activeTab === 'responders' ? (
-                            <ResponderStack
-                                responders={responders}
-                                reports={displayReports}
-                                selectedReportId={selectedReportId}
-                                selectedResponderId={selectedResponderId}
-                                onAssign={handleAssignResponder}
-                                onResponderSelect={handleResponderSelect}
-                            />
-                        ) : (
-                            <TechStack
-                                jobs={techJobs}
-                                allUsers={allUsers}
-                                onSelectJob={setSelectedTechJobId}
-                                selectedJobId={selectedTechJobId}
-                                onCreateJobClick={() => setIsTechDispatchOpen(true)}
-                            />
-                        )}
-                    </div>
+            {isMobile && (
+                <div className="flex p-1 bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-750 rounded-xl mb-4 overflow-x-auto">
+                    <button
+                        onClick={() => setMobileView('feed')}
+                        className={`flex-grow py-2.5 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                            mobileView === 'feed'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                        }`}
+                    >
+                        <ZapIcon className="w-3.5 h-3.5" />
+                        Feed
+                    </button>
+                    <button
+                        onClick={() => setMobileView('map')}
+                        className={`flex-grow py-2.5 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                            mobileView === 'map'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                        }`}
+                    >
+                        <MapIcon className="w-3.5 h-3.5" />
+                        Live Map
+                    </button>
+                    <button
+                        onClick={() => setMobileView('detail')}
+                        disabled={!selectedReport && !selectedTechJobId}
+                        className={`flex-grow py-2.5 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-40 ${
+                            mobileView === 'detail'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                        }`}
+                    >
+                        <ClipboardCheckIcon className="w-3.5 h-3.5" />
+                        Details
+                    </button>
+                    <button
+                        onClick={() => setMobileView('bolo')}
+                        className={`flex-grow py-2.5 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                            mobileView === 'bolo'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                        }`}
+                    >
+                        <UsersIcon className="w-3.5 h-3.5" />
+                        Circulations
+                    </button>
                 </div>
+            )}
 
-                <div className="lg:col-span-9 flex flex-col gap-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                        <div className={`
-                            lg:sticky lg:top-24 h-[60vh] lg:h-[calc(100vh-12rem)] print:hidden relative transition-all duration-300
-                            ${!isDetailsVisible 
-                                ? 'lg:col-span-12' 
-                                : (activeTab === 'tech' ? !!selectedTechJobId : !!selectedReport)
-                                ? 'lg:col-span-5' 
-                                : 'lg:col-span-7'}
-                        `}>
-                            <MapView
-                                reports={displayReports}
-                                responders={responders}
-                                selectedReportId={selectedReportId}
-                                selectedResponderId={selectedResponderId}
-                                profile={profile}
-                                onReportSelect={handleReportSelect}
-                                onResponderSelect={handleResponderSelect}
-                                onAssignResponder={handleAssignResponder}
-                                allUsers={allUsers}
-                                activeTab={activeTab}
-                                showHighRiskAreas={showHighRiskAreas}
-                            />
-                            <button
-                                onClick={() => setIsDetailsVisible(!isDetailsVisible)}
-                                className="absolute top-1/2 -right-4 -translate-y-1/2 z-10 bg-white dark:bg-gray-800 p-1.5 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hidden lg:flex"
-                                title={isDetailsVisible ? 'Hide Details' : 'Show Details'}
-                            >
-                                {isDetailsVisible ? <ChevronRightIcon className="w-5 h-5" /> : <ChevronLeftIcon className="w-5 h-5" />}
-                            </button>
-                        </div>
-                        {isDetailsVisible && (
-                             <div className={`
-                                space-y-4 ${(activeTab === 'tech' ? !!selectedTechJobId : !!selectedReport) ? 'lg:h-fit lg:min-h-[calc(100vh-12rem)]' : 'lg:h-[calc(100vh-12rem)]'} transition-all duration-300
-                                ${(activeTab === 'tech' ? !!selectedTechJobId : !!selectedReport)
-                                    ? 'lg:col-span-7'
-                                    : 'lg:col-span-5'}
-                             `}>
-                                {activeTab === 'tech' ? (
-                                    selectedTechJobId && techJobs.find(j => j.id === selectedTechJobId) ? (
-                                        <TechJobDetail
-                                            key={selectedTechJobId}
-                                            job={techJobs.find(j => j.id === selectedTechJobId)!}
-                                            allUsers={allUsers}
-                                            onRefresh={fetchTechJobs}
-                                        />
-                                    ) : (
-                                        <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden min-h-[40vh]">
-                                            <p className="text-gray-500 dark:text-gray-400">Select a technician job to view details &amp; track vehicle.</p>
-                                        </div>
-                                    )
-                                ) : selectedReport ? (
-                                    <ControllerReportDetail
-                                        key={selectedReport.id}
-                                        report={selectedReport}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                {(!isMobile || mobileView === 'feed') && (
+                    <div className="lg:col-span-3 print:hidden lg:h-[calc(100vh-12rem)]">
+                        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex flex-col backdrop-blur-lg h-full">
+                            <div className="flex-shrink-0 mb-4 p-1 bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                <div className="flex flex-wrap gap-1">
+                                    <button onClick={() => setActiveTab('events')} className={`flex-grow py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${activeTab === 'events' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}><ZapIcon className="w-4 h-4" /> Events</button>
+                                    <button onClick={() => setActiveTab('responders')} className={`flex-grow py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${activeTab === 'responders' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}><UsersIcon className="w-4 h-4" /> Response</button>
+                                    {isModuleAllowed('tech_ops') && (
+                                        <button onClick={() => setActiveTab('tech')} className={`flex-grow py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${activeTab === 'tech' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}><WrenchIcon className="w-4 h-4" /> Tech Ops</button>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {activeTab === 'events' ? (
+                                <>
+                                    <div className="flex justify-between items-center mb-2 px-1">
+                                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                            {showIdleReports ? 'Showing archives' : 'Showing live stack (top 20)'}
+                                        </span>
+                                        <button
+                                            onClick={() => setShowIdleReports(!showIdleReports)}
+                                            className="text-xs font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                                        >
+                                            {showIdleReports ? 'Show Live Only' : 'Load Archives'}
+                                        </button>
+                                    </div>
+                                    <button 
+                                        onClick={() => setSelectedReportId(null)}
+                                        disabled={!selectedReportId}
+                                        className="w-full mb-4 px-3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700/60 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <MapIcon className="w-5 h-5" /> Show All Incidents
+                                    </button>
+                                    <LiveEventStack
+                                        reports={displayReports}
                                         responders={responders}
-                                        profile={profile}
+                                        onReportSelect={handleReportSelect}
+                                        selectedReportId={selectedReportId}
                                         allUsers={allUsers}
-                                        onEdit={handleEditReport}
-                                        onRefresh={fetchData}
+                                        newPanicReportId={newPanicReportId}
+                                        unviewedReportIds={unviewedReportIds}
+                                        profile={profile}
                                     />
-                                ) : (
-                                    <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden min-h-[40vh]">
-                                        <p className="text-gray-500 dark:text-gray-400">Select an incident to view details.</p>
+                                </>
+                            ) : activeTab === 'responders' ? (
+                                <ResponderStack
+                                    responders={responders}
+                                    reports={displayReports}
+                                    selectedReportId={selectedReportId}
+                                    selectedResponderId={selectedResponderId}
+                                    onAssign={handleAssignResponder}
+                                    onResponderSelect={handleResponderSelect}
+                                />
+                            ) : (
+                                <TechStack
+                                    jobs={techJobs}
+                                    allUsers={allUsers}
+                                    onSelectJob={(id) => {
+                                        setSelectedTechJobId(id);
+                                        if (window.innerWidth < 1024) {
+                                            setMobileView('detail');
+                                        }
+                                    }}
+                                    selectedJobId={selectedTechJobId}
+                                    onCreateJobClick={() => setIsTechDispatchOpen(true)}
+                                />
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {(!isMobile || mobileView !== 'feed') && (
+                    <div className="lg:col-span-9 flex flex-col gap-4 w-full">
+                        {(!isMobile || mobileView === 'map' || mobileView === 'detail') && (
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                                {(!isMobile || mobileView === 'map') && (
+                                    <div className={`
+                                        lg:sticky lg:top-24 h-[60vh] lg:h-[calc(100vh-12rem)] print:hidden relative transition-all duration-300
+                                        ${!isDetailsVisible 
+                                            ? 'lg:col-span-12' 
+                                            : (activeTab === 'tech' ? !!selectedTechJobId : !!selectedReport)
+                                            ? 'lg:col-span-5' 
+                                            : 'lg:col-span-7'}
+                                    `}>
+                                        <MapView
+                                            reports={displayReports}
+                                            responders={responders}
+                                            selectedReportId={selectedReportId}
+                                            selectedResponderId={selectedResponderId}
+                                            profile={profile}
+                                            onReportSelect={handleReportSelect}
+                                            onResponderSelect={handleResponderSelect}
+                                            onAssignResponder={handleAssignResponder}
+                                            allUsers={allUsers}
+                                            activeTab={activeTab}
+                                            showHighRiskAreas={showHighRiskAreas}
+                                        />
+                                        <button
+                                            onClick={() => setIsDetailsVisible(!isDetailsVisible)}
+                                            className="absolute top-1/2 -right-4 -translate-y-1/2 z-10 bg-white dark:bg-gray-800 p-1.5 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hidden lg:flex"
+                                            title={isDetailsVisible ? 'Hide Details' : 'Show Details'}
+                                        >
+                                            {isDetailsVisible ? <ChevronRightIcon className="w-5 h-5" /> : <ChevronLeftIcon className="w-5 h-5" />}
+                                        </button>
                                     </div>
                                 )}
+                                {isDetailsVisible && (!isMobile || mobileView === 'detail') && (
+                                     <div className={`
+                                        space-y-4 ${(activeTab === 'tech' ? !!selectedTechJobId : !!selectedReport) ? 'lg:h-fit lg:min-h-[calc(100vh-12rem)]' : 'lg:h-[calc(100vh-12rem)]'} transition-all duration-300
+                                        ${(activeTab === 'tech' ? !!selectedTechJobId : !!selectedReport)
+                                            ? 'lg:col-span-7'
+                                            : 'lg:col-span-5'}
+                                     `}>
+                                        {activeTab === 'tech' ? (
+                                            selectedTechJobId && techJobs.find(j => j.id === selectedTechJobId) ? (
+                                                <TechJobDetail
+                                                    key={selectedTechJobId}
+                                                    job={techJobs.find(j => j.id === selectedTechJobId)!}
+                                                    allUsers={allUsers}
+                                                    onRefresh={fetchTechJobs}
+                                                />
+                                            ) : (
+                                                <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden min-h-[40vh]">
+                                                    <p className="text-gray-500 dark:text-gray-400">Select a technician job to view details &amp; track vehicle.</p>
+                                                </div>
+                                            )
+                                        ) : selectedReport ? (
+                                            <ControllerReportDetail
+                                                key={selectedReport.id}
+                                                report={selectedReport}
+                                                responders={responders}
+                                                profile={profile}
+                                                allUsers={allUsers}
+                                                onEdit={handleEditReport}
+                                                onRefresh={fetchData}
+                                            />
+                                        ) : (
+                                            <div className="h-full bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center print:hidden min-h-[40vh]">
+                                                <p className="text-gray-500 dark:text-gray-400">Select an incident to view details.</p>
+                                            </div>
+                                        )}
+                                     </div>
+                                )}
+                            </div>
+                        )}
+                        {(!isMobile || mobileView === 'bolo') && (
+                            <div className="print:hidden">
+                                <CirculationListManager 
+                                    profile={profile}
+                                    reports={reports.filter(r => r.type === 'vehicle') as VehicleReport[]}
+                                    loading={loading}
+                                    onSelectReport={(id) => {
+                                        setSelectedReportId(id);
+                                        if (window.innerWidth < 1024) {
+                                            setMobileView('detail');
+                                        }
+                                    }}
+                                    onQuickAdd={handleOpenQuickAddModal}
+                                />
                             </div>
                         )}
                     </div>
-                    <div className="print:hidden">
-                        <CirculationListManager 
-                            profile={profile}
-                            reports={reports.filter(r => r.type === 'vehicle') as VehicleReport[]}
-                            loading={loading}
-                            onSelectReport={setSelectedReportId}
-                            onQuickAdd={handleOpenQuickAddModal}
-                        />
-                    </div>
-                </div>
+                )}
             </div>
             <ReportModal
                 isOpen={isReportModalOpen}

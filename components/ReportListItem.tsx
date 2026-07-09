@@ -81,13 +81,22 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
         className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4 relative overflow-hidden group ${bgColor} ${borderColor} hover:bg-gray-100 dark:hover:bg-gray-800`}
     >
         {isRecoveredOrDeleted && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 select-none">
-                <div className={`border-4 border-double ${isGreenStamp ? 'border-green-600/90 text-green-600/90 dark:border-green-400/90 dark:text-green-400/90 bg-green-50/90 dark:bg-green-950/90' : 'border-red-600/90 text-red-600/90 dark:border-red-400/90 dark:text-red-400/90 bg-red-50/90 dark:bg-red-950/90'} font-black text-sm tracking-widest px-3 py-1 uppercase rounded-md transform -rotate-12 shadow-lg`}>
-                    {report.status}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 select-none bg-black/5 dark:bg-black/10">
+                <div className={`border-4 border-double ${
+                    isGreenStamp 
+                        ? 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400 bg-emerald-50/95 dark:bg-emerald-950/95 shadow-emerald-500/10' 
+                        : 'border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400 bg-rose-50/95 dark:bg-rose-950/95 shadow-rose-500/10'
+                    } font-black text-sm tracking-widest px-4 py-1.5 uppercase rounded-md transform -rotate-12 shadow-2xl ring-2 ring-offset-2 ${
+                    isGreenStamp 
+                        ? 'ring-emerald-500/20 dark:ring-emerald-400/20 ring-offset-emerald-50 dark:ring-offset-emerald-950' 
+                        : 'ring-rose-500/20 dark:ring-rose-400/20 ring-offset-rose-50 dark:ring-offset-rose-950'
+                    } font-mono`}
+                >
+                    {report.status.replace(/_/g, ' ')}
                 </div>
             </div>
         )}
-        <div className={`flex items-start space-x-4 w-full ${isRecoveredOrDeleted ? 'opacity-50 grayscale' : (isTerminalStatus ? 'opacity-70' : '')}`}>
+        <div className={`flex items-start space-x-4 w-full ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : (isTerminalStatus ? 'opacity-70' : '')}`}>
             {showCheckbox && (
                 <div className="flex-shrink-0 self-center pr-1" onClick={(e) => e.stopPropagation()}>
                     <input

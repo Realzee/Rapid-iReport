@@ -5,6 +5,45 @@ const geocodeCache = (global as any).geocodeCache || new Map<string, { data: any
 (global as any).geocodeCache = geocodeCache;
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes cache
 
+const formatAddress = (data: any): string => {
+    if (!data) return "Unknown location";
+    if (data.address) {
+        const addr = data.address;
+        const parts: string[] = [];
+        
+        // 1. Street address (e.g., "12 Jan Smuts Ave")
+        const streetNum = addr.house_number || addr.street_number;
+        const road = addr.road;
+        if (streetNum && road) {
+            parts.push(`${streetNum} ${road}`);
+        } else if (road) {
+            parts.push(road);
+        }
+        
+        // 2. Suburb / Neighborhood / District
+        const suburb = addr.suburb || addr.neighbourhood || addr.village || addr.suburb_district;
+        if (suburb) {
+            parts.push(suburb);
+        }
+        
+        // 3. City / Town
+        const city = addr.city || addr.town || addr.city_district || addr.municipality;
+        if (city && city !== suburb) {
+            parts.push(city);
+        }
+        
+        // 4. Province/State if we don't have enough details
+        if (parts.length <= 1 && addr.state) {
+            parts.push(addr.state);
+        }
+        
+        if (parts.length > 0) {
+            return parts.join(', ');
+        }
+    }
+    return data.display_name || "Unknown location";
+};
+
 export default async function handler(req: Request, res: Response) {
     if (req.method !== 'GET' && req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -39,6 +78,9 @@ export default async function handler(req: Request, res: Response) {
             }
 
             const data = await response.json();
+            if (data) {
+                data.display_name = formatAddress(data);
+            }
             geocodeCache.set(cacheKeyGeo, { data, timestamp: Date.now() });
             return res.status(200).json(data);
         } catch (error: any) {

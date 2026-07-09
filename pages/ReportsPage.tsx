@@ -511,16 +511,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                         <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                             {paginatedReports.map(report => {
                                 const isRecoveredOrDeleted = report.status === ReportStatus.RECOVERED || report.status === ReportStatus.DELETED || report.status === ReportStatus.RESOLVED || report.status === 'recovered' || report.status === 'deleted' || report.status === 'resolved';
+                                const isGreenStamp = report.status === 'recovered' || report.status === 'resolved' || report.status === ReportStatus.RECOVERED || report.status === ReportStatus.RESOLVED;
                                 return (
-                                    <tr key={report.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 relative">
-                                    {isRecoveredOrDeleted && (
-                                        <td className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 select-none">
-                                            <div className={`border-4 border-double ${report.status === 'recovered' || report.status === 'resolved' || report.status === ReportStatus.RECOVERED || report.status === ReportStatus.RESOLVED ? 'border-green-600/90 text-green-600/90 dark:border-green-400/90 dark:text-green-400/90 bg-green-50/90 dark:bg-green-950/90' : 'border-red-600/90 text-red-600/90 dark:border-red-400/90 dark:text-red-400/90 bg-red-50/90 dark:bg-red-950/90'} font-black text-sm tracking-widest px-4 py-1 uppercase rounded-md transform -rotate-1 shadow-lg`}>
-                                                {report.status}
-                                            </div>
-                                        </td>
-                                    )}
-                                    <td className={`px-4 py-4 whitespace-nowrap w-10 ${isRecoveredOrDeleted ? 'opacity-40 grayscale' : ''}`}>
+                                    <tr key={report.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                                    <td className={`px-4 py-4 whitespace-nowrap w-10 ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>
                                         <input 
                                             type="checkbox" 
                                             checked={selectedReportIds.includes(report.id)}
@@ -534,7 +528,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                             className="rounded border-gray-300 dark:border-gray-750 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
                                         />
                                     </td>
-                                    <td className={`px-6 py-4 whitespace-nowrap ${isRecoveredOrDeleted ? 'opacity-40 grayscale' : ''}`}>
+                                    <td className={`px-6 py-4 whitespace-nowrap ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>
                                         <div className="flex items-center gap-2">
                                             <div className={`p-1.5 rounded-full ${report.type === 'vehicle' ? 'bg-yellow-500/20' : (report.type === 'emergency' ? 'bg-orange-500/20' : 'bg-red-500/20')}`}>
                                                 {report.type === 'vehicle' ? <CarIcon className="w-4 h-4 text-yellow-600" /> : (report.type === 'emergency' ? <AlertTriangleIcon className="w-4 h-4 text-orange-600" /> : <CrimeIcon className="w-4 h-4 text-red-600" />)}
@@ -553,21 +547,39 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                             )}
                                         </div>
                                     </td>
-                                    <td className={`px-6 py-4 whitespace-nowrap ${isRecoveredOrDeleted ? 'opacity-40 grayscale' : ''}`}>
-                                        <div className="text-sm font-medium text-gray-900 dark:text-white">{isVehicleReport(report) ? report.license_plate : report.title}</div>
-                                        <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</div>
+                                    <td className="px-6 py-4 whitespace-nowrap relative min-w-[200px]">
+                                        {isRecoveredOrDeleted && (
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 select-none bg-black/5 dark:bg-black/10">
+                                                <div className={`border-4 border-double ${
+                                                    isGreenStamp 
+                                                        ? 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400 bg-emerald-50/95 dark:bg-emerald-950/95 shadow-emerald-500/10' 
+                                                        : 'border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400 bg-rose-50/95 dark:bg-rose-950/95 shadow-rose-500/10'
+                                                    } font-black text-xs tracking-widest px-3 py-1 uppercase rounded-md transform -rotate-6 shadow-2xl ring-2 ring-offset-2 ${
+                                                    isGreenStamp 
+                                                        ? 'ring-emerald-500/20 dark:ring-emerald-400/20 ring-offset-emerald-50 dark:ring-offset-emerald-950' 
+                                                        : 'ring-rose-500/20 dark:ring-rose-400/20 ring-offset-rose-50 dark:ring-offset-rose-950'
+                                                    } font-mono`}
+                                                >
+                                                    {report.status.replace(/_/g, ' ')}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className={isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}>
+                                            <div className="text-sm font-medium text-gray-900 dark:text-white">{isVehicleReport(report) ? report.license_plate : report.title}</div>
+                                            <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</div>
+                                        </div>
                                     </td>
-                                    <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-medium ${isRecoveredOrDeleted ? 'opacity-40 grayscale' : ''}`}>
+                                    <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-medium ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>
                                         {(report as any).company_name || <span className="text-gray-400 text-xs italic">Unknown</span>}
                                     </td>
-                                    <td className={`px-6 py-4 whitespace-nowrap ${isRecoveredOrDeleted ? 'opacity-40 grayscale' : ''}`}>
+                                    <td className={`px-6 py-4 whitespace-nowrap ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>
                                         <span className={`inline-block px-3 py-1 text-xs font-bold rounded-full capitalize border ${severityStyles[report.severity]}`}>
                                             {report.severity}
                                         </span>
                                     </td>
-                                    <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 ${isRecoveredOrDeleted ? 'opacity-40 grayscale' : ''}`}>{safeFormat(report.reported_at, 'MMM d, yyyy HH:mm')}</td>
-                                    <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 ${isRecoveredOrDeleted ? 'opacity-40 grayscale' : ''}`}>{(report as any).reported_by_name}</td>
-                                    <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize ${isRecoveredOrDeleted ? 'opacity-40 grayscale' : ''}`}>{report.status.replace(/_/g, ' ')}</td>
+                                    <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>{safeFormat(report.reported_at, 'MMM d, yyyy HH:mm')}</td>
+                                    <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>{(report as any).reported_by_name}</td>
+                                    <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>{report.status.replace(/_/g, ' ')}</td>
                                     <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 ${isRecoveredOrDeleted ? 'opacity-40 grayscale' : ''}`}>
                                         {safeFormat((report as any).achieved_at, 'MMM d, yyyy HH:mm', 'N/A')}
                                     </td>

@@ -709,13 +709,22 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     return (
         <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-auto relative overflow-hidden">
             {isRecoveredOrDeleted && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 select-none">
-                    <div className={`border-8 border-double ${isGreenStamp ? 'border-green-600/90 text-green-600/90 dark:border-green-400/90 dark:text-green-400/90 bg-green-50/90 dark:bg-green-950/90' : 'border-red-600/90 text-red-600/90 dark:border-red-400/90 dark:text-red-400/90 bg-red-50/90 dark:bg-red-950/90'} font-black text-3xl tracking-widest px-6 py-3 uppercase rounded-xl transform -rotate-12 shadow-2xl`}>
-                        {localReport.status}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 select-none bg-black/5 dark:bg-black/10">
+                    <div className={`border-8 border-double ${
+                        isGreenStamp 
+                            ? 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400 bg-emerald-50/95 dark:bg-emerald-950/95 shadow-emerald-500/10' 
+                            : 'border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400 bg-rose-50/95 dark:bg-rose-950/95 shadow-rose-500/10'
+                        } font-black text-2xl sm:text-3xl tracking-widest px-6 py-3 uppercase rounded-xl transform -rotate-12 shadow-2xl ring-4 ring-offset-4 ${
+                        isGreenStamp 
+                            ? 'ring-emerald-500/20 dark:ring-emerald-400/20 ring-offset-emerald-50 dark:ring-offset-emerald-950' 
+                            : 'ring-rose-500/20 dark:ring-rose-400/20 ring-offset-rose-50 dark:ring-offset-rose-950'
+                        } font-mono`}
+                    >
+                        {localReport.status.replace(/_/g, ' ')}
                     </div>
                 </div>
             )}
-            <div className={`flex flex-col flex-grow ${isRecoveredOrDeleted ? 'opacity-50 grayscale' : ''}`}>
+            <div className={`flex flex-col flex-grow ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                     <div className="flex items-center gap-2 min-w-0">
                         <ReportTypeBadge type={localReport.type as any} className="p-1.5" />
@@ -942,13 +951,29 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{localReport.type === 'vehicle' ? 'Last Seen Location' : 'Location'}</p>
                      <p className="text-gray-900 dark:text-white flex items-center gap-2"><MapPinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500"/> {localReport.type === 'vehicle' ? (localReport as any).last_seen_location : (localReport as any).location}</p>
                 </div>
-                 <button 
-                    onClick={onViewOnMap} 
-                    disabled={!localReport.location_coords}
-                    className="w-full btn-secondary text-primary-600 dark:text-primary-400"
-                 >
-                    View on Map
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                     <button 
+                        onClick={onViewOnMap} 
+                        disabled={!localReport.location_coords}
+                        className="btn-secondary text-primary-600 dark:text-primary-400 py-2.5 text-xs font-bold"
+                     >
+                        View on Map
+                     </button>
+                     <button 
+                        onClick={() => {
+                            if (localReport.map_link && (localReport.map_link.startsWith('http://') || localReport.map_link.startsWith('https://'))) {
+                                window.open(localReport.map_link, '_blank');
+                            } else if (localReport.location_coords) {
+                                const url = `https://www.google.com/maps/search/?api=1&query=${localReport.location_coords.lat},${localReport.location_coords.lng}`;
+                                window.open(url, '_blank');
+                            }
+                        }}
+                        disabled={!localReport.location_coords && !localReport.map_link}
+                        className="btn-primary py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-1"
+                     >
+                        Google Maps ↗
+                     </button>
+                </div>
 
                 {localReport.status === ReportStatus.RECOVERED && (localReport as any).recovered_location_coords && (
                     <div className="pt-2">

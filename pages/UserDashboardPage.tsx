@@ -16,6 +16,14 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
     const [companyUsers, setCompanyUsers] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
     const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
         return !!localStorage.getItem('new-report');
     });
@@ -73,7 +81,7 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 ...(aData || []).map(r => ({ ...r, type: 'emergency' as const }))
             ].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
             setMyReports(combined);
-            if (combined.length > 0 && !selectedReportId) {
+            if (combined.length > 0 && !selectedReportId && window.innerWidth >= 1024) {
                 setSelectedReportId(combined[0].id);
             }
         }
@@ -168,37 +176,73 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                    <div className="lg:col-span-1 space-y-3 lg:h-[calc(100vh-12rem)] lg:overflow-y-auto pr-2">
-                        {myReports.map(report => (
-                            <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
-                                className={`p-3 cursor-pointer rounded-lg border-2 transition-all ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-white/70 dark:bg-gray-900/60 border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600'}`}>
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-2 truncate pr-2">
-                                        <div className={`p-1.5 rounded-full flex-shrink-0 ${report.type === 'vehicle' ? 'bg-yellow-500/20 text-yellow-600' : (report.type === 'emergency' ? 'bg-orange-500/20 text-orange-600' : 'bg-red-500/20 text-red-600')}`}>
-                                            {report.type === 'vehicle' ? <CarIcon className="w-4 h-4" /> : (report.type === 'emergency' ? <AlertTriangleIcon className="w-4 h-4" /> : <CrimeIcon className="w-4 h-4" />)}
+                    {/* List Column: Hidden on mobile when a report is selected */}
+                    {(!isMobile || !selectedReportId) && (
+                        <div className="lg:col-span-1 space-y-3 lg:h-[calc(100vh-12rem)] lg:overflow-y-auto pr-2">
+                            {myReports.map(report => {
+                                const isRecoveredOrDeleted = report.status === 'recovered' || report.status === 'deleted' || report.status === 'resolved' || report.status === ReportStatus.RECOVERED || report.status === ReportStatus.DELETED || report.status === ReportStatus.RESOLVED;
+                                const isGreenStamp = report.status === 'recovered' || report.status === 'resolved' || report.status === ReportStatus.RECOVERED || report.status === ReportStatus.RESOLVED;
+                                return (
+                                    <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
+                                        className={`p-3 cursor-pointer rounded-lg border-2 transition-all relative overflow-hidden ${selectedReportId === report.id ? 'bg-blue-500/10 border-blue-500' : 'bg-white/70 dark:bg-gray-900/60 border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600'}`}>
+                                        {isRecoveredOrDeleted && (
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 select-none bg-black/5 dark:bg-black/10">
+                                                <div className={`border-4 border-double ${
+                                                    isGreenStamp 
+                                                        ? 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400 bg-emerald-50/95 dark:bg-emerald-950/95 shadow-emerald-500/10' 
+                                                        : 'border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400 bg-rose-50/95 dark:bg-rose-950/95 shadow-rose-500/10'
+                                                    } font-black text-xs sm:text-sm tracking-widest px-3 py-1 uppercase rounded-md transform -rotate-12 shadow-2xl ring-2 ring-offset-2 ${
+                                                    isGreenStamp 
+                                                        ? 'ring-emerald-500/20 dark:ring-emerald-400/20 ring-offset-emerald-50 dark:ring-offset-emerald-950' 
+                                                        : 'ring-rose-500/20 dark:ring-rose-400/20 ring-offset-rose-50 dark:ring-offset-rose-950'
+                                                    } font-mono`}
+                                                >
+                                                    {report.status.replace(/_/g, ' ')}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className={isRecoveredOrDeleted ? 'opacity-45 grayscale blur-[0.5px]' : ''}>
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex items-center gap-2 truncate pr-2">
+                                                    <div className={`p-1.5 rounded-full flex-shrink-0 ${report.type === 'vehicle' ? 'bg-yellow-500/20 text-yellow-600' : (report.type === 'emergency' ? 'bg-orange-500/20 text-orange-600' : 'bg-red-500/20 text-red-600')}`}>
+                                                        {report.type === 'vehicle' ? <CarIcon className="w-4 h-4" /> : (report.type === 'emergency' ? <AlertTriangleIcon className="w-4 h-4" /> : <CrimeIcon className="w-4 h-4" />)}
+                                                    </div>
+                                                    <h3 className="font-bold text-md truncate">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
+                                                    {report.is_global && (
+                                                        <GlobeIcon className="w-4 h-4 text-blue-500 flex-shrink-0" title="Global Report" />
+                                                    )}
+                                                    {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
+                                                        <UsersIcon className="w-4 h-4 text-blue-500 flex-shrink-0" title="Shared with specific companies" />
+                                                    )}
+                                                </div>
+                                                <StatusBadge status={report.status} />
+                                            </div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isEmergencyReport(report) ? report.emergency_type : report.crime_type)}</p>
+                                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}</p>
                                         </div>
-                                        <h3 className="font-bold text-md truncate">{isVehicleReport(report) ? report.license_plate : report.title}</h3>
-                                        {report.is_global && (
-                                            <GlobeIcon className="w-4 h-4 text-blue-500 flex-shrink-0" title="Global Report" />
-                                        )}
-                                        {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
-                                            <UsersIcon className="w-4 h-4 text-blue-500 flex-shrink-0" title="Shared with specific companies" />
-                                        )}
                                     </div>
-                                    <StatusBadge status={report.status} />
-                                </div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">{isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isEmergencyReport(report) ? report.emergency_type : report.crime_type)}</p>
-                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-right">{safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}</p>
-                            </div>
-                        ))}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
-                    <div className="lg:col-span-2 lg:sticky lg:top-24">
-                        {selectedReport ? <UserReportDetail key={selectedReport.id} report={selectedReport} profile={profile} onEdit={handleOpenEditReport} allUsers={companyUsers} onRefresh={fetchMyData} /> : 
-                        <div className="h-full bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center min-h-[50vh]">
-                            <p className="text-gray-500 dark:text-gray-400">Select a report to view details.</p>
-                        </div>}
-                    </div>
+                    {/* Detail Column: Hidden on mobile when no report is selected */}
+                    {(!isMobile || selectedReportId) && (
+                        <div className="lg:col-span-2 lg:sticky lg:top-24">
+                            {isMobile && selectedReportId && (
+                                <button
+                                    onClick={() => setSelectedReportId(null)}
+                                    className="mb-4 flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-250 dark:border-gray-800 rounded-xl font-bold text-xs text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 transition active:scale-95"
+                                >
+                                    ← Back to Reports List
+                                </button>
+                            )}
+                            {selectedReport ? <UserReportDetail key={selectedReport.id} report={selectedReport} profile={profile} onEdit={handleOpenEditReport} allUsers={companyUsers} onRefresh={fetchMyData} /> : 
+                            <div className="h-full bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex items-center justify-center min-h-[50vh]">
+                                <p className="text-gray-500 dark:text-gray-400">Select a report to view details.</p>
+                            </div>}
+                        </div>
+                    )}
                 </div>
             )}
             <ReportModal 

@@ -454,7 +454,29 @@ export default async function handler(req: Request, res: Response) {
                 });
                 if (reverseResponse.ok) {
                     const data = await reverseResponse.json();
-                    const reverseAddress = data.display_name || '';
+                    let reverseAddress = '';
+                    if (data.address) {
+                        const addr = data.address;
+                        const parts: string[] = [];
+                        const streetNum = addr.house_number || addr.street_number;
+                        const road = addr.road;
+                        if (streetNum && road) {
+                            parts.push(`${streetNum} ${road}`);
+                        } else if (road) {
+                            parts.push(road);
+                        }
+                        const suburb = addr.suburb || addr.neighbourhood || addr.village || addr.suburb_district;
+                        if (suburb) {
+                            parts.push(suburb);
+                        }
+                        const city = addr.city || addr.town || addr.city_district || addr.municipality;
+                        if (city && city !== suburb) {
+                            parts.push(city);
+                        }
+                        reverseAddress = parts.length > 0 ? parts.join(', ') : (data.display_name || '');
+                    } else {
+                        reverseAddress = data.display_name || '';
+                    }
                     
                     if (placeName && reverseAddress) {
                         // Calculate word overlap between placeName and reverseAddress
