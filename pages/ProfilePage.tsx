@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Profile, UserRole, UserStatus } from '../types';
-import { supabase } from '../utils/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../utils/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { UserIcon, LockIcon, UploadCloudIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
 import { useFormPersistence } from '../useFormPersistence';
@@ -226,7 +227,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile, onCancel
 
         setLoadingBio(true);
         try {
-            const { error } = await supabase.auth['signInWithPassword']({
+            const tempSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+                auth: {
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false
+                }
+            });
+            const { error } = await tempSupabase.auth['signInWithPassword']({
                 email: profile.email,
                 password: verifyPassword
             });
@@ -261,7 +269,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile, onCancel
 
         setLoadingFace(true);
         try {
-            const { error } = await supabase.auth['signInWithPassword']({
+            const tempSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+                auth: {
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false
+                }
+            });
+            const { error } = await tempSupabase.auth['signInWithPassword']({
                 email: profile.email,
                 password: verifyFacePassword
             });
