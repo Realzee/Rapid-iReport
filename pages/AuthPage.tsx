@@ -46,7 +46,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewAbout }) => {
                        onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} 
                    />
                    <h2 className="mt-6 text-lg font-extrabold tracking-wider uppercase text-slate-500 dark:text-slate-400 sm:text-xl">
-                       Designed For Professionals Globally
+                       Designed For Global Professionals
                    </h2>
                 </div>
 
