@@ -239,6 +239,17 @@ const UserReportDetail: React.FC<{
                         {(report as any).has_tracker !== undefined && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Tracker</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).has_tracker ? 'Yes' : 'No'}</p></div>}
                         {(report as any).tracker_company && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Tracker Company</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).tracker_company}</p></div>}
                         {(report as any).date_of_incident && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Incident Date</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).date_of_incident}</p></div>}
+                        {(report as any).vehicle_involved && (
+                            <div className="col-span-2 border-t border-gray-200 dark:border-gray-700 pt-3 mt-1 space-y-2">
+                                <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Suspect Vehicle Details</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {(report as any).suspect_license_plate && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Suspect Reg</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).suspect_license_plate}</p></div>}
+                                    {(report as any).suspect_vehicle_make && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Suspect Make</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).suspect_vehicle_make}</p></div>}
+                                    {(report as any).suspect_vehicle_model && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Suspect Model</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).suspect_vehicle_model}</p></div>}
+                                    {(report as any).suspect_vehicle_color && <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Suspect Colour</p><p className="font-semibold text-gray-900 dark:text-white">{(report as any).suspect_vehicle_color}</p></div>}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
                 

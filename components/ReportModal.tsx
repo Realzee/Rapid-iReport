@@ -191,13 +191,18 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 date_of_incident: (reportToEdit as any).date_of_incident || ((reportToEdit as any).reported_at ? new Date((reportToEdit as any).reported_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
                 tracker_company: (reportToEdit as any).tracker_company || '',
                 ...reportToEdit,
-                location
+                location,
+                vehicle_involved: (reportToEdit as any).vehicle_involved !== undefined ? String((reportToEdit as any).vehicle_involved) : 'false',
+                suspect_license_plate: (reportToEdit as any).suspect_license_plate || '',
+                suspect_vehicle_make: (reportToEdit as any).suspect_vehicle_make || '',
+                suspect_vehicle_model: (reportToEdit as any).suspect_vehicle_model || '',
+                suspect_vehicle_color: (reportToEdit as any).suspect_vehicle_color || ''
             };
         }
         return { 
             severity: isQuickAdd ? Severity.HIGH : '',
             status: isQuickAdd ? ReportStatus.SOUGHT : ReportStatus.STOLEN,
-            vehicle_involved: 'true',
+            vehicle_involved: 'false',
             vehicles_involved: '1',
             injuries_reported: 'false',
             fatalities_reported: 'false',
@@ -213,7 +218,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             date_of_incident: new Date().toISOString().split('T')[0],
             tracker_company: '',
             io_name: '',
-            io_contact: ''
+            io_contact: '',
+            suspect_license_plate: '',
+            suspect_vehicle_make: '',
+            suspect_vehicle_model: '',
+            suspect_vehicle_color: ''
         };
     }, [reportToEdit, isQuickAdd]);
 
@@ -614,17 +623,17 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             if (reportType === 'vehicle') {
                 reportData = {
                     ...commonData,
-                    status: formData.status || (reportToEdit ? reportToEdit.status : (reportType === 'vehicle' ? ReportStatus.STOLEN : ReportStatus.ACTIVE)),
-                    license_plate: formData.vehicle_involved === 'true' ? (formData.license_plate || 'N/A') : 'N/A',
-                    vehicle_make: formData.vehicle_involved === 'true' ? (formData.vehicle_make || 'N/A') : 'N/A',
-                    vehicle_model: formData.vehicle_involved === 'true' ? (formData.vehicle_model || 'N/A') : 'N/A',
-                    vehicle_color: formData.vehicle_involved === 'true' ? (formData.vehicle_color || 'N/A') : 'N/A',
+                    status: formData.status || (reportToEdit ? reportToEdit.status : ReportStatus.STOLEN),
+                    license_plate: formData.license_plate || 'N/A',
+                    vehicle_make: formData.vehicle_make || 'N/A',
+                    vehicle_model: formData.vehicle_model || 'N/A',
+                    vehicle_color: formData.vehicle_color || 'N/A',
                     last_seen_location: formData.location,
                     cas_number: formData.cas_number,
                     station_name: formData.station_name,
-                    vin_number: formData.vehicle_involved === 'true' ? (formData.vin_number || null) : null,
-                    engine_number: formData.vehicle_involved === 'true' ? (formData.engine_number || null) : null,
-                    circulation_number: formData.vehicle_involved === 'true' ? (formData.circulation_number || null) : null,
+                    vin_number: formData.vin_number || null,
+                    engine_number: formData.engine_number || null,
+                    circulation_number: formData.circulation_number || null,
                     crime_outcome: formData.crime_outcome,
                     cit_success: formData.cit_success === 'true',
                     recovered_location_coords: (formData as any).recovered_location_coords,
@@ -633,9 +642,14 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     guns_recovered: parseInt(formData.guns_recovered || '0'),
                     other_recoveries: formData.other_recoveries || '',
                     date_of_incident: formData.date_of_incident || null,
-                    tracker_company: formData.vehicle_involved === 'true' ? (formData.tracker_company || null) : null,
+                    tracker_company: formData.tracker_company || null,
                     io_name: formData.io_name || null,
                     io_contact: formData.io_contact || null,
+                    vehicle_involved: formData.vehicle_involved === 'true',
+                    suspect_license_plate: formData.vehicle_involved === 'true' ? (formData.suspect_license_plate || null) : null,
+                    suspect_vehicle_make: formData.vehicle_involved === 'true' ? (formData.suspect_vehicle_make || null) : null,
+                    suspect_vehicle_model: formData.vehicle_involved === 'true' ? (formData.suspect_vehicle_model || null) : null,
+                    suspect_vehicle_color: formData.vehicle_involved === 'true' ? (formData.suspect_vehicle_color || null) : null,
                 };
             } else if (reportType === 'emergency') {
                 // Exclude location_boundary and location_boundingbox for emergency reports as the table might not support them yet
@@ -949,7 +963,16 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {reportType === 'vehicle' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="md:col-span-2">
+                            <div><label htmlFor="license_plate" className={labelClasses}>Reg</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} className={inputClasses} placeholder="REG" /></div>
+                            <div><label htmlFor="vehicle_make" className={labelClasses}>Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} className={inputClasses} list="makes-list" /></div>
+                            <div><label htmlFor="vehicle_model" className={labelClasses}>Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} className={inputClasses} list="models-list" /></div>
+                            <div><label htmlFor="vehicle_color" className={labelClasses}>Colour</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" /></div>
+                            <div><label htmlFor="year" className={labelClasses}>Year</label><input type="text" name="year" id="year" value={formData.year || ''} onChange={handleChange} className={inputClasses} placeholder="YEAR" /></div>
+                            <div><label htmlFor="vin_number" className={labelClasses}>VIN Number</label><input type="text" name="vin_number" id="vin_number" value={formData.vin_number || ''} onChange={handleChange} className={inputClasses} placeholder="VIN Number" /></div>
+                            <div><label htmlFor="engine_number" className={labelClasses}>Engine Number</label><input type="text" name="engine_number" id="engine_number" value={formData.engine_number || ''} onChange={handleChange} className={inputClasses} placeholder="Engine Number" /></div>
+                            <div><label htmlFor="circulation_number" className={labelClasses}>Circulation Number</label><input type="text" name="circulation_number" id="circulation_number" value={formData.circulation_number || ''} onChange={handleChange} className={inputClasses} placeholder="Circulation Number" /></div>
+
+                            <div className="md:col-span-2 border-t border-gray-200 dark:border-gray-800 pt-4 mt-2">
                                 <label htmlFor="vehicle_involved" className={labelClasses}>Suspect Vehicle Involved?</label>
                                 <select name="vehicle_involved" id="vehicle_involved" value={formData.vehicle_involved || 'false'} onChange={handleChange} className={inputClasses}>
                                     <option value="false">No</option>
@@ -958,16 +981,15 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             </div>
 
                             {formData.vehicle_involved === 'true' && (
-                                <>
-                                    <div><label htmlFor="license_plate" className={labelClasses}>Reg</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} className={inputClasses} placeholder="REG" /></div>
-                                    <div><label htmlFor="vehicle_make" className={labelClasses}>Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} className={inputClasses} list="makes-list" /></div>
-                                    <div><label htmlFor="vehicle_model" className={labelClasses}>Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} className={inputClasses} list="models-list" /></div>
-                                    <div><label htmlFor="vehicle_color" className={labelClasses}>Colour</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" /></div>
-                                    <div><label htmlFor="year" className={labelClasses}>Year</label><input type="text" name="year" id="year" value={formData.year || ''} onChange={handleChange} className={inputClasses} placeholder="YEAR" /></div>
-                                    <div><label htmlFor="vin_number" className={labelClasses}>VIN Number</label><input type="text" name="vin_number" id="vin_number" value={formData.vin_number || ''} onChange={handleChange} className={inputClasses} placeholder="VIN Number" /></div>
-                                    <div><label htmlFor="engine_number" className={labelClasses}>Engine Number</label><input type="text" name="engine_number" id="engine_number" value={formData.engine_number || ''} onChange={handleChange} className={inputClasses} placeholder="Engine Number" /></div>
-                                    <div><label htmlFor="circulation_number" className={labelClasses}>Circulation Number</label><input type="text" name="circulation_number" id="circulation_number" value={formData.circulation_number || ''} onChange={handleChange} className={inputClasses} placeholder="Circulation Number" /></div>
-                                </>
+                                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 rounded-xl mt-2">
+                                    <div className="md:col-span-2 text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
+                                        <CarIcon className="w-4 h-4 text-blue-500" /> Suspect Vehicle Details
+                                    </div>
+                                    <div><label htmlFor="suspect_license_plate" className={labelClasses}>Suspect Reg</label><input type="text" name="suspect_license_plate" id="suspect_license_plate" value={formData.suspect_license_plate || ''} onChange={handleChange} className={inputClasses} placeholder="Suspect REG" /></div>
+                                    <div><label htmlFor="suspect_vehicle_make" className={labelClasses}>Suspect Make</label><input type="text" name="suspect_vehicle_make" id="suspect_vehicle_make" value={formData.suspect_vehicle_make || ''} onChange={handleChange} className={inputClasses} list="makes-list" placeholder="Suspect Make" /></div>
+                                    <div><label htmlFor="suspect_vehicle_model" className={labelClasses}>Suspect Model</label><input type="text" name="suspect_vehicle_model" id="suspect_vehicle_model" value={formData.suspect_vehicle_model || ''} onChange={handleChange} className={inputClasses} list="models-list" placeholder="Suspect Model" /></div>
+                                    <div><label htmlFor="suspect_vehicle_color" className={labelClasses}>Suspect Colour</label><input type="text" name="suspect_vehicle_color" id="suspect_vehicle_color" value={formData.suspect_vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" placeholder="Suspect Colour" /></div>
+                                </div>
                             )}
                              
                             <div className="md:col-span-2">

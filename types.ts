@@ -203,6 +203,11 @@ export interface VehicleReport {
   pound_name?: string;
   has_arrests?: boolean;
   has_firearms?: boolean;
+  vehicle_involved?: boolean;
+  suspect_license_plate?: string;
+  suspect_vehicle_make?: string;
+  suspect_vehicle_model?: string;
+  suspect_vehicle_color?: string;
 }
 
 export interface CrimeReport {

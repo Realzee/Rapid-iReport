@@ -108,6 +108,11 @@ async function runMigrations() {
         "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS cos_contact_number text;",
         "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS date_of_incident date;",
         "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS tracker_company text;",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS vehicle_involved boolean DEFAULT true;",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_license_plate text;",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_vehicle_make text;",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_vehicle_model text;",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_vehicle_color text;",
         "ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS date_of_incident date;",
         "ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS date_of_incident date;",
         `CREATE TABLE IF NOT EXISTS public.report_shares (

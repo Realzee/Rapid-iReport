@@ -99,7 +99,12 @@ CREATE TABLE IF NOT EXISTS public.vehicle_reports (
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     deleted_at timestamp with time zone,
     is_global boolean DEFAULT false,
-    shared_with_company_ids uuid[] DEFAULT '{}'
+    shared_with_company_ids uuid[] DEFAULT '{}',
+    vehicle_involved boolean DEFAULT true,
+    suspect_license_plate text,
+    suspect_vehicle_make text,
+    suspect_vehicle_model text,
+    suspect_vehicle_color text
 );
 
 CREATE TABLE IF NOT EXISTS public.crime_reports (

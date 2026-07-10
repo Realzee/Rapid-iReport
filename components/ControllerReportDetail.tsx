@@ -986,6 +986,17 @@ const ControllerReportDetail: React.FC<{
                         {(report as any).has_tracker !== undefined && <DetailField label="Tracker">{(report as any).has_tracker ? 'Yes' : 'No'}</DetailField>}
                         {(report as any).tracker_company && <DetailField label="Tracker Company">{(report as any).tracker_company}</DetailField>}
                         {(report as any).date_of_incident && <DetailField label="Incident Date">{(report as any).date_of_incident}</DetailField>}
+                        {(report as any).vehicle_involved && (
+                            <div className="col-span-2 border-t border-gray-200 dark:border-gray-700 pt-3 mt-1 space-y-2">
+                                <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Suspect Vehicle Details</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {(report as any).suspect_license_plate && <DetailField label="Suspect Reg">{(report as any).suspect_license_plate}</DetailField>}
+                                    {(report as any).suspect_vehicle_make && <DetailField label="Suspect Make">{(report as any).suspect_vehicle_make}</DetailField>}
+                                    {(report as any).suspect_vehicle_model && <DetailField label="Suspect Model">{(report as any).suspect_vehicle_model}</DetailField>}
+                                    {(report as any).suspect_vehicle_color && <DetailField label="Suspect Colour">{(report as any).suspect_vehicle_color}</DetailField>}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

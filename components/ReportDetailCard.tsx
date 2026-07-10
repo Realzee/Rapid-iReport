@@ -867,6 +867,37 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                             <p className="text-gray-900 dark:text-white">{(localReport as any).circulation_number}</p>
                         </div>
                     )}
+                    {localReport.type === 'vehicle' && (localReport as any).vehicle_involved && (
+                        <div className="col-span-2 p-3 bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 rounded-lg mt-2 space-y-2">
+                            <p className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider border-b border-gray-200 dark:border-gray-700 pb-1">Suspect Vehicle Details</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {(localReport as any).suspect_license_plate && (
+                                    <div>
+                                        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">Suspect Reg</p>
+                                        <p className="text-xs font-semibold text-gray-950 dark:text-gray-50">{(localReport as any).suspect_license_plate}</p>
+                                    </div>
+                                )}
+                                {(localReport as any).suspect_vehicle_make && (
+                                    <div>
+                                        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">Suspect Make</p>
+                                        <p className="text-xs font-semibold text-gray-950 dark:text-gray-50">{(localReport as any).suspect_vehicle_make}</p>
+                                    </div>
+                                )}
+                                {(localReport as any).suspect_vehicle_model && (
+                                    <div>
+                                        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">Suspect Model</p>
+                                        <p className="text-xs font-semibold text-gray-950 dark:text-gray-50">{(localReport as any).suspect_vehicle_model}</p>
+                                    </div>
+                                )}
+                                {(localReport as any).suspect_vehicle_color && (
+                                    <div>
+                                        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">Suspect Colour</p>
+                                        <p className="text-xs font-semibold text-gray-950 dark:text-gray-50">{(localReport as any).suspect_vehicle_color}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     {localReport.status === ReportStatus.RECOVERED && ((localReport as any).arrests > 0 || (localReport as any).guns_recovered > 0) && (
                         <>
                             <div>

@@ -33,6 +33,11 @@ async function main() {
         "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;",
         "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS is_global boolean DEFAULT false;",
         "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS shared_with_company_ids uuid[] DEFAULT '{}';",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS vehicle_involved boolean DEFAULT true;",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_license_plate text;",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_vehicle_make text;",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_vehicle_model text;",
+        "ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_vehicle_color text;",
 
         // Ensure crime_reports columns exist
         "ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS date_of_incident date;",

@@ -145,6 +145,11 @@ ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS cos_contact_number t
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS io_name text;
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS io_contact text;
 ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS has_tracker boolean DEFAULT false;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS vehicle_involved boolean DEFAULT true;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_license_plate text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_vehicle_make text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_vehicle_model text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_vehicle_color text;
 
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS cas_number text;
 ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS station_name text;
