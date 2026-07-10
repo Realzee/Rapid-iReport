@@ -97,7 +97,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   return (
     <div className="w-full max-w-md">
       <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-2">Welcome Back</h2>
-      <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Sign in to access the Control Center.</p>
+      <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Sign in to access the Operational Control Platform.</p>
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>

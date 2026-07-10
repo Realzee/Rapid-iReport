@@ -608,7 +608,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             <div className="flex-shrink-0">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Control Center</h2>
+                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Operational Control Platform</h2>
                         <p className="text-gray-500 dark:text-gray-400 mt-1">Live operational overview of community safety.</p>
                     </div>
                     <div className="mt-4 md:mt-0 flex items-center gap-4">
