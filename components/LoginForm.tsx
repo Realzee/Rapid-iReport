@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { MailIcon, LockIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
-import { Fingerprint } from 'lucide-react';
+import { Fingerprint, Camera } from 'lucide-react';
 import { isBiometricsSupported, hasBiometricsRegistered, authenticateBiometrics } from '../utils/webauthn';
+import { isFaceAuthSupported, hasFaceRegistered, decryptFaceData } from '../utils/faceAuth';
+import { FaceScanModal } from './FaceScanModal';
 
 const TurnstileHandler: React.FC<{ onToken: (token: string) => void }> = ({ onToken }) => {
     useEffect(() => {
@@ -28,12 +30,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const [turnstileToken, setTurnstileToken] = useState<string | null>('dummy_token');
   const [biometricsSupported, setBiometricsSupported] = useState(false);
   const [hasFingerprint, setHasFingerprint] = useState(false);
+  const [faceSupported, setFaceSupported] = useState(false);
+  const [hasFace, setHasFace] = useState(false);
+  const [isFaceModalOpen, setIsFaceModalOpen] = useState(false);
   const { addToast } = useToast();
 
   useEffect(() => {
     isBiometricsSupported().then(supported => {
       setBiometricsSupported(supported);
       setHasFingerprint(hasBiometricsRegistered());
+    });
+    isFaceAuthSupported().then(supported => {
+      setFaceSupported(supported);
+      setHasFace(hasFaceRegistered());
     });
   }, []);
 
@@ -70,6 +79,35 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
       }
     } catch (err: any) {
       addToast(err.message || 'Biometric login failed.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFaceLoginSuccess = async (encryptedData?: string, emailAddress?: string) => {
+    if (!encryptedData || !emailAddress) {
+      addToast('Invalid facial recognition credentials.', 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const decryptedPassword = decryptFaceData(encryptedData, emailAddress);
+      setIsFaceModalOpen(false);
+      addToast('Biometric face signature verified. Authenticating...', 'success');
+
+      const { error } = await supabase.auth['signInWithPassword']({
+        email: emailAddress,
+        password: decryptedPassword
+      });
+
+      if (error) {
+        addToast(error.message, 'error');
+      } else {
+        addToast('Welcome back! Logged in securely with facial recognition.', 'success');
+      }
+    } catch (err: any) {
+      addToast(err.message || 'Facial recognition login failed.', 'error');
     } finally {
       setLoading(false);
     }
@@ -169,6 +207,29 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
               )}
             </>
           )}
+
+          {faceSupported && (
+            <>
+              {hasFace ? (
+                <button
+                  type="button"
+                  onClick={() => setIsFaceModalOpen(true)}
+                  disabled={loading}
+                  className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-900/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-semibold py-3 px-4 rounded-xl shadow-sm transition-all duration-200 flex justify-center items-center gap-2 hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <Camera className="w-5 h-5 text-blue-500 dark:text-blue-400 animate-pulse" />
+                  <span>Sign In with Facial Recognition</span>
+                </button>
+              ) : (
+                <div className="p-3 bg-slate-50/50 dark:bg-slate-900/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800/80 text-center">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5 font-medium leading-relaxed">
+                    <Camera className="w-4 h-4 text-slate-400" />
+                    Facial Recognition login is supported on this device. Enable it in Profile Settings after login.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Cloudflare Turnstile Widget */}
@@ -189,6 +250,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
           Sign Up
         </button>
       </p>
+
+      {/* Face Authentication Scan Modal */}
+      <FaceScanModal
+        isOpen={isFaceModalOpen}
+        onClose={() => setIsFaceModalOpen(false)}
+        mode="login"
+        onSuccess={handleFaceLoginSuccess}
+      />
     </div>
   );
 };

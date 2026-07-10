@@ -4,8 +4,10 @@ import { supabase } from '../utils/supabase';
 import { UserIcon, LockIcon, UploadCloudIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
 import { useFormPersistence } from '../useFormPersistence';
-import { Fingerprint } from 'lucide-react';
+import { Fingerprint, Camera, Scan } from 'lucide-react';
 import { isBiometricsSupported, registerBiometrics, hasBiometricsRegistered, clearBiometrics } from '../utils/webauthn';
+import { isFaceAuthSupported, hasFaceRegistered, registerFaceAuth, clearFaceAuth, getFaceCredentials } from '../utils/faceAuth';
+import { FaceScanModal } from '../components/FaceScanModal';
 
 interface ProfilePageProps {
   profile: Profile;
@@ -49,10 +51,28 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile, onCancel
     const [verifyPassword, setVerifyPassword] = useState('');
     const [loadingBio, setLoadingBio] = useState(false);
 
+    const [faceSupported, setFaceSupported] = useState(false);
+    const [faceRegistered, setFaceRegistered] = useState(false);
+    const [faceSnapshot, setFaceSnapshot] = useState<string | null>(null);
+    const [verifyFacePassword, setVerifyFacePassword] = useState('');
+    const [isFaceModalOpen, setIsFaceModalOpen] = useState(false);
+    const [loadingFace, setLoadingFace] = useState(false);
+
     useEffect(() => {
         isBiometricsSupported().then(supported => {
             setBioSupported(supported);
             setBioRegistered(hasBiometricsRegistered());
+        });
+        isFaceAuthSupported().then(supported => {
+            setFaceSupported(supported);
+            const registered = hasFaceRegistered();
+            setFaceRegistered(registered);
+            if (registered) {
+                const creds = getFaceCredentials();
+                if (creds?.faceDataUrl) {
+                    setFaceSnapshot(creds.faceDataUrl);
+                }
+            }
         });
     }, []);
 
@@ -230,6 +250,52 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile, onCancel
         clearBiometrics();
         setBioRegistered(false);
         addToast('Biometric fingerprint credentials removed from this device.', 'info');
+    };
+
+    const handleRegisterFace = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!verifyFacePassword) {
+            addToast('Please enter your password to confirm facial recognition registration.', 'warning');
+            return;
+        }
+
+        setLoadingFace(true);
+        try {
+            const { error } = await supabase.auth['signInWithPassword']({
+                email: profile.email,
+                password: verifyFacePassword
+            });
+
+            if (error) {
+                throw new Error('Authentication failed: Incorrect password.');
+            }
+
+            setIsFaceModalOpen(true);
+        } catch (err: any) {
+            addToast(err.message || 'Verification failed.', 'error');
+        } finally {
+            setLoadingFace(false);
+        }
+    };
+
+    const handleFaceModalSuccess = async (passwordPlaceholder?: string, emailAddress?: string, snapshotDataUrl?: string) => {
+        try {
+            registerFaceAuth(profile.email, verifyFacePassword, snapshotDataUrl || '');
+            setFaceRegistered(true);
+            setFaceSnapshot(snapshotDataUrl || null);
+            setVerifyFacePassword('');
+            setIsFaceModalOpen(false);
+            addToast('Facial recognition profile registered successfully! You can now log in using face recognition on this device.', 'success');
+        } catch (err: any) {
+            addToast('Failed to save facial recognition credentials: ' + err.message, 'error');
+        }
+    };
+
+    const handleClearFace = () => {
+        clearFaceAuth();
+        setFaceRegistered(false);
+        setFaceSnapshot(null);
+        addToast('Facial recognition credentials removed from this device.', 'info');
     };
 
     const isComplete = useMemo(() => {
@@ -483,7 +549,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile, onCancel
                                         <div>
                                             <p className="text-sm font-semibold text-blue-950 dark:text-blue-200">
                                                 Biometric Login Enabled
-                                            </p>
+                                             </p>
                                             <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
                                                 You can now log in securely using your fingerprint scanner on this device.
                                             </p>
@@ -534,8 +600,89 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile, onCancel
                             )}
                         </div>
                     )}
+
+                    {/* Face Recognition Security Card */}
+                    {faceSupported && (
+                        <div className={cardClasses}>
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <Camera className="w-6 h-6 text-blue-500" />
+                                Facial Recognition Settings
+                            </h3>
+                            {faceRegistered ? (
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-blue-50/55 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-xl flex items-start gap-3">
+                                        <div className="relative shrink-0 w-12 h-12 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
+                                            {faceSnapshot ? (
+                                                <img src={faceSnapshot} alt="Enrolled Face Snapshot" className="w-full h-full object-cover transform -scale-x-100" referrerPolicy="no-referrer" />
+                                            ) : (
+                                                <Camera className="w-5 h-5 text-slate-400 animate-pulse" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-blue-950 dark:text-blue-200">
+                                                Facial Recognition Login Enabled
+                                            </p>
+                                            <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                                                You can now sign in using your camera via facial recognition verification on this device.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleClearFace}
+                                        className="w-full flex justify-center py-2.5 px-4 border border-red-200 dark:border-red-900/80 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-200 cursor-pointer"
+                                    >
+                                        Disable & Clear Facial Profile
+                                    </button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleRegisterFace} className="space-y-4">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                        Register your face model to authenticate securely and instantly next time using your computer or mobile camera.
+                                    </p>
+                                    <div>
+                                        <label htmlFor="verifyFacePassword" className={labelClasses}>Confirm Your Password</label>
+                                        <input
+                                            id="verifyFacePassword"
+                                            type="password"
+                                            value={verifyFacePassword}
+                                            onChange={(e) => setVerifyFacePassword(e.target.value)}
+                                            required
+                                            className={inputClasses}
+                                            placeholder="••••••••"
+                                        />
+                                    </div>
+                                    <div className="pt-2">
+                                        <button
+                                            type="submit"
+                                            disabled={loadingFace}
+                                            className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-lg shadow-blue-500/20 dark:shadow-blue-900/10 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {loadingFace ? (
+                                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            ) : (
+                                                <span className="flex items-center gap-2">
+                                                    <Scan className="w-5 h-5" />
+                                                    Capture & Register Face
+                                                </span>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+                    )}
                 </div>
              </div>
+             
+             {/* Face Scan modal registration mount */}
+             <FaceScanModal
+                 isOpen={isFaceModalOpen}
+                 onClose={() => setIsFaceModalOpen(false)}
+                 mode="enroll"
+                 email={profile.email}
+                 onSuccess={handleFaceModalSuccess}
+             />
         </div>
     );
 };
