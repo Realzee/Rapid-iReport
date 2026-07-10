@@ -197,7 +197,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         return { 
             severity: isQuickAdd ? Severity.HIGH : '',
             status: isQuickAdd ? ReportStatus.SOUGHT : ReportStatus.STOLEN,
-            vehicle_involved: 'false',
+            vehicle_involved: 'true',
             vehicles_involved: '1',
             injuries_reported: 'false',
             fatalities_reported: 'false',
@@ -615,16 +615,16 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 reportData = {
                     ...commonData,
                     status: formData.status || (reportToEdit ? reportToEdit.status : (reportType === 'vehicle' ? ReportStatus.STOLEN : ReportStatus.ACTIVE)),
-                    license_plate: formData.license_plate,
-                    vehicle_make: formData.vehicle_make,
-                    vehicle_model: formData.vehicle_model,
-                    vehicle_color: formData.vehicle_color,
+                    license_plate: formData.vehicle_involved === 'true' ? (formData.license_plate || 'N/A') : 'N/A',
+                    vehicle_make: formData.vehicle_involved === 'true' ? (formData.vehicle_make || 'N/A') : 'N/A',
+                    vehicle_model: formData.vehicle_involved === 'true' ? (formData.vehicle_model || 'N/A') : 'N/A',
+                    vehicle_color: formData.vehicle_involved === 'true' ? (formData.vehicle_color || 'N/A') : 'N/A',
                     last_seen_location: formData.location,
                     cas_number: formData.cas_number,
                     station_name: formData.station_name,
-                    vin_number: formData.vin_number,
-                    engine_number: formData.engine_number,
-                    circulation_number: formData.circulation_number,
+                    vin_number: formData.vehicle_involved === 'true' ? (formData.vin_number || null) : null,
+                    engine_number: formData.vehicle_involved === 'true' ? (formData.engine_number || null) : null,
+                    circulation_number: formData.vehicle_involved === 'true' ? (formData.circulation_number || null) : null,
                     crime_outcome: formData.crime_outcome,
                     cit_success: formData.cit_success === 'true',
                     recovered_location_coords: (formData as any).recovered_location_coords,
@@ -633,7 +633,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     guns_recovered: parseInt(formData.guns_recovered || '0'),
                     other_recoveries: formData.other_recoveries || '',
                     date_of_incident: formData.date_of_incident || null,
-                    tracker_company: formData.tracker_company || null,
+                    tracker_company: formData.vehicle_involved === 'true' ? (formData.tracker_company || null) : null,
                     io_name: formData.io_name || null,
                     io_contact: formData.io_contact || null,
                 };
@@ -939,9 +939,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 {(!reportToEdit && !isQuickAdd) && (
                     <div className="mb-6">
                         <div className="flex bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
-                            <button type="button" onClick={() => { setReportType('vehicle'); setFormData(prev => ({ ...prev, status: ReportStatus.STOLEN })); }} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'vehicle' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-5 h-5" /> Vehicle</button>
-                            <button type="button" onClick={() => { setReportType('emergency'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE })); }} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'emergency' ? 'bg-orange-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><AlertTriangleIcon className="w-5 h-5" /> Emergency</button>
-                            <button type="button" onClick={() => { setReportType('crime'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE })); }} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'crime' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CrimeIcon className="w-5 h-5" /> Crime</button>
+                            <button type="button" onClick={() => { setReportType('vehicle'); setFormData(prev => ({ ...prev, status: ReportStatus.STOLEN, vehicle_involved: 'true' })); }} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'vehicle' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-5 h-5" /> Vehicle</button>
+                            <button type="button" onClick={() => { setReportType('emergency'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE, vehicle_involved: 'false' })); }} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'emergency' ? 'bg-orange-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><AlertTriangleIcon className="w-5 h-5" /> Emergency</button>
+                            <button type="button" onClick={() => { setReportType('crime'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE, vehicle_involved: 'false' })); }} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'crime' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CrimeIcon className="w-5 h-5" /> Crime</button>
                         </div>
                     </div>
                 )}
@@ -949,14 +949,26 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {reportType === 'vehicle' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label htmlFor="license_plate" className={labelClasses}>Reg</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} className={inputClasses} placeholder="REG" /></div>
-                            <div><label htmlFor="vehicle_make" className={labelClasses}>Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} className={inputClasses} list="makes-list" /></div>
-                            <div><label htmlFor="vehicle_model" className={labelClasses}>Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} className={inputClasses} list="models-list" /></div>
-                            <div><label htmlFor="vehicle_color" className={labelClasses}>Colour</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" /></div>
-                            <div><label htmlFor="year" className={labelClasses}>Year</label><input type="text" name="year" id="year" value={formData.year || ''} onChange={handleChange} className={inputClasses} placeholder="YEAR" /></div>
-                            <div><label htmlFor="vin_number" className={labelClasses}>VIN Number</label><input type="text" name="vin_number" id="vin_number" value={formData.vin_number || ''} onChange={handleChange} className={inputClasses} placeholder="VIN Number" /></div>
-                            <div><label htmlFor="engine_number" className={labelClasses}>Engine Number</label><input type="text" name="engine_number" id="engine_number" value={formData.engine_number || ''} onChange={handleChange} className={inputClasses} placeholder="Engine Number" /></div>
-                            <div><label htmlFor="circulation_number" className={labelClasses}>Circulation Number</label><input type="text" name="circulation_number" id="circulation_number" value={formData.circulation_number || ''} onChange={handleChange} className={inputClasses} placeholder="Circulation Number" /></div>
+                            <div className="md:col-span-2">
+                                <label htmlFor="vehicle_involved" className={labelClasses}>Suspect Vehicle Involved?</label>
+                                <select name="vehicle_involved" id="vehicle_involved" value={formData.vehicle_involved || 'false'} onChange={handleChange} className={inputClasses}>
+                                    <option value="false">No</option>
+                                    <option value="true">Yes</option>
+                                </select>
+                            </div>
+
+                            {formData.vehicle_involved === 'true' && (
+                                <>
+                                    <div><label htmlFor="license_plate" className={labelClasses}>Reg</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} className={inputClasses} placeholder="REG" /></div>
+                                    <div><label htmlFor="vehicle_make" className={labelClasses}>Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} className={inputClasses} list="makes-list" /></div>
+                                    <div><label htmlFor="vehicle_model" className={labelClasses}>Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} className={inputClasses} list="models-list" /></div>
+                                    <div><label htmlFor="vehicle_color" className={labelClasses}>Colour</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" /></div>
+                                    <div><label htmlFor="year" className={labelClasses}>Year</label><input type="text" name="year" id="year" value={formData.year || ''} onChange={handleChange} className={inputClasses} placeholder="YEAR" /></div>
+                                    <div><label htmlFor="vin_number" className={labelClasses}>VIN Number</label><input type="text" name="vin_number" id="vin_number" value={formData.vin_number || ''} onChange={handleChange} className={inputClasses} placeholder="VIN Number" /></div>
+                                    <div><label htmlFor="engine_number" className={labelClasses}>Engine Number</label><input type="text" name="engine_number" id="engine_number" value={formData.engine_number || ''} onChange={handleChange} className={inputClasses} placeholder="Engine Number" /></div>
+                                    <div><label htmlFor="circulation_number" className={labelClasses}>Circulation Number</label><input type="text" name="circulation_number" id="circulation_number" value={formData.circulation_number || ''} onChange={handleChange} className={inputClasses} placeholder="Circulation Number" /></div>
+                                </>
+                            )}
                              
                             <div className="md:col-span-2">
                                 <label htmlFor="location" className={labelClasses}>Last Seen Loc</label>
