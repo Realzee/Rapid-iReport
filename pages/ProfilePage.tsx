@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Profile, UserRole, UserStatus } from '../types';
 import { supabase } from '../utils/supabase';
 import { UserIcon, LockIcon, UploadCloudIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
 import { useFormPersistence } from '../useFormPersistence';
+import { Fingerprint } from 'lucide-react';
+import { isBiometricsSupported, registerBiometrics, hasBiometricsRegistered, clearBiometrics } from '../utils/webauthn';
 
 interface ProfilePageProps {
   profile: Profile;
@@ -41,6 +43,18 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile, onCancel
     const [loadingProfile, setLoadingProfile] = useState(false);
     const [loadingPassword, setLoadingPassword] = useState(false);
     const { addToast } = useToast();
+
+    const [bioSupported, setBioSupported] = useState(false);
+    const [bioRegistered, setBioRegistered] = useState(false);
+    const [verifyPassword, setVerifyPassword] = useState('');
+    const [loadingBio, setLoadingBio] = useState(false);
+
+    useEffect(() => {
+        isBiometricsSupported().then(supported => {
+            setBioSupported(supported);
+            setBioRegistered(hasBiometricsRegistered());
+        });
+    }, []);
 
     const formId = `profile-edit-${profile.id}`;
 
@@ -181,6 +195,41 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile, onCancel
             setConfirmPassword('');
         }
         setLoadingPassword(false);
+    };
+
+    const handleRegisterBiometrics = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!verifyPassword) {
+            addToast('Please enter your password to confirm registration.', 'warning');
+            return;
+        }
+
+        setLoadingBio(true);
+        try {
+            const { error } = await supabase.auth['signInWithPassword']({
+                email: profile.email,
+                password: verifyPassword
+            });
+
+            if (error) {
+                throw new Error('Authentication failed: Incorrect password.');
+            }
+
+            await registerBiometrics(profile.email, verifyPassword);
+            setBioRegistered(true);
+            setVerifyPassword('');
+            addToast('Fingerprint registered successfully! You can now sign in using your fingerprint on this device.', 'success');
+        } catch (err: any) {
+            addToast(err.message || 'Failed to register fingerprint.', 'error');
+        } finally {
+            setLoadingBio(false);
+        }
+    };
+
+    const handleClearBiometrics = () => {
+        clearBiometrics();
+        setBioRegistered(false);
+        addToast('Biometric fingerprint credentials removed from this device.', 'info');
     };
 
     const isComplete = useMemo(() => {
@@ -417,6 +466,74 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile, onCancel
                             </div>
                         </form>
                     </div>
+
+                    {/* Biometric Security Card */}
+                    {bioSupported && (
+                        <div className={cardClasses}>
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <Fingerprint className="w-6 h-6 text-blue-500" />
+                                Biometric Security Settings
+                            </h3>
+                            {bioRegistered ? (
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-xl flex items-start gap-3">
+                                        <div className="p-1 bg-blue-100 dark:bg-blue-900/50 rounded-full text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                                            <Fingerprint className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-blue-950 dark:text-blue-200">
+                                                Biometric Login Enabled
+                                            </p>
+                                            <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                                                You can now log in securely using your fingerprint scanner on this device.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleClearBiometrics}
+                                        className="w-full flex justify-center py-2.5 px-4 border border-red-200 dark:border-red-900/80 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-200 cursor-pointer"
+                                    >
+                                        Disable & Clear Biometric Login
+                                    </button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleRegisterBiometrics} className="space-y-4">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                        Register your device's fingerprint sensor to log in instantly and securely next time.
+                                    </p>
+                                    <div>
+                                        <label htmlFor="verifyPassword" className={labelClasses}>Confirm Your Password</label>
+                                        <input
+                                            id="verifyPassword"
+                                            type="password"
+                                            value={verifyPassword}
+                                            onChange={(e) => setVerifyPassword(e.target.value)}
+                                            required
+                                            className={inputClasses}
+                                            placeholder="••••••••"
+                                        />
+                                    </div>
+                                    <div className="pt-2">
+                                        <button
+                                            type="submit"
+                                            disabled={loadingBio}
+                                            className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-lg shadow-blue-500/20 dark:shadow-blue-900/10 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {loadingBio ? (
+                                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            ) : (
+                                                <span className="flex items-center gap-2">
+                                                    <Fingerprint className="w-5 h-5" />
+                                                    Register Fingerprint / Passkey
+                                                </span>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+                    )}
                 </div>
              </div>
         </div>

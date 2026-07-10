@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { MailIcon, LockIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
+import { Fingerprint } from 'lucide-react';
+import { isBiometricsSupported, hasBiometricsRegistered, authenticateBiometrics } from '../utils/webauthn';
 
 const TurnstileHandler: React.FC<{ onToken: (token: string) => void }> = ({ onToken }) => {
     useEffect(() => {
@@ -24,7 +26,16 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const [loading, setLoading] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>('dummy_token');
+  const [biometricsSupported, setBiometricsSupported] = useState(false);
+  const [hasFingerprint, setHasFingerprint] = useState(false);
   const { addToast } = useToast();
+
+  useEffect(() => {
+    isBiometricsSupported().then(supported => {
+      setBiometricsSupported(supported);
+      setHasFingerprint(hasBiometricsRegistered());
+    });
+  }, []);
 
   useEffect(() => {
 	  if(email !== '' || password !== '') setIsDirty(true);
@@ -40,6 +51,29 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
+
+  const handleBiometricLogin = async () => {
+    try {
+      setLoading(true);
+      const creds = await authenticateBiometrics();
+      addToast('Fingerprint scanned successfully. Authenticating...', 'success');
+      
+      const { error } = await supabase.auth['signInWithPassword']({
+        email: creds.email,
+        password: creds.password
+      });
+
+      if (error) {
+        addToast(error.message, 'error');
+      } else {
+        addToast('Welcome back! Logged in securely with biometrics.', 'success');
+      }
+    } catch (err: any) {
+      addToast(err.message || 'Biometric login failed.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,14 +138,37 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
             />
           </div>
         </div>
-        <div>
+        <div className="space-y-4">
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 dark:shadow-blue-900/10 hover:shadow-blue-500/30 transition-all duration-200 flex justify-center items-center hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 dark:shadow-blue-900/10 hover:shadow-blue-500/30 transition-all duration-200 flex justify-center items-center hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Sign In'}
           </button>
+
+          {biometricsSupported && (
+            <>
+              {hasFingerprint ? (
+                <button
+                  type="button"
+                  onClick={handleBiometricLogin}
+                  disabled={loading}
+                  className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-900/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-semibold py-3 px-4 rounded-xl shadow-sm transition-all duration-200 flex justify-center items-center gap-2 hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <Fingerprint className="w-5 h-5 text-blue-500 dark:text-blue-400 animate-pulse" />
+                  <span>Sign In with Fingerprint</span>
+                </button>
+              ) : (
+                <div className="p-3 bg-slate-50/50 dark:bg-slate-900/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800/80 text-center">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5 font-medium leading-relaxed">
+                    <Fingerprint className="w-4 h-4 text-slate-400" />
+                    Fingerprint login is supported on this device. Enable it in Profile Settings after login.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Cloudflare Turnstile Widget */}
