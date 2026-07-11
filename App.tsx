@@ -335,7 +335,7 @@ const App: React.FC = () => {
       };
 
       if (profile.role === UserRole.CONTROLLER) {
-        const fallbackViews: View[] = ['controller', 'tech_ops', 'guard_monitoring', 'attendance', 'global_search', 'profile'];
+        const fallbackViews: View[] = ['controller', 'tech_ops', 'fleet_management', 'guard_monitoring', 'attendance', 'global_search', 'profile'];
         const allowedViews = fallbackViews.filter(v => {
           if (v === 'profile' || v === 'global_search') return true;
           if (v === 'guard_monitoring') return isModuleAllowed('guard_monitoring');
@@ -376,6 +376,10 @@ const App: React.FC = () => {
           return;
         }
         if (view === 'tech_ops' && (![UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role) || !isModuleAllowed('tech_ops'))) {
+          setView('dashboard');
+          return;
+        }
+        if (view === 'fleet_management' && !isModuleAllowed('fleet_management')) {
           setView('dashboard');
           return;
         }
