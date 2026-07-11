@@ -2,13 +2,16 @@ import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const url = process.env.VITE_SUPABASE_URL || 'dummy';
+const key = process.env.VITE_SUPABASE_ANON_KEY || 'dummy';
 
-const supabase = createClient(url || 'dummy', key || 'dummy');
+console.log("Testing Supabase connection with URL:", url);
+console.log("Using Anon Key:", key.substring(0, 10) + "...");
+
+const supabase = createClient(url, key);
 
 async function check() {
-    const { data, error } = await supabase.from('guards').select('*');
-    console.log("Anon user select result:", data, error);
+    const { data, error } = await supabase.from('profiles').select('id').limit(1);
+    console.log("Anon user profiles select result:", data, error);
 }
 check();

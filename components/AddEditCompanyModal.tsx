@@ -14,6 +14,7 @@ interface AddEditCompanyModalProps {
 export const AVAILABLE_MODULES = [
     { id: 'controller', name: 'Controller Dashboard' },
     { id: 'tech_ops', name: 'Tech Ops (Technical Operations)' },
+    { id: 'fleet_management', name: 'Vehicle Tracking' },
     { id: 'guard_monitoring', name: 'Guarding & Patrols' },
     { id: 'gate_access', name: 'Gate Access Control' },
     { id: 'attendance', name: 'Guard Attendance System' },

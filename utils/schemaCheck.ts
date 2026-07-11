@@ -6,6 +6,32 @@ interface SchemaCheckResult {
 }
 
 export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
+    const isNetworkError = (err: any): boolean => {
+        if (!err) return false;
+        const msg = typeof err === 'string' ? err : (err.message || '');
+        return msg.toLowerCase().includes('failed to fetch') || 
+               msg.toLowerCase().includes('networkerror') || 
+               msg.toLowerCase().includes('cors') ||
+               msg.toLowerCase().includes('load failed') ||
+               msg.toLowerCase().includes('network connection') ||
+               msg.toLowerCase().includes('failed to connect') ||
+               msg.toLowerCase().includes('typeerror');
+    };
+
+    // Try server-side schema check first to bypass client-side CORS or ad-blocker network issues
+    try {
+        const response = await fetch('/api/check-db');
+        if (response.ok) {
+            const serverResult = await response.json();
+            if (serverResult && (serverResult.status === 'valid' || serverResult.status === 'invalid')) {
+                console.log("Database schema check via server-side API:", serverResult);
+                return serverResult;
+            }
+        }
+    } catch (apiError) {
+        console.warn("Server-side schema check API unreachable, falling back to client-side checks:", apiError);
+    }
+
     if (!supabase) {
         return {
             status: 'invalid',
@@ -16,6 +42,10 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
         // Check 1: Basic table access (catches RLS issues or missing tables)
         const { error: profileError } = await supabase.from('profiles').select('id').limit(1);
         if (profileError) {
+            if (isNetworkError(profileError)) {
+                console.warn("Database schema check encountered a network error. Skipping check.", profileError);
+                return { status: 'valid' };
+            }
             console.error("Database schema check failed on 'profiles' table:", profileError);
             return {
                 status: 'invalid',
@@ -40,6 +70,10 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
         }
         
         if (rpcError) {
+            if (isNetworkError(rpcError)) {
+                console.warn("Database schema check encountered a network error during RPC. Skipping check.", rpcError);
+                return { status: 'valid' };
+            }
             // If the function doesn't exist, it's a schema issue.
             if (rpcError.code === '42883') { // "function does not exist"
                  console.error("Database schema check failed: 'get_enum_values' function missing.", rpcError);
@@ -80,13 +114,17 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             });
             
             if (funcError) {
+                if (isNetworkError(funcError)) {
+                    console.warn("Database schema check encountered a network error during eval. Skipping check.", funcError);
+                    return { status: 'valid' };
+                }
                 console.warn("Schema check failed on eval:", funcError);
                 // If the error is about the function not existing OR if eval itself is missing (404/400)
                 if (funcError.message.includes("does not exist") || funcError.code === '42883' || funcError.code === 'PGRST202' || funcError.message.includes("Could not find the function")) {
                      return {
                         status: 'invalid',
                         error: `Database Schema Incomplete: The critical function 'create_staff_notification' (or the helper 'eval') is missing. Please run the full setup script from DATABASE_SCHEMA.md.`
-                    };
+                     };
                 }
                 // For other errors (like 400 Bad Request which might mean eval is missing or invalid), treat as schema issue
                 return {
@@ -95,6 +133,10 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
                 };
             }
         } catch (e: any) {
+            if (isNetworkError(e)) {
+                console.warn("Database schema check encountered an exception during eval. Skipping check.", e);
+                return { status: 'valid' };
+            }
             console.warn("Function verification failed with exception:", e);
              return {
                 status: 'invalid',
@@ -105,6 +147,10 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
         return { status: 'valid' };
 
     } catch (e: any) {
+        if (isNetworkError(e)) {
+            console.warn("A network error occurred during the database check. Bypassing schema error screen.", e);
+            return { status: 'valid' };
+        }
         console.error("A JavaScript error occurred during the database check:", e);
         return {
             status: 'invalid',

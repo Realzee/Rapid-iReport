@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, memo } from 'react';
-import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, GlobeIcon, RadioTowerIcon, BuildingIcon, HistoryIcon, SearchIcon, ChartBarIcon, MapIcon, UsersIcon, ClipboardCheckIcon, ScanIcon, WrenchIcon, ShareIcon } from './icons';
+import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, GlobeIcon, RadioTowerIcon, BuildingIcon, HistoryIcon, SearchIcon, ChartBarIcon, MapIcon, UsersIcon, ClipboardCheckIcon, ScanIcon, WrenchIcon, ShareIcon, CarIcon } from './icons';
 import { Profile, UserRole, Notification } from '../types';
 import { supabase } from '../utils/supabase';
 import { useSettings } from '../contexts/SettingsContext';
@@ -13,7 +13,7 @@ import { CorporateSharingModal } from './CorporateSharingModal';
 
 interface HeaderProps {
     currentView: string;
-    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about') => void;
+    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'fleet_management') => void;
     profile: Profile;
     onNotificationClick: (notification: Notification) => void;
 }
@@ -187,7 +187,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     setMobileMenuOpen(false);
   };
 
-  const handleMobileLinkClick = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'attendance' | 'technician_dashboard' | 'tech_ops' | 'about') => {
+  const handleMobileLinkClick = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'attendance' | 'technician_dashboard' | 'tech_ops' | 'about' | 'fleet_management') => {
       setView(view);
       setMobileMenuOpen(false);
   }
@@ -280,6 +280,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
               <WrenchIcon className="w-4 h-4 mr-2 text-teal-400" /> Tech Ops
             </button>
           )}
+          {isModuleAllowed('fleet_management') && (
+            <button onClick={() => clickHandler('fleet_management')} className={classGetter('fleet_management')}>
+              <CarIcon className="w-4 h-4 mr-2 text-indigo-400" /> Vehicle Tracking
+            </button>
+          )}
           {isModuleAllowed('guard_monitoring') && (
             <button onClick={() => clickHandler('guard_monitoring')} className={classGetter('guard_monitoring')}>
               <BuildingIcon className="w-4 h-4 mr-2" /> Guarding
@@ -325,6 +330,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         {isModuleAllowed('tech_ops') && (
           <button onClick={() => clickHandler('tech_ops')} className={classGetter('tech_ops')}>
             <WrenchIcon className="w-4 h-4 mr-2 text-teal-400" /> Tech Ops
+          </button>
+        )}
+        {isModuleAllowed('fleet_management') && (
+          <button onClick={() => clickHandler('fleet_management')} className={classGetter('fleet_management')}>
+            <CarIcon className="w-4 h-4 mr-2 text-indigo-400" /> Vehicle Tracking
           </button>
         )}
         {isModuleAllowed('guard_monitoring') && (
