@@ -65,11 +65,12 @@ const CompanyDetailModal: React.FC<CompanyDetailModalProps> = ({ isOpen, onClose
                                     const names: Record<string, string> = {
                                         controller: 'Controller Dashboard',
                                         tech_ops: 'Tech Ops',
+                                        fleet_management: 'Vehicle Tracking',
                                         guard_monitoring: 'Guarding & Patrols',
                                         gate_access: 'Gate Access Control',
-                                        attendance: 'Attendance',
+                                        attendance: 'Guard Attendance System',
                                         analytics: 'Analytics & Stats',
-                                        archives: 'Archives',
+                                        archives: 'Archives & Historical Reports',
                                     };
                                     return (
                                         <span 

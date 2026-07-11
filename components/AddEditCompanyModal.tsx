@@ -232,7 +232,7 @@ const AddEditCompanyModal: React.FC<AddEditCompanyModalProps> = ({ isOpen, onClo
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                             Enable specific system modules for this company:
                         </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700/60 max-h-40 overflow-y-auto">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700/60">
                             {AVAILABLE_MODULES.map((mod) => {
                                 const isChecked = currentModules.includes(mod.id);
                                 return (
