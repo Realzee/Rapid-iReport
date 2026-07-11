@@ -24,7 +24,12 @@ const AnnouncementTypeIcon: React.FC<{ type: AnnouncementType, className?: strin
     }
 };
 
-const CompaniesPage: React.FC = () => {
+interface CompaniesPageProps {
+    profile?: Profile;
+    setProfile?: (profile: Profile) => void;
+}
+
+const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) => {
     const [companies, setCompanies] = useState<Company[]>([]);
     const [users, setUsers] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
@@ -33,7 +38,7 @@ const CompaniesPage: React.FC = () => {
     const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
     const [viewCompany, setViewCompany] = useState<Company | null>(null);
     const { addToast } = useToast();
-    const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
+    const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(profile || null);
 
     // Global Branding states
     const { mainLogoUrl, setMainLogoUrl, defaultLogoUrl, faviconUrl, setFaviconUrl, defaultFaviconUrl } = useSettings();
@@ -69,23 +74,27 @@ const CompaniesPage: React.FC = () => {
 
 
     useEffect(() => {
-        const fetchCurrentUserProfile = async () => {
-            // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
-            const { data: { session } } = await supabase.auth['getSession']();
-            if (session?.user) {
-                const { data: profileData, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-                if (error) {
-                    addToast(`Error fetching your profile: ${error.message}`, 'error');
-                    setLoading(false);
+        if (profile) {
+            setCurrentUserProfile(profile);
+        } else {
+            const fetchCurrentUserProfile = async () => {
+                // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
+                const { data: { session } } = await supabase.auth['getSession']();
+                if (session?.user) {
+                    const { data: profileData, error } = await supabase.from('profiles').select('*, company:companies(*)').eq('id', session.user.id).single();
+                    if (error) {
+                        addToast(`Error fetching your profile: ${error.message}`, 'error');
+                        setLoading(false);
+                    } else {
+                        setCurrentUserProfile(profileData);
+                    }
                 } else {
-                    setCurrentUserProfile(profileData);
+                    setLoading(false);
                 }
-            } else {
-                setLoading(false);
-            }
-        };
-        fetchCurrentUserProfile();
-    }, [addToast]);
+            };
+            fetchCurrentUserProfile();
+        }
+    }, [profile, addToast]);
 
     useEffect(() => {
         setLogoPreview(mainLogoUrl);
@@ -224,6 +233,22 @@ const CompaniesPage: React.FC = () => {
                 } else {
                     setCompanies([...companies, savedCompany]);
                 }
+                
+                // If this is our own company, update the profile context and the local current user state
+                if (profile && setProfile && savedCompany.id === profile.company_id) {
+                    setProfile({
+                        ...profile,
+                        company: savedCompany
+                    });
+                }
+                
+                if (currentUserProfile && savedCompany.id === currentUserProfile.company_id) {
+                    setCurrentUserProfile(prev => prev ? {
+                        ...prev,
+                        company: savedCompany
+                    } : null);
+                }
+
                 addToast(`Company '${savedCompany.name}' saved successfully.`, 'success');
                 setIsAddEditModalOpen(false);
             }

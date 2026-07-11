@@ -527,7 +527,7 @@ const App: React.FC = () => {
               case 'analytics': return <AnalyticsPage />;
               case 'users': return <UsersPage />;
               case 'activity_logs': return <UserActivityPage profile={profile} />;
-              case 'companies': return <CompaniesPage />;
+              case 'companies': return <CompaniesPage profile={profile} setProfile={setProfile} />;
               case 'guard_monitoring': return <GuardMonitoringPage profile={profile} />;
               case 'gate_access': return <GateAccessPage profile={profile} />;
               case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />;
