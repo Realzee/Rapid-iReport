@@ -365,6 +365,16 @@ CREATE POLICY "Allow staff to read assignment logs" ON public.assignment_logs FO
 DROP POLICY IF EXISTS "Allow staff to insert assignment logs" ON public.assignment_logs;
 CREATE POLICY "Allow staff to insert assignment logs" ON public.assignment_logs FOR INSERT WITH CHECK (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'));
 
+-- Notifications
+DROP POLICY IF EXISTS "Allow select for authenticated notifications" ON public.notifications;
+CREATE POLICY "Allow select for authenticated notifications" ON public.notifications FOR SELECT TO authenticated USING (auth.uid() = recipient_user_id);
+DROP POLICY IF EXISTS "Allow insert for authenticated notifications" ON public.notifications;
+CREATE POLICY "Allow insert for authenticated notifications" ON public.notifications FOR INSERT TO authenticated WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow update for authenticated notifications" ON public.notifications;
+CREATE POLICY "Allow update for authenticated notifications" ON public.notifications FOR UPDATE TO authenticated USING (auth.uid() = recipient_user_id) WITH CHECK (auth.uid() = recipient_user_id);
+DROP POLICY IF EXISTS "Allow delete for authenticated notifications" ON public.notifications;
+CREATE POLICY "Allow delete for authenticated notifications" ON public.notifications FOR DELETE TO authenticated USING (auth.uid() = recipient_user_id);
+
 -- 6. Storage Policies (Run these if you have issues with uploads)
 -- Note: These assume buckets 'avatars', 'evidence', 'company-logos', 'app-assets' exist.
 

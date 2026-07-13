@@ -138,6 +138,25 @@ async function runMigrations() {
         "CREATE POLICY \"Allow update for authenticated report_shares\" ON public.report_shares FOR UPDATE TO authenticated USING (true) WITH CHECK (true);",
         "DROP POLICY IF EXISTS \"Allow delete for authenticated report_shares\" ON public.report_shares;",
         "CREATE POLICY \"Allow delete for authenticated report_shares\" ON public.report_shares FOR DELETE TO authenticated USING (true);",
+        `CREATE TABLE IF NOT EXISTS public.notifications (
+            id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+            recipient_user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+            type text NOT NULL,
+            title text NOT NULL,
+            message text NOT NULL,
+            reference_id uuid,
+            is_read boolean DEFAULT false,
+            created_at timestamp with time zone DEFAULT now()
+        );`,
+        "ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS \"Allow select for authenticated notifications\" ON public.notifications;",
+        "CREATE POLICY \"Allow select for authenticated notifications\" ON public.notifications FOR SELECT TO authenticated USING (auth.uid() = recipient_user_id);",
+        "DROP POLICY IF EXISTS \"Allow insert for authenticated notifications\" ON public.notifications;",
+        "CREATE POLICY \"Allow insert for authenticated notifications\" ON public.notifications FOR INSERT TO authenticated WITH CHECK (true);",
+        "DROP POLICY IF EXISTS \"Allow update for authenticated notifications\" ON public.notifications;",
+        "CREATE POLICY \"Allow update for authenticated notifications\" ON public.notifications FOR UPDATE TO authenticated USING (auth.uid() = recipient_user_id) WITH CHECK (auth.uid() = recipient_user_id);",
+        "DROP POLICY IF EXISTS \"Allow delete for authenticated notifications\" ON public.notifications;",
+        "CREATE POLICY \"Allow delete for authenticated notifications\" ON public.notifications FOR DELETE TO authenticated USING (auth.uid() = recipient_user_id);",
         "NOTIFY pgrst, 'reload schema';",
         "SELECT pg_notify('pgrst', 'reload schema');"
     ];
