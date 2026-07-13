@@ -8,7 +8,15 @@ const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_S
 const supabase = createClient(url || 'dummy', key || 'dummy');
 
 async function check() {
-    const { data } = await supabase.from('sites').select('*');
-    console.log(JSON.stringify(data, null, 2));
+    console.log("Fetching all profiles...");
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, role, company_id');
+        
+    if (error) {
+        console.error("Fetch failed:", error);
+    } else {
+        console.log("Profiles:", JSON.stringify(data, null, 2));
+    }
 }
 check();

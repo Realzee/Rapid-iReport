@@ -117,7 +117,7 @@ export default async function handler(req: any, res: any) {
             if (Object.keys(cleanedPayload).length === 0) {
                 const { data: currentProfile, error: getError } = await supabaseAdmin
                     .from('profiles')
-                    .select('*')
+                    .select('*, company:companies(*)')
                     .eq('id', userId)
                     .maybeSingle();
                 if (getError) throw getError;
@@ -128,15 +128,24 @@ export default async function handler(req: any, res: any) {
                 return res.status(200).json(currentProfile);
             }
 
-            const { data, error } = await supabaseAdmin
+            const { error: updateError } = await supabaseAdmin
                 .from('profiles')
                 .update(cleanedPayload)
+                .eq('id', userId);
+
+            if (updateError) {
+                console.error('Supabase update error:', updateError);
+                throw updateError;
+            }
+
+            const { data, error } = await supabaseAdmin
+                .from('profiles')
+                .select('*, company:companies(*)')
                 .eq('id', userId)
-                .select()
                 .maybeSingle();
 
             if (error) {
-                console.error('Supabase update error:', error);
+                console.error('Supabase fetch after update error:', error);
                 throw error;
             }
 
