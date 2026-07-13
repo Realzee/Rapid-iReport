@@ -22,7 +22,11 @@ import {
   Sliders,
   Power,
   RotateCw,
-  Gauge
+  Gauge,
+  Download,
+  MapPin,
+  Copy,
+  ExternalLink
 } from 'lucide-react';
 import { Profile } from '../types';
 import { useToast } from '../contexts/ToastContext';
@@ -48,6 +52,19 @@ interface TK116Device {
   speedLimit: number; // custom speed limit set by command
   pathHistory: [number, number][];
   alerts: string[];
+}
+
+interface TripHistoryItem {
+  id: string;
+  timestamp: string;
+  event: string;
+  lat: number;
+  lng: number;
+  speed: number;
+  mileage: number;
+  fuelLevel: number;
+  accStatus: boolean;
+  status: string;
 }
 
 interface RawPacket {
@@ -113,6 +130,54 @@ const toHex32 = (val: number): string => {
 
 const stringToHex = (str: string): string => {
   return Array.from(str).map(c => c.charCodeAt(0).toString(16).padStart(2, '0').toUpperCase()).join('');
+};
+
+const generateMockHistory = (vehicle: TK116Device): TripHistoryItem[] => {
+  const items: TripHistoryItem[] = [];
+  const baseLat = vehicle.lat;
+  const baseLng = vehicle.lng;
+  const now = new Date();
+  
+  // Let's create some events
+  const events = [
+    { label: 'Routine Location Ping', speed: 45, acc: true, fuelOffset: -1, mileageOffset: -12000, timeOffset: 50 },
+    { label: 'ACC Ignition OFF', speed: 0, acc: false, fuelOffset: -1.2, mileageOffset: -12000, timeOffset: 95 },
+    { label: 'Routine Location Ping', speed: 55, acc: true, fuelOffset: -1.2, mileageOffset: -14500, timeOffset: 120 },
+    { label: 'ACC Ignition ON', speed: 0, acc: true, fuelOffset: -2, mileageOffset: -22000, timeOffset: 155 },
+    { label: 'Geofence Exit: JHB Central', speed: 60, acc: true, fuelOffset: -2.5, mileageOffset: -24000, timeOffset: 180 },
+    { label: 'Routine Location Ping', speed: 40, acc: true, fuelOffset: -3, mileageOffset: -28000, timeOffset: 240 },
+    { label: 'ACC Ignition OFF', speed: 0, acc: false, fuelOffset: -3.5, mileageOffset: -31000, timeOffset: 300 },
+    { label: 'Routine Location Ping', speed: 50, acc: true, fuelOffset: -3.5, mileageOffset: -31000, timeOffset: 345 },
+    { label: 'ACC Ignition ON', speed: 0, acc: true, fuelOffset: -4, mileageOffset: -35000, timeOffset: 360 },
+    { label: 'Geofence Entry: Depot', speed: 15, acc: true, fuelOffset: -4.5, mileageOffset: -42000, timeOffset: 420 },
+    { label: 'Routine Location Ping', speed: 0, acc: false, fuelOffset: -5, mileageOffset: -45000, timeOffset: 480 },
+    { label: 'ACC Ignition OFF', speed: 0, acc: false, fuelOffset: -5, mileageOffset: -45000, timeOffset: 510 },
+  ];
+
+  const multiplier = vehicle.id === '4' ? 1.5 : (vehicle.id === '3' ? 0.8 : 1.0);
+
+  events.forEach((ev, idx) => {
+    const eventTime = new Date(now.getTime() - ev.timeOffset * 60 * 1000 * multiplier);
+    
+    // Add minor offsets to lat/lng so it is realistic path breadcrumbs
+    const latOffset = Math.sin(idx * 0.5) * 0.015;
+    const lngOffset = Math.cos(idx * 0.5) * 0.015;
+
+    items.push({
+      id: `${vehicle.id}-hist-${idx}`,
+      timestamp: eventTime.toLocaleString(),
+      event: ev.label,
+      lat: Number((baseLat + latOffset).toFixed(6)),
+      lng: Number((baseLng + lngOffset).toFixed(6)),
+      speed: ev.speed === 0 ? 0 : Math.floor(ev.speed * multiplier),
+      mileage: Math.max(1000, Math.floor(vehicle.mileage + ev.mileageOffset * multiplier)),
+      fuelLevel: Math.min(100, Math.max(10, Math.floor(vehicle.fuelLevel - ev.fuelOffset))),
+      accStatus: ev.acc,
+      status: ev.speed > 0 ? 'moving' : 'stationary'
+    });
+  });
+
+  return items;
 };
 
 interface FleetManagementProps {
@@ -230,7 +295,10 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
   ]);
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('1');
-  const [activeSubTab, setActiveSubTab] = useState<'map' | 'simulator' | 'terminal'>('map');
+  const [activeSubTab, setActiveSubTab] = useState<'map' | 'simulator' | 'terminal' | 'history'>('map');
+  const [histories, setHistories] = useState<Record<string, TripHistoryItem[]>>({});
+  const [historySearchText, setHistorySearchText] = useState('');
+  const [historyFilterType, setHistoryFilterType] = useState<'all' | 'ignition' | 'warning' | 'tracking'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [rawPackets, setRawPackets] = useState<RawPacket[]>([]);
   const [selectedPacket, setSelectedPacket] = useState<RawPacket | null>(null);
@@ -391,11 +459,20 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
     };
   };
 
+  // Initialize simulated histories for all vehicles on mount
+  useEffect(() => {
+    const initialHistories: Record<string, TripHistoryItem[]> = {};
+    vehicles.forEach(v => {
+      initialHistories[v.id] = generateMockHistory(v);
+    });
+    setHistories(initialHistories);
+  }, []);
+
   // Run periodic movement and live protocol telemetry logs
   useEffect(() => {
     const interval = setInterval(() => {
       setVehicles(currentVehicles => {
-        return currentVehicles.map(veh => {
+        const nextVehicles = currentVehicles.map(veh => {
           // If offline, don't move or update
           if (veh.status === 'offline') return veh;
 
@@ -475,6 +552,40 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
 
           return updatedVehicle;
         });
+
+        // Safe async update for histories to prevent react state update warnings
+        setTimeout(() => {
+          setHistories(prev => {
+            const updatedHistories = { ...prev };
+            nextVehicles.forEach(v => {
+              if (v.status === 'offline') return;
+              const currentHist = updatedHistories[v.id] || [];
+              const isStationary = v.status === 'stationary';
+              
+              // Only add live tracking event ~30% of the time, or if alerts change, to keep the log elegant
+              if (Math.random() < 0.3 || v.alerts.length > 0) {
+                const newHistItem: TripHistoryItem = {
+                  id: `${v.id}-live-${Date.now()}-${Math.random()}`,
+                  timestamp: new Date().toLocaleTimeString(),
+                  event: v.alerts.length > 0 
+                    ? v.alerts[0] 
+                    : (isStationary ? 'Stationary Ping' : 'Live Tracking Ping'),
+                  lat: Number(v.lat.toFixed(6)),
+                  lng: Number(v.lng.toFixed(6)),
+                  speed: v.speed,
+                  mileage: v.mileage,
+                  fuelLevel: Math.floor(v.fuelLevel),
+                  accStatus: v.accStatus,
+                  status: v.status
+                };
+                updatedHistories[v.id] = [newHistItem, ...currentHist].slice(0, 50);
+              }
+            });
+            return updatedHistories;
+          });
+        }, 0);
+
+        return nextVehicles;
       });
     }, 4500);
 
@@ -644,6 +755,66 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
     }, 1800);
   };
 
+  const handleExportCSV = (vehicle: TK116Device) => {
+    const historyList = histories[vehicle.id] || [];
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += `VEHICLE CURRENT DETAILS\n`;
+    csvContent += `Vehicle Name,Plate Number,IMEI,Status,Current Latitude,Current Longitude,Current Speed (km/h),ACC State,Fuel Cut Relay,Mileage (m),Fuel Level (%),Last Updated\n`;
+    csvContent += `"${vehicle.name}","${vehicle.plate}","${vehicle.imei}","${vehicle.status}",${vehicle.lat},${vehicle.lng},${vehicle.speed},${vehicle.accStatus ? "ON" : "OFF"},${vehicle.fuelCut ? "Active" : "Normal"},${vehicle.mileage},${Math.floor(vehicle.fuelLevel)},"${vehicle.lastUpdate}"\n\n`;
+    
+    csvContent += `TRIP AND STATUS HISTORY\n`;
+    csvContent += `Timestamp,Event / Status,Latitude,Longitude,Speed (km/h),ACC Ignition,Fuel Level (%),Odometer Mileage (km)\n`;
+    
+    historyList.forEach(item => {
+      csvContent += `"${item.timestamp}","${item.event}",${item.lat},${item.lng},${item.speed},${item.accStatus ? "ON" : "OFF"},${item.fuelLevel},${(item.mileage / 1000).toFixed(2)}\n`;
+    });
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `vehicle_tracking_${vehicle.plate.replace(/[^a-zA-Z0-9]/g, "_")}_export.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    addToast(`Successfully exported ${vehicle.name} details & trip history to CSV`, "success");
+  };
+
+  const handleExportJSON = (vehicle: TK116Device) => {
+    const historyList = histories[vehicle.id] || [];
+    const exportData = {
+      exportTimestamp: new Date().toISOString(),
+      vehicleDetails: {
+        id: vehicle.id,
+        name: vehicle.name,
+        plate: vehicle.plate,
+        imei: vehicle.imei,
+        status: vehicle.status,
+        currentLocation: {
+          lat: vehicle.lat,
+          lng: vehicle.lng,
+          course: vehicle.course
+        },
+        speed: vehicle.speed,
+        accStatus: vehicle.accStatus,
+        fuelCut: vehicle.fuelCut,
+        mileage: vehicle.mileage,
+        fuelLevel: vehicle.fuelLevel,
+        lastUpdate: vehicle.lastUpdate,
+        alerts: vehicle.alerts
+      },
+      tripHistory: historyList
+    };
+    
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(exportData, null, 2))}`;
+    const link = document.createElement("a");
+    link.setAttribute("href", jsonString);
+    link.setAttribute("download", `vehicle_tracking_${vehicle.plate.replace(/[^a-zA-Z0-9]/g, "_")}_export.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    addToast(`Successfully exported ${vehicle.name} details & trip history to JSON`, "success");
+  };
+
   // Helper to format raw hex visually grouped by bytes
   const formatHexGrouped = (hex: string) => {
     if (!hex) return '';
@@ -691,6 +862,37 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
       iconAnchor: [size / 2, size / 2],
       popupAnchor: [0, -size / 2]
     });
+  };
+
+  const filteredHistory = useMemo(() => {
+    const list = histories[selectedVehicle.id] || [];
+    return list.filter(item => {
+      // search match
+      const matchesSearch = item.event.toLowerCase().includes(historySearchText.toLowerCase()) || 
+                            item.timestamp.toLowerCase().includes(historySearchText.toLowerCase()) ||
+                            String(item.speed).includes(historySearchText);
+      
+      // filter match
+      if (historyFilterType === 'ignition') {
+        return matchesSearch && item.event.toLowerCase().includes('ignition');
+      }
+      if (historyFilterType === 'warning') {
+        return matchesSearch && (item.event.toLowerCase().includes('alert') || item.event.toLowerCase().includes('warning') || item.event.toLowerCase().includes('cut'));
+      }
+      if (historyFilterType === 'tracking') {
+        return matchesSearch && item.event.toLowerCase().includes('ping');
+      }
+      return matchesSearch;
+    });
+  }, [histories, selectedVehicle.id, historySearchText, historyFilterType]);
+
+  const handleCopyCoords = (lat: number, lng: number) => {
+    navigator.clipboard.writeText(`${lat}, ${lng}`);
+    addToast("Coordinates copied to clipboard!", "success");
+  };
+
+  const getGoogleMapsUrl = (lat: number, lng: number) => {
+    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
   };
 
   return (
@@ -891,6 +1093,18 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
               >
                 <Terminal className="w-3.5 h-3.5" />
                 GPRS Decoded Packet Log
+              </button>
+
+              <button
+                onClick={() => setActiveSubTab('history')}
+                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                  activeSubTab === 'history'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-950'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Location &amp; Trip History
               </button>
             </div>
 
@@ -1298,6 +1512,331 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                       </div>
                     )}
                   </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB 4: Location & Trip History View with Export */}
+            {activeSubTab === 'history' && (
+              <div className="w-full h-full p-6 overflow-y-auto bg-gray-50 dark:bg-gray-900 grid grid-cols-1 xl:grid-cols-12 gap-6">
+                
+                {/* Left Side: Current Geolocation & Asset Details */}
+                <div className="xl:col-span-5 flex flex-col gap-6">
+                  
+                  {/* Current Tracking Card */}
+                  <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                    <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/60">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 tracking-wider">Asset Identifier</span>
+                          <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 mt-0.5">
+                            {selectedVehicle.name}
+                          </h3>
+                        </div>
+                        <span className={`text-[10px] uppercase font-extrabold px-2.5 py-1 rounded-full border ${
+                          selectedVehicle.status === 'offline' 
+                            ? 'bg-gray-100 dark:bg-gray-900 border-gray-300 dark:border-gray-800 text-gray-500'
+                            : selectedVehicle.status === 'stationary'
+                              ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/30 text-amber-600 dark:text-amber-400'
+                              : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                        }`}>
+                          {selectedVehicle.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-5 space-y-4">
+                      {/* Big Telemetry Metrics Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gray-50 dark:bg-gray-900/60 p-3.5 rounded-xl border border-gray-200/50 dark:border-gray-800/40">
+                          <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 block mb-0.5">Current Velocity</span>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-black text-gray-900 dark:text-white">
+                              {selectedVehicle.speed}
+                            </span>
+                            <span className="text-[11px] font-bold text-gray-400">km/h</span>
+                          </div>
+                          <span className="text-[9px] text-gray-400 block mt-1">Limit: {selectedVehicle.speedLimit} km/h</span>
+                        </div>
+
+                        <div className="bg-gray-50 dark:bg-gray-900/60 p-3.5 rounded-xl border border-gray-200/50 dark:border-gray-800/40">
+                          <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 block mb-0.5">Fuel Status</span>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+                              {Math.floor(selectedVehicle.fuelLevel)}%
+                            </span>
+                          </div>
+                          <span className="text-[9px] text-gray-400 block mt-1">Tank Capacity: ~65L</span>
+                        </div>
+                      </div>
+
+                      {/* Geographic Coordinates Display */}
+                      <div className="bg-blue-50/20 dark:bg-blue-950/10 border border-blue-100/50 dark:border-blue-900/20 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400 tracking-wider flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5" />
+                            Live Geolocation Coordinate
+                          </span>
+                          <span className="text-[9px] text-gray-400 font-mono">WSG-84 Protocol</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 font-mono text-xs text-gray-800 dark:text-gray-200">
+                          <div>
+                            <span className="text-[9px] text-gray-400 uppercase block mb-0.5">Latitude</span>
+                            <span className="font-bold">{selectedVehicle.lat.toFixed(6)}</span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-gray-400 uppercase block mb-0.5">Longitude</span>
+                            <span className="font-bold">{selectedVehicle.lng.toFixed(6)}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 mt-4 pt-3 border-t border-blue-100/30 dark:border-blue-900/10">
+                          <button
+                            onClick={() => handleCopyCoords(selectedVehicle.lat, selectedVehicle.lng)}
+                            className="flex-1 py-1.5 px-3 bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-lg text-[11px] font-bold text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                          >
+                            <Copy className="w-3.5 h-3.5 text-gray-400" />
+                            Copy Coords
+                          </button>
+                          <a
+                            href={getGoogleMapsUrl(selectedVehicle.lat, selectedVehicle.lng)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 py-1.5 px-3 bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-lg text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1.5 transition-all"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Google Maps
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Technical Specs Rows */}
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-800/50">
+                          <span className="text-gray-400">License Plate</span>
+                          <span className="font-bold font-mono text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                            {selectedVehicle.plate}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-800/50">
+                          <span className="text-gray-400">Hardware IMEI</span>
+                          <span className="font-mono text-gray-800 dark:text-gray-200">{selectedVehicle.imei}</span>
+                        </div>
+                        <div className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-800/50">
+                          <span className="text-gray-400">Odometer Mileage</span>
+                          <span className="font-mono font-bold text-gray-800 dark:text-gray-200">{(selectedVehicle.mileage / 1000).toFixed(2)} km</span>
+                        </div>
+                        <div className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-800/50">
+                          <span className="text-gray-400">ACC Ignition Status</span>
+                          <span className={`font-bold ${selectedVehicle.accStatus ? 'text-amber-500' : 'text-gray-400'}`}>
+                            {selectedVehicle.accStatus ? 'ON (Running)' : 'OFF (Engine Idle)'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-800/50">
+                          <span className="text-gray-400">Device Battery</span>
+                          <span className="font-mono text-gray-800 dark:text-gray-200 flex items-center gap-1">
+                            <Battery className="w-3.5 h-3.5 text-blue-500" />
+                            {(selectedVehicle.batteryVoltage / 1000).toFixed(2)}V ({selectedVehicle.batteryPercent}%)
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1.5">
+                          <span className="text-gray-400">Fuel Cut Relay</span>
+                          <span className={`font-bold ${selectedVehicle.fuelCut ? 'text-red-500' : 'text-emerald-500'}`}>
+                            {selectedVehicle.fuelCut ? 'ACTIVE (Cutoff)' : 'INACTIVE (Normal)'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Export Options Card */}
+                  <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
+                    <h4 className="text-xs uppercase font-extrabold text-blue-500 mb-2.5 tracking-wider flex items-center gap-1.5">
+                      <Download className="w-4 h-4" />
+                      Export Historical Records
+                    </h4>
+                    <p className="text-[11px] text-gray-400 mb-4 leading-relaxed">
+                      Download the complete telemetry logging stream, geofence entries/exits, and hardware status history for **{selectedVehicle.name}** in the format of your choice.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button
+                        onClick={() => handleExportCSV(selectedVehicle)}
+                        className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow transition-all"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export to CSV
+                      </button>
+                      <button
+                        onClick={() => handleExportJSON(selectedVehicle)}
+                        className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-900 text-white font-bold text-xs rounded-xl border border-gray-700/50 flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow transition-all"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export to JSON
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Right Side: Log Filter & Interactive History Table */}
+                <div className="xl:col-span-7 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[calc(100vh-180px)] min-h-[500px]">
+                  
+                  {/* Filter and Search Header */}
+                  <div className="p-5 border-b border-gray-100 dark:border-gray-800 space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-blue-500" />
+                          Trip &amp; Status History Log
+                        </h3>
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          Historical GPRS updates received from IMEI {selectedVehicle.imei}
+                        </p>
+                      </div>
+                      <span className="text-[10px] bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-semibold px-2.5 py-1 rounded-full border border-blue-100 dark:border-blue-900/30">
+                        {filteredHistory.length} records shown
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* Search Input */}
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search events, speeds..."
+                          value={historySearchText}
+                          onChange={e => setHistorySearchText(e.target.value)}
+                          className="w-full text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100 placeholder-gray-400 rounded-lg py-2 pl-3 pr-8"
+                        />
+                        <span className="absolute right-3 top-2.5 text-gray-400 text-xs pointer-events-none">🔍</span>
+                      </div>
+
+                      {/* Filter subtabs */}
+                      <div className="flex gap-1 bg-gray-50 dark:bg-gray-900 p-1 rounded-lg border border-gray-200/50 dark:border-gray-800/40">
+                        <button
+                          onClick={() => setHistoryFilterType('all')}
+                          className={`flex-1 text-[10px] py-1 font-bold rounded-md transition-all ${
+                            historyFilterType === 'all'
+                              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                          }`}
+                        >
+                          All
+                        </button>
+                        <button
+                          onClick={() => setHistoryFilterType('ignition')}
+                          className={`flex-1 text-[10px] py-1 font-bold rounded-md transition-all ${
+                            historyFilterType === 'ignition'
+                              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                          }`}
+                        >
+                          Ignition
+                        </button>
+                        <button
+                          onClick={() => setHistoryFilterType('warning')}
+                          className={`flex-1 text-[10px] py-1 font-bold rounded-md transition-all ${
+                            historyFilterType === 'warning'
+                              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                          }`}
+                        >
+                          Alerts
+                        </button>
+                        <button
+                          onClick={() => setHistoryFilterType('tracking')}
+                          className={`flex-1 text-[10px] py-1 font-bold rounded-md transition-all ${
+                            historyFilterType === 'tracking'
+                              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                          }`}
+                        >
+                          Pings
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* History List Table */}
+                  <div className="flex-grow overflow-y-auto">
+                    {filteredHistory.length === 0 ? (
+                      <div className="h-60 flex flex-col items-center justify-center text-center p-6 text-gray-400">
+                        <Info className="w-8 h-8 mb-2 stroke-1" />
+                        <p className="text-xs">No matching history records found.</p>
+                        <p className="text-[10px] mt-0.5">Try widening your filters or search term.</p>
+                      </div>
+                    ) : (
+                      <table className="w-full text-[11px] text-left border-collapse">
+                        <thead className="bg-gray-50/50 dark:bg-gray-950/60 sticky top-0 text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800/60">
+                          <tr>
+                            <th className="py-3 px-4">Timestamp</th>
+                            <th className="py-3 px-4">Event Status</th>
+                            <th className="py-3 px-4">Coordinates</th>
+                            <th className="py-3 px-4">Speed</th>
+                            <th className="py-3 px-4">Fuel</th>
+                            <th className="py-3 px-4">Mileage</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800/40 font-mono">
+                          {filteredHistory.map(item => {
+                            const isWarning = item.event.toLowerCase().includes('alert') || 
+                                              item.event.toLowerCase().includes('warning') || 
+                                              item.event.toLowerCase().includes('cut');
+                            const isIgnition = item.event.toLowerCase().includes('ignition');
+                            
+                            return (
+                              <tr 
+                                key={item.id} 
+                                className="hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-all"
+                              >
+                                <td className="py-3 px-4 text-gray-400 whitespace-nowrap">
+                                  {item.timestamp}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    isWarning 
+                                      ? 'bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/20'
+                                      : isIgnition
+                                        ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/20'
+                                        : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/20'
+                                  }`}>
+                                    {item.event}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-gray-600 dark:text-gray-300">
+                                  <button
+                                    onClick={() => handleCopyCoords(item.lat, item.lng)}
+                                    title="Click to copy coordinates"
+                                    className="hover:text-blue-500 font-bold flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <MapPin className="w-3 h-3 text-gray-400" />
+                                    {item.lat.toFixed(5)}, {item.lng.toFixed(5)}
+                                  </button>
+                                </td>
+                                <td className="py-3 px-4 text-gray-800 dark:text-gray-100 font-bold">
+                                  {item.speed} km/h
+                                </td>
+                                <td className="py-3 px-4 text-indigo-600 dark:text-indigo-400">
+                                  {item.fuelLevel}%
+                                </td>
+                                <td className="py-3 px-4 text-gray-500">
+                                  {(item.mileage / 1000).toFixed(2)} km
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+
+                  {/* Table Footer Summary info */}
+                  <div className="p-4 bg-gray-50 dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex items-center justify-between">
+                    <span>* Click coordinates to copy. Historical buffer captures up to 50 logs.</span>
+                    <span>Format: ISO-8601 GPRS Packets</span>
+                  </div>
+
                 </div>
 
               </div>
