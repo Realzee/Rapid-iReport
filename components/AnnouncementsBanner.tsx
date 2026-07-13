@@ -42,6 +42,14 @@ const AnnouncementCard: React.FC<{ announcement: Announcement }> = ({ announceme
 const AnnouncementsBanner: React.FC<AnnouncementsBannerProps> = ({ onVisibilityChange }) => {
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [isDismissed, setIsDismissed] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     useEffect(() => {
         const fetchAnnouncements = async () => {
@@ -77,6 +85,31 @@ const AnnouncementsBanner: React.FC<AnnouncementsBannerProps> = ({ onVisibilityC
 
     if (announcements.length === 0 || isDismissed) {
         return null;
+    }
+
+    if (isMobile) {
+        const latestAnnouncement = announcements[0];
+        if (!latestAnnouncement) return null;
+        const styles = typeStyles[latestAnnouncement.type] || typeStyles[AnnouncementType.NOTICE];
+        
+        return (
+            <div className="fixed top-16 left-0 right-0 z-40 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800/50 text-gray-800 dark:text-gray-200 py-1.5 px-4 print:hidden h-12 flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="flex-shrink-0">{styles.icon}</span>
+                    <span className="text-xs truncate max-w-[80vw] font-medium text-gray-700 dark:text-gray-300">
+                        <strong className="font-extrabold text-gray-900 dark:text-white mr-1">{latestAnnouncement.title}:</strong>
+                        <span>{latestAnnouncement.content}</span>
+                    </span>
+                </div>
+                <button
+                    onClick={() => setIsDismissed(true)}
+                    className="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-black/10 dark:hover:bg-white/10 transition-colors ml-2 flex-shrink-0"
+                    aria-label="Dismiss announcement"
+                >
+                    <XIcon className="w-4 h-4" />
+                </button>
+            </div>
+        );
     }
     
     // Duplicate for seamless marquee effect, ensure there's enough content to scroll

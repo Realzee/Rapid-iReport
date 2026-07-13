@@ -162,10 +162,15 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
         <>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Community Reports</h2>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">View and track incidents reported by your community.</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Community Reports</h2>
+                    {!isMobile && (
+                        <p className="text-gray-500 dark:text-gray-400 mt-1">View and track incidents reported by your community.</p>
+                    )}
                 </div>
-                <button onClick={handleOpenNewReport} className="mt-4 md:mt-0 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2"><PlusIcon className="w-5 h-5" /><span>File a New Report</span></button>
+                <button onClick={handleOpenNewReport} className={`mt-3 md:mt-0 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center justify-center space-x-2 ${isMobile ? 'w-full py-2.5 text-xs' : 'px-5 py-3 text-sm'}`}>
+                    <PlusIcon className="w-4 h-4" />
+                    <span>File a New Report</span>
+                </button>
             </div>
 
             {myReports.length === 0 ? (

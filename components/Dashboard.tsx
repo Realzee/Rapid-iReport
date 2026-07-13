@@ -608,78 +608,90 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             <div className="flex-shrink-0">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Operational Control Platform</h2>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1">Live operational overview of community safety.</p>
+                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                            {isMobile ? "Operations Hub" : "Operational Control Platform"}
+                        </h2>
+                        {!isMobile && (
+                            <p className="text-gray-500 dark:text-gray-400 mt-1">Live operational overview of community safety.</p>
+                        )}
                     </div>
-                    <div className="mt-4 md:mt-0 flex items-center gap-4">
+                    <div className="mt-3 md:mt-0 flex items-center gap-2 w-full md:w-auto">
                         <button
                             onClick={() => openChat(CONTROLLER_CHANNEL_REPORT)}
-                            className="px-6 py-3.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold rounded-xl shadow-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-2"
+                            className={`${isMobile ? 'flex-1 justify-center px-3 py-2 text-xs font-bold' : 'px-6 py-3.5 text-sm font-bold'} bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-xl shadow-xs hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-2`}
                             title="Open staff communication channel"
                         >
-                            <ChatAlt2Icon className="w-5 h-5" />
+                            <ChatAlt2Icon className="w-4 h-4" />
                             <span>Staff Channel</span>
                         </button>
                         <button 
                             onClick={handleOpenNewReportModal} 
-                            className="px-6 py-3.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold rounded-xl shadow-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-2"
+                            className={`${isMobile ? 'flex-1 justify-center px-3 py-2 text-xs font-bold' : 'px-6 py-3.5 text-sm font-bold'} bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-xl shadow-xs hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-2`}
                         >
-                            <PlusIcon className="w-5 h-5" />
+                            <PlusIcon className="w-4 h-4" />
                             <span>New Report</span>
                         </button>
                     </div>
                 </div>
 
                 {/* My Operational Status Manager */}
-                <div className={`p-4 mb-6 bg-white/85 dark:bg-gray-950/80 border-l-4 rounded-xl shadow-xs backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-300 ${
+                <div className={`${isMobile ? 'p-2.5 mb-3 rounded-lg text-xs' : 'p-4 mb-6 rounded-xl'} bg-white/85 dark:bg-gray-950/80 border-l-4 shadow-xs backdrop-blur-md flex flex-row items-center justify-between gap-2 transition-all duration-300 ${
                     myStatus === ResponderStatus.AVAILABLE ? 'border-emerald-500' :
                     myStatus === ResponderStatus.EN_ROUTE ? 'border-blue-500' :
                     myStatus === ResponderStatus.ON_SCENE ? 'border-amber-500' : 'border-gray-300 dark:border-gray-750'
                 }`}>
-                    <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <div className={`w-3.5 h-3.5 rounded-full ${
+                    <div className="flex items-center gap-2 min-w-0">
+                        <div className="relative flex-shrink-0">
+                            <div className={`w-2.5 h-2.5 rounded-full ${
                                 myStatus === ResponderStatus.AVAILABLE ? 'bg-emerald-500 animate-pulse' :
                                 myStatus === ResponderStatus.EN_ROUTE ? 'bg-blue-500 animate-pulse' :
                                 myStatus === ResponderStatus.ON_SCENE ? 'bg-amber-500 animate-pulse' : 'bg-gray-400'
                             }`} />
                             {isUpdatingStatus && (
                                 <div className="absolute inset-0 bg-white/50 rounded-full flex items-center justify-center">
-                                    <div className="w-3.5 h-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                    <div className="w-2.5 h-2.5 border border-blue-500 border-t-transparent rounded-full animate-spin" />
                                 </div>
                             )}
                         </div>
-                        <div>
-                            <span className="text-[10px] font-bold tracking-wider uppercase text-gray-400 dark:text-gray-500">
-                                My Operational Presence
-                            </span>
-                            <div className="flex items-center gap-2">
-                                <h3 className="font-extrabold text-sm text-gray-800 dark:text-white capitalize">
-                                    {myStatus.replace(/_/g, ' ')}
-                                </h3>
-                                <span className="text-xs text-gray-400 dark:text-gray-500">
-                                    • {profile.first_name} {profile.surname} ({profile.role.toUpperCase()})
-                                </span>
-                            </div>
+                        <div className="min-w-0">
+                            {isMobile ? (
+                                <p className="font-bold text-gray-800 dark:text-white truncate">
+                                    Status: <span className="capitalize text-blue-600 dark:text-blue-400">{myStatus.replace(/_/g, ' ')}</span>
+                                </p>
+                            ) : (
+                                <>
+                                    <span className="text-[10px] font-bold tracking-wider uppercase text-gray-400 dark:text-gray-500">
+                                        My Operational Presence
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-extrabold text-sm text-gray-800 dark:text-white capitalize">
+                                            {myStatus.replace(/_/g, ' ')}
+                                        </h3>
+                                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                                            • {profile.first_name} {profile.surname} ({profile.role.toUpperCase()})
+                                        </span>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Duty Status:</span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {!isMobile && <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Duty Status:</span>}
                         <div className="relative">
                             <select
                                 value={myStatus}
                                 onChange={(e) => handleMyStatusChange(e.target.value as ResponderStatus)}
                                 disabled={isUpdatingStatus}
-                                className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl py-1.5 pl-3 pr-8 text-xs font-bold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-75 appearance-none cursor-pointer"
+                                className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-1 px-2 text-[11px] font-bold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-75 appearance-none cursor-pointer pr-6"
                             >
-                                <option value={ResponderStatus.AVAILABLE}>🟢 Available / On Duty</option>
+                                <option value={ResponderStatus.AVAILABLE}>🟢 Available</option>
                                 <option value={ResponderStatus.EN_ROUTE}>🔵 En Route</option>
                                 <option value={ResponderStatus.ON_SCENE}>🟡 On Scene</option>
                                 <option value={ResponderStatus.OFF_DUTY}>⚪ Off Duty</option>
                             </select>
-                            <div className="absolute top-1/2 right-3 -translate-y-1/2 pointer-events-none text-gray-400">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="absolute top-1/2 right-2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
                                 </svg>
                             </div>
@@ -707,19 +719,28 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                     </div>
                 )}
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                    <StatCard title="Total Reports" value={(reportCounts.vehicle + reportCounts.crime + reportCounts.emergency).toString()} icon={<ZapIcon />} color="primary" />
-                    <StatCard title="Vehicle" value={reportCounts.vehicle.toString()} icon={<CarIcon />} color="yellow" />
-                    <StatCard title="Crime" value={reportCounts.crime.toString()} icon={<CrimeIcon />} color="red" />
-                    <StatCard title="Emergency" value={reportCounts.emergency.toString()} icon={<AlertTriangleIcon />} color="orange" />
-                </div>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                    <StatCard title="Active Incidents" value={reports.filter(r => r.status === 'active' || r.status === 'in_progress').length.toString()} icon={<AlertTriangleIcon />} color="red" />
-                    <StatCard title="Resolved Today" value={reports.filter(r => (r.status === 'resolved' || r.status === 'recovered' || r.status === 'closed') && r.completed_at && isSameDay(parseISO(r.completed_at), new Date())).length.toString()} icon={<CheckCircleIcon />} color="green" />
-                    <div className="col-span-2 sm:col-span-1">
-                        <StatCard title="Available Responders" value={responders.filter(r => r.status === 'available').length.toString()} icon={<ZapIcon />} color="yellow" />
+                {isMobile ? (
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                        <StatCard title="Active Incidents" value={reports.filter(r => r.status === 'active' || r.status === 'in_progress').length.toString()} icon={<AlertTriangleIcon className="w-4 h-4" />} color="red" />
+                        <StatCard title="Total Reports" value={(reportCounts.vehicle + reportCounts.crime + reportCounts.emergency).toString()} icon={<ZapIcon className="w-4 h-4" />} color="primary" />
                     </div>
-                </div>
+                ) : (
+                    <>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                            <StatCard title="Total Reports" value={(reportCounts.vehicle + reportCounts.crime + reportCounts.emergency).toString()} icon={<ZapIcon />} color="primary" />
+                            <StatCard title="Vehicle" value={reportCounts.vehicle.toString()} icon={<CarIcon />} color="yellow" />
+                            <StatCard title="Crime" value={reportCounts.crime.toString()} icon={<CrimeIcon />} color="red" />
+                            <StatCard title="Emergency" value={reportCounts.emergency.toString()} icon={<AlertTriangleIcon />} color="orange" />
+                        </div>
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                            <StatCard title="Active Incidents" value={reports.filter(r => r.status === 'active' || r.status === 'in_progress').length.toString()} icon={<AlertTriangleIcon />} color="red" />
+                            <StatCard title="Resolved Today" value={reports.filter(r => (r.status === 'resolved' || r.status === 'recovered' || r.status === 'closed') && r.completed_at && isSameDay(parseISO(r.completed_at), new Date())).length.toString()} icon={<CheckCircleIcon />} color="green" />
+                            <div className="col-span-2 sm:col-span-1">
+                                <StatCard title="Available Responders" value={responders.filter(r => r.status === 'available').length.toString()} icon={<ZapIcon />} color="yellow" />
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
 
             {isMobile && (

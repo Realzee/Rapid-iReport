@@ -605,33 +605,36 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         <div className="container mx-auto px-4 py-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 print:hidden">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                        <RadioTowerIcon className="w-8 h-8 text-blue-600"/> Live Controller
+                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <RadioTowerIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0"/> 
+                        <span>{isMobile ? "Live Controller" : "Live Controller"}</span>
                     </h2>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">Real-time incident management and dispatch.</p>
+                    {!isMobile && (
+                        <p className="text-gray-500 dark:text-gray-400 mt-1">Real-time incident management and dispatch.</p>
+                    )}
                 </div>
-                <div className="mt-4 md:mt-0 flex items-center gap-4">
+                <div className="mt-3 md:mt-0 flex items-center gap-2 w-full md:w-auto">
                     <button
                         onClick={() => setShowHighRiskAreas(!showHighRiskAreas)}
-                        className={`px-4 py-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border ${showHighRiskAreas ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} font-bold rounded-xl shadow-lg transition-all duration-300 flex items-center space-x-2`}
+                        className={`flex-1 justify-center ${isMobile ? 'px-2.5 py-2 text-xs font-bold rounded-lg' : 'px-4 py-3 text-sm font-bold rounded-xl'} bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border ${showHighRiskAreas ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} shadow-xs transition-all duration-300 flex items-center space-x-1.5`}
                     >
-                        <MapIcon className={`w-5 h-5 ${showHighRiskAreas ? 'text-red-600' : 'text-gray-500'}`} />
-                        <span>{showHighRiskAreas ? 'Hide Risk Areas' : 'Show Risk Areas'}</span>
+                        <MapIcon className={`w-4 h-4 ${showHighRiskAreas ? 'text-red-600' : 'text-gray-500'}`} />
+                        <span>{showHighRiskAreas ? (isMobile ? 'Risk' : 'Hide Risk Areas') : (isMobile ? 'Risk' : 'Show Risk Areas')}</span>
                     </button>
                     <button
                         onClick={() => openChat(CONTROLLER_CHANNEL_REPORT)}
-                        className="px-6 py-3.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold rounded-xl shadow-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-2"
+                        className={`flex-1 justify-center ${isMobile ? 'px-2.5 py-2 text-xs font-bold rounded-lg' : 'px-6 py-3.5 text-sm font-bold rounded-xl'} bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-xs hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-1.5`}
                         title="Open staff communication channel"
                     >
-                        <ChatAlt2Icon className="w-5 h-5" />
-                        <span>Staff Channel</span>
+                        <ChatAlt2Icon className="w-4 h-4" />
+                        <span>Staff</span>
                     </button>
                     <button
                         onClick={handleOpenNewReportModal}
-                        className="px-6 py-3.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold rounded-xl shadow-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-2"
+                        className={`flex-grow flex-1 justify-center ${isMobile ? 'px-2.5 py-2 text-xs font-bold rounded-lg' : 'px-6 py-3.5 text-sm font-bold rounded-xl'} bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-xs hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all duration-300 flex items-center space-x-1.5`}
                     >
-                        <PlusIcon className="w-5 h-5" />
-                        <span>New Report</span>
+                        <PlusIcon className="w-4 h-4" />
+                        <span>Report</span>
                     </button>
                 </div>
             </div>

@@ -7,6 +7,7 @@ const MatrixRain: React.FC = () => {
 
     useEffect(() => {
         if (theme !== 'matrix') return;
+        if (window.innerWidth < 768) return; // Skip canvas animation on mobile to save power and run extremely fast
 
         const canvas = canvasRef.current;
         if (!canvas) return;
