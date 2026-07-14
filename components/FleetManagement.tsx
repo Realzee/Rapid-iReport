@@ -295,6 +295,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
   ]);
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('1');
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
   const [activeSubTab, setActiveSubTab] = useState<'map' | 'simulator' | 'terminal' | 'history'>('map');
   const [histories, setHistories] = useState<Record<string, TripHistoryItem[]>>({});
   const [historySearchText, setHistorySearchText] = useState('');
@@ -899,20 +900,20 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
     <div className="flex-grow flex flex-col pt-16 bg-gray-50 dark:bg-gray-900 transition-colors duration-300" id="fleet-management-dashboard">
       
       {/* Top Banner Stats */}
-      <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800/80 px-6 py-4 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800/80 px-4 py-3 sm:px-6 sm:py-4 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
               <Cpu className="w-5 h-5 text-blue-500" />
               Eelink TK116 Fleet Management
             </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 hidden sm:block">
               Visualize real-time cellular tracking, monitor raw telemetry GPRS package streams, and dispatch OTA instructions over TCP/UDP.
             </p>
           </div>
           
           {/* Quick Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-gray-50 dark:bg-gray-900/60 p-2.5 rounded-xl border border-gray-200/50 dark:border-gray-800/40">
+          <div className="hidden md:grid grid-cols-4 gap-4 bg-gray-50 dark:bg-gray-900/60 p-2.5 rounded-xl border border-gray-200/50 dark:border-gray-800/40">
             <div className="px-4 py-1 border-r border-gray-200 dark:border-gray-800 last:border-0 text-center sm:text-left">
               <span className="text-[10px] uppercase font-semibold text-gray-400 dark:text-gray-500">Total Fleet</span>
               <p className="text-lg font-bold text-gray-900 dark:text-white">{vehicles.length}</p>
@@ -940,10 +941,10 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
       </div>
 
       {/* Main Grid View */}
-      <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 overflow-hidden h-[calc(100vh-140px)]">
+      <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 overflow-hidden h-[calc(100vh-130px)] sm:h-[calc(100vh-140px)]">
         
         {/* Left Side: Vehicle List Panel */}
-        <div className="lg:col-span-4 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800/80 flex flex-col overflow-hidden h-full">
+        <div className={`lg:col-span-4 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800/80 flex flex-col overflow-hidden h-full ${mobileView === 'list' ? 'flex' : 'hidden lg:flex'}`}>
           {/* Search Box */}
           <div className="p-4 border-b border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-950">
             <div className="relative">
@@ -971,7 +972,10 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                 return (
                   <button
                     key={veh.id}
-                    onClick={() => setSelectedVehicleId(veh.id)}
+                    onClick={() => {
+                      setSelectedVehicleId(veh.id);
+                      setMobileView('detail');
+                    }}
                     className={`w-full text-left p-3.5 rounded-xl transition-all mb-1 border ${
                       isSel 
                         ? 'bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50 shadow-sm' 
@@ -1054,14 +1058,27 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
         </div>
 
         {/* Right Side: Main Interactive Control Panel */}
-        <div className="lg:col-span-8 flex flex-col overflow-hidden h-full">
+        <div className={`lg:col-span-8 flex flex-col overflow-hidden h-full ${mobileView === 'detail' ? 'flex' : 'hidden lg:flex'}`}>
           
+          {/* Back button for mobile view */}
+          <div className="lg:hidden bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-4 py-2 flex items-center justify-between shrink-0">
+            <button
+              onClick={() => setMobileView('list')}
+              className="text-xs font-semibold px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-850 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg flex items-center gap-1 transition-all"
+            >
+              ← Back to Fleet List
+            </button>
+            <div className="text-[10px] font-mono font-semibold text-gray-500 bg-gray-100 dark:bg-gray-900 border border-gray-200/50 dark:border-gray-800 px-2 py-0.5 rounded-md">
+              Selected: <span className="text-blue-500 font-bold">{selectedVehicle.name}</span>
+            </div>
+          </div>
+
           {/* Navigation Sub-Tabs */}
-          <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-4 flex justify-between items-center shrink-0">
-            <div className="flex gap-1.5 py-2">
+          <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-4 flex justify-between items-center shrink-0 overflow-x-auto whitespace-nowrap scrollbar-none">
+            <div className="flex gap-1.5 py-2 shrink-0">
               <button
                 onClick={() => setActiveSubTab('map')}
-                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
                   activeSubTab === 'map'
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-950'
@@ -1073,7 +1090,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
               
               <button
                 onClick={() => setActiveSubTab('simulator')}
-                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
                   activeSubTab === 'simulator'
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-950'
@@ -1085,7 +1102,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
 
               <button
                 onClick={() => setActiveSubTab('terminal')}
-                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
                   activeSubTab === 'terminal'
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-950'
@@ -1097,7 +1114,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
 
               <button
                 onClick={() => setActiveSubTab('history')}
-                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
                   activeSubTab === 'history'
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-950'
