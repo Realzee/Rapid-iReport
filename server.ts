@@ -294,6 +294,9 @@ async function setupFrontend() {
                 const url = req.originalUrl;
                 let template = await import('fs').then(fs => fs.readFileSync(path.resolve(currentDir, 'index.html'), 'utf-8'));
                 template = await vite.transformIndexHtml(url, template);
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
                 res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
             } catch (e) {
                 vite.ssrFixStacktrace(e as Error);
