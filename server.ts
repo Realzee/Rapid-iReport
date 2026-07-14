@@ -308,9 +308,19 @@ async function setupFrontend() {
         });
     } else {
         const distPath = path.resolve(currentDir, 'dist');
-        app.use(express.static(distPath));
+        
+        // Serve static assets with standard caching since they contain content hashes
+        app.use(express.static(distPath, {
+            maxAge: '1d',
+            etag: true
+        }));
+
+        // Force no-cache for index.html so browser always requests the latest HTML with new asset hashes
         app.use((req, res, next) => {
-            if (req.method === 'GET') {
+            if (req.method === 'GET' && !req.url.startsWith('/api')) {
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
                 res.sendFile(path.join(distPath, 'index.html'));
             } else {
                 next();
