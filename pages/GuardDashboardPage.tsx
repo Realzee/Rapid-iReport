@@ -162,7 +162,6 @@ export const GuardDashboardPage: React.FC<GuardDashboardPageProps> = ({ profile 
                 reported_at: now.toISOString(),
                 location_coords: { lat, lng },
                 company_id: profile.company_id,
-                company_name: companyName,
                 vehicle_involved: false,
                 cit_success: false
             };
