@@ -309,13 +309,25 @@ async function setupFrontend() {
     } else {
         const distPath = path.resolve(currentDir, 'dist');
         
-        // Serve static assets with standard caching since they contain content hashes
+        // 1. Force no-cache for index.html at root level so browser always requests the latest HTML
+        app.use((req, res, next) => {
+            if (req.method === 'GET' && (req.path === '/' || req.path === '/index.html')) {
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
+                return res.sendFile(path.join(distPath, 'index.html'));
+            }
+            next();
+        });
+
+        // 2. Serve static assets with standard caching since they contain content hashes
         app.use(express.static(distPath, {
             maxAge: '1d',
-            etag: true
+            etag: true,
+            index: false // Do not serve directory index via static (handled above)
         }));
 
-        // Force no-cache for index.html so browser always requests the latest HTML with new asset hashes
+        // 3. SPA Fallback: Serve index.html with no-cache headers for any SPA route
         app.use((req, res, next) => {
             if (req.method === 'GET' && !req.url.startsWith('/api')) {
                 res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
