@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { Profile } from '../types';
 import { useToast } from '../contexts/ToastContext';
+import { TripSummaryCard } from './TripSummaryCard';
 
 // Interfaces for our simulated Fleet
 interface TK116Device {
@@ -897,7 +898,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
   };
 
   return (
-    <div className="flex-grow flex flex-col pt-16 bg-gray-50 dark:bg-gray-900 transition-colors duration-300" id="fleet-management-dashboard">
+    <div className="flex-grow flex flex-col pt-2 sm:pt-16 bg-gray-50 dark:bg-gray-900 transition-colors duration-300" id="fleet-management-dashboard">
       
       {/* Top Banner Stats */}
       <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800/80 px-4 py-3 sm:px-6 sm:py-4 shadow-sm">
@@ -1540,6 +1541,9 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                 
                 {/* Left Side: Current Geolocation & Asset Details */}
                 <div className="xl:col-span-5 flex flex-col gap-6">
+                  
+                  {/* Trip Summary Card displaying distance & active status */}
+                  <TripSummaryCard vehicle={selectedVehicle} />
                   
                   {/* Current Tracking Card */}
                   <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">

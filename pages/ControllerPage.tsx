@@ -602,12 +602,12 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         }`;
 
     return (
-        <div className="container mx-auto px-4 py-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 print:hidden">
+        <div className="container mx-auto px-1 sm:px-4 py-3 sm:py-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 sm:mb-6 print:hidden">
                 <div>
-                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <RadioTowerIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0"/> 
-                        <span>{isMobile ? "Live Controller" : "Live Controller"}</span>
+                    <h2 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <RadioTowerIcon className="w-5 h-5 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0"/> 
+                        <span>Live Controller</span>
                     </h2>
                     {!isMobile && (
                         <p className="text-gray-500 dark:text-gray-400 mt-1">Real-time incident management and dispatch.</p>

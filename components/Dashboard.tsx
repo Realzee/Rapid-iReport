@@ -604,11 +604,11 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     if (loading) return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
     return (
-        <div className="container mx-auto flex flex-col">
+        <div className="container mx-auto flex flex-col px-1 sm:px-4 py-2 sm:py-6">
             <div className="flex-shrink-0">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 sm:mb-6">
                     <div>
-                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                        <h2 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white">
                             {isMobile ? "Operations Hub" : "Operational Control Platform"}
                         </h2>
                         {!isMobile && (

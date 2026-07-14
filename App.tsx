@@ -657,11 +657,11 @@ const App: React.FC = () => {
   const isFullWidthView = view === 'controller' || profile?.role === UserRole.RESPONDER;
   const isUserView = profile?.role === UserRole.USER;
   
-  const mainPaddingTopClass = isAnnouncementVisible ? 'pt-[120px]' : 'pt-[80px]';
+  const mainPaddingTopClass = isAnnouncementVisible ? 'pt-[90px] sm:pt-[120px]' : 'pt-[60px] sm:pt-[80px]';
 
   const mainClasses = isFullWidthView
-    ? `pb-8 px-4 sm:px-6 lg:px-8`
-    : `container mx-auto px-4 sm:px-6 lg:px-8 pb-8 ${isUserView ? 'max-w-7xl' : ''}`;
+    ? `pb-4 sm:pb-8 px-2 sm:px-6 lg:px-8`
+    : `container mx-auto px-2 sm:px-6 lg:px-8 pb-4 sm:pb-8 ${isUserView ? 'max-w-7xl' : ''}`;
 
   return (
     <div className={`min-h-screen relative overflow-x-hidden ${theme === 'matrix' ? 'matrix' : ''}`}>

@@ -388,12 +388,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     <>
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-950/70 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700/50 transition-colors duration-300 print:hidden">
       <div className={headerContainerClasses}>
-          <div className="flex items-center justify-between min-h-[4rem] py-0.5">
-          <div className="flex items-center space-x-3 flex-shrink-0">
+          <div className="flex items-center justify-between min-h-[3rem] sm:min-h-[4rem] py-0.5">
+          <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
             <img 
               src={profile.company?.logo_url || mainLogoUrl} 
               alt="Company Logo" 
-              className="main-logo w-auto min-w-[60px] h-12 sm:h-20 object-contain transition-all duration-300 opacity-0" 
+              className="main-logo w-auto min-w-[50px] sm:min-w-[60px] h-8 sm:h-20 object-contain transition-all duration-300 opacity-0" 
               onLoad={(e) => { e.currentTarget.style.opacity = '1'; }}
               onError={(e) => { 
                   e.currentTarget.style.opacity = '1';
@@ -412,37 +412,37 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
             </nav>
           </div>
           
-          <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+          <div className="flex items-center space-x-2.5 sm:space-x-4 flex-shrink-0">
             <div className="hidden lg:block scale-75 xl:scale-90 origin-right mr-1">
               <LedClock />
             </div>
             <ThemeToggle />
             {profile.company_id && (
                 <button onClick={() => setIsPTTModalOpen(true)} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300" title="Push-to-Talk">
-                  <RadioTowerIcon className="w-8 h-8 sm:w-10 sm:h-10" />
+                  <RadioTowerIcon className="w-6.5 h-6.5 sm:w-10 sm:h-10" />
                 </button>
             )}
             {profile.company_id && (
                 <button 
                   onClick={() => setIsSharingModalOpen(true)} 
-                  className={`relative p-1.5 rounded-xl transition-all duration-350 ${
+                  className={`relative p-1 rounded-xl transition-all duration-350 ${
                     pendingSharesCount > 0 
                       ? 'text-orange-500 hover:text-orange-600 dark:text-orange-400 dark:hover:text-orange-300 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 animate-pulse' 
                       : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800/40'
                   }`} 
                   title="Corporate Sharing Hub (Incoming Requests & Approvals)"
                 >
-                  <ShareIcon className="w-5 h-5 sm:w-6.5 sm:h-6.5" />
+                  <ShareIcon className="w-4.5 h-4.5 sm:w-6.5 sm:h-6.5" />
                   {pendingSharesCount > 0 && (
-                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-600 rounded-full text-[9px] flex items-center justify-center text-white font-black">{pendingSharesCount}</span>
+                     <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-orange-600 rounded-full text-[8px] flex items-center justify-center text-white font-black">{pendingSharesCount}</span>
                   )}
                 </button>
             )}
             <div ref={notificationsRef} className="relative">
                 <button onClick={toggleNotifications} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300">
-                  <BellIcon className="w-5 h-5 sm:w-6 h-6" />
+                  <BellIcon className="w-4.5 h-4.5 sm:w-6 h-6" />
                   {unreadCount > 0 && (
-                     <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-600 rounded-full text-[10px] flex items-center justify-center text-white">{unreadCount}</span>
+                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full text-[8px] flex items-center justify-center text-white">{unreadCount}</span>
                   )}
                 </button>
                  {isNotificationsOpen && (
@@ -459,10 +459,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
                 <img 
                   src={profile.avatar_url || `https://i.pravatar.cc/40?u=${profile.id}`} 
                   alt="User Avatar"
-                  className="w-8 h-8 lg:w-9 lg:h-9 rounded-full border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 transition"
+                  className="w-7 h-7 sm:w-9 sm:h-9 rounded-full border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 transition"
                 />
                 <span className="hidden sm:inline text-gray-900 dark:text-white text-xs lg:text-sm font-medium truncate max-w-[60px] lg:max-w-[120px]">{`${profile.first_name} ${profile.surname}`}</span>
-                <ChevronDownIcon className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-500 dark:text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               {dropdownOpen && (
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white/90 dark:bg-gray-800/80 backdrop-blur-lg rounded-xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 py-1">
@@ -475,8 +475,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
               )}
             </div>
             <div className="md:hidden">
-                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                    {mobileMenuOpen ? <XIcon className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
+                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                    {mobileMenuOpen ? <XIcon className="w-5 h-5" /> : <MenuIcon className="w-5 h-5" />}
                 </button>
             </div>
           </div>
