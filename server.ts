@@ -192,8 +192,8 @@ const ALIASES: Record<string, string> = {
 
 // Dynamic API Route Loader
 const apiDir = process.env.NODE_ENV === 'production' 
-    ? path.resolve(currentDir, 'dist', 'api', 'api_handlers') 
-    : path.resolve(currentDir, 'api', 'api_handlers');
+    ? path.resolve(currentDir, 'dist', 'api_handlers') 
+    : path.resolve(currentDir, 'api_handlers');
 
 for (const [aliasPath, targetFileBase] of Object.entries(ALIASES)) {
     app.all([aliasPath, `${aliasPath}/`], async (req, res) => {
