@@ -2,19 +2,19 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 
 // Import all handlers statically
-import adminUsersHandler from '../api_handlers/admin-users.js';
-import aiInsightsHandler from '../api_handlers/ai-insights.js';
-import announcementsHandler from '../api_handlers/announcements.js';
-import checkDbHandler from '../api_handlers/check-db.js';
-import companiesHandler from '../api_handlers/companies.js';
-import geocodeHandler from '../api_handlers/geocode.js';
-import guardMonitoringHandler from '../api_handlers/guard-monitoring.js';
-import healthHandler from '../api_handlers/health.js';
-import legacyApiHandler from '../api_handlers/legacy-api.js';
-import profilesHandler from '../api_handlers/profiles.js';
-import resetPasswordHandler from '../api_handlers/reset-password.js';
-import resolveMapsLinkHandler from '../api_handlers/resolve-maps-link.js';
-import sapsBoundariesHandler from '../api_handlers/saps-boundaries.js';
+import adminUsersHandler from './_api_handlers/admin-users.js';
+import aiInsightsHandler from './_api_handlers/ai-insights.js';
+import announcementsHandler from './_api_handlers/announcements.js';
+import checkDbHandler from './_api_handlers/check-db.js';
+import companiesHandler from './_api_handlers/companies.js';
+import geocodeHandler from './_api_handlers/geocode.js';
+import guardMonitoringHandler from './_api_handlers/guard-monitoring.js';
+import healthHandler from './_api_handlers/health.js';
+import legacyApiHandler from './_api_handlers/legacy-api.js';
+import profilesHandler from './_api_handlers/profiles.js';
+import resetPasswordHandler from './_api_handlers/reset-password.js';
+import resolveMapsLinkHandler from './_api_handlers/resolve-maps-link.js';
+import sapsBoundariesHandler from './_api_handlers/saps-boundaries.js';
 
 const app = express();
 app.use(express.json());

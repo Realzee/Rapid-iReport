@@ -67,7 +67,8 @@ export default async function handler(req: any, res: any) {
             return res.status(500).json({ error: e.message || 'Unknown internal error' });
         }
     } else if (req.method === 'POST') {
-        const { userId, updates, ...rest } = req.body;
+        const body = req.body || {};
+        const { userId, updates, ...rest } = body;
         
         // Flatten updates if provided, otherwise use rest of the body
         let dbPayload = updates ? { ...updates } : { ...rest };
