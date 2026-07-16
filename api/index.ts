@@ -1,20 +1,20 @@
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 
-// Import all handlers statically
-import adminUsersHandler from './api_handlers/admin-users';
-import aiInsightsHandler from './api_handlers/ai-insights';
-import announcementsHandler from './api_handlers/announcements';
-import checkDbHandler from './api_handlers/check-db';
-import companiesHandler from './api_handlers/companies';
-import geocodeHandler from './api_handlers/geocode';
-import guardMonitoringHandler from './api_handlers/guard-monitoring';
-import healthHandler from './api_handlers/health';
-import legacyApiHandler from './api_handlers/legacy-api';
-import profilesHandler from './api_handlers/profiles';
-import resetPasswordHandler from './api_handlers/reset-password';
-import resolveMapsLinkHandler from './api_handlers/resolve-maps-link';
-import sapsBoundariesHandler from './api_handlers/saps-boundaries';
+// Import all handlers statically with .js extension for ESM compatibility on Vercel
+import adminUsersHandler from './api_handlers/admin-users.js';
+import aiInsightsHandler from './api_handlers/ai-insights.js';
+import announcementsHandler from './api_handlers/announcements.js';
+import checkDbHandler from './api_handlers/check-db.js';
+import companiesHandler from './api_handlers/companies.js';
+import geocodeHandler from './api_handlers/geocode.js';
+import guardMonitoringHandler from './api_handlers/guard-monitoring.js';
+import healthHandler from './api_handlers/health.js';
+import legacyApiHandler from './api_handlers/legacy-api.js';
+import profilesHandler from './api_handlers/profiles.js';
+import resetPasswordHandler from './api_handlers/reset-password.js';
+import resolveMapsLinkHandler from './api_handlers/resolve-maps-link.js';
+import sapsBoundariesHandler from './api_handlers/saps-boundaries.js';
 
 const app = express();
 app.use(express.json());
