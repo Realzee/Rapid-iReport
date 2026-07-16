@@ -906,7 +906,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
           <div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
               <Cpu className="w-5 h-5 text-blue-500" />
-              Eelink TK116 Fleet Management
+              Vehicle Fleet Management
             </h1>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 hidden sm:block">
               Visualize real-time cellular tracking, monitor raw telemetry GPRS package streams, and dispatch OTA instructions over TCP/UDP.
