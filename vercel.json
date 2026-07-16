@@ -3,20 +3,8 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/api/update-profile",
-      "destination": "/api/profiles"
-    },
-    {
-      "source": "/api/update-setting",
-      "destination": "/api/companies"
-    },
-    {
-      "source": "/api/reverse-geocode",
-      "destination": "/api/geocode"
-    },
-    {
       "source": "/api/:path*",
-      "destination": "/api/:path*"
+      "destination": "/api/index.ts"
     },
     {
       "source": "/(.*)",
