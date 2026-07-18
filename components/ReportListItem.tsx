@@ -128,13 +128,13 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                         />
                     )}
                     <div className="flex-1 min-w-0 flex flex-col">
-                        <div className="flex items-start gap-1.5 min-w-0 flex-wrap">
-                            <ReportTypeBadge type={report.type as any} showText={false} className="p-1 flex-shrink-0 mt-0.5" />
-                            <p className={`font-bold text-sm ${textColor} group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors break-words flex-1 min-w-0`}>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                            <ReportTypeBadge type={report.type as any} showText={false} className="p-1 flex-shrink-0" />
+                            <p className={`font-bold text-sm ${textColor} group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate`}>
                                 {report.type === 'vehicle' ? (report as any).license_plate : report.title}
                             </p>
                             {report.is_global && (
-                                <GlobeIcon className="w-3 h-3 text-blue-500 flex-shrink-0 mt-0.5" title="Globally Shared Report" />
+                                <GlobeIcon className="w-3 h-3 text-blue-500 flex-shrink-0" title="Globally Shared Report" />
                             )}
                             {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
                                 <UsersIcon className="w-3 h-3 text-purple-500 flex-shrink-0" title="Shared with partner companies" />
@@ -148,6 +148,33 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                         <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate mt-0.5">{report.ob_number}</p>
                     </div>
                 </div>
+            </div>
+
+            <div className="mt-2 flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 min-w-0 flex-1">
+                    <ReportTypeBadge type={report.type as any} className="flex-shrink-0 mt-0.5" />
+                    {report.type === 'vehicle' ? (
+                        <p className="flex-1 min-w-0 truncate">
+                            <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
+                            {' · '}
+                            {(report as any).vehicle_make} {(report as any).vehicle_model} ({(report as any).vehicle_color})
+                        </p>
+                    ) : report.type === 'emergency' ? (
+                         <p className="flex-1 min-w-0 truncate">
+                            <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
+                            {' · '}
+                            {(report as any).emergency_type}
+                            {(report as any).license_plate && ` · ${(report as any).license_plate}`}
+                        </p>
+                    ) : (
+                         <p className="flex-1 min-w-0 truncate">
+                            <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
+                            {' · '}
+                            {(report as any).crime_type}
+                        </p>
+                    )}
+                </div>
+                
                 <div className="flex-shrink-0">
                     {canUpdateStatus ? (
                         <div className="relative">
@@ -176,30 +203,6 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                         <StatusBadge status={report.status} />
                     )}
                 </div>
-            </div>
-
-            <div className="mt-2 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 min-w-0">
-                <ReportTypeBadge type={report.type as any} className="flex-shrink-0 mt-0.5" />
-                {report.type === 'vehicle' ? (
-                    <p className="flex-1 min-w-0 break-words">
-                        <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
-                        {' · '}
-                        {(report as any).vehicle_make} {(report as any).vehicle_model} ({(report as any).vehicle_color})
-                    </p>
-                ) : report.type === 'emergency' ? (
-                     <p className="flex-1 min-w-0 break-words">
-                        <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
-                        {' · '}
-                        {(report as any).emergency_type}
-                        {(report as any).license_plate && ` · ${(report as any).license_plate}`}
-                    </p>
-                ) : (
-                     <p className="flex-1 min-w-0 break-words">
-                        <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
-                        {' · '}
-                        {(report as any).crime_type}
-                    </p>
-                )}
             </div>
             
             <div className="flex justify-between items-end mt-2 min-w-0 gap-2">

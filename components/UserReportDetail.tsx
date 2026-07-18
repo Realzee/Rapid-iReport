@@ -144,13 +144,13 @@ const UserReportDetail: React.FC<{
         <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-full max-h-[calc(100vh-12rem)]">
             <div className="flex justify-between items-start mb-4 flex-shrink-0 gap-4">
                 <div className="flex-grow min-w-0">
-                    <div className="flex items-start gap-2 mb-1 flex-wrap">
-                        <div className={`p-1.5 rounded-full flex-shrink-0 mt-0.5 ${report.type === 'vehicle' ? 'bg-yellow-500/20 text-yellow-600' : (report.type === 'emergency' ? 'bg-orange-500/20 text-orange-600' : 'bg-red-500/20 text-red-600')}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className={`p-1.5 rounded-full flex-shrink-0 ${report.type === 'vehicle' ? 'bg-yellow-500/20 text-yellow-600' : (report.type === 'emergency' ? 'bg-orange-500/20 text-orange-600' : 'bg-red-500/20 text-red-600')}`}>
                             {report.type === 'vehicle' ? <CarIcon className="w-5 h-5" /> : (report.type === 'emergency' ? <AlertTriangleIcon className="w-5 h-5" /> : <CrimeIcon className="w-5 h-5" />)}
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white break-words flex-1 min-w-0 pr-2">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate flex-1 min-w-0 pr-2">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
                         {report.is_global && (
-                            <GlobeIcon className="w-5 h-5 text-blue-500 flex-shrink-0 mt-1" title="Global Report" />
+                            <GlobeIcon className="w-5 h-5 text-blue-500 flex-shrink-0" title="Global Report" />
                         )}
                         {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
                             <UsersIcon className="w-5 h-5 text-blue-500 flex-shrink-0" title="Shared with specific companies" />

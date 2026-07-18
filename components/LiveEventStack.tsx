@@ -107,13 +107,13 @@ const LiveEventItem: React.FC<{
                 )}
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start gap-2">
-                        <div className="flex items-start gap-2 flex-1 min-w-0">
-                            <ReportTypeBadge type={report.type as any} showText={false} className="p-1 flex-shrink-0 mt-0.5" />
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <ReportTypeBadge type={report.type as any} showText={false} className="p-1 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-start gap-1.5 flex-wrap">
-                                    <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight break-words">{title}</p>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight truncate">{title}</p>
                                     {report.is_global && (
-                                        <GlobeIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" title="Global Report" />
+                                        <GlobeIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Global Report" />
                                     )}
                                     {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
                                         <UsersIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Shared with specific companies" />
@@ -132,44 +132,44 @@ const LiveEventItem: React.FC<{
                                 <p className="font-mono text-xs text-gray-500 dark:text-gray-400 truncate">{report.ob_number}</p>
                             </div>
                         </div>
-                        <div className="flex-shrink-0">
-                            <StatusBadge status={report.status} />
-                        </div>
                     </div>
-
                     <div className="mt-1.5 text-xs text-gray-700 dark:text-gray-300">
                         <p className="text-gray-500 dark:text-gray-400 line-clamp-2">{report.description}</p>
                     </div>
-
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                        <span className={`px-1.5 py-0.5 rounded capitalize font-semibold text-xs ${severityTagStyles[report.severity]}`}>
-                            {report.severity}
-                        </span>
-                        {hasImages && (
-                            <div className="flex items-center gap-1">
-                                <CameraIcon className="w-3.5 h-3.5" />
-                                <span>{report.evidence_images?.length}</span>
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                            <span className={`px-1.5 py-0.5 rounded capitalize font-semibold text-xs ${severityTagStyles[report.severity]}`}>
+                                {report.severity}
+                            </span>
+                            {hasImages && (
+                                <div className="flex items-center gap-1">
+                                    <CameraIcon className="w-3.5 h-3.5" />
+                                    <span>{report.evidence_images?.length}</span>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-1 truncate" title={`Reported by: ${reporterName}`}>
+                                <UserIcon className="w-3.5 h-3.5" />
+                                <span className="truncate">{reporterName}</span>
                             </div>
-                        )}
-                        <div className="flex items-center gap-1 truncate" title={`Reported by: ${reporterName}`}>
-                            <UserIcon className="w-3.5 h-3.5" />
-                            <span className="truncate">{reporterName}</span>
+                            {assignedResponderName && (
+                                <div className="flex items-center gap-1 truncate" title={`Assigned to: ${assignedResponderName}`}>
+                                    <NavigationIcon className="w-3.5 h-3.5" />
+                                    <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{assignedResponderName}</span>
+                                </div>
+                            )}
+                            {isSharedFromOtherCompany && (
+                                <div className="flex items-center gap-1 truncate text-blue-600 dark:text-blue-400 font-medium" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
+                                    <UsersIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                                    <span className="truncate">From: {sharingCompanyName || 'Partner'}</span>
+                                </div>
+                            )}
+                            <div className={`flex items-center gap-1 ${ageTextClass}`}>
+                                <ClockIcon className="w-3.5 h-3.5" />
+                                <span>{safeFormat(report.reported_at, 'HH:mm')}</span>
+                            </div>
                         </div>
-                        {assignedResponderName && (
-                            <div className="flex items-center gap-1 truncate" title={`Assigned to: ${assignedResponderName}`}>
-                                <NavigationIcon className="w-3.5 h-3.5" />
-                                <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{assignedResponderName}</span>
-                            </div>
-                        )}
-                        {isSharedFromOtherCompany && (
-                            <div className="flex items-center gap-1 truncate text-blue-600 dark:text-blue-400 font-medium" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
-                                <UsersIcon className="w-3.5 h-3.5 flex-shrink-0" />
-                                <span className="truncate">From: {sharingCompanyName || 'Partner'}</span>
-                            </div>
-                        )}
-                        <div className={`flex items-center gap-1 ml-auto ${ageTextClass}`}>
-                            <ClockIcon className="w-3.5 h-3.5" />
-                            <span>{safeFormat(report.reported_at, 'HH:mm')}</span>
+                        <div className="flex-shrink-0">
+                            <StatusBadge status={report.status} />
                         </div>
                     </div>
                 </div>
