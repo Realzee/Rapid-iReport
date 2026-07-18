@@ -152,21 +152,25 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                 </div>
                 <div className="flex-shrink-0">
                     {canUpdateStatus ? (
-                         <div className="relative">
+                        <div className="relative flex-shrink-0">
                             <select
                                 value={report.status}
                                 onChange={handleStatusChange}
                                 disabled={isUpdating || isTerminalStatus}
                                 onClick={(e) => e.stopPropagation()}
-                                className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full py-1 pl-3 pr-8 text-xs font-bold text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70 appearance-none"
+                                className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full py-1 pl-3 pr-8 text-xs font-bold text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70 appearance-none max-w-[130px] truncate"
                             >
                                 {statusOptions.map(status => (
                                     <option key={status} value={status} className="capitalize font-bold">{status.replace(/_/g, ' ')}</option>
                                 ))}
                             </select>
-                            {isUpdating && (
-                                <div className="absolute top-1/2 right-2 -translate-y-1/2">
+                            {isUpdating ? (
+                                <div className="absolute top-1/2 right-2 -translate-y-1/2 pointer-events-none">
                                     <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                            ) : (
+                                <div className="absolute top-1/2 right-2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                 </div>
                             )}
                         </div>
