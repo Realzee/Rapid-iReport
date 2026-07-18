@@ -128,8 +128,8 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                         />
                     )}
                     <div className="flex-1 min-w-0 flex items-center gap-2">
-                        <ReportTypeBadge type={report.type as any} showText={false} className="p-1.5" />
-                        <div className="min-w-0">
+                        <ReportTypeBadge type={report.type as any} showText={false} className="p-1.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 min-w-0">
                                 <p className={`font-bold text-base ${textColor} group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate`}>
                                     {report.type === 'vehicle' ? (report as any).license_plate : report.title}
@@ -146,7 +146,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                                     </span>
                                 )}
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">{report.ob_number}</p>
                         </div>
                     </div>
                 </div>
@@ -176,23 +176,23 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                 </div>
             </div>
 
-            <div className="mt-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <ReportTypeBadge type={report.type as any} />
+            <div className="mt-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 min-w-0">
+                <ReportTypeBadge type={report.type as any} className="flex-shrink-0" />
                 {report.type === 'vehicle' ? (
-                    <p className="truncate">
+                    <p className="truncate flex-1 min-w-0">
                         <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
                         {' · '}
                         {(report as any).vehicle_make} {(report as any).vehicle_model} ({(report as any).vehicle_color})
                     </p>
                 ) : report.type === 'emergency' ? (
-                     <p className="truncate">
+                     <p className="truncate flex-1 min-w-0">
                         <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
                         {' · '}
                         {(report as any).emergency_type}
                         {(report as any).license_plate && ` · ${(report as any).license_plate}`}
                     </p>
                 ) : (
-                     <p className="truncate">
+                     <p className="truncate flex-1 min-w-0">
                         <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
                         {' · '}
                         {(report as any).crime_type}
@@ -200,17 +200,17 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                 )}
             </div>
             
-            <div className="flex justify-between items-end mt-2">
-               <div className="text-xs text-gray-400 dark:text-gray-500 truncate pr-2">
-                    <p className="truncate">{report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</p>
-                    <p className="mt-1">By: <span className="font-medium text-gray-500 dark:text-gray-400">{reporterName}</span></p>
+            <div className="flex justify-between items-end mt-2 min-w-0 gap-2">
+               <div className="text-xs text-gray-400 dark:text-gray-500 min-w-0 flex-1 pr-2">
+                    <p className="truncate w-full">{report.type === 'vehicle' ? (report as any).last_seen_location : (report as any).location}</p>
+                    <p className="mt-1 truncate w-full">By: <span className="font-medium text-gray-500 dark:text-gray-400">{reporterName}</span></p>
                     {isSharedFromOtherCompany && (
-                         <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                         <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 font-medium truncate w-full">
                              Shared by: <span className="font-semibold">{sharingCompanyName || 'Partner Company'}</span>
                          </p>
                     )}
                 </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+              <p className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 whitespace-nowrap">
                   {safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}
               </p>
             </div>

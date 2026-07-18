@@ -108,8 +108,8 @@ const LiveEventItem: React.FC<{
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start gap-2">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <ReportTypeBadge type={report.type as any} showText={false} className="p-1.5" />
-                            <div className="min-w-0">
+                            <ReportTypeBadge type={report.type as any} showText={false} className="p-1.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                     <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight truncate">{title}</p>
                                     {report.is_global && (
@@ -129,7 +129,7 @@ const LiveEventItem: React.FC<{
                                         </span>
                                     )}
                                 </div>
-                                <p className="font-mono text-xs text-gray-500 dark:text-gray-400">{report.ob_number}</p>
+                                <p className="font-mono text-xs text-gray-500 dark:text-gray-400 truncate">{report.ob_number}</p>
                             </div>
                         </div>
                         <div className="flex-shrink-0">
