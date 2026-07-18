@@ -20,11 +20,18 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
 
     // Try server-side schema check first to bypass client-side CORS or ad-blocker network issues
     try {
+        const cached = localStorage.getItem('schema_check_valid');
+        if (cached === 'true') {
+            return { status: 'valid' };
+        }
         const response = await fetch('/api/check-db');
         if (response.ok) {
             const serverResult = await response.json();
             if (serverResult && (serverResult.status === 'valid' || serverResult.status === 'invalid')) {
                 console.log("Database schema check via server-side API:", serverResult);
+                if (serverResult.status === 'valid') {
+                    localStorage.setItem('schema_check_valid', 'true');
+                }
                 return serverResult;
             }
         }

@@ -1,4 +1,5 @@
 import express from 'express';
+import compression from 'compression';
 console.log('Starting server.ts...');
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
@@ -17,6 +18,7 @@ process.env.VITE_SUPABASE_SERVICE_ROLE_KEY = SERVICE_ROLE_KEY_VAL;
 const currentDir = process.cwd();
 
 const app = express();
+app.use(compression());
 const PORT = 3000;
 
 // Global request logger

@@ -18,6 +18,7 @@
     "@kurkle/color": "0.3.2",
     "@supabase/supabase-js": "2.44.4",
     "@turf/turf": "^7.3.5",
+    "compression": "^1.8.1",
     "date-fns": "^3.0.0",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
@@ -36,6 +37,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",
+    "@types/compression": "^1.8.1",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "esbuild": "^0.28.0",

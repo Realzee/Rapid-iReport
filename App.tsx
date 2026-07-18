@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import Header from './components/Header';
-import Dashboard from './components/Dashboard';
+const Dashboard = lazy(() => import('./components/Dashboard'));
 
 const AuthPage = lazy(() => import('./pages/AuthPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
