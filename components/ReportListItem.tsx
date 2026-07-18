@@ -118,59 +118,57 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
             )}
 
             <div className={`flex-1 min-w-0 ${!hasImage && 'pl-2'}`}>
-            <div className="flex justify-between items-start">
-                <div className="flex-1 min-w-0 pr-2 flex items-center gap-3">
+            <div className="flex justify-between items-start gap-2">
+                <div className="flex-1 min-w-0 flex items-start gap-2">
                     {companyLogoUrl && (
                         <img 
                             src={companyLogoUrl} 
                             alt="Company Logo" 
-                            className="w-12 h-12 rounded-full object-contain flex-shrink-0 bg-gray-200 dark:bg-gray-700"
+                            className="w-8 h-8 rounded-full object-contain flex-shrink-0 bg-gray-200 dark:bg-gray-700 mt-0.5"
                         />
                     )}
-                    <div className="flex-1 min-w-0 flex items-center gap-2">
-                        <ReportTypeBadge type={report.type as any} showText={false} className="p-1.5 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                                <p className={`font-bold text-base ${textColor} group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate`}>
-                                    {report.type === 'vehicle' ? (report as any).license_plate : report.title}
-                                </p>
-                                {report.is_global && (
-                                    <GlobeIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Globally Shared Report" />
-                                )}
-                                {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
-                                    <UsersIcon className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" title="Shared with partner companies" />
-                                )}
-                                {isSharedFromOtherCompany && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 border border-blue-200 dark:border-blue-800 leading-none flex-shrink-0" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
-                                        Shared
-                                    </span>
-                                )}
-                            </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">{report.ob_number}</p>
+                    <div className="flex-1 min-w-0 flex flex-col">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                            <ReportTypeBadge type={report.type as any} showText={false} className="p-1 flex-shrink-0" />
+                            <p className={`font-bold text-sm ${textColor} group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate max-w-full`}>
+                                {report.type === 'vehicle' ? (report as any).license_plate : report.title}
+                            </p>
+                            {report.is_global && (
+                                <GlobeIcon className="w-3 h-3 text-blue-500 flex-shrink-0" title="Globally Shared Report" />
+                            )}
+                            {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
+                                <UsersIcon className="w-3 h-3 text-purple-500 flex-shrink-0" title="Shared with partner companies" />
+                            )}
+                            {isSharedFromOtherCompany && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 border border-blue-200 dark:border-blue-800 leading-none flex-shrink-0" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
+                                    Shared
+                                </span>
+                            )}
                         </div>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate mt-0.5">{report.ob_number}</p>
                     </div>
                 </div>
                 <div className="flex-shrink-0">
                     {canUpdateStatus ? (
-                        <div className="relative flex-shrink-0">
+                        <div className="relative">
                             <select
                                 value={report.status}
                                 onChange={handleStatusChange}
                                 disabled={isUpdating || isTerminalStatus}
                                 onClick={(e) => e.stopPropagation()}
-                                className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full py-1 pl-3 pr-8 text-xs font-bold text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70 appearance-none max-w-[130px] truncate"
+                                className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full py-0.5 pl-2.5 pr-6 text-[10px] font-bold text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70 appearance-none w-full max-w-[90px] sm:max-w-[120px] whitespace-nowrap overflow-hidden text-ellipsis"
                             >
                                 {statusOptions.map(status => (
                                     <option key={status} value={status} className="capitalize font-bold">{status.replace(/_/g, ' ')}</option>
                                 ))}
                             </select>
                             {isUpdating ? (
-                                <div className="absolute top-1/2 right-2 -translate-y-1/2 pointer-events-none">
-                                    <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                <div className="absolute top-1/2 right-1.5 -translate-y-1/2 pointer-events-none">
+                                    <div className="w-2.5 h-2.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                                 </div>
                             ) : (
-                                <div className="absolute top-1/2 right-2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                <div className="absolute top-1/2 right-1.5 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                 </div>
                             )}
                         </div>
