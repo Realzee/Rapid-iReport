@@ -107,13 +107,13 @@ const LiveEventItem: React.FC<{
                 )}
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start gap-2">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <ReportTypeBadge type={report.type as any} showText={false} className="p-1.5 flex-shrink-0" />
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                            <ReportTypeBadge type={report.type as any} showText={false} className="p-1 flex-shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight truncate">{title}</p>
+                                <div className="flex items-start gap-1.5 flex-wrap">
+                                    <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight break-words">{title}</p>
                                     {report.is_global && (
-                                        <GlobeIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Global Report" />
+                                        <GlobeIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" title="Global Report" />
                                     )}
                                     {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
                                         <UsersIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Shared with specific companies" />

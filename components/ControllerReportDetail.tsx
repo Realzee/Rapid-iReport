@@ -899,11 +899,11 @@ const ControllerReportDetail: React.FC<{
             <div className="flex-shrink-0">
                 <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                            <ReportTypeBadge type={report.type as any} className="p-1.5" />
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate pr-2">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
+                        <div className="flex items-start gap-2 mb-1 flex-wrap">
+                            <ReportTypeBadge type={report.type as any} className="p-1.5 mt-0.5" />
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white break-words flex-1 min-w-0 pr-2">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
                             {report.is_global && (
-                                <GlobeIcon className="w-5 h-5 text-blue-500 flex-shrink-0" title="Global Report" />
+                                <GlobeIcon className="w-5 h-5 text-blue-500 flex-shrink-0 mt-1" title="Global Report" />
                             )}
                         </div>
                         <p className="font-mono text-sm text-gray-500 dark:text-gray-400">{report.ob_number}</p>
