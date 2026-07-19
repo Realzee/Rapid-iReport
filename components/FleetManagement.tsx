@@ -189,7 +189,7 @@ interface FleetManagementProps {
 
 export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => {
   const { addToast } = useToast();
-    const [vehicles, setVehicles] = useState<TK116Device[]>([]);
+  const [vehicles, setVehicles] = useState<TK116Device[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<any>(null);
 
@@ -203,25 +203,115 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
       if (error) throw error;
       
       if (data) {
+        if (data.length === 0) {
+          // Seed initial high-quality default tracking units for the company
+          const defaultUnits = [
+            {
+              name: 'Armed Response 1',
+              plate: 'HW82GP-GP',
+              imei: '354188046036385',
+              status: 'moving',
+              lat: -26.2041,
+              lng: 28.0473,
+              speed: 48,
+              course: 145,
+              battery_voltage: 12600,
+              battery_percent: 96,
+              acc_status: true,
+              fuel_cut: false,
+              mileage: 142850,
+              fuel_level: 82,
+              speed_limit: 120,
+              company_id: profile.company_id
+            },
+            {
+              name: 'Supervisor Unit',
+              plate: 'TX11GP-GP',
+              imei: '354188046036393',
+              status: 'moving',
+              lat: -26.1076,
+              lng: 28.0567,
+              speed: 64,
+              course: 60,
+              battery_voltage: 13200,
+              battery_percent: 99,
+              acc_status: true,
+              fuel_cut: false,
+              mileage: 210450,
+              fuel_level: 58,
+              speed_limit: 120,
+              company_id: profile.company_id
+            },
+            {
+              name: 'Patrol Cruiser Alpha',
+              plate: 'BB44GP-GP',
+              imei: '354188046036401',
+              status: 'stationary',
+              lat: -26.2580,
+              lng: 27.8520,
+              speed: 0,
+              course: 270,
+              battery_voltage: 12200,
+              battery_percent: 80,
+              acc_status: false,
+              fuel_cut: false,
+              mileage: 89340,
+              fuel_level: 95,
+              speed_limit: 100,
+              company_id: profile.company_id
+            }
+          ];
+          const { data: insertedData, error: insertError } = await supabase
+            .from('tracking_units')
+            .insert(defaultUnits)
+            .select();
+          
+          if (insertError) throw insertError;
+          if (insertedData) {
+            setVehicles(insertedData.map(d => ({
+              id: d.id,
+              name: d.name,
+              plate: d.plate,
+              imei: d.imei,
+              status: d.status as any,
+              lat: Number(d.lat) || 0,
+              lng: Number(d.lng) || 0,
+              speed: Number(d.speed) || 0,
+              course: Number(d.course) || 0,
+              batteryVoltage: Number(d.battery_voltage) || 0,
+              batteryPercent: Number(d.battery_percent) || 0,
+              accStatus: d.acc_status || false,
+              fuelCut: d.fuel_cut || false,
+              mileage: Number(d.mileage) || 0,
+              fuelLevel: Number(d.fuel_level) || 0,
+              lastUpdate: new Date(d.updated_at).toLocaleTimeString(),
+              speedLimit: Number(d.speed_limit) || 100,
+              pathHistory: [[Number(d.lat) || -26.2041, Number(d.lng) || 28.0473]],
+              alerts: []
+            })));
+            return;
+          }
+        }
+
         setVehicles(data.map(d => ({
           id: d.id,
           name: d.name,
           plate: d.plate,
           imei: d.imei,
           status: d.status as any,
-          lat: d.lat || 0,
-          lng: d.lng || 0,
-          speed: d.speed || 0,
-          course: d.course || 0,
-          batteryVoltage: d.battery_voltage || 0,
-          batteryPercent: d.battery_percent || 0,
+          lat: Number(d.lat) || 0,
+          lng: Number(d.lng) || 0,
+          speed: Number(d.speed) || 0,
+          course: Number(d.course) || 0,
+          batteryVoltage: Number(d.battery_voltage) || 0,
+          batteryPercent: Number(d.battery_percent) || 0,
           accStatus: d.acc_status || false,
           fuelCut: d.fuel_cut || false,
-          mileage: d.mileage || 0,
-          fuelLevel: d.fuel_level || 0,
+          mileage: Number(d.mileage) || 0,
+          fuelLevel: Number(d.fuel_level) || 0,
           lastUpdate: new Date(d.updated_at).toLocaleTimeString(),
-          speedLimit: d.speed_limit || 100,
-          pathHistory: [],
+          speedLimit: Number(d.speed_limit) || 100,
+          pathHistory: d.lat && d.lng ? [[Number(d.lat), Number(d.lng)]] : [],
           alerts: []
         })));
       }
@@ -259,7 +349,29 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
   const pathIndices = useRef<Record<string, number>>({ alpha: 0, bravo: 0, supervisor: 0, armed: 0 });
 
   const selectedVehicle = useMemo(() => {
-    return vehicles.find(v => v.id === selectedVehicleId) || vehicles[0];
+    const found = vehicles.find(v => v.id === selectedVehicleId) || vehicles[0];
+    if (found) return found;
+    return {
+      id: 'no-vehicle',
+      name: 'No Tracking Units Registered',
+      plate: '---',
+      imei: '000000000000000',
+      status: 'offline' as const,
+      lat: -26.2041,
+      lng: 28.0473,
+      speed: 0,
+      course: 0,
+      batteryVoltage: 0,
+      batteryPercent: 0,
+      accStatus: false,
+      fuelCut: false,
+      mileage: 0,
+      fuelLevel: 0,
+      lastUpdate: '---',
+      speedLimit: 100,
+      pathHistory: [],
+      alerts: []
+    };
   }, [vehicles, selectedVehicleId]);
 
   const filteredVehicles = useMemo(() => {
