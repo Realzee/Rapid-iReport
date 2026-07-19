@@ -328,12 +328,20 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
   const [activeSubTab, setActiveSubTab] = useState<'map' | 'telemetry' | 'terminal' | 'history'>('map');
-  const [histories, setHistories] = useState<TripHistoryItem[]>([]);
+  const [histories, setHistories] = useState<Record<string, TripHistoryItem[]>>({});
+  const [plottedTripVehicleId, setPlottedTripVehicleId] = useState<string | null>(null);
+  const [focusedHistoryItem, setFocusedHistoryItem] = useState<TripHistoryItem | null>(null);
   const [historySearchText, setHistorySearchText] = useState('');
   const [historyFilterType, setHistoryFilterType] = useState<'all' | 'moving' | 'stationary' | 'alert'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [rawPackets, setRawPackets] = useState<RawPacket[]>([]);
   const [selectedPacket, setSelectedPacket] = useState<RawPacket | null>(null);
+
+  // Clear plotted history when selected vehicle changes to avoid visual overlap
+  useEffect(() => {
+    setFocusedHistoryItem(null);
+    setPlottedTripVehicleId(null);
+  }, [selectedVehicleId]);
   
   // Simulator command state
   const [simCommand, setSimCommand] = useState<string>('RESET#');
@@ -513,14 +521,21 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
     };
   };
 
-  // Initialize simulated histories for all vehicles on mount
+  // Initialize simulated histories for all vehicles on mount or when loaded
   useEffect(() => {
-    const initialHistories: Record<string, TripHistoryItem[]> = {};
-    vehicles.forEach(v => {
-      initialHistories[v.id] = generateMockHistory(v);
+    if (vehicles.length === 0) return;
+    setHistories(prev => {
+      const updated = { ...prev };
+      let updatedAny = false;
+      vehicles.forEach(v => {
+        if (!updated[v.id]) {
+          updated[v.id] = generateMockHistory(v);
+          updatedAny = true;
+        }
+      });
+      return updatedAny ? updated : prev;
     });
-    setHistories(initialHistories);
-  }, []);
+  }, [vehicles]);
 
   // Run periodic movement and live protocol telemetry logs
   useEffect(() => {
@@ -1256,9 +1271,162 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                   />
                   
                   {/* Focus center control */}
-                  {selectedVehicle && selectedVehicle.status !== 'offline' && (
+                  {selectedVehicle && selectedVehicle.status !== 'offline' && !focusedHistoryItem && (
                     <MapCenterController coords={[selectedVehicle.lat, selectedVehicle.lng]} />
                   )}
+
+                  {/* Focus center control on a clicked history item */}
+                  {focusedHistoryItem && (
+                    <MapCenterController coords={[focusedHistoryItem.lat, focusedHistoryItem.lng]} zoom={15} />
+                  )}
+
+                  {/* Draw Plotted Trip History Route */}
+                  {plottedTripVehicleId && (() => {
+                    const historyPoints = histories[plottedTripVehicleId] || [];
+                    if (historyPoints.length < 1) return null;
+                    const coords = historyPoints.map(item => [item.lat, item.lng] as [number, number]);
+                    return (
+                      <>
+                        {/* The route line */}
+                        <Polyline
+                          positions={coords}
+                          color="#8B5CF6" // Purple-500
+                          weight={5}
+                          opacity={0.85}
+                          dashArray="5, 8"
+                        />
+
+                        {/* Start and End point markers */}
+                        {(() => {
+                          const startItem = historyPoints[historyPoints.length - 1]; // oldest is at the end of the array
+                          const endItem = historyPoints[0]; // newest is at index 0
+
+                          const startIcon = L.divIcon({
+                            className: 'custom-div-icon',
+                            html: `<div class="w-6 h-6 rounded-full bg-emerald-500 border-2 border-white shadow-lg flex items-center justify-center text-[10px] text-white font-extrabold font-sans">S</div>`,
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
+                          });
+
+                          const endIcon = L.divIcon({
+                            className: 'custom-div-icon',
+                            html: `<div class="w-6 h-6 rounded-full bg-red-500 border-2 border-white shadow-lg flex items-center justify-center text-[10px] text-white font-extrabold font-sans">E</div>`,
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
+                          });
+
+                          return (
+                            <>
+                              {startItem && (
+                                <Marker position={[startItem.lat, startItem.lng]} icon={startIcon}>
+                                  <Popup>
+                                    <div className="p-1.5 text-xs font-sans">
+                                      <span className="font-extrabold text-emerald-600 block text-[10px] tracking-wider">TRIP START POINT</span>
+                                      <p className="text-gray-500 text-[10px] mt-0.5 font-mono">{startItem.timestamp}</p>
+                                      <p className="mt-1 text-gray-700 dark:text-gray-300 font-medium">Event: {startItem.event}</p>
+                                    </div>
+                                  </Popup>
+                                </Marker>
+                              )}
+                              {endItem && (
+                                <Marker position={[endItem.lat, endItem.lng]} icon={endIcon}>
+                                  <Popup>
+                                    <div className="p-1.5 text-xs font-sans">
+                                      <span className="font-extrabold text-red-600 block text-[10px] tracking-wider">TRIP END POINT</span>
+                                      <p className="text-gray-500 text-[10px] mt-0.5 font-mono">{endItem.timestamp}</p>
+                                      <p className="mt-1 text-gray-700 dark:text-gray-300 font-medium">Event: {endItem.event}</p>
+                                    </div>
+                                  </Popup>
+                                </Marker>
+                              )}
+                            </>
+                          );
+                        })()}
+
+                        {/* Intermediate event pings */}
+                        {historyPoints.map((item, idx) => {
+                          const isStart = idx === historyPoints.length - 1;
+                          const isEnd = idx === 0;
+                          if (isStart || isEnd) return null;
+
+                          const pingIcon = L.divIcon({
+                            className: 'custom-div-icon',
+                            html: `<div class="w-3.5 h-3.5 rounded-full bg-indigo-600 hover:bg-indigo-500 border-2 border-white shadow-md cursor-pointer hover:scale-125 transition-transform duration-150"></div>`,
+                            iconSize: [14, 14],
+                            iconAnchor: [7, 7]
+                          });
+
+                          return (
+                            <Marker key={`ping-${item.id}`} position={[item.lat, item.lng]} icon={pingIcon}>
+                              <Popup>
+                                <div className="p-2 text-xs font-sans max-w-[200px]">
+                                  <h4 className="font-bold text-indigo-600 dark:text-indigo-400 border-b border-gray-100 dark:border-gray-850 pb-1 mb-1">{item.event}</h4>
+                                  <table className="w-full text-[10px] text-gray-500">
+                                    <tbody>
+                                      <tr>
+                                        <td className="py-0.5">Time:</td>
+                                        <td className="text-right font-mono text-gray-700 dark:text-gray-300 py-0.5">{item.timestamp}</td>
+                                      </tr>
+                                      <tr>
+                                        <td className="py-0.5">Speed:</td>
+                                        <td className="text-right font-bold text-gray-950 dark:text-gray-50 py-0.5">{item.speed} km/h</td>
+                                      </tr>
+                                      <tr>
+                                        <td className="py-0.5">Coords:</td>
+                                        <td className="text-right font-mono py-0.5">{item.lat.toFixed(5)}, {item.lng.toFixed(5)}</td>
+                                      </tr>
+                                      <tr>
+                                        <td className="py-0.5">Fuel Level:</td>
+                                        <td className="text-right text-gray-700 dark:text-gray-300 py-0.5">{item.fuelLevel}%</td>
+                                      </tr>
+                                      <tr>
+                                        <td className="py-0.5">Odometer:</td>
+                                        <td className="text-right font-mono py-0.5">{(item.mileage / 1000).toFixed(2)} km</td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </Popup>
+                            </Marker>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+
+                  {/* Draw Focused History Item Marker */}
+                  {focusedHistoryItem && (() => {
+                    const focusedIcon = L.divIcon({
+                      className: 'custom-div-icon',
+                      html: `
+                        <div class="relative flex items-center justify-center">
+                          <span class="animate-ping absolute inline-flex h-7 w-7 rounded-full bg-pink-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-4 w-4 bg-pink-500 border-2 border-white shadow-md"></span>
+                        </div>
+                      `,
+                      iconSize: [28, 28],
+                      iconAnchor: [14, 14]
+                    });
+
+                    return (
+                      <Marker position={[focusedHistoryItem.lat, focusedHistoryItem.lng]} icon={focusedIcon}>
+                        <Popup>
+                          <div className="p-2 text-xs font-sans max-w-[180px]">
+                            <span className="bg-pink-100 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 font-extrabold px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider block w-fit mb-1">
+                              FOCUSED RECORD
+                            </span>
+                            <h4 className="font-bold text-gray-900 dark:text-white">{focusedHistoryItem.event}</h4>
+                            <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{focusedHistoryItem.timestamp}</p>
+                            <div className="mt-2 text-[10px] space-y-0.5 text-gray-600 dark:text-gray-300">
+                              <div>Speed: <span className="font-bold text-gray-900 dark:text-white">{focusedHistoryItem.speed} km/h</span></div>
+                              <div>Fuel: <span className="font-bold text-gray-900 dark:text-white">{focusedHistoryItem.fuelLevel}%</span></div>
+                              <div>Odometer: <span className="font-bold text-gray-900 dark:text-white">{(focusedHistoryItem.mileage / 1000).toFixed(2)} km</span></div>
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    );
+                  })()}
 
                   {/* Draw Polyline trails for historical breadcrumbs */}
                   {vehicles.map(veh => (
@@ -1326,6 +1494,55 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                     </Marker>
                   ))}
                 </MapContainer>
+
+                {/* Floating Trip History Active HUD */}
+                {(plottedTripVehicleId || focusedHistoryItem) && (
+                  <div className="absolute top-4 right-4 bg-white/95 dark:bg-gray-950/95 p-3 rounded-xl border border-violet-200 dark:border-violet-900/40 shadow-lg z-[500] backdrop-blur-sm max-w-xs text-[11px] font-sans">
+                    <div className="flex items-center justify-between gap-4 mb-2">
+                      <div className="flex items-center gap-1.5 font-bold text-violet-600 dark:text-violet-400">
+                        <MapPin className="w-4 h-4 animate-bounce text-violet-500" />
+                        <span>Trip Route Plotted</span>
+                      </div>
+                      <span className="text-[9px] bg-violet-100 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 font-extrabold px-1.5 py-0.5 rounded uppercase">
+                        History Mode
+                      </span>
+                    </div>
+
+                    <p className="text-gray-500 dark:text-gray-400 mb-2.5 text-[10px] leading-relaxed">
+                      {plottedTripVehicleId ? (
+                        <>Showing historical pings for <strong>{vehicles.find(v => v.id === plottedTripVehicleId)?.name || 'vehicle'}</strong>.</>
+                      ) : (
+                        <>Focused on selected historical record.</>
+                      )}
+                    </p>
+
+                    <div className="flex gap-2">
+                      {plottedTripVehicleId && (
+                        <button
+                          onClick={() => {
+                            const pts = histories[plottedTripVehicleId] || [];
+                            if (pts.length > 0) {
+                              setFocusedHistoryItem(pts[0]);
+                            }
+                          }}
+                          className="flex-1 py-1 px-2 bg-gray-50 hover:bg-gray-100 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded font-semibold text-[10px] border border-gray-200 dark:border-gray-800 cursor-pointer"
+                        >
+                          Center Trip
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setPlottedTripVehicleId(null);
+                          setFocusedHistoryItem(null);
+                          addToast("Cleared plotted trip history from the map", "info");
+                        }}
+                        className="flex-1 py-1 px-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 text-red-600 dark:text-red-400 rounded font-bold text-[10px] border border-red-200/50 dark:border-red-900/30 cursor-pointer"
+                      >
+                        Clear Plot
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Overlaid Map Legend HUD */}
                 <div className="absolute bottom-4 right-4 bg-white/95 dark:bg-gray-950/95 p-3 rounded-xl border border-gray-200 dark:border-gray-800 shadow-md z-[500] backdrop-blur-sm pointer-events-none max-w-xs text-[10px]">
@@ -1777,6 +1994,51 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                     </div>
                   </div>
 
+                  {/* Interactive Map Route Plotter Card */}
+                  <div className="bg-white dark:bg-gray-950 border border-violet-150 dark:border-violet-900/40 rounded-2xl p-5 shadow-sm">
+                    <h4 className="text-xs uppercase font-extrabold text-violet-600 dark:text-violet-400 mb-2.5 tracking-wider flex items-center gap-1.5">
+                      <Compass className="w-4 h-4 text-violet-500" />
+                      Interactive Map Plotter
+                    </h4>
+                    <p className="text-[11px] text-gray-400 mb-4 leading-relaxed">
+                      Visualize the entire telemetry route path, geofence status triggers, and physical event locations for **{selectedVehicle.name}** directly on the interactive Live Map.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          const historyList = histories[selectedVehicle.id] || [];
+                          if (historyList.length === 0) {
+                            addToast(`No history points available to plot for ${selectedVehicle.name}`, "error");
+                            return;
+                          }
+                          setPlottedTripVehicleId(selectedVehicle.id);
+                          setFocusedHistoryItem(null);
+                          setActiveSubTab('map');
+                          addToast(`Successfully plotted ${historyList.length} route pings for ${selectedVehicle.name} on the map!`, "success");
+                        }}
+                        disabled={!selectedVehicle || selectedVehicle.id === 'no-vehicle'}
+                        className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-100 disabled:dark:bg-gray-800 disabled:text-gray-400 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow transition-all border border-transparent"
+                      >
+                        <MapPin className="w-4 h-4" />
+                        Plot Route on Live Map
+                      </button>
+                      
+                      {(plottedTripVehicleId === selectedVehicle.id || focusedHistoryItem) && (
+                        <button
+                          onClick={() => {
+                            setPlottedTripVehicleId(null);
+                            setFocusedHistoryItem(null);
+                            addToast("Cleared plotted trip history from the map", "info");
+                          }}
+                          className="px-3 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-xl font-bold text-xs border border-red-200/50 dark:border-red-900/30 cursor-pointer"
+                          title="Clear Plot"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Export Options Card */}
                   <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
                     <h4 className="text-xs uppercase font-extrabold text-blue-500 mb-2.5 tracking-wider flex items-center gap-1.5">
@@ -1903,6 +2165,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                             <th className="py-3 px-4">Speed</th>
                             <th className="py-3 px-4">Fuel</th>
                             <th className="py-3 px-4">Mileage</th>
+                            <th className="py-3 px-4 text-right">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800/40 font-mono">
@@ -1935,7 +2198,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                                   <button
                                     onClick={() => handleCopyCoords(item.lat, item.lng)}
                                     title="Click to copy coordinates"
-                                    className="hover:text-blue-500 font-bold flex items-center gap-1 cursor-pointer"
+                                    className="hover:text-blue-500 font-bold flex items-center gap-1 cursor-pointer font-sans"
                                   >
                                     <MapPin className="w-3 h-3 text-gray-400" />
                                     {item.lat.toFixed(5)}, {item.lng.toFixed(5)}
@@ -1949,6 +2212,20 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                                 </td>
                                 <td className="py-3 px-4 text-gray-500">
                                   {(item.mileage / 1000).toFixed(2)} km
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <button
+                                    onClick={() => {
+                                      setFocusedHistoryItem(item);
+                                      setPlottedTripVehicleId(selectedVehicle.id); // plot context
+                                      setActiveSubTab('map');
+                                      addToast(`Centering map on event: "${item.event}"`, "success");
+                                    }}
+                                    className="px-2.5 py-1 bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/40 dark:hover:bg-violet-900/60 text-violet-600 dark:text-violet-400 rounded text-[10px] font-bold border border-violet-100 dark:border-violet-900/30 flex items-center gap-1 ml-auto cursor-pointer transition-colors font-sans"
+                                  >
+                                    <Compass className="w-3.5 h-3.5" />
+                                    Show on Map
+                                  </button>
                                 </td>
                               </tr>
                             );
