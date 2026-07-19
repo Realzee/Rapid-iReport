@@ -23,10 +23,12 @@ CREATE TABLE IF NOT EXISTS tracking_units (
 -- RLS
 ALTER TABLE tracking_units ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view tracking units for their company" ON tracking_units;
 CREATE POLICY "Users can view tracking units for their company"
 ON tracking_units FOR SELECT
 USING (company_id IN (SELECT company_id FROM profiles WHERE id = auth.uid()));
 
+DROP POLICY IF EXISTS "Controllers can manage tracking units for their company" ON tracking_units;
 CREATE POLICY "Controllers can manage tracking units for their company"
 ON tracking_units FOR ALL
 USING (
