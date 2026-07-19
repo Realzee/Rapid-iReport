@@ -10,6 +10,13 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 async function main() {
     console.log("Triggering fix-schema directly...");
     const queries = [
+        "CREATE TABLE IF NOT EXISTS public.tracking_units (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL, plate text, imei text NOT NULL UNIQUE, status text DEFAULT 'offline', lat numeric, lng numeric, speed numeric DEFAULT 0, course numeric DEFAULT 0, battery_voltage numeric DEFAULT 0, battery_percent integer DEFAULT 0, acc_status boolean DEFAULT false, fuel_cut boolean DEFAULT false, mileage numeric DEFAULT 0, fuel_level integer DEFAULT 0, speed_limit numeric DEFAULT 100, company_id uuid REFERENCES public.companies(id), created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now());",
+        "ALTER TABLE public.tracking_units ENABLE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS \"Users can view tracking units for their company\" ON public.tracking_units;",
+        "CREATE POLICY \"Users can view tracking units for their company\" ON public.tracking_units FOR SELECT USING (company_id IN (SELECT company_id FROM profiles WHERE id = auth.uid()));",
+        "DROP POLICY IF EXISTS \"Controllers can manage tracking units for their company\" ON public.tracking_units;",
+        "CREATE POLICY \"Controllers can manage tracking units for their company\" ON public.tracking_units FOR ALL USING (company_id IN (SELECT company_id FROM profiles WHERE id = auth.uid() AND role IN ('controller', 'admin')));",
+
         "CREATE TABLE IF NOT EXISTS public.report_updates (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), report_id uuid NOT NULL, user_id uuid NOT NULL, content text NOT NULL, created_at timestamptz DEFAULT now());",
         "DO $$ BEGIN ALTER TABLE public.report_updates ADD CONSTRAINT report_updates_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE; EXCEPTION WHEN OTHERS THEN NULL; END $$;",
         "ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;",

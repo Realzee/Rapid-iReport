@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import { Profile } from '../types';
 import { useToast } from '../contexts/ToastContext';
+import { supabase } from '../utils/supabase';
+import { TrackingUnitModal } from './TrackingUnitModal';
 import { TripSummaryCard } from './TripSummaryCard';
 
 // Interfaces for our simulated Fleet
@@ -187,120 +189,58 @@ interface FleetManagementProps {
 
 export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => {
   const { addToast } = useToast();
-  const [vehicles, setVehicles] = useState<TK116Device[]>([
-    {
-      id: '1',
-      name: 'Armed Response 1',
-      plate: 'HW82GP-GP',
-      imei: '354188046036385',
-      status: 'moving',
-      lat: -26.2041,
-      lng: 28.0473,
-      speed: 48,
-      course: 145,
-      batteryVoltage: 12600,
-      batteryPercent: 96,
-      accStatus: true,
-      fuelCut: false,
-      mileage: 142850,
-      fuelLevel: 82,
-      lastUpdate: new Date().toLocaleTimeString(),
-      speedLimit: 120,
-      pathHistory: [[-26.2041, 28.0473]],
-      alerts: []
-    },
-    {
-      id: '2',
-      name: 'Supervisor Unit',
-      plate: 'TX11GP-GP',
-      imei: '354188046036393',
-      status: 'moving',
-      lat: -26.1076,
-      lng: 28.0567,
-      speed: 64,
-      course: 60,
-      batteryVoltage: 13200,
-      batteryPercent: 99,
-      accStatus: true,
-      fuelCut: false,
-      mileage: 210450,
-      fuelLevel: 58,
-      lastUpdate: new Date().toLocaleTimeString(),
-      speedLimit: 120,
-      pathHistory: [[-26.1076, 28.0567]],
-      alerts: []
-    },
-    {
-      id: '3',
-      name: 'Patrol Cruiser Alpha',
-      plate: 'BB44GP-GP',
-      imei: '354188046036401',
-      status: 'stationary',
-      lat: -26.2580,
-      lng: 27.8520,
-      speed: 0,
-      course: 0,
-      batteryVoltage: 11900,
-      batteryPercent: 78,
-      accStatus: false,
-      fuelCut: false,
-      mileage: 89400,
-      fuelLevel: 45,
-      lastUpdate: new Date().toLocaleTimeString(),
-      speedLimit: 120,
-      pathHistory: [[-26.2580, 27.8520]],
-      alerts: []
-    },
-    {
-      id: '4',
-      name: 'Community Patrol Unit B',
-      plate: 'VV71GP-GP',
-      imei: '354188046036419',
-      status: 'moving',
-      lat: -26.1243,
-      lng: 28.1022,
-      speed: 128, // Speeding warning!
-      course: 220,
-      batteryVoltage: 12400,
-      batteryPercent: 88,
-      accStatus: true,
-      fuelCut: false,
-      mileage: 114300,
-      fuelLevel: 71,
-      lastUpdate: new Date().toLocaleTimeString(),
-      speedLimit: 100,
-      pathHistory: [[-26.1243, 28.1022]],
-      alerts: ['High Speed Alert']
-    },
-    {
-      id: '5',
-      name: 'Tactical Support Vehicle',
-      plate: 'ZZ99GP-GP',
-      imei: '354188046036427',
-      status: 'offline',
-      lat: -26.1850,
-      lng: 28.0350,
-      speed: 0,
-      course: 270,
-      batteryVoltage: 0,
-      batteryPercent: 0,
-      accStatus: false,
-      fuelCut: false,
-      mileage: 320100,
-      fuelLevel: 14,
-      lastUpdate: 'Yesterday 18:42',
-      speedLimit: 120,
-      pathHistory: [[-26.1850, 28.0350]],
-      alerts: ['Power Cut-off Alert']
-    }
-  ]);
+    const [vehicles, setVehicles] = useState<TK116Device[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUnit, setEditingUnit] = useState<any>(null);
 
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('1');
+  const fetchTrackingUnits = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tracking_units')
+        .select('*')
+        .eq('company_id', profile.company_id);
+      
+      if (error) throw error;
+      
+      if (data) {
+        setVehicles(data.map(d => ({
+          id: d.id,
+          name: d.name,
+          plate: d.plate,
+          imei: d.imei,
+          status: d.status as any,
+          lat: d.lat || 0,
+          lng: d.lng || 0,
+          speed: d.speed || 0,
+          course: d.course || 0,
+          batteryVoltage: d.battery_voltage || 0,
+          batteryPercent: d.battery_percent || 0,
+          accStatus: d.acc_status || false,
+          fuelCut: d.fuel_cut || false,
+          mileage: d.mileage || 0,
+          fuelLevel: d.fuel_level || 0,
+          lastUpdate: new Date(d.updated_at).toLocaleTimeString(),
+          speedLimit: d.speed_limit || 100,
+          pathHistory: [],
+          alerts: []
+        })));
+      }
+    } catch (err) {
+      console.error(err);
+      addToast("Failed to fetch tracking units", "error");
+    }
+  };
+
+  useEffect(() => {
+    fetchTrackingUnits();
+  }, [profile.company_id]);
+
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
-  const [activeSubTab, setActiveSubTab] = useState<'map' | 'simulator' | 'terminal' | 'history'>('map');
-  const [histories, setHistories] = useState<Record<string, TripHistoryItem[]>>({});
+  const [activeSubTab, setActiveSubTab] = useState<'map' | 'telemetry' | 'terminal' | 'history'>('map');
+  const [histories, setHistories] = useState<TripHistoryItem[]>([]);
   const [historySearchText, setHistorySearchText] = useState('');
-  const [historyFilterType, setHistoryFilterType] = useState<'all' | 'ignition' | 'warning' | 'tracking'>('all');
+  const [historyFilterType, setHistoryFilterType] = useState<'all' | 'moving' | 'stationary' | 'alert'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [rawPackets, setRawPackets] = useState<RawPacket[]>([]);
   const [selectedPacket, setSelectedPacket] = useState<RawPacket | null>(null);
@@ -667,7 +607,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
         }, 6000);
 
       } else if (commandText.startsWith('RELAY,1')) {
-        resultText = 'Relay enable OK\n> Fuel Cut Active';
+        resultText = 'Relay enable OK> Fuel Cut Active';
         setVehicles(current => current.map(v => v.id === selectedVehicle.id ? { 
           ...v, 
           fuelCut: true,
@@ -676,7 +616,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
           accStatus: false
         } : v));
       } else if (commandText.startsWith('RELAY,0')) {
-        resultText = 'Relay disable OK\n> Fuel Restored';
+        resultText = 'Relay disable OK> Fuel Restored';
         setVehicles(current => current.map(v => v.id === selectedVehicle.id ? { 
           ...v, 
           fuelCut: false,
@@ -693,9 +633,9 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
           speedLimit: limitVal 
         } : v));
       } else if (commandText.startsWith('STATUS')) {
-        resultText = `BATTERY:100%\nGPRS:SUCCESS\nGSM:MED,18\nGPS:FIXED,8\nACC:${selectedVehicle.accStatus ? 'ON' : 'OFF'}\nRELAY:${selectedVehicle.fuelCut ? 'ON' : 'OFF'}\nMS:LIS3DH`;
+        resultText = `BATTERY:100%GPRS:SUCCESSGSM:MED,18GPS:FIXED,8ACC:${selectedVehicle.accStatus ? 'ON' : 'OFF'}RELAY:${selectedVehicle.fuelCut ? 'ON' : 'OFF'}MS:LIS3DH`;
       } else if (commandText.startsWith('VERSION')) {
-        resultText = `IMEI:${selectedVehicle.imei}\nIMSI:946001666829743\nICCID:8986011685100944475\nSYSTEM:M6130_V2.0.5\nVERSION:MXAPP_V2.0.5\nBUILD:May 20 2026 10:14:15`;
+        resultText = `IMEI:${selectedVehicle.imei}IMSI:946001666829743ICCID:8986011685100944475SYSTEM:M6130_V2.0.5VERSION:MXAPP_V2.0.5BUILD:May 20 2026 10:14:15`;
       }
 
       // Outward packet
@@ -709,7 +649,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
       // Add Rx log
       setSimLogs(prev => [
         ...prev,
-        { time: new Date().toLocaleTimeString(), text: `[RX] Received Eelink Reply [PID 0x80] from IMEI ${selectedVehicle.imei}:\n${resultText.replace(/\n/g, ' | ')}`, type: 'in' }
+        { time: new Date().toLocaleTimeString(), text: `[RX] Received Eelink Reply [PID 0x80] from IMEI ${selectedVehicle.imei}:${resultText.replace(/\n/g, ' | ')}`, type: 'in' }
       ]);
 
       // Insert command interaction into raw packet list
@@ -760,15 +700,15 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
   const handleExportCSV = (vehicle: TK116Device) => {
     const historyList = histories[vehicle.id] || [];
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += `VEHICLE CURRENT DETAILS\n`;
-    csvContent += `Vehicle Name,Plate Number,IMEI,Status,Current Latitude,Current Longitude,Current Speed (km/h),ACC State,Fuel Cut Relay,Mileage (m),Fuel Level (%),Last Updated\n`;
-    csvContent += `"${vehicle.name}","${vehicle.plate}","${vehicle.imei}","${vehicle.status}",${vehicle.lat},${vehicle.lng},${vehicle.speed},${vehicle.accStatus ? "ON" : "OFF"},${vehicle.fuelCut ? "Active" : "Normal"},${vehicle.mileage},${Math.floor(vehicle.fuelLevel)},"${vehicle.lastUpdate}"\n\n`;
+    csvContent += `VEHICLE CURRENT DETAILS`;
+    csvContent += `Vehicle Name,Plate Number,IMEI,Status,Current Latitude,Current Longitude,Current Speed (km/h),ACC State,Fuel Cut Relay,Mileage (m),Fuel Level (%),Last Updated`;
+    csvContent += `"${vehicle.name}","${vehicle.plate}","${vehicle.imei}","${vehicle.status}",${vehicle.lat},${vehicle.lng},${vehicle.speed},${vehicle.accStatus ? "ON" : "OFF"},${vehicle.fuelCut ? "Active" : "Normal"},${vehicle.mileage},${Math.floor(vehicle.fuelLevel)},"${vehicle.lastUpdate}"`;
     
-    csvContent += `TRIP AND STATUS HISTORY\n`;
-    csvContent += `Timestamp,Event / Status,Latitude,Longitude,Speed (km/h),ACC Ignition,Fuel Level (%),Odometer Mileage (km)\n`;
+    csvContent += `TRIP AND STATUS HISTORY`;
+    csvContent += `Timestamp,Event / Status,Latitude,Longitude,Speed (km/h),ACC Ignition,Fuel Level (%),Odometer Mileage (km)`;
     
     historyList.forEach(item => {
-      csvContent += `"${item.timestamp}","${item.event}",${item.lat},${item.lng},${item.speed},${item.accStatus ? "ON" : "OFF"},${item.fuelLevel},${(item.mileage / 1000).toFixed(2)}\n`;
+      csvContent += `"${item.timestamp}","${item.event}",${item.lat},${item.lng},${item.speed},${item.accStatus ? "ON" : "OFF"},${item.fuelLevel},${(item.mileage / 1000).toFixed(2)}`;
     });
     
     const encodedUri = encodeURI(csvContent);
@@ -947,7 +887,21 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
         {/* Left Side: Vehicle List Panel */}
         <div className={`lg:col-span-4 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800/80 flex flex-col overflow-hidden h-full ${mobileView === 'list' ? 'flex' : 'hidden lg:flex'}`}>
           {/* Search Box */}
-          <div className="p-4 border-b border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-950">
+          <div className="p-4 border-b border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-950 flex flex-col gap-2">
+            <div className="flex justify-between items-center">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Tracking Units</h2>
+              {(profile.role === 'admin' || profile.role === 'controller') && (
+                <button 
+                  onClick={() => {
+                    setEditingUnit(null);
+                    setIsModalOpen(true);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  + Add Unit
+                </button>
+              )}
+            </div>
             <div className="relative">
               <input
                 type="text"
@@ -996,9 +950,49 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                             {veh.plate}
                           </span>
                         </div>
-                        <p className="text-[10px] font-mono text-gray-400 dark:text-gray-500">
+                        <p className="text-[10px] font-mono text-gray-400 dark:text-gray-500 mb-1.5">
                           IMEI: {veh.imei}
                         </p>
+                        {(profile.role === 'admin' || profile.role === 'controller') && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingUnit({
+                                  id: veh.id,
+                                  name: veh.name,
+                                  plate: veh.plate,
+                                  imei: veh.imei,
+                                  speed_limit: veh.speedLimit
+                                });
+                                setIsModalOpen(true);
+                              }}
+                              className="text-[10px] text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (window.confirm('Are you sure you want to delete this tracking unit?')) {
+                                  try {
+                                    const { error } = await supabase.from('tracking_units').delete().eq('id', veh.id);
+                                    if (error) throw error;
+                                    setVehicles(prev => prev.filter(v => v.id !== veh.id));
+                                    if (selectedVehicleId === veh.id) setSelectedVehicleId(null);
+                                    addToast('Tracking unit deleted successfully', 'success');
+                                  } catch (err) {
+                                    console.error(err);
+                                    addToast('Failed to delete tracking unit', 'error');
+                                  }
+                                }
+                              }}
+                              className="text-[10px] text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Speed Badge */}
@@ -1869,7 +1863,19 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
 
       </div>
 
-    </div>
+    
+      <TrackingUnitModal
+        profile={profile}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        initialData={editingUnit}
+        onSave={(data) => {
+          fetchTrackingUnits();
+          setIsModalOpen(false);
+          addToast(editingUnit ? "Tracking unit updated" : "Tracking unit added", "success");
+        }}
+      />
+</div>
   );
 };
 
