@@ -33,6 +33,24 @@ input, textarea, select, option, [contenteditable="true"] {
   --color-matrix-green: #00ff41;
   --color-matrix-dark: #003b00;
   --color-matrix-bg: #000000;
+
+  /* Custom animations and keyframes compiled statically */
+  --animate-toast-enter: toast-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-toast-exit: toast-exit 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-marquee: marquee 25s linear infinite;
+
+  @keyframes toast-enter {
+    from { opacity: 0; transform: translateX(100%); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes toast-exit {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(100%); }
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
 }
 
 @layer base {

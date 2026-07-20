@@ -3,6 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   
+  <!-- Performance optimization: Preconnect to external resource domains for faster network handshakes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preconnect" href="https://challenges.cloudflare.com">
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RAPID iREPORT</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
@@ -22,30 +28,6 @@
         }
       } catch (_) {}
     })();
-  </script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          keyframes: {
-            'toast-enter': {
-              'from': { opacity: '0', transform: 'translateX(100%)' },
-              'to': { opacity: '1', transform: 'translateX(0)' },
-            },
-            'toast-exit': {
-              'from': { opacity: '1', transform: 'translateX(0)' },
-              'to': { opacity: '0', transform: 'translateX(100%)' },
-            },
-            'marquee': {
-              'from': { transform: 'translateX(0)' },
-              'to': { transform: 'translateX(-50%)' },
-            }
-          }
-        }
-      }
-    }
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />

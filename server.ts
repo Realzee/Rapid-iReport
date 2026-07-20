@@ -325,7 +325,15 @@ async function setupFrontend() {
             next();
         });
 
-        // 2. Serve static assets with standard caching since they contain content hashes
+        // 2. Serve static assets in /assets with immutable caching since they contain unique content hashes
+        app.use('/assets', express.static(path.join(distPath, 'assets'), {
+            maxAge: '365d',
+            immutable: true,
+            etag: false,
+            index: false
+        }));
+
+        // 2.5. Serve other static assets with standard caching
         app.use(express.static(distPath, {
             maxAge: '1d',
             etag: true,

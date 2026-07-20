@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Tesseract from 'tesseract.js';
+import type { Worker as TesseractWorker } from 'tesseract.js';
 import { XIcon, CameraIcon, CheckCircleIcon, SearchIcon, AlertTriangleIcon, ScanIcon, EditIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { VehicleReport } from '../types';
@@ -17,7 +17,7 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
     const streamRef = useRef<MediaStream | null>(null);
     const scanIntervalRef = useRef<number | null>(null);
     const recognitionInProgress = useRef(false);
-    const tesseractWorkerRef = useRef<Tesseract.Worker | null>(null);
+    const tesseractWorkerRef = useRef<TesseractWorker | null>(null);
 
     const [isProcessing, setIsProcessing] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
@@ -62,7 +62,8 @@ const ANPRModal: React.FC<ANPRModalProps> = ({ isOpen, onClose, onReportFound })
             setOcrInitializationStatus('Initializing ANPR engine...');
             
             if (!tesseractWorkerRef.current) {
-                const worker = await Tesseract.createWorker('eng');
+                const { createWorker } = await import('tesseract.js');
+                const worker = await createWorker('eng');
                 await worker.setParameters({
                     tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
                 });

@@ -17,7 +17,44 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
-        target: 'esnext'
+        target: 'esnext',
+        minify: 'esbuild',
+        cssMinify: true,
+        rollupOptions: {
+          output: {
+            manualChunks(id) {
+              if (id.includes('node_modules')) {
+                // Group React core
+                if (id.includes('react') || id.includes('scheduler')) {
+                  return 'vendor-react';
+                }
+                // Group Leaflet map libs
+                if (id.includes('leaflet') || id.includes('react-leaflet')) {
+                  return 'vendor-leaflet';
+                }
+                // Group Recharts and D3 data viz
+                if (id.includes('recharts') || id.includes('d3')) {
+                  return 'vendor-charts';
+                }
+                // Group Icons
+                if (id.includes('lucide-react')) {
+                  return 'vendor-lucide';
+                }
+                // Group Supabase client
+                if (id.includes('supabase') || id.includes('websocket')) {
+                  return 'vendor-supabase';
+                }
+                // Group Motion animations
+                if (id.includes('motion')) {
+                  return 'vendor-motion';
+                }
+                // General fallback vendor
+                return 'vendor';
+              }
+            }
+          }
+        },
+        chunkSizeWarningLimit: 1200
       }
     };
 });
