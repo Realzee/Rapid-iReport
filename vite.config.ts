@@ -24,10 +24,6 @@ export default defineConfig(({ mode }) => {
           output: {
             manualChunks(id) {
               if (id.includes('node_modules')) {
-                // Group React core
-                if (id.includes('react') || id.includes('scheduler')) {
-                  return 'vendor-react';
-                }
                 // Group Leaflet map libs
                 if (id.includes('leaflet') || id.includes('react-leaflet')) {
                   return 'vendor-leaflet';
@@ -36,19 +32,7 @@ export default defineConfig(({ mode }) => {
                 if (id.includes('recharts') || id.includes('d3')) {
                   return 'vendor-charts';
                 }
-                // Group Icons
-                if (id.includes('lucide-react')) {
-                  return 'vendor-lucide';
-                }
-                // Group Supabase client
-                if (id.includes('supabase') || id.includes('websocket')) {
-                  return 'vendor-supabase';
-                }
-                // Group Motion animations
-                if (id.includes('motion')) {
-                  return 'vendor-motion';
-                }
-                // General fallback vendor
+                // Keep core react, motion, lucide, supabase in single core vendor to prevent dependency order/context issues
                 return 'vendor';
               }
             }
