@@ -2,21 +2,23 @@
 
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import Header from './components/Header';
-const Dashboard = lazy(() => import('./components/Dashboard'));
 
-const AuthPage = lazy(() => import('./pages/AuthPage'));
+// Eagerly load core critical emergency-response & authentication views for instant, delay-free mounting
+import Dashboard from './components/Dashboard';
+import AuthPage from './pages/AuthPage';
+import ProfilePage from './pages/ProfilePage';
+import ControllerPage from './pages/ControllerPage';
+import ResponderPage from './pages/ResponderPage';
+import GuardDashboardPage from './pages/GuardDashboardPage';
+import UserDashboardPage from './pages/UserDashboardPage';
+
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const CompaniesPage = lazy(() => import('./pages/CompaniesPage'));
 const GlobalMapModal = lazy(() => import('./components/GlobalMapModal'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const ControllerPage = lazy(() => import('./pages/ControllerPage'));
-const ResponderPage = lazy(() => import('./pages/ResponderPage'));
-const GuardDashboardPage = lazy(() => import('./pages/GuardDashboardPage'));
 const PatrolPage = lazy(() => import('./pages/PatrolPage'));
 const AttendancePage = lazy(() => import('./pages/AttendancePage'));
-const UserDashboardPage = lazy(() => import('./pages/UserDashboardPage'));
 const PublicDashboardPage = lazy(() => import('./pages/PublicDashboardPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const GuardMonitoringPage = lazy(() => import('./pages/GuardMonitoringPage'));
@@ -69,10 +71,41 @@ const isProfileComplete = (profile: Profile) => {
 };
 
 const App: React.FC = () => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(true);
+  // Synchronously initialize auth session and user profile from cache to enable instant, zero-delay rendering on app launch
+  const [session, setSession] = useState<Session | null>(() => {
+    try {
+      const cached = localStorage.getItem('auth_session');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [profile, setProfile] = useState<Profile | null>(() => {
+    try {
+      const cached = localStorage.getItem('user_profile');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  // Skip the full-screen splash loader if we already have a cached session to jump straight to the app UI
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('auth_session');
+      return !cached;
+    } catch {
+      return true;
+    }
+  });
+  const [profileLoading, setProfileLoading] = useState(() => {
+    try {
+      const cachedSession = localStorage.getItem('auth_session');
+      const cachedProfile = localStorage.getItem('user_profile');
+      return !!(cachedSession && !cachedProfile);
+    } catch {
+      return true;
+    }
+  });
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>('dashboard');
   
@@ -85,6 +118,33 @@ const App: React.FC = () => {
   const [isAnnouncementVisible, setIsAnnouncementVisible] = useState(false);
   const { addToast } = useToast();
   const { theme } = useTheme();
+
+  // Sync session changes to localStorage cache
+  useEffect(() => {
+    try {
+      if (session) {
+        localStorage.setItem('auth_session', JSON.stringify(session));
+      } else {
+        localStorage.removeItem('auth_session');
+        localStorage.removeItem('user_profile');
+      }
+    } catch (e) {
+      console.warn("Storage write failed:", e);
+    }
+  }, [session]);
+
+  // Sync profile changes to localStorage cache
+  useEffect(() => {
+    try {
+      if (profile) {
+        localStorage.setItem('user_profile', JSON.stringify(profile));
+      } else {
+        localStorage.removeItem('user_profile');
+      }
+    } catch (e) {
+      console.warn("Storage write failed:", e);
+    }
+  }, [profile]);
 
   useEffect(() => {
     const handleCopy = (e: ClipboardEvent) => {
@@ -125,43 +185,44 @@ const App: React.FC = () => {
   }, [addToast]);
 
   useEffect(() => {
-    // Automatically trigger a background schema reload to ensure report_updates and patrol_logs are fully synced
-    fetch('/api/guard-monitoring', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'fix-schema' })
-    }).catch(console.error);
-
     const runSchemaCheck = async () => {
         if (!supabase) {
             setError("Supabase configuration is missing. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your environment variables.");
-            setLoading(false);
             return false;
         }
         const result = await checkDatabaseSchema();
         if (result.status === 'invalid') {
             setSchemaError(result.error || 'An unknown schema error occurred.');
-            setLoading(false);
             return false;
         }
         return true;
     };
     
     const initializeApp = async () => {
-      const isSchemaValid = await runSchemaCheck();
-      if (!isSchemaValid || !supabase) {
+      if (!supabase) {
+        setError("Supabase configuration is missing. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your environment variables.");
         setLoading(false);
         return;
       }
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
+        const { data: { session: freshSession } } = await supabase.auth.getSession();
+        setSession(freshSession);
+        if (!freshSession) {
+          setProfile(null);
+          try {
+            localStorage.removeItem('auth_session');
+            localStorage.removeItem('user_profile');
+          } catch (_) {}
+        }
       } catch (err) {
         console.error("Error getting session:", err);
       } finally {
         setLoading(false);
       }
+
+      // Defer database schema check asynchronously in the background so it doesn't block the critical initial path load
+      runSchemaCheck().catch(err => console.error("Background schema check error:", err));
     };
   
     initializeApp();
@@ -173,6 +234,10 @@ const App: React.FC = () => {
       setError(null);
       if (!session) {
         setProfile(null);
+        try {
+          localStorage.removeItem('auth_session');
+          localStorage.removeItem('user_profile');
+        } catch (_) {}
       }
     });
   
