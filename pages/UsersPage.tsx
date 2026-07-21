@@ -58,6 +58,36 @@ const UsersPage: React.FC = () => {
     useEffect(() => {
         if (!currentUserProfile) return;
 
+        const fetchReportCounts = async (userIds: string[]) => {
+            if (userIds.length === 0) return;
+            try {
+                const [vRes, cRes, eRes] = await Promise.all([
+                    supabase.from('vehicle_reports').select('reported_by').in('reported_by', userIds),
+                    supabase.from('crime_reports').select('reported_by').in('reported_by', userIds),
+                    supabase.from('emergency_reports').select('reported_by').in('reported_by', userIds)
+                ]);
+
+                const counts: Record<string, number> = {};
+                
+                const processReports = (reports: any[] | null) => {
+                    if (!reports) return;
+                    reports.forEach(r => {
+                        if (r.reported_by) {
+                            counts[r.reported_by] = (counts[r.reported_by] || 0) + 1;
+                        }
+                    });
+                };
+
+                processReports(vRes.data);
+                processReports(cRes.data);
+                processReports(eRes.data);
+
+                setUserReportCounts(counts);
+            } catch (error) {
+                console.error("Error fetching report counts:", error);
+            }
+        };
+
         const fetchData = async () => {
             setLoading(true);
 
@@ -75,7 +105,13 @@ const UsersPage: React.FC = () => {
             const { data: companiesData, error: companiesError } = await companiesQuery;
 
             if (usersError) console.error('Error fetching users:', usersError);
-            else setUsers(usersData || []);
+            else {
+                const fetchedUsers = usersData || [];
+                setUsers(fetchedUsers);
+                if (fetchedUsers.length > 0) {
+                    fetchReportCounts(fetchedUsers.map(u => u.id));
+                }
+            }
 
             if (companiesError) console.error('Error fetching companies:', companiesError);
             else setCompanies(companiesData || []);
@@ -126,38 +162,7 @@ const UsersPage: React.FC = () => {
         };
     }, [searchTerm]);
 
-    useEffect(() => {
-        const fetchReportCounts = async () => {
-            try {
-                const [vRes, cRes, eRes] = await Promise.all([
-                    supabase.from('vehicle_reports').select('reported_by'),
-                    supabase.from('crime_reports').select('reported_by'),
-                    supabase.from('emergency_reports').select('reported_by')
-                ]);
 
-                const counts: Record<string, number> = {};
-                
-                const processReports = (reports: any[] | null) => {
-                    if (!reports) return;
-                    reports.forEach(r => {
-                        if (r.reported_by) {
-                            counts[r.reported_by] = (counts[r.reported_by] || 0) + 1;
-                        }
-                    });
-                };
-
-                processReports(vRes.data);
-                processReports(cRes.data);
-                processReports(eRes.data);
-
-                setUserReportCounts(counts);
-            } catch (error) {
-                console.error("Error fetching report counts:", error);
-            }
-        };
-
-        fetchReportCounts();
-    }, []);
 
     const filteredUsers = useMemo(() => {
         return users.filter(user => {

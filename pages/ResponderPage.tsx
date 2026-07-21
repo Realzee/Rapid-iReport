@@ -115,9 +115,9 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 
         // Fetch assigned reports OR reported by me
-        const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
-        const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
-        const { data: aData, error: aError } = await supabase.from('emergency_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
+        const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`).order('reported_at', { ascending: false }).limit(100);
+        const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`).order('reported_at', { ascending: false }).limit(100);
+        const { data: aData, error: aError } = await supabase.from('emergency_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`).order('reported_at', { ascending: false }).limit(100);
         const { data: usersData, error: usersError } = await supabase.from('profiles').select('*').eq('company_id', profile.company_id);
 
         // Fetch Circulation List (Active Vehicle Reports)
@@ -127,7 +127,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         if (!isGlobalAdmin && profile.company_id) {
             circQuery = circQuery.or(`is_global.eq.true,company_id.eq.${profile.company_id},shared_with_company_ids.cs.{"${profile.company_id}"},assigned_to.eq.${profile.id}`);
         }
-        const { data: circData, error: circError } = await circQuery.order('reported_at', { ascending: false });
+        const { data: circData, error: circError } = await circQuery.order('reported_at', { ascending: false }).limit(100);
 
         if (vError || cError || aError) console.error("Error fetching reports:", vError || cError || aError);
         else {

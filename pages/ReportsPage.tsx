@@ -137,9 +137,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
             { data: companiesData, error: compError },
             { data: sharesData, error: sharesError }
         ] = await Promise.all([
-            vehicleQuery,
-            crimeQuery,
-            emergencyQuery,
+            vehicleQuery.order('reported_at', { ascending: false }).limit(200),
+            crimeQuery.order('reported_at', { ascending: false }).limit(200),
+            emergencyQuery.order('reported_at', { ascending: false }).limit(200),
             usersQuery,
             respondersQuery,
             supabase.from('companies').select('*'),

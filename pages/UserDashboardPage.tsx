@@ -56,9 +56,9 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
 
         // RLS now handles company-level filtering, so we can fetch all reports the user has access to.
         const reportPromises = [
-            supabase.from('vehicle_reports').select('*').neq('status', ReportStatus.DELETED),
-            supabase.from('crime_reports').select('*').neq('status', ReportStatus.DELETED),
-            supabase.from('emergency_reports').select('*').neq('status', ReportStatus.DELETED)
+            supabase.from('vehicle_reports').select('*').neq('status', ReportStatus.DELETED).order('reported_at', { ascending: false }).limit(100),
+            supabase.from('crime_reports').select('*').neq('status', ReportStatus.DELETED).order('reported_at', { ascending: false }).limit(100),
+            supabase.from('emergency_reports').select('*').neq('status', ReportStatus.DELETED).order('reported_at', { ascending: false }).limit(100)
         ];
 
         const usersPromise = profile.company_id 
