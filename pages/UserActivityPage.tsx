@@ -10,11 +10,35 @@ interface UserActivityPageProps {
 }
 
 const UserActivityPage: React.FC<UserActivityPageProps> = ({ profile }) => {
-    const [logs, setLogs] = useState<UserActivityLog[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [logs, setLogs] = useState<UserActivityLog[]>(() => {
+        try {
+            const cached = localStorage.getItem(`user_activity_logs_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [loading, setLoading] = useState(() => {
+        try {
+            const cached = localStorage.getItem(`user_activity_logs_${profile.id}`);
+            return !cached;
+        } catch {
+            return true;
+        }
+    });
     const [searchTerm, setSearchTerm] = useState('');
     const [actionFilter, setActionFilter] = useState<string>('all');
     const { addToast } = useToast();
+
+    useEffect(() => {
+        try {
+            if (logs.length > 0) {
+                localStorage.setItem(`user_activity_logs_${profile.id}`, JSON.stringify(logs));
+            }
+        } catch (e) {
+            console.warn("Error caching user activity logs:", e);
+        }
+    }, [logs, profile.id]);
 
     useEffect(() => {
         fetchLogs();
@@ -45,7 +69,7 @@ const UserActivityPage: React.FC<UserActivityPageProps> = ({ profile }) => {
 
             const { data, error } = await query
                 .order('created_at', { ascending: false })
-                .limit(1000);
+                .limit(250);
 
             if (error) {
                 console.error('Error fetching logs:', error);

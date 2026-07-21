@@ -195,7 +195,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         else {
             const combined = [...(vData || []), ...(cData || []), ...(aData || [])].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
             setAssignedReports(combined);
-            if (combined.length > 0 && !selectedReportId) setSelectedReportId(combined[0].id);
+            if (combined.length > 0) setSelectedReportId(currentId => currentId || combined[0].id);
         }
         
         if (circError) console.error("Error fetching circulation list:", circError);
@@ -206,7 +206,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
 
         setLoading(false);
         isInitialLoad.current = false;
-    }, [profile.id, profile.company_id, profile.role, profile.company?.name, selectedReportId]);
+    }, [profile.id, profile.company_id, profile.role, profile.company?.name]);
 
     useEffect(() => {
         fetchData();

@@ -124,8 +124,8 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
                 ...(aData || []).map(r => ({ ...r, type: 'emergency' as const }))
             ].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
             setMyReports(combined);
-            if (combined.length > 0 && !selectedReportId && window.innerWidth >= 1024) {
-                setSelectedReportId(combined[0].id);
+            if (combined.length > 0 && window.innerWidth >= 1024) {
+                setSelectedReportId(currentId => currentId || combined[0].id);
             }
         }
 
@@ -140,7 +140,7 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
 
     useEffect(() => {
         fetchMyData();
-    }, [profile.id, profile.company_id, selectedReportId]);
+    }, [profile.id, profile.company_id]);
 
     useEffect(() => {
         const handleUpsert = (payload: any) => {
