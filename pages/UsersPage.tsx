@@ -14,9 +14,30 @@ import { logUserAction } from '../utils/logger';
 import ConfirmModal from '../components/ConfirmModal';
 
 const UsersPage: React.FC = () => {
-    const [users, setUsers] = useState<Profile[]>([]);
-    const [companies, setCompanies] = useState<Company[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [users, setUsers] = useState<Profile[]>(() => {
+        try {
+            const cached = localStorage.getItem('users_page_users');
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [companies, setCompanies] = useState<Company[]>(() => {
+        try {
+            const cached = localStorage.getItem('users_page_companies');
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [loading, setLoading] = useState(() => {
+        try {
+            const cached = localStorage.getItem('users_page_users');
+            return !cached;
+        } catch {
+            return true;
+        }
+    });
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
@@ -29,7 +50,44 @@ const UsersPage: React.FC = () => {
     const [updatingCompanyId, setUpdatingCompanyId] = useState<string | null>(null);
     const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
     const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
-    const [userReportCounts, setUserReportCounts] = useState<Record<string, number>>({});
+    const [userReportCounts, setUserReportCounts] = useState<Record<string, number>>(() => {
+        try {
+            const cached = localStorage.getItem('users_page_report_counts');
+            return cached ? JSON.parse(cached) : {};
+        } catch {
+            return {};
+        }
+    });
+
+    useEffect(() => {
+        try {
+            if (users.length > 0) {
+                localStorage.setItem('users_page_users', JSON.stringify(users));
+            }
+        } catch (e) {
+            console.warn("Error caching UsersPage users:", e);
+        }
+    }, [users]);
+
+    useEffect(() => {
+        try {
+            if (companies.length > 0) {
+                localStorage.setItem('users_page_companies', JSON.stringify(companies));
+            }
+        } catch (e) {
+            console.warn("Error caching UsersPage companies:", e);
+        }
+    }, [companies]);
+
+    useEffect(() => {
+        try {
+            if (Object.keys(userReportCounts).length > 0) {
+                localStorage.setItem('users_page_report_counts', JSON.stringify(userReportCounts));
+            }
+        } catch (e) {
+            console.warn("Error caching UsersPage report counts:", e);
+        }
+    }, [userReportCounts]);
 
     // Filters
     const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');

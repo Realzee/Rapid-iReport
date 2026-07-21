@@ -12,11 +12,54 @@ const isVehicleReport = (report: Report): report is VehicleReport => 'license_pl
 const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
 
 const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
-    const [myReports, setMyReports] = useState<Report[]>([]);
-    const [companyUsers, setCompanyUsers] = useState<Profile[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [myReports, setMyReports] = useState<Report[]>(() => {
+        try {
+            const cached = localStorage.getItem(`user_reports_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [companyUsers, setCompanyUsers] = useState<Profile[]>(() => {
+        try {
+            const cached = localStorage.getItem(`user_company_users_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [loading, setLoading] = useState(() => {
+        try {
+            const cached = localStorage.getItem(`user_reports_${profile.id}`);
+            return !cached;
+        } catch {
+            return true;
+        }
+    });
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            if (myReports.length > 0) {
+                localStorage.setItem(`user_reports_${profile.id}`, JSON.stringify(myReports));
+            }
+        } catch (e) {
+            console.warn("Error caching user reports:", e);
+        }
+    }, [myReports, profile?.id]);
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            if (companyUsers.length > 0) {
+                localStorage.setItem(`user_company_users_${profile.id}`, JSON.stringify(companyUsers));
+            }
+        } catch (e) {
+            console.warn("Error caching user company users:", e);
+        }
+    }, [companyUsers, profile?.id]);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 1024);

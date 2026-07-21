@@ -42,10 +42,72 @@ const ResponderStatusBadge: React.FC<{ status: ResponderStatus }> = ({ status })
 // Main page component
 const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) => {
     const { requestWakeLock, releaseWakeLock } = useWakeLock();
-    const [assignedReports, setAssignedReports] = useState<Report[]>([]);
-    const [circulationReports, setCirculationReports] = useState<VehicleReport[]>([]);
-    const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [assignedReports, setAssignedReports] = useState<Report[]>(() => {
+        try {
+            const cached = localStorage.getItem(`responder_assigned_reports_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [circulationReports, setCirculationReports] = useState<VehicleReport[]>(() => {
+        try {
+            const cached = localStorage.getItem(`responder_circulation_reports_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [allUsers, setAllUsers] = useState<UserProfile[]>(() => {
+        try {
+            const cached = localStorage.getItem(`responder_users_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [loading, setLoading] = useState(() => {
+        try {
+            const cached = localStorage.getItem(`responder_assigned_reports_${profile.id}`);
+            return !cached;
+        } catch {
+            return true;
+        }
+    });
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            if (assignedReports.length > 0) {
+                localStorage.setItem(`responder_assigned_reports_${profile.id}`, JSON.stringify(assignedReports));
+            }
+        } catch (e) {
+            console.warn("Error caching responder assigned reports:", e);
+        }
+    }, [assignedReports, profile?.id]);
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            if (circulationReports.length > 0) {
+                localStorage.setItem(`responder_circulation_reports_${profile.id}`, JSON.stringify(circulationReports));
+            }
+        } catch (e) {
+            console.warn("Error caching responder circulation reports:", e);
+        }
+    }, [circulationReports, profile?.id]);
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            if (allUsers.length > 0) {
+                localStorage.setItem(`responder_users_${profile.id}`, JSON.stringify(allUsers));
+            }
+        } catch (e) {
+            console.warn("Error caching responder users:", e);
+        }
+    }, [allUsers, profile?.id]);
+
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
         const hasDraft = !!localStorage.getItem('new-report');

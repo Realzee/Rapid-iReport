@@ -27,7 +27,14 @@ interface DashboardProps {
 const ACTIVE_STATUSES = ACTIVE_REPORT_STATUSES;
 
 const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onInitialReportHandled, setView }) => {
-    const [reports, setReports] = useState<Report[]>([]);
+    const [reports, setReports] = useState<Report[]>(() => {
+        try {
+            const cached = localStorage.getItem(`dashboard_reports_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
     const [responders, setResponders] = useState<Responder[]>([]);
     const [isMobile, setIsMobile] = useState(false);
     const [mobileTab, setMobileTab] = useState<'list' | 'map'>('list');
@@ -38,10 +45,31 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
-    const [allUsers, setAllUsers] = useState<Profile[]>([]);
+    const [allUsers, setAllUsers] = useState<Profile[]>(() => {
+        try {
+            const cached = localStorage.getItem(`dashboard_users_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
     const allUsersRef = useRef<Profile[]>([]);
-    const [companies, setCompanies] = useState<Company[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [companies, setCompanies] = useState<Company[]>(() => {
+        try {
+            const cached = localStorage.getItem(`dashboard_companies_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [loading, setLoading] = useState(() => {
+        try {
+            const cached = localStorage.getItem(`dashboard_reports_${profile.id}`);
+            return !cached;
+        } catch {
+            return true;
+        }
+    });
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -155,7 +183,57 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     const isGlobalAdmin = profile.role === UserRole.ADMIN && 
         (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 
-    const [reportCounts, setReportCounts] = useState({ vehicle: 0, crime: 0, emergency: 0 });
+    const [reportCounts, setReportCounts] = useState(() => {
+        try {
+            const cached = localStorage.getItem(`dashboard_report_counts_${profile.id}`);
+            return cached ? JSON.parse(cached) : { vehicle: 0, crime: 0, emergency: 0 };
+        } catch {
+            return { vehicle: 0, crime: 0, emergency: 0 };
+        }
+    });
+
+    // Stale-While-Revalidate Cache persistence effect
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            if (reports.length > 0) {
+                localStorage.setItem(`dashboard_reports_${profile.id}`, JSON.stringify(reports));
+            }
+        } catch (e) {
+            console.warn("Error caching dashboard reports:", e);
+        }
+    }, [reports, profile?.id]);
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            if (allUsers.length > 0) {
+                localStorage.setItem(`dashboard_users_${profile.id}`, JSON.stringify(allUsers));
+            }
+        } catch (e) {
+            console.warn("Error caching dashboard users:", e);
+        }
+    }, [allUsers, profile?.id]);
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            if (companies.length > 0) {
+                localStorage.setItem(`dashboard_companies_${profile.id}`, JSON.stringify(companies));
+            }
+        } catch (e) {
+            console.warn("Error caching dashboard companies:", e);
+        }
+    }, [companies, profile?.id]);
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            localStorage.setItem(`dashboard_report_counts_${profile.id}`, JSON.stringify(reportCounts));
+        } catch (e) {
+            console.warn("Error caching dashboard report counts:", e);
+        }
+    }, [reportCounts, profile?.id]);
 
     const fetchData = useCallback(async () => {
         setLoading(true);

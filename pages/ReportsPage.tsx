@@ -52,11 +52,90 @@ interface ReportsPageProps {
 }
 
 const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
-    const [reports, setReports] = useState<(Report & {type: 'vehicle' | 'crime' | 'emergency'})[]>([]);
-    const [users, setUsers] = useState<Profile[]>([]);
-    const [companies, setCompanies] = useState<Company[]>([]);
-    const [responders, setResponders] = useState<Responder[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [reports, setReports] = useState<(Report & {type: 'vehicle' | 'crime' | 'emergency'})[]>(() => {
+        try {
+            const cached = localStorage.getItem(`reports_page_reports_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [users, setUsers] = useState<Profile[]>(() => {
+        try {
+            const cached = localStorage.getItem(`reports_page_users_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [companies, setCompanies] = useState<Company[]>(() => {
+        try {
+            const cached = localStorage.getItem(`reports_page_companies_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [responders, setResponders] = useState<Responder[]>(() => {
+        try {
+            const cached = localStorage.getItem(`reports_page_responders_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [loading, setLoading] = useState(() => {
+        try {
+            const cached = localStorage.getItem(`reports_page_reports_${profile.id}`);
+            return !cached;
+        } catch {
+            return true;
+        }
+    });
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            if (reports.length > 0) {
+                localStorage.setItem(`reports_page_reports_${profile.id}`, JSON.stringify(reports));
+            }
+        } catch (e) {
+            console.warn("Error caching reports page reports:", e);
+        }
+    }, [reports, profile?.id]);
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            if (users.length > 0) {
+                localStorage.setItem(`reports_page_users_${profile.id}`, JSON.stringify(users));
+            }
+        } catch (e) {
+            console.warn("Error caching reports page users:", e);
+        }
+    }, [users, profile?.id]);
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            if (companies.length > 0) {
+                localStorage.setItem(`reports_page_companies_${profile.id}`, JSON.stringify(companies));
+            }
+        } catch (e) {
+            console.warn("Error caching reports page companies:", e);
+        }
+    }, [companies, profile?.id]);
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            if (responders.length > 0) {
+                localStorage.setItem(`reports_page_responders_${profile.id}`, JSON.stringify(responders));
+            }
+        } catch (e) {
+            console.warn("Error caching reports page responders:", e);
+        }
+    }, [responders, profile?.id]);
     
     const [searchTerm, setSearchTerm] = useState('');
     const [filters, setFilters] = useState<{ type: 'all' | 'vehicle' | 'crime' | 'emergency', severity: Severity | 'all' }>({
