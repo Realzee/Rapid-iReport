@@ -183,7 +183,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const [itemsPerPage] = useState(15);
 
     const fetchData = async () => {
-        setLoading(true);
+        if (reports.length === 0) {
+            setLoading(true);
+        }
 
         const usersQuery = supabase.from('profiles').select('*');
         const respondersQuery = supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER);

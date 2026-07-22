@@ -236,7 +236,9 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     }, [reportCounts, profile?.id]);
 
     const fetchData = useCallback(async () => {
-        setLoading(true);
+        if (reports.length === 0) {
+            setLoading(true);
+        }
 
         let allowedReporterIds: string[] | null = null;
 

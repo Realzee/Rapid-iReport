@@ -283,7 +283,9 @@ const App: React.FC = () => {
 
     if (session?.user && supabase) {
         const loadProfile = async () => {
-            setProfileLoading(true);
+            if (!profile) {
+                setProfileLoading(true);
+            }
             try {
                 const { data, error: fetchError } = await supabase
                     .from('profiles')

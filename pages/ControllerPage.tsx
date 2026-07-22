@@ -38,7 +38,14 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         if (!profile.company.allowed_modules) return false;
         return profile.company.allowed_modules.includes(modId);
     };
-    const [reports, setReports] = useState<Report[]>([]);
+    const [reports, setReports] = useState<Report[]>(() => {
+        try {
+            const cached = localStorage.getItem(`controller_reports_${profile.id}`);
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
     const [pendingShares, setPendingShares] = useState<ReportShare[]>([]);
     const [isSharingModalOpen, setIsSharingModalOpen] = useState(false);
 
@@ -87,7 +94,25 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         };
     }, [requestWakeLock, releaseWakeLock]);
     const [responders, setResponders] = useState<Responder[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(() => {
+        try {
+            const cached = localStorage.getItem(`controller_reports_${profile.id}`);
+            return !cached;
+        } catch {
+            return true;
+        }
+    });
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            if (reports.length > 0) {
+                localStorage.setItem(`controller_reports_${profile.id}`, JSON.stringify(reports));
+            }
+        } catch (e) {
+            console.warn("Error caching controller reports:", e);
+        }
+    }, [reports, profile?.id]);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [selectedResponderId, setSelectedResponderId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<ControllerTab>('events');
@@ -214,7 +239,9 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         (profile.company?.name?.toLowerCase().includes('rapid911') || false), [profile]);
 
     const fetchData = async () => {
-        setLoading(true);
+        if (reports.length === 0) {
+            setLoading(true);
+        }
 
         const usersQuery = supabase.from('profiles').select('*');
         if (!isGlobalAdmin && profile.company_id) {

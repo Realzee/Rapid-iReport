@@ -85,13 +85,13 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   }, []);
 
   const value = useMemo(() => ({
-    mainLogoUrl: loading ? defaultLogoUrl : mainLogoUrl,
+    mainLogoUrl,
     setMainLogoUrl,
     defaultLogoUrl,
-    faviconUrl: loading ? defaultFaviconUrl : faviconUrl,
+    faviconUrl,
     setFaviconUrl,
     defaultFaviconUrl,
-  }), [mainLogoUrl, faviconUrl, loading]);
+  }), [mainLogoUrl, faviconUrl]);
 
   return (
     <SettingsContext.Provider value={value}>
