@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { 
@@ -6,8 +6,6 @@ import {
   Wifi, 
   WifiOff, 
   Navigation, 
-  Play, 
-  Square, 
   Settings, 
   Terminal, 
   Send, 
@@ -23,41 +21,48 @@ import {
   Power,
   RotateCw,
   Gauge,
-  Download,
   MapPin,
   Copy,
-  ExternalLink
+  Plus,
+  Search,
+  CheckCircle2,
+  Radio,
+  Layers,
+  Fuel,
+  KeyRound
 } from 'lucide-react';
 import { Profile } from '../types';
 import { useToast } from '../contexts/ToastContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../utils/supabase';
 import { TrackingUnitModal } from './TrackingUnitModal';
 import { TripSummaryCard } from './TripSummaryCard';
 
-// Interfaces for our simulated Fleet
-interface TK116Device {
+export interface TK116Device {
   id: string;
   name: string;
   plate: string;
   imei: string;
+  simNumber?: string;
+  model?: string;
   status: 'moving' | 'stationary' | 'offline';
   lat: number;
   lng: number;
   speed: number;
   course: number;
-  batteryVoltage: number; // in mV, e.g. 12400mV
-  batteryPercent: number; // e.g. 85%
+  batteryVoltage: number; // in mV, e.g. 12600
+  batteryPercent: number; // e.g. 95%
   accStatus: boolean; // Ignition ON/OFF
   fuelCut: boolean; // Relay ON/OFF (Fuel Cut Triggered)
   mileage: number; // in meters
   fuelLevel: number; // in percentage
   lastUpdate: string;
-  speedLimit: number; // custom speed limit set by command
+  speedLimit: number;
   pathHistory: [number, number][];
   alerts: string[];
 }
 
-interface TripHistoryItem {
+export interface TripHistoryItem {
   id: string;
   timestamp: string;
   event: string;
@@ -70,43 +75,17 @@ interface TripHistoryItem {
   status: string;
 }
 
-interface RawPacket {
+export interface RawPacket {
   id: string;
   timestamp: string;
   imei: string;
   direction: 'UP' | 'DOWN';
-  pid: string; // "0x01", "0x03", "0x12", "0x15", "0x80", etc.
-  pidName: string; // e.g. "Location Package", "Command Package"
+  pid: string; // "0x12", "0x13", "0x80", etc.
+  pidName: string;
   rawHex: string;
   decoded: Record<string, any>;
 }
 
-// Coordinate paths for continuous simulation loop around JHB
-const JOHANNESBURG_PATHS: Record<string, [number, number][]> = {
-  alpha: [
-    [-26.2041, 28.0473], [-26.2010, 28.0490], [-26.1980, 28.0515], [-26.1950, 28.0540],
-    [-26.1910, 28.0565], [-26.1880, 28.0550], [-26.1850, 28.0510], [-26.1840, 28.0460],
-    [-26.1860, 28.0410], [-26.1895, 28.0380], [-26.1930, 28.0375], [-26.1970, 28.0400],
-    [-26.2010, 28.0435], [-26.2041, 28.0473]
-  ],
-  bravo: [
-    [-26.2580, 27.8520], [-26.2590, 27.8540], [-26.2610, 27.8560], [-26.2630, 27.8590],
-    [-26.2650, 27.8620], [-26.2660, 27.8600], [-26.2640, 27.8550], [-26.2610, 27.8510],
-    [-26.2580, 27.8520]
-  ],
-  supervisor: [
-    [-26.1076, 28.0567], [-26.1040, 28.0610], [-26.1010, 28.0670], [-26.0980, 28.0720],
-    [-26.0950, 28.0700], [-26.0970, 28.0650], [-26.1010, 28.0590], [-26.1045, 28.0540],
-    [-26.1076, 28.0567]
-  ],
-  armed: [
-    [-26.1243, 28.1022], [-26.1265, 28.1060], [-26.1290, 28.1110], [-26.1320, 28.1150],
-    [-26.1350, 28.1120], [-26.1330, 28.1070], [-26.1295, 28.1010], [-26.1260, 28.0980],
-    [-26.1243, 28.1022]
-  ]
-};
-
-// Component to dynamically adjust map view when a vehicle is selected
 const MapCenterController: React.FC<{ coords: [number, number]; zoom?: number }> = ({ coords, zoom = 14 }) => {
   const map = useMap();
   useEffect(() => {
@@ -115,66 +94,120 @@ const MapCenterController: React.FC<{ coords: [number, number]; zoom?: number }>
   return null;
 };
 
-// Hex helper functions
-const toHex8 = (val: number): string => {
-  const v = Math.max(0, Math.min(255, Math.floor(val)));
-  return v.toString(16).padStart(2, '0').toUpperCase();
-};
+// Initial default units for South Africa JHB region if database is empty
+const INITIAL_DEFAULT_UNITS: Omit<TK116Device, 'id' | 'pathHistory' | 'alerts'>[] = [
+  {
+    name: 'Armed Response 1',
+    plate: 'HW82GP-GP',
+    imei: '354188046036385',
+    simNumber: '+27 82 901 2345',
+    model: 'Eelink TK116 4G',
+    status: 'moving',
+    lat: -26.2041,
+    lng: 28.0473,
+    speed: 52,
+    course: 140,
+    batteryVoltage: 12800,
+    batteryPercent: 98,
+    accStatus: true,
+    fuelCut: false,
+    mileage: 142850,
+    fuelLevel: 84,
+    lastUpdate: 'Just now',
+    speedLimit: 120
+  },
+  {
+    name: 'Supervisor Unit Alpha',
+    plate: 'TX11GP-GP',
+    imei: '354188046036393',
+    simNumber: '+27 83 456 7890',
+    model: 'Eelink TK116 4G',
+    status: 'moving',
+    lat: -26.1076,
+    lng: 28.0567,
+    speed: 68,
+    course: 65,
+    batteryVoltage: 13200,
+    batteryPercent: 100,
+    accStatus: true,
+    fuelCut: false,
+    mileage: 210450,
+    fuelLevel: 62,
+    lastUpdate: '1 min ago',
+    speedLimit: 120
+  },
+  {
+    name: 'Patrol Cruiser Delta',
+    plate: 'BB44GP-GP',
+    imei: '354188046036401',
+    simNumber: '+27 84 112 3344',
+    model: 'Eelink TK116 4G',
+    status: 'stationary',
+    lat: -26.2580,
+    lng: 27.8520,
+    speed: 0,
+    course: 0,
+    batteryVoltage: 12400,
+    batteryPercent: 88,
+    accStatus: false,
+    fuelCut: false,
+    mileage: 98200,
+    fuelLevel: 91,
+    lastUpdate: '3 mins ago',
+    speedLimit: 100
+  },
+  {
+    name: 'Tactical Unit Bravo',
+    plate: 'FC99GP-GP',
+    imei: '354188046036419',
+    simNumber: '+27 82 888 9900',
+    model: 'Eelink TK116 4G',
+    status: 'moving',
+    lat: -26.1243,
+    lng: 28.1022,
+    speed: 42,
+    course: 220,
+    batteryVoltage: 12600,
+    batteryPercent: 92,
+    accStatus: true,
+    fuelCut: false,
+    mileage: 175600,
+    fuelLevel: 45,
+    lastUpdate: 'Just now',
+    speedLimit: 120
+  }
+];
 
-const toHex16 = (val: number): string => {
-  const v = Math.max(0, Math.min(65535, Math.floor(val)));
-  return v.toString(16).padStart(4, '0').toUpperCase();
-};
-
-const toHex32 = (val: number): string => {
-  const v = Math.max(0, Math.min(4294967295, Math.floor(val)));
-  return v.toString(16).padStart(8, '0').toUpperCase();
-};
-
-const stringToHex = (str: string): string => {
-  return Array.from(str).map(c => c.charCodeAt(0).toString(16).padStart(2, '0').toUpperCase()).join('');
-};
-
-const generateMockHistory = (vehicle: TK116Device): TripHistoryItem[] => {
+const generateHistoryForUnit = (unit: TK116Device): TripHistoryItem[] => {
   const items: TripHistoryItem[] = [];
-  const baseLat = vehicle.lat;
-  const baseLng = vehicle.lng;
+  const baseLat = unit.lat;
+  const baseLng = unit.lng;
   const now = new Date();
-  
-  // Let's create some events
+
   const events = [
-    { label: 'Routine Location Ping', speed: 45, acc: true, fuelOffset: -1, mileageOffset: -12000, timeOffset: 50 },
-    { label: 'ACC Ignition OFF', speed: 0, acc: false, fuelOffset: -1.2, mileageOffset: -12000, timeOffset: 95 },
-    { label: 'Routine Location Ping', speed: 55, acc: true, fuelOffset: -1.2, mileageOffset: -14500, timeOffset: 120 },
-    { label: 'ACC Ignition ON', speed: 0, acc: true, fuelOffset: -2, mileageOffset: -22000, timeOffset: 155 },
-    { label: 'Geofence Exit: JHB Central', speed: 60, acc: true, fuelOffset: -2.5, mileageOffset: -24000, timeOffset: 180 },
-    { label: 'Routine Location Ping', speed: 40, acc: true, fuelOffset: -3, mileageOffset: -28000, timeOffset: 240 },
-    { label: 'ACC Ignition OFF', speed: 0, acc: false, fuelOffset: -3.5, mileageOffset: -31000, timeOffset: 300 },
-    { label: 'Routine Location Ping', speed: 50, acc: true, fuelOffset: -3.5, mileageOffset: -31000, timeOffset: 345 },
-    { label: 'ACC Ignition ON', speed: 0, acc: true, fuelOffset: -4, mileageOffset: -35000, timeOffset: 360 },
-    { label: 'Geofence Entry: Depot', speed: 15, acc: true, fuelOffset: -4.5, mileageOffset: -42000, timeOffset: 420 },
-    { label: 'Routine Location Ping', speed: 0, acc: false, fuelOffset: -5, mileageOffset: -45000, timeOffset: 480 },
-    { label: 'ACC Ignition OFF', speed: 0, acc: false, fuelOffset: -5, mileageOffset: -45000, timeOffset: 510 },
+    { label: 'Routine Location Ping', speed: 48, acc: true, fuelOffset: 0.5, mileageOffset: -2000, timeOffset: 5 },
+    { label: 'Speeding Alert (Over 120 km/h)', speed: 128, acc: true, fuelOffset: 1.2, mileageOffset: -8000, timeOffset: 25 },
+    { label: 'Routine Location Ping', speed: 65, acc: true, fuelOffset: 2.0, mileageOffset: -14000, timeOffset: 50 },
+    { label: 'ACC Ignition OFF', speed: 0, acc: false, fuelOffset: 2.1, mileageOffset: -18000, timeOffset: 90 },
+    { label: 'ACC Ignition ON', speed: 0, acc: true, fuelOffset: 2.1, mileageOffset: -18000, timeOffset: 110 },
+    { label: 'Geofence Exit: Depot Precinct', speed: 35, acc: true, fuelOffset: 3.5, mileageOffset: -25000, timeOffset: 150 },
+    { label: 'Routine Location Ping', speed: 50, acc: true, fuelOffset: 4.8, mileageOffset: -32000, timeOffset: 210 },
   ];
 
-  const multiplier = vehicle.id === '4' ? 1.5 : (vehicle.id === '3' ? 0.8 : 1.0);
-
   events.forEach((ev, idx) => {
-    const eventTime = new Date(now.getTime() - ev.timeOffset * 60 * 1000 * multiplier);
-    
-    // Add minor offsets to lat/lng so it is realistic path breadcrumbs
-    const latOffset = Math.sin(idx * 0.5) * 0.015;
-    const lngOffset = Math.cos(idx * 0.5) * 0.015;
+    const eventTime = new Date(now.getTime() - ev.timeOffset * 60 * 1000);
+    const latOffset = Math.sin(idx * 0.7) * 0.012;
+    const lngOffset = Math.cos(idx * 0.7) * 0.012;
 
     items.push({
-      id: `${vehicle.id}-hist-${idx}`,
-      timestamp: eventTime.toLocaleString(),
+      id: `${unit.id}-hist-${idx}`,
+      timestamp: eventTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       event: ev.label,
       lat: Number((baseLat + latOffset).toFixed(6)),
       lng: Number((baseLng + lngOffset).toFixed(6)),
-      speed: ev.speed === 0 ? 0 : Math.floor(ev.speed * multiplier),
-      mileage: Math.max(1000, Math.floor(vehicle.mileage + ev.mileageOffset * multiplier)),
-      fuelLevel: Math.min(100, Math.max(10, Math.floor(vehicle.fuelLevel - ev.fuelOffset))),
+      speed: ev.speed,
+      mileage: Math.max(1000, Math.floor(unit.mileage - ev.mileageOffset)),
+      fuelLevel: Math.min(100, Math.max(10, Math.floor(unit.fuelLevel - ev.fuelOffset))),
       accStatus: ev.acc,
       status: ev.speed > 0 ? 'moving' : 'stationary'
     });
@@ -189,2082 +222,954 @@ interface FleetManagementProps {
 
 export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => {
   const { addToast } = useToast();
-  const [vehicles, setVehicles] = useState<TK116Device[]>([]);
+  const { theme } = useTheme();
+
+  // Instant local storage initialization
+  const cacheKey = `fleet_vehicles_${profile.company_id || 'default'}`;
+  const [vehicles, setVehicles] = useState<TK116Device[]>(() => {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) return JSON.parse(cached);
+    } catch (e) {
+      console.warn("Error reading cached fleet vehicles:", e);
+    }
+    return INITIAL_DEFAULT_UNITS.map((u, i) => ({
+      ...u,
+      id: `dev-${i + 1}`,
+      pathHistory: [[u.lat, u.lng]],
+      alerts: []
+    }));
+  });
+
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(() => vehicles[0]?.id || 'dev-1');
+  const [activeSubTab, setActiveSubTab] = useState<'map' | 'cmd' | 'guide' | 'packets' | 'history'>('map');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'moving' | 'stationary' | 'offline'>('all');
+  const [mapStyle, setMapStyle] = useState<'street' | 'satellite'>('street');
+  
+  // Modals & UI states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<any>(null);
+  const [commandInput, setCommandInput] = useState('');
+  const [speedLimitInput, setSpeedLimitInput] = useState('120');
+  const [isSendingCmd, setIsSendingCmd] = useState(false);
+  const [terminalLogs, setTerminalLogs] = useState<RawPacket[]>([]);
 
-  const fetchTrackingUnits = async () => {
+  // Selected vehicle reference
+  const selectedVehicle = useMemo(() => {
+    return vehicles.find(v => v.id === selectedVehicleId) || vehicles[0];
+  }, [vehicles, selectedVehicleId]);
+
+  // Save vehicles to local cache whenever state updates
+  useEffect(() => {
+    try {
+      if (vehicles.length > 0) {
+        localStorage.setItem(cacheKey, JSON.stringify(vehicles));
+      }
+    } catch (e) {
+      console.warn("Error caching fleet vehicles:", e);
+    }
+  }, [vehicles, cacheKey]);
+
+  // Fetch real units from Supabase in background
+  const fetchTrackingUnits = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('tracking_units')
         .select('*')
         .eq('company_id', profile.company_id);
-      
-      if (error) throw error;
-      
-      if (data) {
-        if (data.length === 0) {
-          // Seed initial high-quality default tracking units for the company
-          const defaultUnits = [
-            {
-              name: 'Armed Response 1',
-              plate: 'HW82GP-GP',
-              imei: '354188046036385',
-              status: 'moving',
-              lat: -26.2041,
-              lng: 28.0473,
-              speed: 48,
-              course: 145,
-              battery_voltage: 12600,
-              battery_percent: 96,
-              acc_status: true,
-              fuel_cut: false,
-              mileage: 142850,
-              fuel_level: 82,
-              speed_limit: 120,
-              company_id: profile.company_id
-            },
-            {
-              name: 'Supervisor Unit',
-              plate: 'TX11GP-GP',
-              imei: '354188046036393',
-              status: 'moving',
-              lat: -26.1076,
-              lng: 28.0567,
-              speed: 64,
-              course: 60,
-              battery_voltage: 13200,
-              battery_percent: 99,
-              acc_status: true,
-              fuel_cut: false,
-              mileage: 210450,
-              fuel_level: 58,
-              speed_limit: 120,
-              company_id: profile.company_id
-            },
-            {
-              name: 'Patrol Cruiser Alpha',
-              plate: 'BB44GP-GP',
-              imei: '354188046036401',
-              status: 'stationary',
-              lat: -26.2580,
-              lng: 27.8520,
-              speed: 0,
-              course: 270,
-              battery_voltage: 12200,
-              battery_percent: 80,
-              acc_status: false,
-              fuel_cut: false,
-              mileage: 89340,
-              fuel_level: 95,
-              speed_limit: 100,
-              company_id: profile.company_id
-            }
-          ];
-          const { data: insertedData, error: insertError } = await supabase
-            .from('tracking_units')
-            .insert(defaultUnits)
-            .select();
-          
-          if (insertError) throw insertError;
-          if (insertedData) {
-            setVehicles(insertedData.map(d => ({
-              id: d.id,
-              name: d.name,
-              plate: d.plate,
-              imei: d.imei,
-              status: d.status as any,
-              lat: Number(d.lat) || 0,
-              lng: Number(d.lng) || 0,
-              speed: Number(d.speed) || 0,
-              course: Number(d.course) || 0,
-              batteryVoltage: Number(d.battery_voltage) || 0,
-              batteryPercent: Number(d.battery_percent) || 0,
-              accStatus: d.acc_status || false,
-              fuelCut: d.fuel_cut || false,
-              mileage: Number(d.mileage) || 0,
-              fuelLevel: Number(d.fuel_level) || 0,
-              lastUpdate: new Date(d.updated_at).toLocaleTimeString(),
-              speedLimit: Number(d.speed_limit) || 100,
-              pathHistory: [[Number(d.lat) || -26.2041, Number(d.lng) || 28.0473]],
-              alerts: []
-            })));
-            return;
-          }
-        }
 
-        setVehicles(data.map(d => ({
-          id: d.id,
-          name: d.name,
-          plate: d.plate,
-          imei: d.imei,
-          status: d.status as any,
-          lat: Number(d.lat) || 0,
-          lng: Number(d.lng) || 0,
-          speed: Number(d.speed) || 0,
-          course: Number(d.course) || 0,
-          batteryVoltage: Number(d.battery_voltage) || 0,
-          batteryPercent: Number(d.battery_percent) || 0,
-          accStatus: d.acc_status || false,
-          fuelCut: d.fuel_cut || false,
-          mileage: Number(d.mileage) || 0,
-          fuelLevel: Number(d.fuel_level) || 0,
-          lastUpdate: new Date(d.updated_at).toLocaleTimeString(),
-          speedLimit: Number(d.speed_limit) || 100,
-          pathHistory: d.lat && d.lng ? [[Number(d.lat), Number(d.lng)]] : [],
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const loaded: TK116Device[] = data.map((item, idx) => ({
+          id: item.id,
+          name: item.name || `Unit ${idx + 1}`,
+          plate: item.plate || 'NO PLATE',
+          imei: item.imei || '354188046000000',
+          simNumber: item.sim_number || '+27 82 000 0000',
+          model: item.model || 'Eelink TK116 4G',
+          status: (item.status as any) || 'stationary',
+          lat: Number(item.lat) || -26.2041 + (idx * 0.02),
+          lng: Number(item.lng) || 28.0473 + (idx * 0.02),
+          speed: Number(item.speed) || 0,
+          course: Number(item.course) || 0,
+          batteryVoltage: Number(item.battery_voltage) || 12600,
+          batteryPercent: Number(item.battery_percent) || 95,
+          accStatus: Boolean(item.acc_status),
+          fuelCut: Boolean(item.fuel_cut),
+          mileage: Number(item.mileage) || 100000,
+          fuelLevel: Number(item.fuel_level) || 80,
+          lastUpdate: item.updated_at ? new Date(item.updated_at).toLocaleTimeString() : 'Just now',
+          speedLimit: Number(item.speed_limit) || 120,
+          pathHistory: [[Number(item.lat) || -26.2041, Number(item.lng) || 28.0473]],
           alerts: []
-        })));
+        }));
+        setVehicles(loaded);
       }
-    } catch (err) {
-      console.error(err);
-      addToast("Failed to fetch tracking units", "error");
+    } catch (err: any) {
+      console.warn("Supabase tracking units sync (using cached/fallback):", err.message);
     }
-  };
+  }, [profile.company_id]);
 
   useEffect(() => {
     fetchTrackingUnits();
-  }, [profile.company_id]);
 
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
-  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
-  const [activeSubTab, setActiveSubTab] = useState<'map' | 'telemetry' | 'terminal' | 'history'>('map');
-  const [histories, setHistories] = useState<Record<string, TripHistoryItem[]>>({});
-  const [plottedTripVehicleId, setPlottedTripVehicleId] = useState<string | null>(null);
-  const [focusedHistoryItem, setFocusedHistoryItem] = useState<TripHistoryItem | null>(null);
-  const [historySearchText, setHistorySearchText] = useState('');
-  const [historyFilterType, setHistoryFilterType] = useState<'all' | 'moving' | 'stationary' | 'alert'>('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [rawPackets, setRawPackets] = useState<RawPacket[]>([]);
-  const [selectedPacket, setSelectedPacket] = useState<RawPacket | null>(null);
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel('public-tracking-units')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tracking_units' }, () => {
+        fetchTrackingUnits();
+      })
+      .subscribe();
 
-  // Clear plotted history when selected vehicle changes to avoid visual overlap
-  useEffect(() => {
-    setFocusedHistoryItem(null);
-    setPlottedTripVehicleId(null);
-  }, [selectedVehicleId]);
-  
-  // Simulator command state
-  const [simCommand, setSimCommand] = useState<string>('RESET#');
-  const [simCustomParam, setSimCustomParam] = useState<string>('');
-  const [simLogs, setSimLogs] = useState<{ time: string; text: string; type: 'info' | 'out' | 'in' | 'error' }[]>([]);
-  const [isTransmitting, setIsSimTransmitting] = useState(false);
-  const [generatedHexCmd, setGeneratedHexCmd] = useState<string>('');
-  const [responseHexCmd, setResponseHexCmd] = useState<string>('');
-  const [simSequence, setSimSequence] = useState<number>(101);
-
-  // References for periodic counters
-  const simSequenceRef = useRef(101);
-  const pathIndices = useRef<Record<string, number>>({ alpha: 0, bravo: 0, supervisor: 0, armed: 0 });
-
-  const selectedVehicle = useMemo(() => {
-    const found = vehicles.find(v => v.id === selectedVehicleId) || vehicles[0];
-    if (found) return found;
-    return {
-      id: 'no-vehicle',
-      name: 'No Tracking Units Registered',
-      plate: '---',
-      imei: '000000000000000',
-      status: 'offline' as const,
-      lat: -26.2041,
-      lng: 28.0473,
-      speed: 0,
-      course: 0,
-      batteryVoltage: 0,
-      batteryPercent: 0,
-      accStatus: false,
-      fuelCut: false,
-      mileage: 0,
-      fuelLevel: 0,
-      lastUpdate: '---',
-      speedLimit: 100,
-      pathHistory: [],
-      alerts: []
+    return () => {
+      supabase.removeChannel(channel);
     };
-  }, [vehicles, selectedVehicleId]);
+  }, [fetchTrackingUnits]);
 
-  const filteredVehicles = useMemo(() => {
-    return vehicles.filter(v => 
-      v.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.plate.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.imei.includes(searchTerm)
-    );
-  }, [vehicles, searchTerm]);
-
-  // Terminal autoscroll helper
-  const terminalEndRef = useRef<HTMLDivElement>(null);
+  // Smooth live telemetry pulse for active moving vehicles
   useEffect(() => {
-    if (terminalEndRef.current) {
-      terminalEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [rawPackets]);
+    const timer = setInterval(() => {
+      setVehicles(prevVehicles => {
+        return prevVehicles.map(v => {
+          if (v.status !== 'moving') return v;
 
-  // Helper to generate beautifully parsed/formatted Eelink Hex Packets
-  const generateEelinkPacket = (type: string, device: TK116Device, seq: number): RawPacket => {
-    const timestamp = new Date().toLocaleTimeString();
-    let rawHex = '';
-    let decoded: Record<string, any> = {};
-    let pidName = '';
+          // Tiny GPS movement delta
+          const speedFactor = (v.speed || 40) / 36000;
+          const rad = (v.course * Math.PI) / 180;
+          const dLat = Math.cos(rad) * speedFactor;
+          const dLng = Math.sin(rad) * speedFactor;
 
-    const mark = '6767';
-    const seqHex = toHex16(seq);
+          const newLat = Number((v.lat + dLat).toFixed(6));
+          const newLng = Number((v.lng + dLng).toFixed(6));
+          const newPath = [...v.pathHistory, [newLat, newLng] as [number, number]].slice(-25);
 
-    switch (type) {
-      case '0x01': { // Login
-        pidName = 'Login Package';
-        const imeiHex = stringToHex(device.imei.slice(0, 8)); // Mock IMEIBcd/Hex
-        const sizeHex = toHex16(16); // Size of Sequence and Content (Sequence(2) + IMEI(8) + Language(1) + Timezone(1) + SysVer(2) + AppVer(2) = 16)
-        rawHex = `${mark}01${sizeHex}${seqHex}${imeiHex}010002050205`;
-        decoded = {
-          Mark: '0x67 0x67',
-          PID: '0x01 (Login)',
-          Size: 16,
-          Sequence: seq,
-          IMEI: device.imei,
-          Language: '0x01 (English)',
-          Timezone: 'UTC+0',
-          'System Version': 'V2.0.5',
-          'Application Version': 'V2.0.5'
-        };
-        break;
-      }
-      case '0x03': { // Heartbeat
-        pidName = 'Heartbeat Package';
-        const sizeHex = toHex16(4); // Sequence(2) + Status(2) = 4
-        // Status bits: ACC, Engine fired, Designed for car, GPS fixed, etc.
-        const statusVal = (device.accStatus ? 4 : 0) | (device.speed > 0 ? 1 : 0) | 2; 
-        const statusHex = toHex16(statusVal);
-        rawHex = `${mark}03${sizeHex}${seqHex}${statusHex}`;
-        decoded = {
-          Mark: '0x67 0x67',
-          PID: '0x03 (Heartbeat)',
-          Size: 4,
-          Sequence: seq,
-          'Device Status Bitmask': `0x${statusHex}`,
-          'GPS Fixed': (statusVal & 1) ? 'Yes' : 'No',
-          'Car Designed': (statusVal & 2) ? 'Yes' : 'No',
-          'ACC Ignition': (statusVal & 4) ? 'ON' : 'OFF',
-          'Relay Triggered': device.fuelCut ? 'Yes (Fuel Cut)' : 'No'
-        };
-        break;
-      }
-      case '0x12': { // Location
-        pidName = 'Location Package';
-        // Size = Sequence(2) + LocationCompound(N) + Status(2) + Battery(2) + AIN0(2) + AIN1(2) + Mileage(4) + Sensors... Let's use 38 bytes total
-        const sizeHex = toHex16(34);
-        
-        // Mock Location compounds (Lat/Lng mapped to integer representations)
-        const latVal = Math.floor(device.lat * 180000); 
-        const lngVal = Math.floor(device.lng * 180000);
-        const latHex = toHex32(latVal < 0 ? 0xFFFFFFFF + latVal + 1 : latVal);
-        const lngHex = toHex32(lngVal < 0 ? 0xFFFFFFFF + lngVal + 1 : lngVal);
-
-        const speedHex = toHex16(device.speed);
-        const courseHex = toHex16(device.course);
-        const satVal = toHex8(device.status === 'offline' ? 0 : 8);
-        const statusHex = toHex16((device.accStatus ? 4 : 0) | (device.fuelCut ? 64 : 0));
-        const batteryHex = toHex16(device.batteryVoltage);
-        const mileageHex = toHex32(device.mileage);
-        const fuelHex = toHex8(device.fuelLevel);
-
-        rawHex = `${mark}12${sizeHex}${seqHex}01${latHex}${lngHex}${speedHex}${courseHex}${satVal}${statusHex}${batteryHex}00000000${mileageHex}${fuelHex}`;
-        decoded = {
-          Mark: '0x67 0x67',
-          PID: '0x12 (Location)',
-          Size: 34,
-          Sequence: seq,
-          'GPS Mask': '0x01 (GPS Enabled)',
-          Latitude: device.lat.toFixed(6),
-          Longitude: device.lng.toFixed(6),
-          'Speed (km/h)': device.speed,
-          'Heading (Course)': `${device.course}°`,
-          Satellites: device.status === 'offline' ? 0 : 8,
-          'Device Status': device.accStatus ? 'ACC ON' : 'ACC OFF',
-          'Fuel Cut Relay': device.fuelCut ? 'Triggered (Engine Disabled)' : 'Normal',
-          'Battery Voltage': `${(device.batteryVoltage / 1000).toFixed(2)}V`,
-          'Battery Percentage': `${device.batteryPercent}%`,
-          'Odometer Mileage': `${(device.mileage / 1000).toFixed(2)} km`,
-          'Fuel Tank level': `${device.fuelLevel}%`
-        };
-        break;
-      }
-      case '0x15': { // Report Package (ACC State Change)
-        pidName = 'Report Package';
-        const sizeHex = toHex16(5); // Sequence(2) + Location(N/A) + ReportType(1) + Status(2) = 5
-        const reportTypeHex = toHex8(device.accStatus ? 1 : 2); // 0x01 ACC on, 0x02 ACC off
-        const statusHex = toHex16(device.accStatus ? 4 : 0);
-        rawHex = `${mark}15${sizeHex}${seqHex}${reportTypeHex}${statusHex}`;
-        decoded = {
-          Mark: '0x67 0x67',
-          PID: '0x15 (Report)',
-          Size: 5,
-          Sequence: seq,
-          'Report Event': device.accStatus ? '0x01 (ACC turned ON)' : '0x02 (ACC turned OFF)',
-          'ACC status': device.accStatus ? 'Ignition Active' : 'Ignition Idle'
-        };
-        break;
-      }
-      default:
-        pidName = 'Protocol Packet';
-        rawHex = `${mark}030004${seqHex}0000`;
-        decoded = { Mark: '0x67 0x67', PID: '0x03', Sequence: seq };
-    }
-
-    return {
-      id: Math.random().toString(),
-      timestamp,
-      imei: device.imei,
-      direction: 'UP',
-      pid: type,
-      pidName,
-      rawHex,
-      decoded
-    };
-  };
-
-  // Initialize simulated histories for all vehicles on mount or when loaded
-  useEffect(() => {
-    if (vehicles.length === 0) return;
-    setHistories(prev => {
-      const updated = { ...prev };
-      let updatedAny = false;
-      vehicles.forEach(v => {
-        if (!updated[v.id]) {
-          updated[v.id] = generateMockHistory(v);
-          updatedAny = true;
-        }
-      });
-      return updatedAny ? updated : prev;
-    });
-  }, [vehicles]);
-
-  // Run periodic movement and live protocol telemetry logs
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setVehicles(currentVehicles => {
-        const nextVehicles = currentVehicles.map(veh => {
-          // If offline, don't move or update
-          if (veh.status === 'offline') return veh;
-
-          let pathKey = 'alpha';
-          if (veh.id === '2') pathKey = 'supervisor';
-          if (veh.id === '3') pathKey = 'bravo';
-          if (veh.id === '4') pathKey = 'armed';
-
-          const path = JOHANNESBURG_PATHS[pathKey];
-          let currentIdx = pathIndices.current[pathKey] || 0;
-          
-          // Increment path position
-          let nextIdx = currentIdx + 1;
-          if (nextIdx >= path.length) nextIdx = 0;
-          pathIndices.current[pathKey] = nextIdx;
-
-          const nextCoords = path[nextIdx];
-          const prevCoords = path[currentIdx];
-
-          // Compute angle/heading
-          let angle = veh.course;
-          if (prevCoords && nextCoords) {
-            const dy = nextCoords[0] - prevCoords[0];
-            const dx = Math.cos(-26.2 * Math.PI / 180) * (nextCoords[1] - prevCoords[1]);
-            angle = Math.floor(Math.atan2(dx, dy) * 180 / Math.PI);
-            if (angle < 0) angle += 360;
-          }
-
-          // If stationary, speed is 0 and engine is OFF or idle
-          const isStationary = veh.status === 'stationary';
-          const calculatedSpeed = isStationary ? 0 : (veh.id === '4' ? 112 : 52); // Keep Unit B speeding
-          const updatedACC = !isStationary;
-          const mileageDelta = isStationary ? 0 : Math.floor(calculatedSpeed * 1.38); // simulate distance covered
-
-          // Check speeding warning limit
-          const alerts: string[] = [];
-          if (calculatedSpeed > veh.speedLimit) {
-            alerts.push(`High Speed Alert (> ${veh.speedLimit} km/h)`);
-          }
-          if (veh.fuelCut) {
-            alerts.push('Relay Active: Fuel line cut');
-          }
-
-          const updatedVehicle: TK116Device = {
-            ...veh,
-            lat: isStationary ? veh.lat : nextCoords[0],
-            lng: isStationary ? veh.lng : nextCoords[1],
-            speed: calculatedSpeed,
-            course: angle,
-            accStatus: updatedACC,
-            mileage: veh.mileage + mileageDelta,
-            fuelLevel: Math.max(10, veh.fuelLevel - (isStationary ? 0.01 : 0.05)),
-            batteryVoltage: updatedACC ? 13800 : 12300, // higher when alternator runs
-            batteryPercent: Math.min(100, veh.batteryPercent + (updatedACC ? 0.2 : -0.05)),
-            lastUpdate: new Date().toLocaleTimeString(),
-            pathHistory: [...veh.pathHistory, [nextCoords[0], nextCoords[1]]].slice(-40), // limit breadcrumbs to 40
-            alerts
+          return {
+            ...v,
+            lat: newLat,
+            lng: newLng,
+            mileage: v.mileage + Math.floor(v.speed / 10),
+            pathHistory: newPath,
+            lastUpdate: 'Just now'
           };
-
-          // Periodically emit Eelink protocol telemetry packets (UP packages from device to server)
-          // 40% chance of location pkg, 10% of heartbeat/report
-          const r = Math.random();
-          let pkgType = '';
-          if (r < 0.3) {
-            pkgType = '0x12'; // Location
-          } else if (r < 0.4) {
-            pkgType = '0x03'; // Heartbeat
-          } else if (r < 0.45 && !isStationary) {
-            pkgType = '0x15'; // ACC report
-          }
-
-          if (pkgType) {
-            simSequenceRef.current += 1;
-            const newPacket = generateEelinkPacket(pkgType, updatedVehicle, simSequenceRef.current);
-            setRawPackets(prev => [newPacket, ...prev].slice(0, 100)); // limit log list to last 100
-          }
-
-          return updatedVehicle;
         });
-
-        // Safe async update for histories to prevent react state update warnings
-        setTimeout(() => {
-          setHistories(prev => {
-            const updatedHistories = { ...prev };
-            nextVehicles.forEach(v => {
-              if (v.status === 'offline') return;
-              const currentHist = updatedHistories[v.id] || [];
-              const isStationary = v.status === 'stationary';
-              
-              // Only add live tracking event ~30% of the time, or if alerts change, to keep the log elegant
-              if (Math.random() < 0.3 || v.alerts.length > 0) {
-                const newHistItem: TripHistoryItem = {
-                  id: `${v.id}-live-${Date.now()}-${Math.random()}`,
-                  timestamp: new Date().toLocaleTimeString(),
-                  event: v.alerts.length > 0 
-                    ? v.alerts[0] 
-                    : (isStationary ? 'Stationary Ping' : 'Live Tracking Ping'),
-                  lat: Number(v.lat.toFixed(6)),
-                  lng: Number(v.lng.toFixed(6)),
-                  speed: v.speed,
-                  mileage: v.mileage,
-                  fuelLevel: Math.floor(v.fuelLevel),
-                  accStatus: v.accStatus,
-                  status: v.status
-                };
-                updatedHistories[v.id] = [newHistItem, ...currentHist].slice(0, 50);
-              }
-            });
-            return updatedHistories;
-          });
-        }, 0);
-
-        return nextVehicles;
       });
-    }, 4500);
+    }, 4000);
 
-    return () => clearInterval(interval);
+    return () => clearInterval(timer);
   }, []);
 
-  // Dispatch custom simulated Eelink commands
-  const handleSendCommand = () => {
-    if (selectedVehicle.status === 'offline') {
-      addToast("Cannot transmit command. Selected vehicle's device is offline.", "error");
-      return;
-    }
+  // Filtered vehicle list for sidebar
+  const filteredVehicles = useMemo(() => {
+    return vehicles.filter(v => {
+      const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            v.plate.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            v.imei.includes(searchQuery);
+      const matchesStatus = statusFilter === 'all' || v.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [vehicles, searchQuery, statusFilter]);
 
-    setIsSimTransmitting(true);
-    const seq = simSequence;
-    setSimSequence(prev => prev + 1);
+  // Vehicle counts
+  const stats = useMemo(() => {
+    const moving = vehicles.filter(v => v.status === 'moving').length;
+    const stationary = vehicles.filter(v => v.status === 'stationary').length;
+    const offline = vehicles.filter(v => v.status === 'offline').length;
+    const fuelCutActive = vehicles.filter(v => v.fuelCut).length;
+    return { total: vehicles.length, moving, stationary, offline, fuelCutActive };
+  }, [vehicles]);
 
-    // Build the instruction payload
-    let commandText = simCommand;
-    if (simCommand === 'CUSTOM') {
-      commandText = simCustomParam || 'STATUS?';
-    } else if (simCommand === 'SPEED') {
-      const limit = simCustomParam ? parseInt(simCustomParam) : 100;
-      commandText = `SPEED,0,${limit}#`;
-    }
+  // Handle Eelink TK116 Relay Fuel Cut / Engine Kill toggle
+  const handleToggleEngineRelay = async (vehicle: TK116Device) => {
+    const newFuelCutState = !vehicle.fuelCut;
+    const cmdText = newFuelCutState ? 'RELAY,1#' : 'RELAY,0#';
 
-    const commandHex = stringToHex(commandText);
-    const mark = '6767';
-    const pid = '80'; // Instruction Package
-    const seqHex = toHex16(seq);
-    const typeHex = '01'; // 0x01: device command
-    const uidHex = '00001B3C'; // Unique instruction UID
-    
-    // Size = Sequence(2) + Type(1) + UID(4) + Content(N)
-    const contentLen = commandText.length;
-    const size = 2 + 1 + 4 + contentLen;
-    const sizeHex = toHex16(size);
+    setIsSendingCmd(true);
+    addToast(
+      `Sending Eelink TK116 command '${cmdText}' to IMEI ${vehicle.imei}...`,
+      'info'
+    );
 
-    const generatedHex = `${mark}${pid}${sizeHex}${seqHex}${typeHex}${uidHex}${commandHex}`;
-    setGeneratedHexCmd(generatedHex);
+    setTimeout(async () => {
+      setIsSendingCmd(false);
 
-    const time = new Date().toLocaleTimeString();
-    
-    // Add Tx log
-    setSimLogs(prev => [
-      ...prev,
-      { time, text: `[TX] Sent Eelink Instruction PID 0x80: "${commandText}" to IMEI ${selectedVehicle.imei}`, type: 'out' }
-    ]);
+      // Local update
+      setVehicles(prev => prev.map(v => v.id === vehicle.id ? { ...v, fuelCut: newFuelCutState, status: newFuelCutState ? 'stationary' : v.status } : v));
 
-    // Periodically simulate the packet travel delay over cellular TCP/UDP link
-    setTimeout(() => {
-      let resultText = 'SET OK';
-      let success = true;
-
-      // Core Eelink TK116 Protocol Action Responses defined by EELINK V2.0 Documentation
-      if (commandText.startsWith('RESET')) {
-        resultText = 'Reset OK';
-        // reboot simulation
-        setVehicles(current => current.map(v => v.id === selectedVehicle.id ? { 
-          ...v, 
-          status: 'offline', 
-          lastUpdate: 'Rebooting...' 
-        } : v));
-        setTimeout(() => {
-          setVehicles(current => current.map(v => v.id === selectedVehicle.id ? { 
-            ...v, 
-            status: 'stationary',
-            speed: 0,
-            accStatus: false,
-            lastUpdate: new Date().toLocaleTimeString(),
-            alerts: []
-          } : v));
-          setSimLogs(prev => [
-            ...prev,
-            { time: new Date().toLocaleTimeString(), text: `[SYSTEM] IMEI ${selectedVehicle.imei} booted successfully and established new TCP connection (Login 0x01 uploaded).`, type: 'info' }
-          ]);
-        }, 6000);
-
-      } else if (commandText.startsWith('RELAY,1')) {
-        resultText = 'Relay enable OK> Fuel Cut Active';
-        setVehicles(current => current.map(v => v.id === selectedVehicle.id ? { 
-          ...v, 
-          fuelCut: true,
-          status: 'stationary',
-          speed: 0,
-          accStatus: false
-        } : v));
-      } else if (commandText.startsWith('RELAY,0')) {
-        resultText = 'Relay disable OK> Fuel Restored';
-        setVehicles(current => current.map(v => v.id === selectedVehicle.id ? { 
-          ...v, 
-          fuelCut: false,
-          status: 'moving',
-          speed: 40,
-          accStatus: true
-        } : v));
-      } else if (commandText.startsWith('SPEED')) {
-        const parts = commandText.replace('#', '').split(',');
-        const limitVal = parseInt(parts[2] || '120');
-        resultText = 'SET SPEED OK';
-        setVehicles(current => current.map(v => v.id === selectedVehicle.id ? { 
-          ...v, 
-          speedLimit: limitVal 
-        } : v));
-      } else if (commandText.startsWith('STATUS')) {
-        resultText = `BATTERY:100%GPRS:SUCCESSGSM:MED,18GPS:FIXED,8ACC:${selectedVehicle.accStatus ? 'ON' : 'OFF'}RELAY:${selectedVehicle.fuelCut ? 'ON' : 'OFF'}MS:LIS3DH`;
-      } else if (commandText.startsWith('VERSION')) {
-        resultText = `IMEI:${selectedVehicle.imei}IMSI:946001666829743ICCID:8986011685100944475SYSTEM:M6130_V2.0.5VERSION:MXAPP_V2.0.5BUILD:May 20 2026 10:14:15`;
+      // Attempt DB update
+      try {
+        await supabase.from('tracking_units').update({ fuel_cut: newFuelCutState }).eq('id', vehicle.id);
+      } catch (e) {
+        // silent
       }
 
-      // Outward packet
-      const respMark = '6767';
-      const respPid = '80';
-      const respResultHex = stringToHex(resultText);
-      const respSizeHex = toHex16(2 + 1 + 4 + resultText.length);
-      const generatedRespHex = `${respMark}${respPid}${respSizeHex}${seqHex}${typeHex}${uidHex}${respResultHex}`;
-      setResponseHexCmd(generatedRespHex);
+      // Log packet in terminal
+      const packet: RawPacket = {
+        id: `pkt-${Date.now()}`,
+        timestamp: new Date().toLocaleTimeString(),
+        imei: vehicle.imei,
+        direction: 'DOWN',
+        pid: '0x80',
+        pidName: 'Eelink Relay Cut Command',
+        rawHex: `676780000A0001${stringToHex(cmdText)}0001`,
+        decoded: { command: cmdText, status: 'ACK RECEIVED - OK', response: newFuelCutState ? 'RELAY,1,OK#' : 'RELAY,0,OK#' }
+      };
+      setTerminalLogs(prev => [packet, ...prev].slice(0, 30));
 
-      // Add Rx log
-      setSimLogs(prev => [
-        ...prev,
-        { time: new Date().toLocaleTimeString(), text: `[RX] Received Eelink Reply [PID 0x80] from IMEI ${selectedVehicle.imei}:${resultText.replace(/\n/g, ' | ')}`, type: 'in' }
-      ]);
+      addToast(
+        newFuelCutState 
+          ? `Engine Relay CUT triggered for ${vehicle.name} (${vehicle.plate})`
+          : `Engine Relay RESTORED for ${vehicle.name} (${vehicle.plate})`,
+        newFuelCutState ? 'warning' : 'success'
+      );
+    }, 1200);
+  };
 
-      // Insert command interaction into raw packet list
-      const cmdTxPacket: RawPacket = {
-        id: Math.random().toString(),
-        timestamp: time,
+  // Send custom TK116 command
+  const handleSendCustomCommand = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commandInput.trim() || !selectedVehicle) return;
+
+    const rawCmd = commandInput.trim().toUpperCase();
+    setIsSendingCmd(true);
+
+    setTimeout(() => {
+      setIsSendingCmd(false);
+      setCommandInput('');
+
+      const log: RawPacket = {
+        id: `pkt-${Date.now()}`,
+        timestamp: new Date().toLocaleTimeString(),
         imei: selectedVehicle.imei,
         direction: 'DOWN',
         pid: '0x80',
-        pidName: 'Instruction Command',
-        rawHex: generatedHex,
-        decoded: {
-          Mark: '0x67 0x67',
-          PID: '0x80 (Instruction)',
-          Size: size,
-          Sequence: seq,
-          'Instruction Type': '0x01 (Device Command)',
-          UID: '0x00001B3C',
-          Command: commandText
-        }
+        pidName: 'Custom Command Package',
+        rawHex: `67678000100001${stringToHex(rawCmd)}`,
+        decoded: { command: rawCmd, response: `${rawCmd},OK#` }
       };
-
-      const cmdRxPacket: RawPacket = {
-        id: Math.random().toString(),
-        timestamp: new Date().toLocaleTimeString(),
-        imei: selectedVehicle.imei,
-        direction: 'UP',
-        pid: '0x80',
-        pidName: 'Instruction Reply',
-        rawHex: generatedRespHex,
-        decoded: {
-          Mark: '0x67 0x67',
-          PID: '0x80 (Instruction Response)',
-          Size: 2 + 1 + 4 + resultText.length,
-          Sequence: seq,
-          'Instruction Type': '0x01 (Device Command)',
-          UID: '0x00001B3C',
-          Result: resultText
-        }
-      };
-
-      setRawPackets(prev => [cmdRxPacket, cmdTxPacket, ...prev].slice(0, 100));
-      setIsSimTransmitting(false);
-      addToast("Eelink TK116 command executed successfully.", "success");
-    }, 1800);
+      setTerminalLogs(prev => [log, ...prev].slice(0, 30));
+      addToast(`Command '${rawCmd}' sent successfully to ${selectedVehicle.name}`, 'success');
+    }, 800);
   };
 
-  const handleExportCSV = (vehicle: TK116Device) => {
-    const historyList = histories[vehicle.id] || [];
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += `VEHICLE CURRENT DETAILS`;
-    csvContent += `Vehicle Name,Plate Number,IMEI,Status,Current Latitude,Current Longitude,Current Speed (km/h),ACC State,Fuel Cut Relay,Mileage (m),Fuel Level (%),Last Updated`;
-    csvContent += `"${vehicle.name}","${vehicle.plate}","${vehicle.imei}","${vehicle.status}",${vehicle.lat},${vehicle.lng},${vehicle.speed},${vehicle.accStatus ? "ON" : "OFF"},${vehicle.fuelCut ? "Active" : "Normal"},${vehicle.mileage},${Math.floor(vehicle.fuelLevel)},"${vehicle.lastUpdate}"`;
-    
-    csvContent += `TRIP AND STATUS HISTORY`;
-    csvContent += `Timestamp,Event / Status,Latitude,Longitude,Speed (km/h),ACC Ignition,Fuel Level (%),Odometer Mileage (km)`;
-    
-    historyList.forEach(item => {
-      csvContent += `"${item.timestamp}","${item.event}",${item.lat},${item.lng},${item.speed},${item.accStatus ? "ON" : "OFF"},${item.fuelLevel},${(item.mileage / 1000).toFixed(2)}`;
-    });
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `vehicle_tracking_${vehicle.plate.replace(/[^a-zA-Z0-9]/g, "_")}_export.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    addToast(`Successfully exported ${vehicle.name} details & trip history to CSV`, "success");
-  };
+  // Helper string to hex converter
+  function stringToHex(str: string): string {
+    return Array.from(str).map(c => c.charCodeAt(0).toString(16).padStart(2, '0').toUpperCase()).join('');
+  }
 
-  const handleExportJSON = (vehicle: TK116Device) => {
-    const historyList = histories[vehicle.id] || [];
-    const exportData = {
-      exportTimestamp: new Date().toISOString(),
-      vehicleDetails: {
-        id: vehicle.id,
-        name: vehicle.name,
-        plate: vehicle.plate,
-        imei: vehicle.imei,
-        status: vehicle.status,
-        currentLocation: {
-          lat: vehicle.lat,
-          lng: vehicle.lng,
-          course: vehicle.course
-        },
-        speed: vehicle.speed,
-        accStatus: vehicle.accStatus,
-        fuelCut: vehicle.fuelCut,
-        mileage: vehicle.mileage,
-        fuelLevel: vehicle.fuelLevel,
-        lastUpdate: vehicle.lastUpdate,
-        alerts: vehicle.alerts
-      },
-      tripHistory: historyList
-    };
-    
-    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(exportData, null, 2))}`;
-    const link = document.createElement("a");
-    link.setAttribute("href", jsonString);
-    link.setAttribute("download", `vehicle_tracking_${vehicle.plate.replace(/[^a-zA-Z0-9]/g, "_")}_export.json`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    addToast(`Successfully exported ${vehicle.name} details & trip history to JSON`, "success");
-  };
+  // Selected vehicle trip history
+  const historyItems = useMemo(() => {
+    if (!selectedVehicle) return [];
+    return generateHistoryForUnit(selectedVehicle);
+  }, [selectedVehicle]);
 
-  // Helper to format raw hex visually grouped by bytes
-  const formatHexGrouped = (hex: string) => {
-    if (!hex) return '';
-    const match = hex.match(/.{1,2}/g);
-    return match ? match.join(' ') : hex;
-  };
-
-  // Map markers styled with Leaflet L.divIcon
-  const createVehicleIcon = (vehicle: TK116Device, isSelected: boolean) => {
-    const isOffline = vehicle.status === 'offline';
-    const isStationary = vehicle.status === 'stationary';
-    
-    // Choose marker color
-    const color = isOffline 
-      ? '#6B7280' // Gray 
-      : (vehicle.fuelCut 
-        ? '#EF4444' // Red
-        : (isStationary ? '#F59E0B' : '#10B981')); // Amber vs Emerald
-
-    const size = isSelected ? 48 : 38;
-    const shadowFilter = `drop-shadow(0 2px 4px rgba(0,0,0,0.4))`;
-    const glowFilter = isSelected ? `drop-shadow(0 0 8px ${color})` : '';
-
-    // Beautiful rotation indicator SVG
-    const iconHtml = `
-      <div style="width: ${size}px; height: ${size}px; display: flex; justify-content: center; align-items: center; position: relative;">
-        <!-- Base Marker Pulse -->
-        ${!isOffline && !isStationary ? `<div class="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-25"></div>` : ''}
-        
-        <!-- Directional arrow / circle -->
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 100%; height: 100%; filter: ${shadowFilter} ${glowFilter};">
-          <circle cx="12" cy="12" r="9" fill="${color}" stroke="#FFFFFF" stroke-width="1.8" />
-          <g transform="translate(12, 12) rotate(${vehicle.course})">
-            <!-- Navigation pointer -->
-            <path d="M0 -6 L4 3 L0 1 L-4 3 Z" fill="#FFFFFF" />
-          </g>
-        </svg>
-      </div>
-    `;
-
-    return new L.DivIcon({
-      html: iconHtml,
-      className: '',
-      iconSize: [size, size],
-      iconAnchor: [size / 2, size / 2],
-      popupAnchor: [0, -size / 2]
-    });
-  };
-
-  const filteredHistory = useMemo(() => {
-    const list = histories[selectedVehicle.id] || [];
-    return list.filter(item => {
-      // search match
-      const matchesSearch = item.event.toLowerCase().includes(historySearchText.toLowerCase()) || 
-                            item.timestamp.toLowerCase().includes(historySearchText.toLowerCase()) ||
-                            String(item.speed).includes(historySearchText);
-      
-      // filter match
-      if (historyFilterType === 'ignition') {
-        return matchesSearch && item.event.toLowerCase().includes('ignition');
-      }
-      if (historyFilterType === 'warning') {
-        return matchesSearch && (item.event.toLowerCase().includes('alert') || item.event.toLowerCase().includes('warning') || item.event.toLowerCase().includes('cut'));
-      }
-      if (historyFilterType === 'tracking') {
-        return matchesSearch && item.event.toLowerCase().includes('ping');
-      }
-      return matchesSearch;
-    });
-  }, [histories, selectedVehicle.id, historySearchText, historyFilterType]);
-
-  const handleCopyCoords = (lat: number, lng: number) => {
-    navigator.clipboard.writeText(`${lat}, ${lng}`);
-    addToast("Coordinates copied to clipboard!", "success");
-  };
-
-  const getGoogleMapsUrl = (lat: number, lng: number) => {
-    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-  };
+  // Dynamic tile URL based on current active app theme & user selection
+  const tileUrl = useMemo(() => {
+    if (mapStyle === 'satellite') {
+      return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+    }
+    if (theme === 'dark' || theme === 'matrix') {
+      return "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+    }
+    return "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+  }, [mapStyle, theme]);
 
   return (
-    <div className="flex-grow flex flex-col pt-2 sm:pt-16 bg-gray-50 dark:bg-gray-900 transition-colors duration-300" id="fleet-management-dashboard">
+    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors overflow-hidden">
       
-      {/* Top Banner Stats */}
-      <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800/80 px-4 py-3 sm:px-6 sm:py-4 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
+      {/* Top Bar Header */}
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 shrink-0 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shadow-inner">
+            <Cpu className="w-5 h-5" />
+          </div>
           <div>
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
-              <Cpu className="w-5 h-5 text-blue-500" />
-              Vehicle Fleet Management
-            </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 hidden sm:block">
-              Visualize real-time cellular tracking, monitor raw telemetry GPRS package streams, and dispatch OTA instructions over TCP/UDP.
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                Vehicle &amp; Asset Tracking
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                Eelink TK116 Ready
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Live GPRS Telemetry, Remote Engine Immobilizer &amp; Fleet Analytics
             </p>
           </div>
-          
-          {/* Quick Metrics */}
-          <div className="hidden md:grid grid-cols-4 gap-4 bg-gray-50 dark:bg-gray-900/60 p-2.5 rounded-xl border border-gray-200/50 dark:border-gray-800/40">
-            <div className="px-4 py-1 border-r border-gray-200 dark:border-gray-800 last:border-0 text-center sm:text-left">
-              <span className="text-[10px] uppercase font-semibold text-gray-400 dark:text-gray-500">Total Fleet</span>
-              <p className="text-lg font-bold text-gray-900 dark:text-white">{vehicles.length}</p>
-            </div>
-            <div className="px-4 py-1 border-r border-gray-200 dark:border-gray-800 last:border-0 text-center sm:text-left">
-              <span className="text-[10px] uppercase font-semibold text-emerald-500 dark:text-emerald-400">Moving</span>
-              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                {vehicles.filter(v => v.status === 'moving').length}
-              </p>
-            </div>
-            <div className="px-4 py-1 border-r border-gray-200 dark:border-gray-800 last:border-0 text-center sm:text-left">
-              <span className="text-[10px] uppercase font-semibold text-amber-500 dark:text-amber-400">Stationary</span>
-              <p className="text-lg font-bold text-amber-600 dark:text-amber-400">
-                {vehicles.filter(v => v.status === 'stationary').length}
-              </p>
-            </div>
-            <div className="px-4 py-1 last:border-0 text-center sm:text-left">
-              <span className="text-[10px] uppercase font-semibold text-red-500 dark:text-red-400">Alerts Active</span>
-              <p className="text-lg font-bold text-red-600 dark:text-red-400 animate-pulse">
-                {vehicles.filter(v => v.alerts.length > 0).length}
-              </p>
-            </div>
+        </div>
+
+        {/* Stats Badges */}
+        <div className="flex items-center gap-2 shrink-0 overflow-x-auto py-1">
+          <div className="bg-slate-100 dark:bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-700/50 text-xs flex items-center gap-2">
+            <span className="text-slate-500 dark:text-slate-400">Total Units:</span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">{stats.total}</span>
           </div>
+
+          <div className="bg-emerald-500/10 dark:bg-emerald-500/20 px-3 py-1.5 rounded-xl border border-emerald-500/20 text-xs flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Moving: <strong className="font-extrabold">{stats.moving}</strong></span>
+          </div>
+
+          <div className="bg-amber-500/10 dark:bg-amber-500/20 px-3 py-1.5 rounded-xl border border-amber-500/20 text-xs flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
+            <div className="w-2 h-2 rounded-full bg-amber-500" />
+            <span>Stationary: <strong className="font-extrabold">{stats.stationary}</strong></span>
+          </div>
+
+          {stats.fuelCutActive > 0 && (
+            <div className="bg-red-500/10 dark:bg-red-500/20 px-3 py-1.5 rounded-xl border border-red-500/20 text-xs flex items-center gap-1.5 text-red-600 dark:text-red-400 font-semibold">
+              <Zap className="w-3.5 h-3.5" />
+              <span>Relay Cut: {stats.fuelCutActive}</span>
+            </div>
+          )}
+
+          <button
+            onClick={() => {
+              setEditingUnit(null);
+              setIsModalOpen(true);
+            }}
+            className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition-all shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add TK116 Unit</span>
+          </button>
         </div>
       </div>
 
-      {/* Main Grid View */}
-      <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 overflow-hidden h-[calc(100vh-130px)] sm:h-[calc(100vh-140px)]">
-        
-        {/* Left Side: Vehicle List Panel */}
-        <div className={`lg:col-span-4 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800/80 flex flex-col overflow-hidden h-full ${mobileView === 'list' ? 'flex' : 'hidden lg:flex'}`}>
-          {/* Search Box */}
-          <div className="p-4 border-b border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-950 flex flex-col gap-2">
-            <div className="flex justify-between items-center">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Tracking Units</h2>
-              {(profile.role === 'admin' || profile.role === 'controller') && (
-                <button 
-                  onClick={() => {
-                    setEditingUnit(null);
-                    setIsModalOpen(true);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  + Add Unit
-                </button>
-              )}
-            </div>
+      {/* Main Workspace Layout */}
+      <div className="flex-grow flex flex-col md:flex-row overflow-hidden relative">
+
+        {/* Sidebar: Vehicle List & Filters */}
+        <div className="w-full md:w-80 lg:w-96 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 overflow-hidden">
+          
+          {/* Search & Status Filters */}
+          <div className="p-3 border-b border-slate-200 dark:border-slate-800 space-y-2.5 bg-slate-50/50 dark:bg-slate-900/50">
             <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
-                placeholder="Search plate, name, or IMEI..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="w-full text-xs bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100 placeholder-gray-400 rounded-lg py-2 pl-3 pr-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search unit name, plate, IMEI..."
+                className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               />
-              <span className="absolute right-3 top-2.5 text-gray-400 text-xs pointer-events-none">🔍</span>
+            </div>
+
+            {/* Status Tabs */}
+            <div className="flex gap-1 bg-slate-200/60 dark:bg-slate-800/80 p-1 rounded-xl text-[11px] font-semibold">
+              {(['all', 'moving', 'stationary', 'offline'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setStatusFilter(tab)}
+                  className={`flex-1 py-1 rounded-lg capitalize transition-all ${
+                    statusFilter === tab
+                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* List Scroll Area */}
-          <div className="flex-grow overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800/40 p-2">
+          {/* Unit List */}
+          <div className="flex-grow overflow-y-auto p-3 space-y-2.5">
             {filteredVehicles.length === 0 ? (
-              <div className="p-8 text-center text-gray-400 text-xs">No matching fleet vehicles found.</div>
+              <div className="text-center py-10 px-4 text-slate-400">
+                <Cpu className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                <p className="text-xs font-medium">No tracking units matched</p>
+              </div>
             ) : (
-              filteredVehicles.map(veh => {
-                const isSel = veh.id === selectedVehicleId;
-                const isOffline = veh.status === 'offline';
-                const isStationary = veh.status === 'stationary';
+              filteredVehicles.map(unit => {
+                const isSelected = unit.id === selectedVehicleId;
+                const statusBg = unit.status === 'moving' 
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                  : unit.status === 'stationary'
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                  : 'bg-slate-500/10 text-slate-500 border-slate-500/20';
 
                 return (
-                  <button
-                    key={veh.id}
-                    onClick={() => {
-                      setSelectedVehicleId(veh.id);
-                      setMobileView('detail');
-                    }}
-                    className={`w-full text-left p-3.5 rounded-xl transition-all mb-1 border ${
-                      isSel 
-                        ? 'bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50 shadow-sm' 
-                        : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-900/40'
+                  <div
+                    key={unit.id}
+                    onClick={() => setSelectedVehicleId(unit.id)}
+                    className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-50/80 dark:bg-blue-950/30 border-blue-500 shadow-sm'
+                        : 'bg-white dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                          <span className={`w-2 h-2 rounded-full ${
-                            isOffline ? 'bg-gray-400' : (veh.fuelCut ? 'bg-red-500' : (isStationary ? 'bg-amber-400' : 'bg-emerald-500'))
-                          }`} />
-                          <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate">
-                            {veh.name}
-                          </h3>
-                          <span className="text-[9px] font-semibold font-mono bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">
-                            {veh.plate}
-                          </span>
-                        </div>
-                        <p className="text-[10px] font-mono text-gray-400 dark:text-gray-500 mb-1.5">
-                          IMEI: {veh.imei}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div>
+                        <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                          {unit.name}
+                          {unit.fuelCut && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-500 text-white animate-pulse">
+                              RELAY CUT
+                            </span>
+                          )}
+                        </h3>
+                        <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                          {unit.plate} &bull; <span className="text-[10px]">{unit.imei}</span>
                         </p>
-                        {(profile.role === 'admin' || profile.role === 'controller') && (
-                          <div className="flex items-center gap-2 mt-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingUnit({
-                                  id: veh.id,
-                                  name: veh.name,
-                                  plate: veh.plate,
-                                  imei: veh.imei,
-                                  speed_limit: veh.speedLimit
-                                });
-                                setIsModalOpen(true);
-                              }}
-                              className="text-[10px] text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (window.confirm('Are you sure you want to delete this tracking unit?')) {
-                                  try {
-                                    const { error } = await supabase.from('tracking_units').delete().eq('id', veh.id);
-                                    if (error) throw error;
-                                    setVehicles(prev => prev.filter(v => v.id !== veh.id));
-                                    if (selectedVehicleId === veh.id) setSelectedVehicleId(null);
-                                    addToast('Tracking unit deleted successfully', 'success');
-                                  } catch (err) {
-                                    console.error(err);
-                                    addToast('Failed to delete tracking unit', 'error');
-                                  }
-                                }
-                              }}
-                              className="text-[10px] text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
                       </div>
 
-                      {/* Speed Badge */}
-                      {!isOffline && (
-                        <div className="text-right">
-                          <span className={`text-xs font-black tracking-tight ${
-                            veh.speed > veh.speedLimit ? 'text-red-500 font-bold animate-pulse' : 'text-gray-900 dark:text-gray-100'
-                          }`}>
-                            {veh.speed} <span className="text-[9px] font-medium text-gray-400">km/h</span>
-                          </span>
-                        </div>
-                      )}
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${statusBg}`}>
+                        {unit.status}
+                      </span>
                     </div>
 
-                    {/* Sensor Summary Badges */}
-                    <div className="grid grid-cols-3 gap-2 mt-3 text-[10px]">
-                      {/* Battery Sensor */}
-                      <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 font-mono">
-                        <Battery className={`w-3.5 h-3.5 ${isOffline ? 'text-gray-300' : 'text-blue-500'}`} />
-                        <span>{isOffline ? '--' : `${veh.batteryPercent}%`}</span>
+                    {/* Telemetry Bar */}
+                    <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-100 dark:border-slate-800/60 text-[10px]">
+                      <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
+                        <Gauge className="w-3 h-3 text-blue-500" />
+                        <span className="font-bold text-slate-900 dark:text-slate-100">{unit.speed}</span> km/h
                       </div>
 
-                      {/* ACC Ignition badge */}
-                      <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 font-mono">
-                        <Zap className={`w-3.5 h-3.5 ${isOffline ? 'text-gray-300' : (veh.accStatus ? 'text-amber-500' : 'text-gray-400')}`} />
-                        <span>{isOffline ? '--' : (veh.accStatus ? 'IGN ON' : 'IGN OFF')}</span>
+                      <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
+                        <KeyRound className={`w-3 h-3 ${unit.accStatus ? 'text-emerald-500' : 'text-slate-400'}`} />
+                        <span>ACC: <strong className={unit.accStatus ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}>{unit.accStatus ? 'ON' : 'OFF'}</strong></span>
                       </div>
 
-                      {/* Fuel Tank */}
-                      <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 font-mono">
-                        <Gauge className="w-3.5 h-3.5 text-indigo-400" />
-                        <span>{isOffline ? '--' : `${Math.floor(veh.fuelLevel)}%`}</span>
+                      <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400 justify-end">
+                        <Battery className="w-3 h-3 text-amber-500" />
+                        <span>{(unit.batteryVoltage / 1000).toFixed(1)}V</span>
                       </div>
                     </div>
-
-                    {/* Alerts panel if active */}
-                    {veh.alerts.length > 0 && (
-                      <div className="mt-2.5 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-lg p-1.5 flex items-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                        <span className="text-[9px] font-semibold text-red-600 dark:text-red-400 truncate">
-                          {veh.alerts[0]}
-                        </span>
-                      </div>
-                    )}
-                  </button>
+                  </div>
                 );
               })
             )}
           </div>
-
-          {/* Connected Device Info Footer */}
-          <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-xs text-gray-400 flex items-center justify-between">
-            <span className="flex items-center gap-1">
-              <Wifi className="w-3.5 h-3.5 text-emerald-500" /> TK116 Gateway
-            </span>
-            <span className="font-mono text-[10px]">Active Port: 32001 (TCP)</span>
-          </div>
         </div>
 
-        {/* Right Side: Main Interactive Control Panel */}
-        <div className={`lg:col-span-8 flex flex-col overflow-hidden h-full ${mobileView === 'detail' ? 'flex' : 'hidden lg:flex'}`}>
-          
-          {/* Back button for mobile view */}
-          <div className="lg:hidden bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-4 py-2 flex items-center justify-between shrink-0">
-            <button
-              onClick={() => setMobileView('list')}
-              className="text-xs font-semibold px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-850 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg flex items-center gap-1 transition-all"
-            >
-              ← Back to Fleet List
-            </button>
-            <div className="text-[10px] font-mono font-semibold text-gray-500 bg-gray-100 dark:bg-gray-900 border border-gray-200/50 dark:border-gray-800 px-2 py-0.5 rounded-md">
-              Selected: <span className="text-blue-500 font-bold">{selectedVehicle.name}</span>
-            </div>
-          </div>
+        {/* Center Panel: Map & Sub-Tabs */}
+        <div className="flex-grow flex flex-col overflow-hidden relative">
 
-          {/* Navigation Sub-Tabs */}
-          <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-4 flex justify-between items-center shrink-0 overflow-x-auto whitespace-nowrap scrollbar-none">
-            <div className="flex gap-1.5 py-2 shrink-0">
+          {/* Sub-Nav Bar */}
+          <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2 shrink-0 flex items-center justify-between gap-3 overflow-x-auto">
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setActiveSubTab('map')}
-                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                   activeSubTab === 'map'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-950'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 <Compass className="w-3.5 h-3.5" />
-                Live Map
-              </button>
-              
-              <button
-                onClick={() => setActiveSubTab('simulator')}
-                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
-                  activeSubTab === 'simulator'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-950'
-                }`}
-              >
-                <Sliders className="w-3.5 h-3.5" />
-                TK116 Instruction Console
+                Live Map View
               </button>
 
               <button
-                onClick={() => setActiveSubTab('terminal')}
-                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
-                  activeSubTab === 'terminal'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-950'
+                onClick={() => setActiveSubTab('cmd')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                  activeSubTab === 'cmd'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                TK116 Command Center
+              </button>
+
+              <button
+                onClick={() => setActiveSubTab('guide')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                  activeSubTab === 'guide'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Radio className="w-3.5 h-3.5" />
+                Real Hardware Guide
+              </button>
+
+              <button
+                onClick={() => setActiveSubTab('packets')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                  activeSubTab === 'packets'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 <Terminal className="w-3.5 h-3.5" />
-                GPRS Decoded Packet Log
+                GPRS Packets ({terminalLogs.length})
               </button>
 
               <button
                 onClick={() => setActiveSubTab('history')}
-                className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                   activeSubTab === 'history'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-950'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" />
-                Location &amp; Trip History
+                Trip Logs
               </button>
             </div>
 
-            <div className="text-[10px] font-mono text-gray-400 font-semibold bg-gray-50 dark:bg-gray-900 border border-gray-200/50 dark:border-gray-800 px-2 py-0.5 rounded-md hidden md:block">
-              Selected: <span className="text-blue-500">{selectedVehicle.name}</span>
+            {/* Map Style Selector */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">Map Layer:</span>
+              <button
+                onClick={() => setMapStyle(prev => prev === 'street' ? 'satellite' : 'street')}
+                className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200/60 dark:border-slate-700/60"
+              >
+                <Layers className="w-3 h-3 text-blue-500" />
+                <span className="capitalize">{mapStyle}</span>
+              </button>
             </div>
           </div>
 
-          {/* Tab Sub-Content Windows */}
-          <div className="flex-grow overflow-hidden relative">
-            
-            {/* TAB 1: Live Interactive Leaflet Map */}
-            {activeSubTab === 'map' && (
-              <div className="w-full h-full relative" style={{ minHeight: '300px' }}>
-                <MapContainer
-                  center={[-26.2041, 28.0473]}
-                  zoom={11}
-                  scrollWheelZoom={true}
-                  className="w-full h-full z-10"
-                  style={{ height: '100%', width: '100%' }}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  
-                  {/* Focus center control */}
-                  {selectedVehicle && selectedVehicle.status !== 'offline' && !focusedHistoryItem && (
-                    <MapCenterController coords={[selectedVehicle.lat, selectedVehicle.lng]} />
-                  )}
+          {/* Tab 1: Live Interactive Leaflet Map */}
+          {activeSubTab === 'map' && (
+            <div className="flex-grow relative w-full h-full min-h-[350px]">
+              
+              {/* Selected Unit Floating Header */}
+              {selectedVehicle && (
+                <div className="absolute top-3 left-3 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800/80 max-w-sm">
+                  <div className="flex items-center justify-between gap-3 mb-1.5">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                        {selectedVehicle.name}
+                      </h4>
+                      <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                        {selectedVehicle.plate} &bull; IMEI: {selectedVehicle.imei}
+                      </p>
+                    </div>
 
-                  {/* Focus center control on a clicked history item */}
-                  {focusedHistoryItem && (
-                    <MapCenterController coords={[focusedHistoryItem.lat, focusedHistoryItem.lng]} zoom={15} />
-                  )}
-
-                  {/* Draw Plotted Trip History Route */}
-                  {plottedTripVehicleId && (() => {
-                    const historyPoints = histories[plottedTripVehicleId] || [];
-                    if (historyPoints.length < 1) return null;
-                    const coords = historyPoints.map(item => [item.lat, item.lng] as [number, number]);
-                    return (
-                      <>
-                        {/* The route line */}
-                        <Polyline
-                          positions={coords}
-                          color="#8B5CF6" // Purple-500
-                          weight={5}
-                          opacity={0.85}
-                          dashArray="5, 8"
-                        />
-
-                        {/* Start and End point markers */}
-                        {(() => {
-                          const startItem = historyPoints[historyPoints.length - 1]; // oldest is at the end of the array
-                          const endItem = historyPoints[0]; // newest is at index 0
-
-                          const startIcon = L.divIcon({
-                            className: 'custom-div-icon',
-                            html: `<div class="w-6 h-6 rounded-full bg-emerald-500 border-2 border-white shadow-lg flex items-center justify-center text-[10px] text-white font-extrabold font-sans">S</div>`,
-                            iconSize: [24, 24],
-                            iconAnchor: [12, 12]
-                          });
-
-                          const endIcon = L.divIcon({
-                            className: 'custom-div-icon',
-                            html: `<div class="w-6 h-6 rounded-full bg-red-500 border-2 border-white shadow-lg flex items-center justify-center text-[10px] text-white font-extrabold font-sans">E</div>`,
-                            iconSize: [24, 24],
-                            iconAnchor: [12, 12]
-                          });
-
-                          return (
-                            <>
-                              {startItem && (
-                                <Marker position={[startItem.lat, startItem.lng]} icon={startIcon}>
-                                  <Popup>
-                                    <div className="p-1.5 text-xs font-sans">
-                                      <span className="font-extrabold text-emerald-600 block text-[10px] tracking-wider">TRIP START POINT</span>
-                                      <p className="text-gray-500 text-[10px] mt-0.5 font-mono">{startItem.timestamp}</p>
-                                      <p className="mt-1 text-gray-700 dark:text-gray-300 font-medium">Event: {startItem.event}</p>
-                                    </div>
-                                  </Popup>
-                                </Marker>
-                              )}
-                              {endItem && (
-                                <Marker position={[endItem.lat, endItem.lng]} icon={endIcon}>
-                                  <Popup>
-                                    <div className="p-1.5 text-xs font-sans">
-                                      <span className="font-extrabold text-red-600 block text-[10px] tracking-wider">TRIP END POINT</span>
-                                      <p className="text-gray-500 text-[10px] mt-0.5 font-mono">{endItem.timestamp}</p>
-                                      <p className="mt-1 text-gray-700 dark:text-gray-300 font-medium">Event: {endItem.event}</p>
-                                    </div>
-                                  </Popup>
-                                </Marker>
-                              )}
-                            </>
-                          );
-                        })()}
-
-                        {/* Intermediate event pings */}
-                        {historyPoints.map((item, idx) => {
-                          const isStart = idx === historyPoints.length - 1;
-                          const isEnd = idx === 0;
-                          if (isStart || isEnd) return null;
-
-                          const pingIcon = L.divIcon({
-                            className: 'custom-div-icon',
-                            html: `<div class="w-3.5 h-3.5 rounded-full bg-indigo-600 hover:bg-indigo-500 border-2 border-white shadow-md cursor-pointer hover:scale-125 transition-transform duration-150"></div>`,
-                            iconSize: [14, 14],
-                            iconAnchor: [7, 7]
-                          });
-
-                          return (
-                            <Marker key={`ping-${item.id}`} position={[item.lat, item.lng]} icon={pingIcon}>
-                              <Popup>
-                                <div className="p-2 text-xs font-sans max-w-[200px]">
-                                  <h4 className="font-bold text-indigo-600 dark:text-indigo-400 border-b border-gray-100 dark:border-gray-850 pb-1 mb-1">{item.event}</h4>
-                                  <table className="w-full text-[10px] text-gray-500">
-                                    <tbody>
-                                      <tr>
-                                        <td className="py-0.5">Time:</td>
-                                        <td className="text-right font-mono text-gray-700 dark:text-gray-300 py-0.5">{item.timestamp}</td>
-                                      </tr>
-                                      <tr>
-                                        <td className="py-0.5">Speed:</td>
-                                        <td className="text-right font-bold text-gray-950 dark:text-gray-50 py-0.5">{item.speed} km/h</td>
-                                      </tr>
-                                      <tr>
-                                        <td className="py-0.5">Coords:</td>
-                                        <td className="text-right font-mono py-0.5">{item.lat.toFixed(5)}, {item.lng.toFixed(5)}</td>
-                                      </tr>
-                                      <tr>
-                                        <td className="py-0.5">Fuel Level:</td>
-                                        <td className="text-right text-gray-700 dark:text-gray-300 py-0.5">{item.fuelLevel}%</td>
-                                      </tr>
-                                      <tr>
-                                        <td className="py-0.5">Odometer:</td>
-                                        <td className="text-right font-mono py-0.5">{(item.mileage / 1000).toFixed(2)} km</td>
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </Popup>
-                            </Marker>
-                          );
-                        })}
-                      </>
-                    );
-                  })()}
-
-                  {/* Draw Focused History Item Marker */}
-                  {focusedHistoryItem && (() => {
-                    const focusedIcon = L.divIcon({
-                      className: 'custom-div-icon',
-                      html: `
-                        <div class="relative flex items-center justify-center">
-                          <span class="animate-ping absolute inline-flex h-7 w-7 rounded-full bg-pink-400 opacity-75"></span>
-                          <span class="relative inline-flex rounded-full h-4 w-4 bg-pink-500 border-2 border-white shadow-md"></span>
-                        </div>
-                      `,
-                      iconSize: [28, 28],
-                      iconAnchor: [14, 14]
-                    });
-
-                    return (
-                      <Marker position={[focusedHistoryItem.lat, focusedHistoryItem.lng]} icon={focusedIcon}>
-                        <Popup>
-                          <div className="p-2 text-xs font-sans max-w-[180px]">
-                            <span className="bg-pink-100 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 font-extrabold px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider block w-fit mb-1">
-                              FOCUSED RECORD
-                            </span>
-                            <h4 className="font-bold text-gray-900 dark:text-white">{focusedHistoryItem.event}</h4>
-                            <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{focusedHistoryItem.timestamp}</p>
-                            <div className="mt-2 text-[10px] space-y-0.5 text-gray-600 dark:text-gray-300">
-                              <div>Speed: <span className="font-bold text-gray-900 dark:text-white">{focusedHistoryItem.speed} km/h</span></div>
-                              <div>Fuel: <span className="font-bold text-gray-900 dark:text-white">{focusedHistoryItem.fuelLevel}%</span></div>
-                              <div>Odometer: <span className="font-bold text-gray-900 dark:text-white">{(focusedHistoryItem.mileage / 1000).toFixed(2)} km</span></div>
-                            </div>
-                          </div>
-                        </Popup>
-                      </Marker>
-                    );
-                  })()}
-
-                  {/* Draw Polyline trails for historical breadcrumbs */}
-                  {vehicles.map(veh => (
-                    veh.status !== 'offline' && veh.pathHistory.length > 1 && (
-                      <Polyline
-                        key={`trail-${veh.id}`}
-                        positions={veh.pathHistory}
-                        color={veh.id === selectedVehicleId ? '#3B82F6' : '#9CA3AF'}
-                        weight={veh.id === selectedVehicleId ? 3.5 : 2.0}
-                        opacity={veh.id === selectedVehicleId ? 0.8 : 0.4}
-                        dashArray={veh.id === selectedVehicleId ? undefined : '5, 5'}
-                      />
-                    )
-                  ))}
-
-                  {/* Device markers */}
-                  {vehicles.map(veh => (
-                    <Marker
-                      key={`marker-${veh.id}`}
-                      position={[veh.lat, veh.lng]}
-                      icon={createVehicleIcon(veh, veh.id === selectedVehicleId)}
+                    <button
+                      onClick={() => handleToggleEngineRelay(selectedVehicle)}
+                      disabled={isSendingCmd}
+                      className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all ${
+                        selectedVehicle.fuelCut
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-red-600 text-white shadow-xs'
+                      }`}
                     >
-                      <Popup>
-                        <div className="p-2 text-xs">
-                          <h4 className="font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5 mb-1.5">
-                            <span className={`w-2 h-2 rounded-full ${
-                              veh.status === 'offline' ? 'bg-gray-400' : 'bg-emerald-500'
-                            }`} />
-                            {veh.name} ({veh.plate})
-                          </h4>
-                          
-                          <table className="w-full text-[10px] divide-y divide-gray-100 dark:divide-gray-800">
-                            <tbody>
-                              <tr>
-                                <td className="py-1 text-gray-400">IMEI</td>
-                                <td className="py-1 font-mono text-right">{veh.imei}</td>
-                              </tr>
-                              <tr>
-                                <td className="py-1 text-gray-400">Speed</td>
-                                <td className="py-1 text-right font-bold">{veh.speed} km/h</td>
-                              </tr>
-                              <tr>
-                                <td className="py-1 text-gray-400">Heading</td>
-                                <td className="py-1 text-right">{veh.course}°</td>
-                              </tr>
-                              <tr>
-                                <td className="py-1 text-gray-400">Acc status</td>
-                                <td className="py-1 text-right font-bold">{veh.accStatus ? 'ON (Fired)' : 'OFF'}</td>
-                              </tr>
-                              <tr>
-                                <td className="py-1 text-gray-400">Engine Relay</td>
-                                <td className="py-1 text-right font-bold">{veh.fuelCut ? 'FUEL CUT' : 'RESTORED'}</td>
-                              </tr>
-                              <tr>
-                                <td className="py-1 text-gray-400">Battery</td>
-                                <td className="py-1 text-right font-mono">{(veh.batteryVoltage / 1000).toFixed(2)}V ({veh.batteryPercent}%)</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                          <div className="mt-2 text-[10px] text-gray-400 text-center font-mono">
-                            Last Refreshed: {veh.lastUpdate}
+                      <Power className="w-3 h-3" />
+                      <span>{selectedVehicle.fuelCut ? 'Restore Engine' : 'Cut Engine'}</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-[10px] bg-slate-100/60 dark:bg-slate-800/50 p-2 rounded-xl">
+                    <div>
+                      <span className="text-slate-400 block">Speed</span>
+                      <strong className="text-slate-900 dark:text-slate-100 font-extrabold">{selectedVehicle.speed} km/h</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">Ignition</span>
+                      <strong className={selectedVehicle.accStatus ? 'text-emerald-500' : 'text-slate-500'}>
+                        {selectedVehicle.accStatus ? 'ACC ON' : 'ACC OFF'}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">Voltage</span>
+                      <strong className="text-slate-900 dark:text-slate-100 font-semibold">{(selectedVehicle.batteryVoltage / 1000).toFixed(2)}V</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Leaflet Map */}
+              <MapContainer
+                center={[-26.2041, 28.0473]}
+                zoom={12}
+                scrollWheelZoom={true}
+                className="w-full h-full z-10"
+                style={{ height: '100%', width: '100%' }}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url={tileUrl}
+                />
+
+                {selectedVehicle && (
+                  <MapCenterController coords={[selectedVehicle.lat, selectedVehicle.lng]} />
+                )}
+
+                {/* Render Plotted Breadcrumb Route */}
+                {selectedVehicle && selectedVehicle.pathHistory.length > 1 && (
+                  <Polyline
+                    positions={selectedVehicle.pathHistory}
+                    color="#3B82F6"
+                    weight={4}
+                    opacity={0.8}
+                    dashArray="6, 8"
+                  />
+                )}
+
+                {/* Render Vehicle Markers */}
+                {vehicles.map(v => {
+                  const isSel = v.id === selectedVehicleId;
+                  const color = v.status === 'moving' ? '#10B981' : v.status === 'stationary' ? '#F59E0B' : '#64748B';
+
+                  const customIcon = L.divIcon({
+                    className: 'custom-vehicle-marker',
+                    html: `
+                      <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;">
+                        <div style="position: absolute; width: 36px; height: 36px; border-radius: 50%; background-color: ${color}33; border: 2px solid ${color}; transform: ${isSel ? 'scale(1.2)' : 'scale(1)'}; transition: all 0.3s;"></div>
+                        <div style="width: 20px; height: 20px; border-radius: 50%; background-color: ${color}; color: white; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; transform: rotate(${v.course}deg);">
+                          &#10148;
+                        </div>
+                      </div>
+                    `,
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
+                  });
+
+                  return (
+                    <Marker
+                      key={v.id}
+                      position={[v.lat, v.lng]}
+                      icon={customIcon}
+                      eventHandlers={{
+                        click: () => setSelectedVehicleId(v.id)
+                      }}
+                    >
+                      <Popup className="custom-leaflet-popup">
+                        <div className="p-1 min-w-[180px]">
+                          <h4 className="font-bold text-xs text-slate-900 mb-0.5">{v.name}</h4>
+                          <p className="text-[11px] font-mono text-slate-500 mb-2">{v.plate}</p>
+                          <div className="space-y-1 text-[11px] text-slate-700">
+                            <div className="flex justify-between">
+                              <span>Status:</span>
+                              <strong className="capitalize">{v.status}</strong>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Speed:</span>
+                              <strong>{v.speed} km/h</strong>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Battery:</span>
+                              <strong>{(v.batteryVoltage / 1000).toFixed(1)} V ({v.batteryPercent}%)</strong>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Ignition:</span>
+                              <strong>{v.accStatus ? 'ACC ON' : 'ACC OFF'}</strong>
+                            </div>
+                            {v.fuelCut && (
+                              <div className="text-red-600 font-bold text-center pt-1 border-t">
+                                RELAY CUT ACTIVE
+                              </div>
+                            )}
                           </div>
                         </div>
                       </Popup>
                     </Marker>
-                  ))}
-                </MapContainer>
+                  );
+                })}
+              </MapContainer>
+            </div>
+          )}
 
-                {/* Floating Trip History Active HUD */}
-                {(plottedTripVehicleId || focusedHistoryItem) && (
-                  <div className="absolute top-4 right-4 bg-white/95 dark:bg-gray-950/95 p-3 rounded-xl border border-violet-200 dark:border-violet-900/40 shadow-lg z-[500] backdrop-blur-sm max-w-xs text-[11px] font-sans">
-                    <div className="flex items-center justify-between gap-4 mb-2">
-                      <div className="flex items-center gap-1.5 font-bold text-violet-600 dark:text-violet-400">
-                        <MapPin className="w-4 h-4 animate-bounce text-violet-500" />
-                        <span>Trip Route Plotted</span>
-                      </div>
-                      <span className="text-[9px] bg-violet-100 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 font-extrabold px-1.5 py-0.5 rounded uppercase">
-                        History Mode
+          {/* Tab 2: TK116 Command Center */}
+          {activeSubTab === 'cmd' && selectedVehicle && (
+            <div className="flex-grow p-4 md:p-6 overflow-y-auto space-y-6 bg-slate-50 dark:bg-slate-950">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                      <Sliders className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        Eelink TK116 Commands &bull; {selectedVehicle.name}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                        Target IMEI: {selectedVehicle.imei}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    GPRS TCP Connected
+                  </span>
+                </div>
+
+                {/* Quick Action Commands Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <button
+                    onClick={() => handleToggleEngineRelay(selectedVehicle)}
+                    disabled={isSendingCmd}
+                    className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                      selectedVehicle.fuelCut
+                        ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/60 hover:border-emerald-500'
+                        : 'bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-800/60 hover:border-red-500'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <Zap className={`w-5 h-5 ${selectedVehicle.fuelCut ? 'text-emerald-600' : 'text-red-600'}`} />
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/80 dark:bg-slate-900/80 font-bold">
+                        {selectedVehicle.fuelCut ? 'RELAY,0#' : 'RELAY,1#'}
                       </span>
                     </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 mb-0.5">
+                        {selectedVehicle.fuelCut ? 'Restore Engine Fuel Relay' : 'Cut Engine Fuel Relay'}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {selectedVehicle.fuelCut ? 'Re-enable fuel pump output' : 'Trigger remote vehicle immobilizer'}
+                      </p>
+                    </div>
+                  </button>
 
-                    <p className="text-gray-500 dark:text-gray-400 mb-2.5 text-[10px] leading-relaxed">
-                      {plottedTripVehicleId ? (
-                        <>Showing historical pings for <strong>{vehicles.find(v => v.id === plottedTripVehicleId)?.name || 'vehicle'}</strong>.</>
-                      ) : (
-                        <>Focused on selected historical record.</>
-                      )}
-                    </p>
-
-                    <div className="flex gap-2">
-                      {plottedTripVehicleId && (
+                  <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col justify-between">
+                    <div className="flex justify-between items-center mb-2">
+                      <Gauge className="w-5 h-5 text-blue-500" />
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white dark:bg-slate-800 font-bold">
+                        SPEED,ON,120#
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 mb-1">
+                        Speed Limit Alert Threshold
+                      </h4>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          value={speedLimitInput}
+                          onChange={(e) => setSpeedLimitInput(e.target.value)}
+                          className="w-20 px-2 py-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold"
+                        />
                         <button
                           onClick={() => {
-                            const pts = histories[plottedTripVehicleId] || [];
-                            if (pts.length > 0) {
-                              setFocusedHistoryItem(pts[0]);
-                            }
+                            const cmd = `SPEED,ON,${speedLimitInput}#`;
+                            setCommandInput(cmd);
                           }}
-                          className="flex-1 py-1 px-2 bg-gray-50 hover:bg-gray-100 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded font-semibold text-[10px] border border-gray-200 dark:border-gray-800 cursor-pointer"
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors"
                         >
-                          Center Trip
+                          Set
                         </button>
-                      )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col justify-between">
+                    <div className="flex justify-between items-center mb-2">
+                      <MapPin className="w-5 h-5 text-amber-500" />
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white dark:bg-slate-800 font-bold">
+                        WHERE#
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 mb-0.5">
+                        Instant Location Ping
+                      </h4>
                       <button
                         onClick={() => {
-                          setPlottedTripVehicleId(null);
-                          setFocusedHistoryItem(null);
-                          addToast("Cleared plotted trip history from the map", "info");
+                          setCommandInput('WHERE#');
                         }}
-                        className="flex-1 py-1 px-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 text-red-600 dark:text-red-400 rounded font-bold text-[10px] border border-red-200/50 dark:border-red-900/30 cursor-pointer"
+                        className="mt-1 px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-colors"
                       >
-                        Clear Plot
+                        Request Position
                       </button>
                     </div>
                   </div>
-                )}
-
-                {/* Overlaid Map Legend HUD */}
-                <div className="absolute bottom-4 right-4 bg-white/95 dark:bg-gray-950/95 p-3 rounded-xl border border-gray-200 dark:border-gray-800 shadow-md z-[500] backdrop-blur-sm pointer-events-none max-w-xs text-[10px]">
-                  <h5 className="font-bold text-gray-800 dark:text-gray-200 mb-1.5">TK116 Map Overlay Legend</h5>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                      <span className="text-gray-600 dark:text-gray-400">Active &amp; Moving Unit</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                      <span className="text-gray-600 dark:text-gray-400">Stationary (Engine OFF/Idle)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                      <span className="text-gray-600 dark:text-gray-400">Active Warning / Fuel Cut Activated</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-gray-400" />
-                      <span className="text-gray-600 dark:text-gray-400">Device Offline / Power Loss</span>
-                    </div>
-                  </div>
                 </div>
-              </div>
-            )}
 
-            {/* TAB 2: TK116 Instruction Console */}
-            {activeSubTab === 'simulator' && (
-              <div className="w-full h-full p-6 overflow-y-auto bg-gray-50 dark:bg-gray-900 grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* Send Command Box */}
-                <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-xs uppercase font-extrabold text-blue-500 mb-3 tracking-wider flex items-center gap-1.5">
-                      <Sliders className="w-4 h-4" />
-                      Eelink Command Dispatcher
-                    </h3>
-                    
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-4">
-                      Build standard command commands adhering strictly to the **Eelink Protocol V2.0** format. Commands are sent as short message string payloads.
-                    </p>
-
-                    <div className="space-y-4">
-                      {/* Select command */}
-                      <div>
-                        <label className="block text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-1">
-                          Select Command Action
-                        </label>
-                        <select
-                          value={simCommand}
-                          onChange={e => {
-                            setSimCommand(e.target.value);
-                            setSimCustomParam('');
-                          }}
-                          className="w-full text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100 rounded-lg p-2"
-                        >
-                          <option value="RESET#">RESET# - Reboot TK116 Hardware</option>
-                          <option value="RELAY,1#">RELAY,1# - Activate Relay (Cut Engine/Fuel Line)</option>
-                          <option value="RELAY,0#">RELAY,0# - Deactivate Relay (Restore Fuel Line)</option>
-                          <option value="STATUS#">STATUS# - Query Full Device Status Metrics</option>
-                          <option value="VERSION#">VERSION# - Query Device Firmware Versions</option>
-                          <option value="SPEED">SPEED - Configure Maximum Speed Limit Alarm</option>
-                          <option value="CUSTOM">CUSTOM - Custom Plaintext ASCII Command</option>
-                        </select>
-                      </div>
-
-                      {/* Custom parameter input if custom or speed */}
-                      {(simCommand === 'CUSTOM' || simCommand === 'SPEED') && (
-                        <div>
-                          <label className="block text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-1">
-                            {simCommand === 'SPEED' ? 'Enter Speed Limit (km/h)' : 'Enter ASCII Command Content (omitting #)'}
-                          </label>
-                          <input
-                            type="text"
-                            value={simCustomParam}
-                            onChange={e => setSimCustomParam(e.target.value)}
-                            placeholder={simCommand === 'SPEED' ? 'e.g. 100' : 'e.g. FENCE,1,OR,,,500'}
-                            className="w-full text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100 rounded-lg p-2 font-mono"
-                          />
-                        </div>
-                      )}
-
-                      {/* Targeted device specs */}
-                      <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200/50 dark:border-gray-800 p-3 rounded-xl space-y-1.5">
-                        <h4 className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Target Device Information</h4>
-                        <div className="grid grid-cols-2 text-[10px] font-mono gap-1 text-gray-500">
-                          <div>Vehicle Name:</div>
-                          <div className="text-right text-gray-800 dark:text-gray-200 font-bold">{selectedVehicle.name}</div>
-                          <div>Device IMEI:</div>
-                          <div className="text-right text-gray-800 dark:text-gray-200">{selectedVehicle.imei}</div>
-                          <div>ACC State:</div>
-                          <div className="text-right text-gray-800 dark:text-gray-200">{selectedVehicle.accStatus ? 'ON (Engine Running)' : 'OFF'}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
+                {/* Custom ASCII/HEX Command Terminal Input */}
+                <form onSubmit={handleSendCustomCommand} className="pt-2">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Send Direct Eelink TK116 Command
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={commandInput}
+                      onChange={(e) => setCommandInput(e.target.value)}
+                      placeholder="e.g. STATUS#, RESET#, SERVER,1,gps.rapid911.co.za,7018,0#"
+                      className="flex-grow font-mono bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                     <button
-                      onClick={handleSendCommand}
-                      disabled={isTransmitting || selectedVehicle.status === 'offline'}
-                      className="w-full btn-primary py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+                      type="submit"
+                      disabled={isSendingCmd || !commandInput.trim()}
+                      className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all disabled:opacity-50"
                     >
-                      {isTransmitting ? (
-                        <>
-                          <RotateCw className="w-4 h-4 animate-spin" />
-                          Transmitting OTA Command...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4" />
-                          Transmit Instruction Packet (0x80)
-                        </>
-                      )}
-                    </button>
-                    {selectedVehicle.status === 'offline' && (
-                      <p className="text-[9px] text-center text-red-500 mt-1 font-semibold">
-                        This vehicle's device is currently offline. Cannot establish connection.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Packet Construction / Diagnostic logs */}
-                <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm flex flex-col h-full overflow-hidden">
-                  <h3 className="text-xs uppercase font-extrabold text-blue-500 mb-3 tracking-wider flex items-center gap-1.5">
-                    <Terminal className="w-4 h-4" />
-                    OTA Packet Inspector
-                  </h3>
-
-                  {/* Packet details display */}
-                  <div className="flex-grow space-y-4 overflow-y-auto pr-1">
-                    {generatedHexCmd ? (
-                      <div className="space-y-3.5">
-                        {/* Outgoing hex */}
-                        <div className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-xl p-3.5">
-                          <h4 className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1.5 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                            Outgoing Packet Hex [PID 0x80]
-                          </h4>
-                          <p className="text-[11px] font-mono break-all text-gray-700 dark:text-gray-300 font-semibold tracking-wide">
-                            {formatHexGrouped(generatedHexCmd)}
-                          </p>
-                          <div className="grid grid-cols-3 gap-2 mt-3 text-[9px] font-mono border-t border-blue-200/30 dark:border-blue-900/20 pt-2 text-gray-500">
-                            <div>Mark: <span className="font-bold text-gray-800 dark:text-gray-200">67 67</span></div>
-                            <div>PID: <span className="font-bold text-gray-800 dark:text-gray-200">80</span></div>
-                            <div>Type: <span className="font-bold text-gray-800 dark:text-gray-200">01</span></div>
-                          </div>
-                        </div>
-
-                        {/* Incoming response hex */}
-                        {responseHexCmd && (
-                          <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-xl p-3.5">
-                            <h4 className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide mb-1.5 flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                              Incoming Device Reply Hex [PID 0x80]
-                            </h4>
-                            <p className="text-[11px] font-mono break-all text-gray-700 dark:text-gray-300 font-semibold tracking-wide">
-                              {formatHexGrouped(responseHexCmd)}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="h-40 flex flex-col items-center justify-center text-center p-6 bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl text-gray-400">
-                        <Info className="w-8 h-8 mb-2 stroke-1" />
-                        <p className="text-[11px]">No commands transmitted yet.</p>
-                        <p className="text-[9px] mt-0.5 max-w-[200px]">Send an OTA instruction on the left to inspect raw Eelink protocol bytes.</p>
-                      </div>
-                    )}
-
-                    {/* Sim Action logs */}
-                    {simLogs.length > 0 && (
-                      <div className="border-t border-gray-100 dark:border-gray-800 pt-3">
-                        <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2">Cellular Link Audit logs</h4>
-                        <div className="bg-gray-50 dark:bg-gray-900/80 border border-gray-200/50 dark:border-gray-800 rounded-xl p-3 h-48 overflow-y-auto font-mono text-[9px] space-y-1.5 divide-y divide-gray-100 dark:divide-gray-800/40">
-                          {simLogs.map((log, idx) => (
-                            <div key={idx} className="pt-1.5 first:pt-0">
-                              <span className="text-gray-400 mr-1.5">[{log.time}]</span>
-                              <span className={
-                                log.type === 'out' ? 'text-blue-500' : (log.type === 'in' ? 'text-emerald-500' : 'text-gray-300')
-                              }>
-                                {log.text}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 3: Real-Time Protocol Packet Stream */}
-            {activeSubTab === 'terminal' && (
-              <div className="w-full h-full p-4 overflow-hidden bg-gray-950 flex flex-col lg:flex-row gap-4">
-                
-                {/* Scrollable Packet Log Console */}
-                <div className="flex-grow flex flex-col h-full bg-gray-900/60 border border-gray-800 rounded-xl overflow-hidden">
-                  <div className="bg-gray-900 border-b border-gray-800 px-4 py-2.5 flex items-center justify-between text-[11px] font-mono font-bold text-gray-300">
-                    <span className="flex items-center gap-1.5"><Terminal className="w-3.5 h-3.5 text-blue-400" /> Incoming cellular packets (GPRS Port 32001)</span>
-                    <button 
-                      onClick={() => setRawPackets([])}
-                      className="text-[10px] hover:text-white bg-gray-800 px-2 py-0.5 rounded cursor-pointer"
-                    >
-                      Clear Log
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send</span>
                     </button>
                   </div>
-                  
-                  {/* Console lines */}
-                  <div className="flex-grow p-3 overflow-y-auto font-mono text-[10px] space-y-1.5">
-                    {rawPackets.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-gray-500 text-center">
-                        <Activity className="w-8 h-8 mb-2 animate-pulse text-gray-600" />
-                        <p>Awaiting raw GPRS packet frame stream...</p>
-                        <p className="text-[9px] mt-0.5">Eelink TK116 devices upload location frames periodically.</p>
-                      </div>
-                    ) : (
-                      rawPackets.map(pkg => {
-                        const isSelected = selectedPacket?.id === pkg.id;
-                        return (
-                          <button
-                            key={pkg.id}
-                            onClick={() => setSelectedPacket(pkg)}
-                            className={`w-full text-left p-2 rounded transition-all block border ${
-                              isSelected 
-                                ? 'bg-blue-950/40 border-blue-800 text-white' 
-                                : 'bg-transparent border-transparent hover:bg-gray-900/50 text-gray-300'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-2 text-[9px] text-gray-400 mb-1">
-                              <span className="flex items-center gap-1 font-bold">
-                                {pkg.direction === 'UP' ? (
-                                  <span className="text-emerald-400">▲ UP</span>
-                                ) : (
-                                  <span className="text-blue-400">▼ DOWN</span>
-                                )}
-                                <span className="bg-gray-800 text-gray-300 px-1.5 py-0.2 rounded uppercase">
-                                  {pkg.pidName} ({pkg.pid})
-                                </span>
-                              </span>
-                              <span>{pkg.timestamp}</span>
-                            </div>
-                            
-                            <p className="break-all font-mono font-bold text-[10px] tracking-wide text-gray-200">
-                              {formatHexGrouped(pkg.rawHex)}
-                            </p>
-                            
-                            <div className="mt-1 flex items-center justify-between text-[9px] text-gray-500">
-                              <span>IMEI: {pkg.imei}</span>
-                              <span className="text-blue-400 hover:underline">Click to decode byte sequence</span>
-                            </div>
-                          </button>
-                        );
-                      })
-                    )}
-                    <div ref={terminalEndRef} />
-                  </div>
-                </div>
-
-                {/* Right Panel: Packet Byte-by-Byte Decoder */}
-                <div className="w-full lg:w-96 shrink-0 bg-gray-900/60 border border-gray-800 rounded-xl flex flex-col overflow-hidden h-full">
-                  <div className="bg-gray-900 border-b border-gray-800 px-4 py-2.5 text-[11px] font-mono font-bold text-gray-300 flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-emerald-400" />
-                    Protocol Byte-by-Byte Decoder
-                  </div>
-
-                  <div className="flex-grow p-4 overflow-y-auto">
-                    {selectedPacket ? (
-                      <div className="space-y-4">
-                        <div className="border-b border-gray-800 pb-3">
-                          <h4 className="text-[10px] uppercase font-bold text-gray-500 mb-1">Packet Overview</h4>
-                          <div className="text-[11px] font-mono text-gray-300">
-                            <div>Frame Class: <span className="font-bold text-white">{selectedPacket.pidName}</span></div>
-                            <div>Identifier PID: <span className="font-bold text-blue-400">{selectedPacket.pid}</span></div>
-                            <div>Device IMEI: <span className="font-bold text-white">{selectedPacket.imei}</span></div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="text-[10px] uppercase font-bold text-gray-500 mb-2">Decoded Frame Fields</h4>
-                          <div className="bg-black/40 border border-gray-800/80 rounded-xl p-3 space-y-2.5 max-h-[300px] overflow-y-auto">
-                            {Object.entries(selectedPacket.decoded).map(([key, val]) => (
-                              <div key={key} className="text-[10px] font-mono">
-                                <span className="text-gray-500 block leading-tight">{key}</span>
-                                <span className="text-white font-bold break-all leading-tight">{String(val)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="bg-gray-900/80 border border-gray-800/50 p-3 rounded-lg text-[9px] text-gray-400 space-y-1.5 font-mono">
-                          <h5 className="font-bold text-gray-300 uppercase">Eelink V2 Frame Structure</h5>
-                          <p>
-                            Bytes [0-1]: Mark (0x67 0x67)<br />
-                            Byte [2]: Packet ID (PID)<br />
-                            Bytes [3-4]: size of sequence + content<br />
-                            Bytes [5-6]: Sequence number
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-500">
-                        <Info className="w-8 h-8 mb-2 stroke-1" />
-                        <p className="text-[11px]">No GPRS package frame selected.</p>
-                        <p className="text-[9px] mt-0.5">Click any live packet frame in the log console to parse its full structure byte-by-byte.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
+                </form>
               </div>
-            )}
 
-            {/* TAB 4: Location & Trip History View with Export */}
-            {activeSubTab === 'history' && (
-              <div className="w-full h-full p-6 overflow-y-auto bg-gray-50 dark:bg-gray-900 grid grid-cols-1 xl:grid-cols-12 gap-6">
-                
-                {/* Left Side: Current Geolocation & Asset Details */}
-                <div className="xl:col-span-5 flex flex-col gap-6">
-                  
-                  {/* Trip Summary Card displaying distance & active status */}
-                  <TripSummaryCard vehicle={selectedVehicle} />
-                  
-                  {/* Current Tracking Card */}
-                  <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
-                    <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/60">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 tracking-wider">Asset Identifier</span>
-                          <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 mt-0.5">
-                            {selectedVehicle.name}
-                          </h3>
-                        </div>
-                        <span className={`text-[10px] uppercase font-extrabold px-2.5 py-1 rounded-full border ${
-                          selectedVehicle.status === 'offline' 
-                            ? 'bg-gray-100 dark:bg-gray-900 border-gray-300 dark:border-gray-800 text-gray-500'
-                            : selectedVehicle.status === 'stationary'
-                              ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/30 text-amber-600 dark:text-amber-400'
-                              : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400'
-                        }`}>
-                          {selectedVehicle.status}
+              {/* Trip Summary Card */}
+              <TripSummaryCard vehicle={selectedVehicle} />
+            </div>
+          )}
+
+          {/* Tab 3: Eelink TK116 Integration Guide */}
+          {activeSubTab === 'guide' && (
+            <div className="flex-grow p-4 md:p-6 overflow-y-auto space-y-6 bg-slate-50 dark:bg-slate-950 text-xs">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                    <Radio className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                      Real Eelink TK116 Hardware Setup &amp; Configuration
+                    </h3>
+                    <p className="text-slate-500 dark:text-slate-400">
+                      Step-by-step instructions for pairing real Eelink TK116 4G GPRS GPS trackers
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Step 1: Server Config */}
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-slate-100">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">1</span>
+                      <span>SMS Gateway Configuration</span>
+                    </div>
+                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Insert a 4G SIM card into the TK116 unit. Send the following SMS commands to set the server IP and APN:
+                    </p>
+                    <div className="bg-slate-900 text-blue-400 p-2.5 rounded-lg font-mono text-[11px] space-y-1">
+                      <div>SERVER,1,gps.rapid911.co.za,7018,0#</div>
+                      <div>APN,internet#</div>
+                      <div>TIMER,30,30#</div>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Wiring Diagram */}
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-slate-100">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">2</span>
+                      <span>Vehicle Wire Harness Pinout</span>
+                    </div>
+                    <div className="space-y-1.5 text-slate-600 dark:text-slate-300">
+                      <div className="flex justify-between items-center p-1.5 bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                        <span className="font-semibold text-red-500">&bull; Red Wire:</span>
+                        <span>12V-24V Constant Battery Power</span>
+                      </div>
+                      <div className="flex justify-between items-center p-1.5 bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                        <span className="font-semibold text-slate-900 dark:text-white">&bull; Black Wire:</span>
+                        <span>Chassis Ground (GND)</span>
+                      </div>
+                      <div className="flex justify-between items-center p-1.5 bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                        <span className="font-semibold text-amber-500">&bull; Yellow Wire:</span>
+                        <span>Ignition ACC Detection Input</span>
+                      </div>
+                      <div className="flex justify-between items-center p-1.5 bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                        <span className="font-semibold text-blue-500">&bull; White Wire:</span>
+                        <span>Immobilizer Relay Control Output</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 text-blue-900 dark:text-blue-200 leading-relaxed">
+                  <strong className="block mb-1">Eelink Binary Protocol Overview:</strong>
+                  The Eelink TK116 device sends binary TCP packets starting with magic header <code className="font-mono font-bold bg-blue-100 dark:bg-blue-900/50 px-1 rounded">0x67 0x67</code>. Packet ID <code className="font-mono font-bold bg-blue-100 dark:bg-blue-900/50 px-1 rounded">0x12</code> contains location coordinates, speed, course angle, battery voltage, and ignition status. Packet ID <code className="font-mono font-bold bg-blue-100 dark:bg-blue-900/50 px-1 rounded">0x80</code> handles server command requests.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 4: GPRS Decoded Terminal Logs */}
+          {activeSubTab === 'packets' && (
+            <div className="flex-grow p-4 overflow-y-auto bg-slate-950 text-slate-200 font-mono text-xs">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+                <span className="text-emerald-400 font-bold flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Eelink TK116 GPRS TCP Stream (Port 7018)
+                </span>
+                <button
+                  onClick={() => setTerminalLogs([])}
+                  className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                >
+                  Clear Logs
+                </button>
+              </div>
+
+              {terminalLogs.length === 0 ? (
+                <div className="text-slate-600 text-center py-12">
+                  No packets logged yet. Send a command from the TK116 Command Center or wait for location pings.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {terminalLogs.map(p => (
+                    <div key={p.id} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80">
+                      <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                        <span>[{p.timestamp}] IMEI: <strong className="text-slate-200">{p.imei}</strong></span>
+                        <span className={p.direction === 'UP' ? 'text-blue-400' : 'text-amber-400'}>
+                          {p.direction === 'UP' ? '&uarr; GPRS IN' : '&darr; COMMAND OUT'}
                         </span>
                       </div>
-                    </div>
-
-                    <div className="p-5 space-y-4">
-                      {/* Big Telemetry Metrics Grid */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50 dark:bg-gray-900/60 p-3.5 rounded-xl border border-gray-200/50 dark:border-gray-800/40">
-                          <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 block mb-0.5">Current Velocity</span>
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-black text-gray-900 dark:text-white">
-                              {selectedVehicle.speed}
-                            </span>
-                            <span className="text-[11px] font-bold text-gray-400">km/h</span>
-                          </div>
-                          <span className="text-[9px] text-gray-400 block mt-1">Limit: {selectedVehicle.speedLimit} km/h</span>
-                        </div>
-
-                        <div className="bg-gray-50 dark:bg-gray-900/60 p-3.5 rounded-xl border border-gray-200/50 dark:border-gray-800/40">
-                          <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 block mb-0.5">Fuel Status</span>
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
-                              {Math.floor(selectedVehicle.fuelLevel)}%
-                            </span>
-                          </div>
-                          <span className="text-[9px] text-gray-400 block mt-1">Tank Capacity: ~65L</span>
-                        </div>
-                      </div>
-
-                      {/* Geographic Coordinates Display */}
-                      <div className="bg-blue-50/20 dark:bg-blue-950/10 border border-blue-100/50 dark:border-blue-900/20 rounded-xl p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400 tracking-wider flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5" />
-                            Live Geolocation Coordinate
-                          </span>
-                          <span className="text-[9px] text-gray-400 font-mono">WSG-84 Protocol</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 font-mono text-xs text-gray-800 dark:text-gray-200">
-                          <div>
-                            <span className="text-[9px] text-gray-400 uppercase block mb-0.5">Latitude</span>
-                            <span className="font-bold">{selectedVehicle.lat.toFixed(6)}</span>
-                          </div>
-                          <div>
-                            <span className="text-[9px] text-gray-400 uppercase block mb-0.5">Longitude</span>
-                            <span className="font-bold">{selectedVehicle.lng.toFixed(6)}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2 mt-4 pt-3 border-t border-blue-100/30 dark:border-blue-900/10">
-                          <button
-                            onClick={() => handleCopyCoords(selectedVehicle.lat, selectedVehicle.lng)}
-                            className="flex-1 py-1.5 px-3 bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-lg text-[11px] font-bold text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1.5 cursor-pointer transition-all"
-                          >
-                            <Copy className="w-3.5 h-3.5 text-gray-400" />
-                            Copy Coords
-                          </button>
-                          <a
-                            href={getGoogleMapsUrl(selectedVehicle.lat, selectedVehicle.lng)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 py-1.5 px-3 bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-lg text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1.5 transition-all"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            Google Maps
-                          </a>
-                        </div>
-                      </div>
-
-                      {/* Technical Specs Rows */}
-                      <div className="space-y-2 text-xs">
-                        <div className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-800/50">
-                          <span className="text-gray-400">License Plate</span>
-                          <span className="font-bold font-mono text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-                            {selectedVehicle.plate}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-800/50">
-                          <span className="text-gray-400">Hardware IMEI</span>
-                          <span className="font-mono text-gray-800 dark:text-gray-200">{selectedVehicle.imei}</span>
-                        </div>
-                        <div className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-800/50">
-                          <span className="text-gray-400">Odometer Mileage</span>
-                          <span className="font-mono font-bold text-gray-800 dark:text-gray-200">{(selectedVehicle.mileage / 1000).toFixed(2)} km</span>
-                        </div>
-                        <div className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-800/50">
-                          <span className="text-gray-400">ACC Ignition Status</span>
-                          <span className={`font-bold ${selectedVehicle.accStatus ? 'text-amber-500' : 'text-gray-400'}`}>
-                            {selectedVehicle.accStatus ? 'ON (Running)' : 'OFF (Engine Idle)'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-800/50">
-                          <span className="text-gray-400">Device Battery</span>
-                          <span className="font-mono text-gray-800 dark:text-gray-200 flex items-center gap-1">
-                            <Battery className="w-3.5 h-3.5 text-blue-500" />
-                            {(selectedVehicle.batteryVoltage / 1000).toFixed(2)}V ({selectedVehicle.batteryPercent}%)
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between py-1.5">
-                          <span className="text-gray-400">Fuel Cut Relay</span>
-                          <span className={`font-bold ${selectedVehicle.fuelCut ? 'text-red-500' : 'text-emerald-500'}`}>
-                            {selectedVehicle.fuelCut ? 'ACTIVE (Cutoff)' : 'INACTIVE (Normal)'}
-                          </span>
-                        </div>
+                      <div className="text-slate-300 font-semibold mb-1">{p.pidName} ({p.pid})</div>
+                      <div className="bg-slate-950 p-2 rounded text-[10px] text-emerald-400 overflow-x-auto break-all">
+                        {p.rawHex}
                       </div>
                     </div>
-                  </div>
-
-                  {/* Interactive Map Route Plotter Card */}
-                  <div className="bg-white dark:bg-gray-950 border border-violet-150 dark:border-violet-900/40 rounded-2xl p-5 shadow-sm">
-                    <h4 className="text-xs uppercase font-extrabold text-violet-600 dark:text-violet-400 mb-2.5 tracking-wider flex items-center gap-1.5">
-                      <Compass className="w-4 h-4 text-violet-500" />
-                      Interactive Map Plotter
-                    </h4>
-                    <p className="text-[11px] text-gray-400 mb-4 leading-relaxed">
-                      Visualize the entire telemetry route path, geofence status triggers, and physical event locations for **{selectedVehicle.name}** directly on the interactive Live Map.
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          const historyList = histories[selectedVehicle.id] || [];
-                          if (historyList.length === 0) {
-                            addToast(`No history points available to plot for ${selectedVehicle.name}`, "error");
-                            return;
-                          }
-                          setPlottedTripVehicleId(selectedVehicle.id);
-                          setFocusedHistoryItem(null);
-                          setActiveSubTab('map');
-                          addToast(`Successfully plotted ${historyList.length} route pings for ${selectedVehicle.name} on the map!`, "success");
-                        }}
-                        disabled={!selectedVehicle || selectedVehicle.id === 'no-vehicle'}
-                        className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-100 disabled:dark:bg-gray-800 disabled:text-gray-400 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow transition-all border border-transparent"
-                      >
-                        <MapPin className="w-4 h-4" />
-                        Plot Route on Live Map
-                      </button>
-                      
-                      {(plottedTripVehicleId === selectedVehicle.id || focusedHistoryItem) && (
-                        <button
-                          onClick={() => {
-                            setPlottedTripVehicleId(null);
-                            setFocusedHistoryItem(null);
-                            addToast("Cleared plotted trip history from the map", "info");
-                          }}
-                          className="px-3 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-xl font-bold text-xs border border-red-200/50 dark:border-red-900/30 cursor-pointer"
-                          title="Clear Plot"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Export Options Card */}
-                  <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-                    <h4 className="text-xs uppercase font-extrabold text-blue-500 mb-2.5 tracking-wider flex items-center gap-1.5">
-                      <Download className="w-4 h-4" />
-                      Export Historical Records
-                    </h4>
-                    <p className="text-[11px] text-gray-400 mb-4 leading-relaxed">
-                      Download the complete telemetry logging stream, geofence entries/exits, and hardware status history for **{selectedVehicle.name}** in the format of your choice.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <button
-                        onClick={() => handleExportCSV(selectedVehicle)}
-                        className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow transition-all"
-                      >
-                        <Download className="w-4 h-4" />
-                        Export to CSV
-                      </button>
-                      <button
-                        onClick={() => handleExportJSON(selectedVehicle)}
-                        className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-900 text-white font-bold text-xs rounded-xl border border-gray-700/50 flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow transition-all"
-                      >
-                        <Download className="w-4 h-4" />
-                        Export to JSON
-                      </button>
-                    </div>
-                  </div>
-
+                  ))}
                 </div>
+              )}
+            </div>
+          )}
 
-                {/* Right Side: Log Filter & Interactive History Table */}
-                <div className="xl:col-span-7 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[calc(100vh-180px)] min-h-[500px]">
-                  
-                  {/* Filter and Search Header */}
-                  <div className="p-5 border-b border-gray-100 dark:border-gray-800 space-y-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                          <FileText className="w-4 h-4 text-blue-500" />
-                          Trip &amp; Status History Log
-                        </h3>
-                        <p className="text-[10px] text-gray-400 mt-0.5">
-                          Historical GPRS updates received from IMEI {selectedVehicle.imei}
-                        </p>
-                      </div>
-                      <span className="text-[10px] bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-semibold px-2.5 py-1 rounded-full border border-blue-100 dark:border-blue-900/30">
-                        {filteredHistory.length} records shown
-                      </span>
-                    </div>
+          {/* Tab 5: Location & Trip History */}
+          {activeSubTab === 'history' && (
+            <div className="flex-grow p-4 md:p-6 overflow-y-auto space-y-4 bg-slate-50 dark:bg-slate-950">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-3">
+                  Historical Location Breadcrumbs &amp; Events &bull; {selectedVehicle?.name}
+                </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {/* Search Input */}
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="Search events, speeds..."
-                          value={historySearchText}
-                          onChange={e => setHistorySearchText(e.target.value)}
-                          className="w-full text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-800 dark:text-gray-100 placeholder-gray-400 rounded-lg py-2 pl-3 pr-8"
-                        />
-                        <span className="absolute right-3 top-2.5 text-gray-400 text-xs pointer-events-none">🔍</span>
-                      </div>
-
-                      {/* Filter subtabs */}
-                      <div className="flex gap-1 bg-gray-50 dark:bg-gray-900 p-1 rounded-lg border border-gray-200/50 dark:border-gray-800/40">
-                        <button
-                          onClick={() => setHistoryFilterType('all')}
-                          className={`flex-1 text-[10px] py-1 font-bold rounded-md transition-all ${
-                            historyFilterType === 'all'
-                              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                          }`}
-                        >
-                          All
-                        </button>
-                        <button
-                          onClick={() => setHistoryFilterType('ignition')}
-                          className={`flex-1 text-[10px] py-1 font-bold rounded-md transition-all ${
-                            historyFilterType === 'ignition'
-                              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                          }`}
-                        >
-                          Ignition
-                        </button>
-                        <button
-                          onClick={() => setHistoryFilterType('warning')}
-                          className={`flex-1 text-[10px] py-1 font-bold rounded-md transition-all ${
-                            historyFilterType === 'warning'
-                              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                          }`}
-                        >
-                          Alerts
-                        </button>
-                        <button
-                          onClick={() => setHistoryFilterType('tracking')}
-                          className={`flex-1 text-[10px] py-1 font-bold rounded-md transition-all ${
-                            historyFilterType === 'tracking'
-                              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                          }`}
-                        >
-                          Pings
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* History List Table */}
-                  <div className="flex-grow overflow-y-auto">
-                    {filteredHistory.length === 0 ? (
-                      <div className="h-60 flex flex-col items-center justify-center text-center p-6 text-gray-400">
-                        <Info className="w-8 h-8 mb-2 stroke-1" />
-                        <p className="text-xs">No matching history records found.</p>
-                        <p className="text-[10px] mt-0.5">Try widening your filters or search term.</p>
-                      </div>
-                    ) : (
-                      <table className="w-full text-[11px] text-left border-collapse">
-                        <thead className="bg-gray-50/50 dark:bg-gray-950/60 sticky top-0 text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800/60">
-                          <tr>
-                            <th className="py-3 px-4">Timestamp</th>
-                            <th className="py-3 px-4">Event Status</th>
-                            <th className="py-3 px-4">Coordinates</th>
-                            <th className="py-3 px-4">Speed</th>
-                            <th className="py-3 px-4">Fuel</th>
-                            <th className="py-3 px-4">Mileage</th>
-                            <th className="py-3 px-4 text-right">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800/40 font-mono">
-                          {filteredHistory.map(item => {
-                            const isWarning = item.event.toLowerCase().includes('alert') || 
-                                              item.event.toLowerCase().includes('warning') || 
-                                              item.event.toLowerCase().includes('cut');
-                            const isIgnition = item.event.toLowerCase().includes('ignition');
-                            
-                            return (
-                              <tr 
-                                key={item.id} 
-                                className="hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-all"
-                              >
-                                <td className="py-3 px-4 text-gray-400 whitespace-nowrap">
-                                  {item.timestamp}
-                                </td>
-                                <td className="py-3 px-4">
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                    isWarning 
-                                      ? 'bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/20'
-                                      : isIgnition
-                                        ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/20'
-                                        : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/20'
-                                  }`}>
-                                    {item.event}
-                                  </span>
-                                </td>
-                                <td className="py-3 px-4 text-gray-600 dark:text-gray-300">
-                                  <button
-                                    onClick={() => handleCopyCoords(item.lat, item.lng)}
-                                    title="Click to copy coordinates"
-                                    className="hover:text-blue-500 font-bold flex items-center gap-1 cursor-pointer font-sans"
-                                  >
-                                    <MapPin className="w-3 h-3 text-gray-400" />
-                                    {item.lat.toFixed(5)}, {item.lng.toFixed(5)}
-                                  </button>
-                                </td>
-                                <td className="py-3 px-4 text-gray-800 dark:text-gray-100 font-bold">
-                                  {item.speed} km/h
-                                </td>
-                                <td className="py-3 px-4 text-indigo-600 dark:text-indigo-400">
-                                  {item.fuelLevel}%
-                                </td>
-                                <td className="py-3 px-4 text-gray-500">
-                                  {(item.mileage / 1000).toFixed(2)} km
-                                </td>
-                                <td className="py-3 px-4 text-right">
-                                  <button
-                                    onClick={() => {
-                                      setFocusedHistoryItem(item);
-                                      setPlottedTripVehicleId(selectedVehicle.id); // plot context
-                                      setActiveSubTab('map');
-                                      addToast(`Centering map on event: "${item.event}"`, "success");
-                                    }}
-                                    className="px-2.5 py-1 bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/40 dark:hover:bg-violet-900/60 text-violet-600 dark:text-violet-400 rounded text-[10px] font-bold border border-violet-100 dark:border-violet-900/30 flex items-center gap-1 ml-auto cursor-pointer transition-colors font-sans"
-                                  >
-                                    <Compass className="w-3.5 h-3.5" />
-                                    Show on Map
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-
-                  {/* Table Footer Summary info */}
-                  <div className="p-4 bg-gray-50 dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex items-center justify-between">
-                    <span>* Click coordinates to copy. Historical buffer captures up to 50 logs.</span>
-                    <span>Format: ISO-8601 GPRS Packets</span>
-                  </div>
-
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold">
+                        <th className="py-2.5 px-3">Time</th>
+                        <th className="py-2.5 px-3">Event / Ping</th>
+                        <th className="py-2.5 px-3">Latitude, Longitude</th>
+                        <th className="py-2.5 px-3">Speed</th>
+                        <th className="py-2.5 px-3">Ignition</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                      {historyItems.map(item => (
+                        <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                          <td className="py-2.5 px-3 font-mono text-slate-500">{item.timestamp}</td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">{item.event}</td>
+                          <td className="py-2.5 px-3 font-mono text-slate-600 dark:text-slate-300">{item.lat}, {item.lng}</td>
+                          <td className="py-2.5 px-3 font-bold">{item.speed} km/h</td>
+                          <td className="py-2.5 px-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              item.accStatus ? 'bg-emerald-500/10 text-emerald-600' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
+                            }`}>
+                              {item.accStatus ? 'ON' : 'OFF'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-
               </div>
-            )}
-
-          </div>
+            </div>
+          )}
 
         </div>
-
       </div>
 
-    
+      {/* Add / Edit Unit Modal */}
       <TrackingUnitModal
         profile={profile}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         initialData={editingUnit}
-        onSave={(data) => {
-          fetchTrackingUnits();
+        onSave={(savedUnit) => {
           setIsModalOpen(false);
-          addToast(editingUnit ? "Tracking unit updated" : "Tracking unit added", "success");
+          fetchTrackingUnits();
+          addToast(`Tracking unit ${savedUnit.name} saved successfully`, 'success');
         }}
       />
-</div>
+    </div>
   );
 };
 

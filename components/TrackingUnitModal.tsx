@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { XIcon } from './icons';
 import { Profile } from '../types';
+import { Cpu, Wifi, Shield, Gauge, Phone, Radio } from 'lucide-react';
 
 export interface TrackingUnitFormData {
   id?: string;
   name: string;
   plate: string;
   imei: string;
+  model?: string;
+  sim_number?: string;
   speed_limit: number;
 }
 
@@ -24,16 +27,29 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
     name: '',
     plate: '',
     imei: '',
-    speed_limit: 100
+    model: 'Eelink TK116 (4G LTE)',
+    sim_number: '',
+    speed_limit: 120
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      setFormData({
+        ...initialData,
+        model: initialData.model || 'Eelink TK116 (4G LTE)',
+        sim_number: initialData.sim_number || ''
+      });
     } else {
-      setFormData({ name: '', plate: '', imei: '', speed_limit: 100 });
+      setFormData({ 
+        name: '', 
+        plate: '', 
+        imei: '', 
+        model: 'Eelink TK116 (4G LTE)',
+        sim_number: '',
+        speed_limit: 120 
+      });
     }
     setError('');
   }, [initialData, isOpen]);
@@ -61,7 +77,7 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
           .single();
 
         if (updateError) throw updateError;
-        onSave(data);
+        onSave({ ...data, sim_number: formData.sim_number, model: formData.model });
       } else {
         const { data, error: insertError } = await supabase
           .from('tracking_units')
@@ -70,13 +86,23 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
             plate: formData.plate,
             imei: formData.imei,
             speed_limit: formData.speed_limit,
-            company_id: profile.company_id
+            company_id: profile.company_id,
+            status: 'stationary',
+            lat: -26.2041,
+            lng: 28.0473,
+            speed: 0,
+            battery_voltage: 12800,
+            battery_percent: 100,
+            acc_status: false,
+            fuel_cut: false,
+            mileage: 12000,
+            fuel_level: 100
           })
           .select()
           .single();
 
         if (insertError) throw insertError;
-        onSave(data);
+        onSave({ ...data, sim_number: formData.sim_number, model: formData.model });
       }
     } catch (err: any) {
       console.error(err);
@@ -87,80 +113,147 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col border border-gray-200 dark:border-gray-800">
-        <div className="flex justify-between items-center p-4 border-b border-gray-100 dark:border-gray-800">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-            {initialData ? 'Edit Tracking Unit' : 'Add Tracking Unit'}
-          </h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
+    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 transition-colors">
+        {/* Modal Header */}
+        <div className="flex justify-between items-center p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <Cpu className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                {initialData ? 'Edit Tracking Unit' : 'Add Eelink TK116 Unit'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Configure GPS Tracker & Vehicle Mapping Parameters
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
             <XIcon className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          {error && <div className="text-red-500 text-sm">{error}</div>}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs rounded-xl">
+              {error}
+            </div>
+          )}
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Unit Name / Alias</label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-              placeholder="e.g. Patrol Vehicle 1"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                Vehicle / Unit Name
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                placeholder="e.g. Patrol Cruiser 1"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                License Plate
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.plate}
+                onChange={(e) => setFormData({ ...formData, plate: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                placeholder="e.g. HW 82 GP"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">License Plate</label>
-            <input
-              type="text"
-              required
-              value={formData.plate}
-              onChange={(e) => setFormData({ ...formData, plate: e.target.value })}
-              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-              placeholder="e.g. AB 123 CD"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                <span>Hardware IMEI Number</span>
+                <span className="text-[10px] text-blue-500 font-normal">15 Digits</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.imei}
+                onChange={(e) => setFormData({ ...formData, imei: e.target.value })}
+                className="w-full font-mono bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                placeholder="e.g. 354188046036385"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                Device Model
+              </label>
+              <input
+                type="text"
+                value={formData.model}
+                onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                placeholder="Eelink TK116 (4G LTE)"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">IMEI Number</label>
-            <input
-              type="text"
-              required
-              value={formData.imei}
-              onChange={(e) => setFormData({ ...formData, imei: e.target.value })}
-              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-              placeholder="15-digit IMEI"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                SIM Phone Number (Optional)
+              </label>
+              <input
+                type="text"
+                value={formData.sim_number}
+                onChange={(e) => setFormData({ ...formData, sim_number: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                placeholder="+27 82 123 4567"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                Speed Limit Alert (km/h)
+              </label>
+              <input
+                type="number"
+                required
+                value={formData.speed_limit}
+                onChange={(e) => setFormData({ ...formData, speed_limit: parseInt(e.target.value) || 0 })}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                placeholder="120"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Speed Limit (km/h)</label>
-            <input
-              type="number"
-              required
-              value={formData.speed_limit}
-              onChange={(e) => setFormData({ ...formData, speed_limit: parseInt(e.target.value) || 0 })}
-              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-              placeholder="e.g. 100"
-            />
+          <div className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-xl p-3 flex items-start gap-2.5 text-xs text-blue-900 dark:text-blue-200">
+            <Radio className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold block mb-0.5">Eelink TK116 Server Endpoint Info:</span>
+              <span>Point tracker GPRS to <code className="font-mono bg-blue-100 dark:bg-blue-900/50 px-1 py-0.5 rounded text-blue-700 dark:text-blue-300">gps.rapid911.co.za:7018</code> via SMS <code className="font-mono bg-blue-100 dark:bg-blue-900/50 px-1 py-0.5 rounded text-blue-700 dark:text-blue-300">SERVER,1,gps.rapid911.co.za,7018,0#</code></span>
+            </div>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3">
+          <div className="pt-2 flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save Unit'}
             </button>
@@ -170,3 +263,4 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
     </div>
   );
 };
+
