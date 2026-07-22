@@ -1,8 +1,8 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode, useMemo } from 'react';
 import { supabase } from '../utils/supabase';
-import { logoUrl as defaultLogoUrl } from '../assets/logo';
+import { logoUrl as defaultLogoUrl, squareAppIconUrl } from '../assets/logo';
 
-export const defaultFaviconUrl = `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>`;
+export const defaultFaviconUrl = squareAppIconUrl;
 
 interface SettingsContextType {
   mainLogoUrl: string;
