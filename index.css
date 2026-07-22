@@ -1,6 +1,8 @@
 /* Global CSS */
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 body {
   -webkit-user-select: none; /* Safari */
   -moz-user-select: none;    /* Firefox */

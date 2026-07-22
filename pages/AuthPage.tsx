@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import LoginForm from '../components/LoginForm';
 import RegisterForm from '../components/RegisterForm';
+import ThemeToggle from '../components/ThemeToggle';
 import { useSettings } from '../contexts/SettingsContext';
 import { supabase } from '../utils/supabase';
 import { Company } from '../types';
@@ -30,6 +31,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewAbout }) => {
 
     return (
         <div className="min-h-screen flex flex-col relative bg-slate-50 dark:bg-slate-950 overflow-hidden transition-colors duration-300">
+            {/* Theme Toggle Selector on Login/Register Page */}
+            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50">
+                <ThemeToggle />
+            </div>
+
             {/* Professional Ambient Glow Elements */}
             <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/5 dark:bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
             <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-indigo-500/5 dark:bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />

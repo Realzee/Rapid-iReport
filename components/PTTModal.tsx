@@ -321,7 +321,7 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
 
 
                 <div className="flex-grow space-y-2 h-56 overflow-y-auto pr-2">
-                    {isLoading ? <p>Loading users...</p> : companyUsers.map(user => {
+                    {isLoading ? <p>loading</p> : companyUsers.map(user => {
                         const isSelected = target === user.id;
                         const isSpeaking = activeSpeakerId === user.id;
                         return (

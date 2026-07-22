@@ -14,15 +14,12 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [theme, setTheme] = useState<Theme>(() => {
     // This initializer runs ONLY once on mount.
     // The pre-load script in index.html has already set the class on <html>.
-    // This state should sync with what the script did.
+    // Default to dark mode if no valid preference saved.
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'matrix') {
       return savedTheme as Theme;
     }
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-    return 'light';
+    return 'dark';
   });
 
   useEffect(() => {

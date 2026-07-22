@@ -526,7 +526,7 @@ const App: React.FC = () => {
   const renderLoadingFallback = () => (
     <div className="flex-grow flex flex-col items-center justify-center p-12">
         <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">Wait, loading component...</p>
+        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">loading</p>
     </div>
   );
 
@@ -619,7 +619,7 @@ const App: React.FC = () => {
                  <img src={mainLogoUrl} alt="Rapid911 Logo" className="max-w-xs md:max-w-md h-auto mx-auto opacity-90 object-contain" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
              </div>
              <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-             <p className="mt-6 text-xs tracking-widest text-gray-400 uppercase font-medium">Loading...</p>
+             <p className="mt-6 text-xs tracking-widest text-gray-400 uppercase font-medium">loading</p>
         </div>
     )
   }
