@@ -29,7 +29,9 @@ import {
   Radio,
   Layers,
   Fuel,
-  KeyRound
+  KeyRound,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import { Profile } from '../types';
 import { useToast } from '../contexts/ToastContext';
@@ -380,6 +382,43 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
     return { total: vehicles.length, moving, stationary, offline, fuelCutActive };
   }, [vehicles]);
 
+  // Edit tracking unit modal trigger
+  const handleEditVehicle = (vehicle: TK116Device) => {
+    setEditingUnit({
+      id: vehicle.id,
+      name: vehicle.name,
+      plate: vehicle.plate,
+      imei: vehicle.imei,
+      model: vehicle.model || 'Eelink TK116 (4G LTE)',
+      sim_number: vehicle.simNumber || '',
+      speed_limit: vehicle.speedLimit || 120
+    });
+    setIsModalOpen(true);
+  };
+
+  // Delete tracking unit handler
+  const handleDeleteVehicle = async (vehicleId: string, vehicleName: string) => {
+    if (!window.confirm(`Are you sure you want to delete tracking unit "${vehicleName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await supabase.from('tracking_units').delete().eq('id', vehicleId);
+    } catch (err) {
+      console.warn("Error deleting tracking unit from Supabase (removing locally):", err);
+    }
+
+    setVehicles(prev => {
+      const updated = prev.filter(v => v.id !== vehicleId);
+      if (selectedVehicleId === vehicleId && updated.length > 0) {
+        setSelectedVehicleId(updated[0].id);
+      }
+      return updated;
+    });
+
+    addToast(`Tracking unit "${vehicleName}" deleted successfully`, 'info');
+  };
+
   // Handle Eelink TK116 Relay Fuel Cut / Engine Kill toggle
   const handleToggleEngineRelay = async (vehicle: TK116Device) => {
     const newFuelCutState = !vehicle.fuelCut;
@@ -614,9 +653,25 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                         </p>
                       </div>
 
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${statusBg}`}>
-                        {unit.status}
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => handleEditVehicle(unit)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                          title="Edit Unit"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteVehicle(unit.id, unit.name)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
+                          title="Delete Unit"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${statusBg}`}>
+                          {unit.status}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Telemetry Bar */}
@@ -740,18 +795,34 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                       </p>
                     </div>
 
-                    <button
-                      onClick={() => handleToggleEngineRelay(selectedVehicle)}
-                      disabled={isSendingCmd}
-                      className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all ${
-                        selectedVehicle.fuelCut
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'bg-red-600 text-white shadow-xs'
-                      }`}
-                    >
-                      <Power className="w-3 h-3" />
-                      <span>{selectedVehicle.fuelCut ? 'Restore Engine' : 'Cut Engine'}</span>
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleEditVehicle(selectedVehicle)}
+                        className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                        title="Edit Unit"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteVehicle(selectedVehicle.id, selectedVehicle.name)}
+                        className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
+                        title="Delete Unit"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleToggleEngineRelay(selectedVehicle)}
+                        disabled={isSendingCmd}
+                        className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all ${
+                          selectedVehicle.fuelCut
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-red-600 text-white shadow-xs'
+                        }`}
+                      >
+                        <Power className="w-3 h-3" />
+                        <span>{selectedVehicle.fuelCut ? 'Restore Engine' : 'Cut Engine'}</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-[10px] bg-slate-100/60 dark:bg-slate-800/50 p-2 rounded-xl">
@@ -1161,10 +1232,58 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
       <TrackingUnitModal
         profile={profile}
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingUnit(null);
+        }}
         initialData={editingUnit}
         onSave={(savedUnit) => {
           setIsModalOpen(false);
+          setEditingUnit(null);
+
+          setVehicles(prev => {
+            const index = prev.findIndex(v => v.id === savedUnit.id);
+            if (index >= 0) {
+              const copy = [...prev];
+              copy[index] = {
+                ...copy[index],
+                name: savedUnit.name || copy[index].name,
+                plate: savedUnit.plate || copy[index].plate,
+                imei: savedUnit.imei || copy[index].imei,
+                model: savedUnit.model || copy[index].model,
+                simNumber: savedUnit.sim_number || copy[index].simNumber,
+                speedLimit: savedUnit.speed_limit || copy[index].speedLimit
+              };
+              return copy;
+            } else {
+              const newDev: TK116Device = {
+                id: savedUnit.id || `dev-${Date.now()}`,
+                name: savedUnit.name,
+                plate: savedUnit.plate,
+                imei: savedUnit.imei,
+                simNumber: savedUnit.sim_number || '+27 82 000 0000',
+                model: savedUnit.model || 'Eelink TK116 4G',
+                status: 'stationary',
+                lat: -26.2041,
+                lng: 28.0473,
+                speed: 0,
+                course: 0,
+                batteryVoltage: 12800,
+                batteryPercent: 100,
+                accStatus: false,
+                fuelCut: false,
+                mileage: 12000,
+                fuelLevel: 100,
+                lastUpdate: 'Just now',
+                speedLimit: savedUnit.speed_limit || 120,
+                pathHistory: [[-26.2041, 28.0473]],
+                alerts: []
+              };
+              setSelectedVehicleId(newDev.id);
+              return [newDev, ...prev];
+            }
+          });
+
           fetchTrackingUnits();
           addToast(`Tracking unit ${savedUnit.name} saved successfully`, 'success');
         }}

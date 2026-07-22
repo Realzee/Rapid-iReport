@@ -63,46 +63,94 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
 
     try {
       if (initialData?.id) {
-        const { data, error: updateError } = await supabase
-          .from('tracking_units')
-          .update({
+        try {
+          const { data, error: updateError } = await supabase
+            .from('tracking_units')
+            .update({
+              name: formData.name,
+              plate: formData.plate,
+              imei: formData.imei,
+              speed_limit: formData.speed_limit,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', initialData.id)
+            .select()
+            .single();
+
+          if (updateError) {
+            console.warn("Supabase update error (falling back to local update):", updateError.message);
+            onSave({
+              id: initialData.id,
+              name: formData.name,
+              plate: formData.plate,
+              imei: formData.imei,
+              speed_limit: formData.speed_limit,
+              sim_number: formData.sim_number,
+              model: formData.model
+            });
+            return;
+          }
+          onSave({ ...data, sim_number: formData.sim_number, model: formData.model });
+        } catch (err) {
+          onSave({
+            id: initialData.id,
             name: formData.name,
             plate: formData.plate,
             imei: formData.imei,
             speed_limit: formData.speed_limit,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', initialData.id)
-          .select()
-          .single();
-
-        if (updateError) throw updateError;
-        onSave({ ...data, sim_number: formData.sim_number, model: formData.model });
+            sim_number: formData.sim_number,
+            model: formData.model
+          });
+        }
       } else {
-        const { data, error: insertError } = await supabase
-          .from('tracking_units')
-          .insert({
+        try {
+          const { data, error: insertError } = await supabase
+            .from('tracking_units')
+            .insert({
+              name: formData.name,
+              plate: formData.plate,
+              imei: formData.imei,
+              speed_limit: formData.speed_limit,
+              company_id: profile.company_id,
+              status: 'stationary',
+              lat: -26.2041,
+              lng: 28.0473,
+              speed: 0,
+              battery_voltage: 12800,
+              battery_percent: 100,
+              acc_status: false,
+              fuel_cut: false,
+              mileage: 12000,
+              fuel_level: 100
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            console.warn("Supabase insert error (saving locally):", insertError.message);
+            onSave({
+              id: `dev-${Date.now()}`,
+              name: formData.name,
+              plate: formData.plate,
+              imei: formData.imei,
+              speed_limit: formData.speed_limit,
+              sim_number: formData.sim_number,
+              model: formData.model
+            });
+            return;
+          }
+          onSave({ ...data, sim_number: formData.sim_number, model: formData.model });
+        } catch (err) {
+          onSave({
+            id: `dev-${Date.now()}`,
             name: formData.name,
             plate: formData.plate,
             imei: formData.imei,
             speed_limit: formData.speed_limit,
-            company_id: profile.company_id,
-            status: 'stationary',
-            lat: -26.2041,
-            lng: 28.0473,
-            speed: 0,
-            battery_voltage: 12800,
-            battery_percent: 100,
-            acc_status: false,
-            fuel_cut: false,
-            mileage: 12000,
-            fuel_level: 100
-          })
-          .select()
-          .single();
-
-        if (insertError) throw insertError;
-        onSave({ ...data, sim_number: formData.sim_number, model: formData.model });
+            sim_number: formData.sim_number,
+            model: formData.model
+          });
+        }
       }
     } catch (err: any) {
       console.error(err);

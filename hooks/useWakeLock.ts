@@ -19,7 +19,13 @@ export const useWakeLock = () => {
         console.log('Wake Lock active');
       }
     } catch (err: any) {
-      console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+      // Screen Wake Lock can be restricted by permissions policy in sandboxed iframes or user settings
+      if (err?.name === 'NotAllowedError') {
+        console.warn('Wake Lock disallowed by permissions policy or user settings:', err.message);
+      } else {
+        console.warn('Wake Lock request failed:', err?.message || err);
+      }
+      setIsLocked(false);
     }
   }, []);
 
