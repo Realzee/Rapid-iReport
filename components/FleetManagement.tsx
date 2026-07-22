@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, Polygon, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { 
   Cpu, 
@@ -31,7 +31,11 @@ import {
   Fuel,
   KeyRound,
   Pencil,
-  Trash2
+  Trash2,
+  Shield,
+  Target,
+  Bell,
+  Check
 } from 'lucide-react';
 import { Profile } from '../types';
 import { useToast } from '../contexts/ToastContext';
@@ -39,6 +43,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../utils/supabase';
 import { TrackingUnitModal } from './TrackingUnitModal';
 import { TripSummaryCard } from './TripSummaryCard';
+import { GeofenceModal, GeofenceZone } from './GeofenceModal';
 
 export interface TK116Device {
   id: string;
@@ -95,6 +100,98 @@ const MapCenterController: React.FC<{ coords: [number, number]; zoom?: number }>
   }, [coords, map, zoom]);
   return null;
 };
+
+// Haversine distance calculation in meters
+function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Ray-casting point-in-polygon algorithm
+function isPointInPolygon(point: [number, number], polygon: [number, number][]): boolean {
+  if (!polygon || polygon.length < 3) return false;
+  const x = point[0], y = point[1];
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0], yi = polygon[i][1];
+    const xj = polygon[j][0], yj = polygon[j][1];
+    const intersect = ((yi > y) !== (yj > y)) &&
+        (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+const MapClickHandler: React.FC<{
+  isDrawing: boolean;
+  onMapClick: (coords: [number, number]) => void;
+}> = ({ isDrawing, onMapClick }) => {
+  useMapEvents({
+    click(e) {
+      if (isDrawing) {
+        onMapClick([e.latlng.lat, e.latlng.lng]);
+      }
+    }
+  });
+  return null;
+};
+
+const INITIAL_DEFAULT_GEOFENCES: GeofenceZone[] = [
+  {
+    id: 'gf-1',
+    name: 'JHB CBD Central Patrol Precinct',
+    type: 'circle',
+    center: [-26.2041, 28.0473],
+    radius: 1200,
+    polygonPoints: [],
+    targetUnitIds: ['all'],
+    alertOnEntry: true,
+    alertOnExit: true,
+    color: '#3B82F6',
+    status: 'active',
+    description: 'Primary Dispatch Command & Central Response Radius'
+  },
+  {
+    id: 'gf-2',
+    name: 'Sandton Corporate Sector',
+    type: 'circle',
+    center: [-26.1076, 28.0567],
+    radius: 1800,
+    polygonPoints: [],
+    targetUnitIds: ['all'],
+    alertOnEntry: true,
+    alertOnExit: true,
+    color: '#10B981',
+    status: 'active',
+    description: 'High Value Commercial District Guard Zone'
+  },
+  {
+    id: 'gf-3',
+    name: 'Hillbrow High Risk Security Zone',
+    type: 'polygon',
+    center: [-26.188, 28.052],
+    radius: 0,
+    polygonPoints: [
+      [-26.182, 28.042],
+      [-26.182, 28.062],
+      [-26.196, 28.062],
+      [-26.196, 28.042]
+    ],
+    targetUnitIds: ['all'],
+    alertOnEntry: true,
+    alertOnExit: true,
+    color: '#EF4444',
+    status: 'active',
+    description: 'Priority Rapid Response Sector'
+  }
+];
 
 // Initial default units for South Africa JHB region if database is empty
 const INITIAL_DEFAULT_UNITS: Omit<TK116Device, 'id' | 'pathHistory' | 'alerts'>[] = [
@@ -244,10 +341,47 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
   });
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(() => vehicles[0]?.id || 'dev-1');
-  const [activeSubTab, setActiveSubTab] = useState<'map' | 'cmd' | 'guide' | 'packets' | 'history'>('map');
+  const [activeSubTab, setActiveSubTab] = useState<'map' | 'geofence' | 'cmd' | 'guide' | 'packets' | 'history'>('map');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'moving' | 'stationary' | 'offline'>('all');
   const [mapStyle, setMapStyle] = useState<'street' | 'satellite'>('street');
+
+  // Geofence states & alerts
+  const geofenceCacheKey = `geofence_zones_${profile.company_id || 'default'}`;
+  const [geofences, setGeofences] = useState<GeofenceZone[]>(() => {
+    try {
+      const cached = localStorage.getItem(geofenceCacheKey);
+      if (cached) return JSON.parse(cached);
+    } catch (e) {
+      console.warn("Error loading cached geofence zones:", e);
+    }
+    return INITIAL_DEFAULT_GEOFENCES;
+  });
+
+  const [geofenceAlerts, setGeofenceAlerts] = useState<Array<{
+    id: string;
+    timestamp: string;
+    unitName: string;
+    geofenceName: string;
+    type: 'entry' | 'exit';
+    color: string;
+  }>>([]);
+
+  const [isGeofenceModalOpen, setIsGeofenceModalOpen] = useState(false);
+  const [editingGeofence, setEditingGeofence] = useState<GeofenceZone | null>(null);
+  const [isDrawingGeofence, setIsDrawingGeofence] = useState(false);
+  const [drawingGeofenceType, setDrawingGeofenceType] = useState<'circle' | 'polygon'>('circle');
+  const [drawnGeofencePoints, setDrawnGeofencePoints] = useState<[number, number][]>([]);
+  const geofenceStatesRef = useRef<{ [key: string]: boolean }>({});
+
+  // Cache geofences
+  useEffect(() => {
+    try {
+      localStorage.setItem(geofenceCacheKey, JSON.stringify(geofences));
+    } catch (e) {
+      console.warn("Error caching geofences:", e);
+    }
+  }, [geofences, geofenceCacheKey]);
   
   // Modals & UI states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -261,6 +395,129 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
   const selectedVehicle = useMemo(() => {
     return vehicles.find(v => v.id === selectedVehicleId) || vehicles[0];
   }, [vehicles, selectedVehicleId]);
+
+  // Geofence Boundary Check Engine
+  useEffect(() => {
+    if (vehicles.length === 0 || geofences.length === 0) return;
+
+    const activeZones = geofences.filter(g => g.status === 'active');
+
+    activeZones.forEach(gf => {
+      vehicles.forEach(v => {
+        const isTargeted = gf.targetUnitIds.includes('all') || gf.targetUnitIds.includes(v.id);
+        if (!isTargeted) return;
+
+        let isInside = false;
+        if (gf.type === 'circle') {
+          const dist = getDistanceMeters(v.lat, v.lng, gf.center[0], gf.center[1]);
+          isInside = dist <= gf.radius;
+        } else if (gf.type === 'polygon' && gf.polygonPoints.length >= 3) {
+          isInside = isPointInPolygon([v.lat, v.lng], gf.polygonPoints);
+        }
+
+        const key = `${v.id}_${gf.id}`;
+        const prevState = geofenceStatesRef.current[key];
+
+        if (prevState !== undefined) {
+          // Entry Event
+          if (!prevState && isInside && gf.alertOnEntry) {
+            const alertText = `🚨 GEOFENCE ENTRY: ${v.name} (${v.plate}) entered "${gf.name}"`;
+            addToast(alertText, 'warning');
+
+            const alertLog = {
+              id: `gf-alert-${Date.now()}-${Math.random()}`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+              unitName: v.name,
+              geofenceName: gf.name,
+              type: 'entry' as const,
+              color: gf.color
+            };
+
+            setGeofenceAlerts(prev => [alertLog, ...prev].slice(0, 50));
+            setVehicles(prevVehicles =>
+              prevVehicles.map(unit =>
+                unit.id === v.id
+                  ? { ...unit, alerts: [alertText, ...unit.alerts].slice(0, 10) }
+                  : unit
+              )
+            );
+          }
+
+          // Exit Event
+          if (prevState && !isInside && gf.alertOnExit) {
+            const alertText = `⚠️ GEOFENCE EXIT: ${v.name} (${v.plate}) exited "${gf.name}"`;
+            addToast(alertText, 'info');
+
+            const alertLog = {
+              id: `gf-alert-${Date.now()}-${Math.random()}`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+              unitName: v.name,
+              geofenceName: gf.name,
+              type: 'exit' as const,
+              color: gf.color
+            };
+
+            setGeofenceAlerts(prev => [alertLog, ...prev].slice(0, 50));
+            setVehicles(prevVehicles =>
+              prevVehicles.map(unit =>
+                unit.id === v.id
+                  ? { ...unit, alerts: [alertText, ...unit.alerts].slice(0, 10) }
+                  : unit
+              )
+            );
+          }
+        }
+
+        geofenceStatesRef.current[key] = isInside;
+      });
+    });
+  }, [vehicles, geofences, addToast]);
+
+  const handleSaveGeofence = (zone: GeofenceZone) => {
+    setGeofences(prev => {
+      const idx = prev.findIndex(g => g.id === zone.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = zone;
+        return copy;
+      }
+      return [zone, ...prev];
+    });
+    setIsGeofenceModalOpen(false);
+    setEditingGeofence(null);
+    setIsDrawingGeofence(false);
+    setDrawnGeofencePoints([]);
+    addToast(`Geofence zone "${zone.name}" saved successfully`, 'success');
+  };
+
+  const handleToggleGeofenceStatus = (id: string) => {
+    setGeofences(prev => prev.map(g => {
+      if (g.id === id) {
+        const newStatus = g.status === 'active' ? 'inactive' : 'active';
+        addToast(`Geofence "${g.name}" ${newStatus}`, 'info');
+        return { ...g, status: newStatus };
+      }
+      return g;
+    }));
+  };
+
+  const handleDeleteGeofence = (id: string) => {
+    const zone = geofences.find(g => g.id === id);
+    if (zone && window.confirm(`Are you sure you want to delete geofence "${zone.name}"?`)) {
+      setGeofences(prev => prev.filter(g => g.id !== id));
+      addToast(`Geofence "${zone.name}" deleted`, 'info');
+    }
+  };
+
+  const handleMapGeofenceClick = (coords: [number, number]) => {
+    if (drawingGeofenceType === 'circle') {
+      setEditingGeofence(null);
+      setDrawnGeofencePoints([coords]);
+      setIsGeofenceModalOpen(true);
+    } else {
+      setDrawnGeofencePoints(prev => [...prev, coords]);
+    }
+  };
 
   // Save vehicles to local cache whenever state updates
   useEffect(() => {
@@ -717,6 +974,21 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
               </button>
 
               <button
+                onClick={() => setActiveSubTab('geofence')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                  activeSubTab === 'geofence'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>Geofences &amp; Alerts</span>
+                <span className="px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-blue-500/20 text-blue-300">
+                  {geofences.filter(g => g.status === 'active').length}
+                </span>
+              </button>
+
+              <button
                 onClick={() => setActiveSubTab('cmd')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                   activeSubTab === 'cmd'
@@ -782,6 +1054,91 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
           {activeSubTab === 'map' && (
             <div className="flex-grow relative w-full h-full min-h-[350px]">
               
+              {/* Geofence Quick Draw Overlay Bar on Map */}
+              <div className="absolute top-3 right-3 z-20 flex flex-wrap items-center gap-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800/80">
+                <button
+                  onClick={() => {
+                    setIsDrawingGeofence(true);
+                    setDrawingGeofenceType('circle');
+                    setDrawnGeofencePoints([]);
+                    addToast('Click anywhere on the map to set circular geofence center point', 'info');
+                  }}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
+                    isDrawingGeofence && drawingGeofenceType === 'circle'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/50'
+                  }`}
+                >
+                  <Target className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Draw Circle Zone</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsDrawingGeofence(true);
+                    setDrawingGeofenceType('polygon');
+                    setDrawnGeofencePoints([]);
+                    addToast('Click points on the map to build polygon vertices', 'info');
+                  }}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
+                    isDrawingGeofence && drawingGeofenceType === 'polygon'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/50'
+                  }`}
+                >
+                  <Shield className="w-3.5 h-3.5 text-purple-500" />
+                  <span>Draw Polygon Zone</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveSubTab('geofence')}
+                  className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1"
+                >
+                  <Bell className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Geofences ({geofences.filter(g => g.status === 'active').length})</span>
+                </button>
+              </div>
+
+              {/* Active Geofence Drawing Guidance Banner */}
+              {isDrawingGeofence && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-blue-900/90 text-white backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-2xl border border-blue-400/40 flex items-center gap-3 text-xs">
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+                  <div>
+                    <p className="font-bold">
+                      {drawingGeofenceType === 'circle'
+                        ? 'Click on the map to place circular geofence center point'
+                        : `Drawing Polygon Zone: ${drawnGeofencePoints.length} vertices selected`}
+                    </p>
+                    <p className="text-[11px] text-blue-200">
+                      {drawingGeofenceType === 'circle'
+                        ? 'After clicking, adjust zone radius and alert rules.'
+                        : 'Click 3 or more points on map, then click Complete.'}
+                    </p>
+                  </div>
+
+                  {drawingGeofenceType === 'polygon' && drawnGeofencePoints.length >= 3 && (
+                    <button
+                      onClick={() => {
+                        setIsGeofenceModalOpen(true);
+                      }}
+                      className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-xs transition-colors"
+                    >
+                      Complete Polygon
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setIsDrawingGeofence(false);
+                      setDrawnGeofencePoints([]);
+                    }}
+                    className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
               {/* Selected Unit Floating Header */}
               {selectedVehicle && (
                 <div className="absolute top-3 left-3 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800/80 max-w-sm">
@@ -791,7 +1148,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                         {selectedVehicle.name}
                       </h4>
                       <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                        {selectedVehicle.plate} &bull; IMEI: {selectedVehicle.imei}
+                        {selectedVehicle.plate} &bull; IMEI {selectedVehicle.imei}
                       </p>
                     </div>
 
@@ -857,6 +1214,8 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                   url={tileUrl}
                 />
 
+                <MapClickHandler isDrawing={isDrawingGeofence} onMapClick={handleMapGeofenceClick} />
+
                 {selectedVehicle && (
                   <MapCenterController coords={[selectedVehicle.lat, selectedVehicle.lng]} />
                 )}
@@ -871,6 +1230,129 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                     dashArray="6, 8"
                   />
                 )}
+
+                {/* Polygon Drawing Live Lines Preview */}
+                {isDrawingGeofence && drawingGeofenceType === 'polygon' && drawnGeofencePoints.length > 0 && (
+                  <>
+                    <Polyline
+                      positions={drawnGeofencePoints}
+                      color="#3B82F6"
+                      weight={3}
+                      dashArray="4, 4"
+                    />
+                    {drawnGeofencePoints.map((pt, idx) => (
+                      <Marker
+                        key={`draw-pt-${idx}`}
+                        position={pt}
+                        icon={L.divIcon({
+                          className: 'custom-draw-pt',
+                          html: `<div style="width: 12px; height: 12px; border-radius: 50%; background: #3B82F6; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+                          iconSize: [12, 12],
+                          iconAnchor: [6, 6]
+                        })}
+                      />
+                    ))}
+                  </>
+                )}
+
+                {/* Render Active Geofence Zones on Map */}
+                {geofences.filter(g => g.status === 'active').map(gf => {
+                  if (gf.type === 'circle') {
+                    return (
+                      <Circle
+                        key={gf.id}
+                        center={gf.center}
+                        radius={gf.radius}
+                        pathOptions={{
+                          color: gf.color,
+                          fillColor: gf.color,
+                          fillOpacity: 0.18,
+                          weight: 2,
+                          dashArray: '4, 6'
+                        }}
+                      >
+                        <Popup className="custom-leaflet-popup">
+                          <div className="p-1.5 min-w-[190px]">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: gf.color }} />
+                              <h4 className="font-bold text-xs text-slate-900">{gf.name}</h4>
+                            </div>
+                            <p className="text-[11px] text-slate-600 mb-1 font-mono">
+                              Radius: {gf.radius >= 1000 ? `${(gf.radius / 1000).toFixed(1)} km` : `${gf.radius}m`}
+                            </p>
+                            <p className="text-[10px] text-slate-500 mb-2">
+                              {gf.description || 'Geofence Perimeter active'}
+                            </p>
+                            <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
+                              <button
+                                onClick={() => {
+                                  setEditingGeofence(gf);
+                                  setIsGeofenceModalOpen(true);
+                                }}
+                                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[10px] font-bold"
+                              >
+                                Edit Zone
+                              </button>
+                              <button
+                                onClick={() => handleDeleteGeofence(gf.id)}
+                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md text-[10px] font-bold"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </Popup>
+                      </Circle>
+                    );
+                  } else if (gf.type === 'polygon' && gf.polygonPoints.length >= 3) {
+                    return (
+                      <Polygon
+                        key={gf.id}
+                        positions={gf.polygonPoints}
+                        pathOptions={{
+                          color: gf.color,
+                          fillColor: gf.color,
+                          fillOpacity: 0.18,
+                          weight: 2,
+                          dashArray: '4, 6'
+                        }}
+                      >
+                        <Popup className="custom-leaflet-popup">
+                          <div className="p-1.5 min-w-[190px]">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: gf.color }} />
+                              <h4 className="font-bold text-xs text-slate-900">{gf.name}</h4>
+                            </div>
+                            <p className="text-[11px] text-slate-600 mb-1 font-mono">
+                              Polygon Area ({gf.polygonPoints.length} vertices)
+                            </p>
+                            <p className="text-[10px] text-slate-500 mb-2">
+                              {gf.description || 'Geofence Perimeter active'}
+                            </p>
+                            <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
+                              <button
+                                onClick={() => {
+                                  setEditingGeofence(gf);
+                                  setIsGeofenceModalOpen(true);
+                                }}
+                                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[10px] font-bold"
+                              >
+                                Edit Zone
+                              </button>
+                              <button
+                                onClick={() => handleDeleteGeofence(gf.id)}
+                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md text-[10px] font-bold"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </Popup>
+                      </Polygon>
+                    );
+                  }
+                  return null;
+                })}
 
                 {/* Render Vehicle Markers */}
                 {vehicles.map(v => {
@@ -933,6 +1415,243 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                   );
                 })}
               </MapContainer>
+            </div>
+          )}
+
+          {/* Tab: Geofence Zones & Live Boundary Alerts */}
+          {activeSubTab === 'geofence' && (
+            <div className="flex-grow p-4 md:p-6 overflow-y-auto space-y-6 bg-slate-50 dark:bg-slate-950">
+              
+              {/* Top Summary Banner */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                    <Shield className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                      Geofence Boundary &amp; Perimeter Monitoring
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Automated entry and exit boundary triggers for tracking units
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setEditingGeofence(null);
+                      setDrawnGeofencePoints([]);
+                      setIsGeofenceModalOpen(true);
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>New Geofence Zone</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveSubTab('map');
+                      setIsDrawingGeofence(true);
+                      setDrawingGeofenceType('circle');
+                      setDrawnGeofencePoints([]);
+                      addToast('Click anywhere on the map to set zone center', 'info');
+                    }}
+                    className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                  >
+                    <Target className="w-4 h-4 text-blue-500" />
+                    <span>Draw Circle Zone</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveSubTab('map');
+                      setIsDrawingGeofence(true);
+                      setDrawingGeofenceType('polygon');
+                      setDrawnGeofencePoints([]);
+                      addToast('Click map points to build polygon perimeter vertices', 'info');
+                    }}
+                    className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                  >
+                    <Shield className="w-4 h-4 text-purple-500" />
+                    <span>Draw Polygon Zone</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Grid: Left Zone Cards, Right Alert Logs */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Geofence Zones List */}
+                <div className="lg:col-span-2 space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-blue-500" />
+                      Configured Geofences ({geofences.length})
+                    </h3>
+                    <span className="text-[11px] text-slate-500 font-semibold">
+                      {geofences.filter(g => g.status === 'active').length} Active Zones
+                    </span>
+                  </div>
+
+                  {geofences.length === 0 ? (
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 text-center text-slate-400">
+                      <Shield className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                      <p className="text-xs font-bold">No Geofences configured yet</p>
+                      <p className="text-[11px] mt-1">Create a circular or polygon geofence zone to start boundary monitoring.</p>
+                    </div>
+                  ) : (
+                    geofences.map(gf => (
+                      <div
+                        key={gf.id}
+                        className={`bg-white dark:bg-slate-900 rounded-2xl p-4 border transition-all shadow-xs ${
+                          gf.status === 'active'
+                            ? 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                            : 'border-slate-200/50 dark:border-slate-800/50 opacity-60'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-4 h-4 rounded-full shrink-0 border border-white shadow-xs"
+                              style={{ backgroundColor: gf.color }}
+                            />
+                            <div>
+                              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                {gf.name}
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60">
+                                  {gf.type}
+                                </span>
+                              </h4>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                {gf.type === 'circle'
+                                  ? `Radius: ${gf.radius >= 1000 ? `${(gf.radius / 1000).toFixed(1)} km` : `${gf.radius}m`}`
+                                  : `Polygon Vertices: ${gf.polygonPoints.length} points`}
+                                {gf.description ? ` &bull; ${gf.description}` : ''}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleToggleGeofenceStatus(gf.id)}
+                              className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-colors ${
+                                gf.status === 'active'
+                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                              }`}
+                            >
+                              {gf.status === 'active' ? 'Active' : 'Disabled'}
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setEditingGeofence(gf);
+                                setIsGeofenceModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-xl text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                              title="Edit Geofence"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteGeofence(gf.id)}
+                              className="p-1.5 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
+                              title="Delete Geofence"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Alert Triggers & Assigned Units Badges */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                          <div className="flex items-center gap-2 text-slate-500">
+                            <span>Triggers:</span>
+                            {gf.alertOnEntry && (
+                              <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-[10px]">
+                                Entry Alert
+                              </span>
+                            )}
+                            {gf.alertOnExit && (
+                              <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px]">
+                                Exit Alert
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-400 text-[11px]">Monitored Units:</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">
+                              {gf.targetUnitIds.includes('all') ? 'All Fleet Units' : `${gf.targetUnitIds.length} Vehicles`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Geofence Live Alert Log Feed */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 h-fit">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-amber-500" />
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        Live Geofence Event Log
+                      </h3>
+                    </div>
+                    {geofenceAlerts.length > 0 && (
+                      <button
+                        onClick={() => setGeofenceAlerts([])}
+                        className="text-[11px] font-bold text-slate-400 hover:text-slate-600"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                    {geofenceAlerts.length === 0 ? (
+                      <div className="text-center py-8 text-slate-400">
+                        <Shield className="w-8 h-8 mx-auto mb-1.5 opacity-30" />
+                        <p className="text-xs font-semibold">No boundary events logged</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Alerts will trigger automatically as tracking units enter or exit active geofence zones.
+                        </p>
+                      </div>
+                    ) : (
+                      geofenceAlerts.map(log => (
+                        <div
+                          key={log.id}
+                          className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/70 dark:border-slate-800 text-xs space-y-1"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className={`px-2 py-0.5 rounded font-bold text-[10px] uppercase ${
+                              log.type === 'entry'
+                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                            }`}>
+                              {log.type === 'entry' ? '🚨 ENTRY' : '⚠️ EXIT'}
+                            </span>
+                            <span className="font-mono text-[10px] text-slate-400">{log.timestamp}</span>
+                          </div>
+                          <p className="font-bold text-slate-900 dark:text-slate-100">
+                            {log.unitName}
+                          </p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {log.type === 'entry' ? 'Entered' : 'Exited'} geofence <strong className="text-slate-700 dark:text-slate-300">"{log.geofenceName}"</strong>
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
             </div>
           )}
 
@@ -1287,6 +2006,22 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
           fetchTrackingUnits();
           addToast(`Tracking unit ${savedUnit.name} saved successfully`, 'success');
         }}
+      />
+
+      {/* Geofence Configuration Modal */}
+      <GeofenceModal
+        isOpen={isGeofenceModalOpen}
+        onClose={() => {
+          setIsGeofenceModalOpen(false);
+          setEditingGeofence(null);
+          setIsDrawingGeofence(false);
+          setDrawnGeofencePoints([]);
+        }}
+        initialData={editingGeofence}
+        vehicles={vehicles}
+        mapCenter={selectedVehicle ? [selectedVehicle.lat, selectedVehicle.lng] : [-26.2041, 28.0473]}
+        drawnPoints={drawnGeofencePoints}
+        onSave={handleSaveGeofence}
       />
     </div>
   );
