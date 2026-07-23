@@ -84,6 +84,7 @@ const svgSquareIcon = `
   </g>
 </svg>`;
 
-// Encode the SVG strings into Base64 data URLs to be used in image tags
-export const logoUrl = `data:image/svg+xml;base64,${btoa(encodeURIComponent(svgLogo).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))))}`;
-export const squareAppIconUrl = logoUrl;
+// Primary official application logo URL (used as default across app and icons)
+export const logoUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952';
+export const squareAppIconUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952';
+

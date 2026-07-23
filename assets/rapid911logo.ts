@@ -44,5 +44,5 @@ const svgLogo = `
   </g>
 </svg>`;
 
-// Encode the SVG string into a Base64 data URL to be used in image tags
-export const rapid911LogoUrl = `data:image/svg+xml;base64,${btoa(encodeURIComponent(svgLogo).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))))}`;
+// Official application logo URL
+export const rapid911LogoUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952';

@@ -475,16 +475,22 @@ const App: React.FC = () => {
   }, [view, profile]);
 
   useEffect(() => {
-    const link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
-    if (link) {
-      link.href = faviconUrl;
+    const activeIcon = faviconUrl || mainLogoUrl || defaultLogoUrl;
+    const iconLink = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (iconLink) {
+      iconLink.href = activeIcon;
     } else {
       const newLink = document.createElement('link');
       newLink.rel = 'icon';
-      newLink.href = faviconUrl;
+      newLink.href = activeIcon;
       document.head.appendChild(newLink);
     }
-  }, [faviconUrl]);
+
+    const appleLink = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
+    if (appleLink) {
+      appleLink.href = activeIcon;
+    }
+  }, [faviconUrl, mainLogoUrl, defaultLogoUrl]);
 
   const handleNotificationClick = useCallback(async (notification: Notification) => {
     if (!supabase) return;
