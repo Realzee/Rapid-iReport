@@ -86,4 +86,4 @@ const svgSquareIcon = `
 
 // Encode the SVG strings into Base64 data URLs to be used in image tags
 export const logoUrl = `data:image/svg+xml;base64,${btoa(encodeURIComponent(svgLogo).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))))}`;
-export const squareAppIconUrl = `data:image/svg+xml;base64,${btoa(encodeURIComponent(svgSquareIcon).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))))}`;
+export const squareAppIconUrl = logoUrl;
