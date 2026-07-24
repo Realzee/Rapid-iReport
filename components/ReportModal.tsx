@@ -1086,9 +1086,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
                             <div>
                                 <label htmlFor="severity" className={labelClasses}>Severity</label>
-                                <select name="severity" id="severity" value={formData.severity || ''} onChange={handleChange} className={inputClasses}>
-                                    <option value="">Select Severity</option>
-                                    {Object.values(Severity).map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
+                                <select name="severity" id="severity" value={formData.severity || ''} onChange={handleChange} className={`${inputClasses} uppercase font-bold`}>
+                                    <option value="" className="uppercase">SELECT SEVERITY</option>
+                                    {Object.values(Severity).map(s => <option key={s} value={s} className="uppercase font-bold">{s.toUpperCase()}</option>)}
                                 </select>
                             </div>
 
@@ -1377,9 +1377,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
                             <div>
                                 <label htmlFor="severity" className={labelClasses}>Severity</label>
-                                <select name="severity" id="severity" value={formData.severity || ''} onChange={handleChange} className={inputClasses}>
-                                    <option value="">Select Severity</option>
-                                    {Object.values(Severity).map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
+                                <select name="severity" id="severity" value={formData.severity || ''} onChange={handleChange} className={`${inputClasses} uppercase font-bold`}>
+                                    <option value="" className="uppercase">SELECT SEVERITY</option>
+                                    {Object.values(Severity).map(s => <option key={s} value={s} className="uppercase font-bold">{s.toUpperCase()}</option>)}
                                 </select>
                             </div>
 

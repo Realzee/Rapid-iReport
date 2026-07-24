@@ -123,12 +123,12 @@ const TechDispatchModal: React.FC<TechDispatchModalProps> = ({
                             <select
                                 value={severity}
                                 onChange={e => setSeverity(e.target.value as any)}
-                                className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-900 dark:text-white focus:outline-none"
+                                className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-900 dark:text-white focus:outline-none uppercase font-bold"
                             >
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                                <option value="critical">Critical</option>
+                                <option value="low" className="uppercase font-bold">LOW</option>
+                                <option value="medium" className="uppercase font-bold">MEDIUM</option>
+                                <option value="high" className="uppercase font-bold">HIGH</option>
+                                <option value="critical" className="uppercase font-bold">CRITICAL</option>
                             </select>
                         </div>
 

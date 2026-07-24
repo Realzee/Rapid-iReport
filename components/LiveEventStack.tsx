@@ -138,8 +138,8 @@ const LiveEventItem: React.FC<{
                     </div>
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                            <span className={`px-1.5 py-0.5 rounded capitalize font-semibold text-xs ${severityTagStyles[report.severity]}`}>
-                                {report.severity}
+                            <span className={`px-1.5 py-0.5 rounded uppercase font-bold text-xs ${severityTagStyles[report.severity]}`}>
+                                {report.severity.toUpperCase()}
                             </span>
                             {hasImages && (
                                 <div className="flex items-center gap-1">

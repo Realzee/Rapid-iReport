@@ -549,9 +549,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                         </select>
                      </div>
                       <div>
-                        <select value={filters.severity} onChange={e => handleFilterChange('severity', e.target.value)} className={`${filterInputClasses} w-full`}>
-                            <option value="all">All Severities</option>
-                            {Object.values(Severity).map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
+                        <select value={filters.severity} onChange={e => handleFilterChange('severity', e.target.value)} className={`${filterInputClasses} w-full uppercase font-bold`}>
+                            <option value="all" className="uppercase font-bold">ALL SEVERITIES</option>
+                            {Object.values(Severity).map(s => <option key={s} value={s} className="uppercase font-bold">{s.toUpperCase()}</option>)}
                         </select>
                      </div>
                 </div>

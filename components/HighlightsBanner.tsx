@@ -25,7 +25,7 @@ const HighlightCard: React.FC<{ report: Report, onSelect: (id: string) => void }
                 <p className="font-bold text-xs truncate">{title}</p>
                 <div className="flex items-center gap-1.5 text-xs opacity-80">
                     <AlertTriangleIcon className={`w-3 h-3 ${report.severity === Severity.CRITICAL ? 'text-red-400' : 'text-orange-400'}`} />
-                    <span className="capitalize">{report.severity}</span>
+                    <span className="uppercase font-bold">{report.severity.toUpperCase()}</span>
                     <span>&middot;</span>
                     <span className="whitespace-nowrap">{safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}</span>
                 </div>

@@ -155,20 +155,20 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                     <ReportTypeBadge type={report.type as any} className="flex-shrink-0 mt-0.5" />
                     {report.type === 'vehicle' ? (
                         <p className="flex-1 min-w-0 truncate">
-                            <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
+                            <span className={`${severityStyles[report.severity]} font-bold uppercase`}>{report.severity.toUpperCase()}</span>
                             {' · '}
                             {(report as any).vehicle_make} {(report as any).vehicle_model} ({(report as any).vehicle_color})
                         </p>
                     ) : report.type === 'emergency' ? (
                          <p className="flex-1 min-w-0 truncate">
-                            <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
+                            <span className={`${severityStyles[report.severity]} font-bold uppercase`}>{report.severity.toUpperCase()}</span>
                             {' · '}
                             {(report as any).emergency_type}
                             {(report as any).license_plate && ` · ${(report as any).license_plate}`}
                         </p>
                     ) : (
                          <p className="flex-1 min-w-0 truncate">
-                            <span className={`${severityStyles[report.severity]} font-semibold capitalize`}>{report.severity}</span>
+                            <span className={`${severityStyles[report.severity]} font-bold uppercase`}>{report.severity.toUpperCase()}</span>
                             {' · '}
                             {(report as any).crime_type}
                         </p>

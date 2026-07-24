@@ -38,7 +38,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
         </div>
         <div className="bg-gray-100 p-3 rounded-md border border-gray-200">
           <p className="text-xs font-bold text-gray-500 uppercase">Severity</p>
-          <p className="text-lg font-semibold capitalize">{report.severity}</p>
+          <p className="text-lg font-bold uppercase">{report.severity.toUpperCase()}</p>
         </div>
       </section>
 

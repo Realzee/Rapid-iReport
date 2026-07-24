@@ -773,7 +773,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     </div>
                     <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Severity</p>
-                        <p className="font-semibold text-gray-900 dark:text-white capitalize">{localReport.severity}</p>
+                        <p className="font-bold text-gray-900 dark:text-white uppercase">{localReport.severity.toUpperCase()}</p>
                     </div>
                     <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">OB Number</p>

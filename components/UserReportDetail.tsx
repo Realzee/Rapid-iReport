@@ -193,7 +193,7 @@ const UserReportDetail: React.FC<{
                 <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Severity</p>
-                        <p className="font-semibold text-gray-900 dark:text-white capitalize">{report.severity}</p>
+                        <p className="font-bold text-gray-900 dark:text-white uppercase">{report.severity.toUpperCase()}</p>
                     </div>
                      <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported</p>

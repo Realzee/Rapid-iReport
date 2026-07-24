@@ -77,7 +77,7 @@ const PublicReportDetailModal: React.FC<PublicReportDetailModalProps> = ({ isOpe
                         )}
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            <DetailItem label="Severity" value={<span className="font-semibold capitalize">{report.severity}</span>} />
+                            <DetailItem label="Severity" value={<span className="font-bold uppercase">{report.severity.toUpperCase()}</span>} />
                             <DetailItem label="Reported At" value={safeFormat(report.reported_at, 'MMM d, yyyy HH:mm')} />
                             {report.type === 'vehicle' ? (
                                 <DetailItem label="Vehicle" value={`${(report as any).vehicle_color} ${(report as any).vehicle_make} ${(report as any).vehicle_model}`} />
