@@ -52,19 +52,19 @@ export const TripSummaryCard: React.FC<TripSummaryCardProps> = ({ vehicle, onRef
     moving: {
       color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
       pulseColor: 'bg-emerald-500',
-      label: 'Active Moving',
+      label: 'ACTIVE MOVING',
       desc: `Cruising at ${vehicle.speed} km/h`
     },
     stationary: {
       color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
       pulseColor: 'bg-amber-500',
-      label: 'Idle Stationary',
+      label: 'IDLE STATIONARY',
       desc: 'Engine idle / parked'
     },
     offline: {
       color: 'text-gray-500 bg-gray-500/10 border-gray-500/20',
       pulseColor: 'bg-gray-400',
-      label: 'Offline / Disconnected',
+      label: 'OFFLINE / DISCONNECTED',
       desc: 'No cellular heartbeat'
     }
   }[vehicle.status];

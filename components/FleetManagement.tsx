@@ -857,7 +857,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                 <button
                   key={tab}
                   onClick={() => setStatusFilter(tab)}
-                  className={`flex-1 py-1 rounded-lg capitalize transition-all ${
+                  className={`flex-1 py-1 rounded-lg uppercase font-bold tracking-wider transition-all ${
                     statusFilter === tab
                       ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -925,8 +925,8 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${statusBg}`}>
-                          {unit.status}
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${statusBg}`}>
+                          {unit.status.toUpperCase()}
                         </span>
                       </div>
                     </div>
@@ -1045,7 +1045,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                 className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200/60 dark:border-slate-700/60"
               >
                 <Layers className="w-3 h-3 text-blue-500" />
-                <span className="capitalize">{mapStyle}</span>
+                <span className="uppercase font-bold tracking-wider">{mapStyle.toUpperCase()}</span>
               </button>
             </div>
           </div>
@@ -1389,7 +1389,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                           <div className="space-y-1 text-[11px] text-slate-700">
                             <div className="flex justify-between">
                               <span>Status:</span>
-                              <strong className="capitalize">{v.status}</strong>
+                              <strong className="uppercase font-bold">{v.status.toUpperCase()}</strong>
                             </div>
                             <div className="flex justify-between">
                               <span>Speed:</span>
@@ -1543,7 +1543,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                                   : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                               }`}
                             >
-                              {gf.status === 'active' ? 'Active' : 'Disabled'}
+                              {gf.status === 'active' ? 'ACTIVE' : 'DISABLED'}
                             </button>
 
                             <button
