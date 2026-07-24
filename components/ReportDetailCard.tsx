@@ -758,14 +758,14 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                                 value={localReport.status}
                                 onChange={handleStatusChange}
                                 disabled={statusUpdateLoading || isTerminalStatus}
-                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-1 px-2 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70"
+                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-1 px-2 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70 uppercase font-bold"
                             >
-                                <option value={ReportStatus.PENDING}>Pending</option>
-                                <option value={ReportStatus.ACTIVE}>Active</option>
-                                <option value={ReportStatus.IN_PROGRESS}>In Progress</option>
-                                <option value={ReportStatus.RESOLVED}>Resolved</option>
-                                <option value={ReportStatus.REJECTED}>Rejected</option>
-                                {localReport.type === 'vehicle' && <option value={ReportStatus.RECOVERED}>Recovered</option>}
+                                <option value={ReportStatus.PENDING} className="uppercase">PENDING</option>
+                                <option value={ReportStatus.ACTIVE} className="uppercase">ACTIVE</option>
+                                <option value={ReportStatus.IN_PROGRESS} className="uppercase">IN PROGRESS</option>
+                                <option value={ReportStatus.RESOLVED} className="uppercase">RESOLVED</option>
+                                <option value={ReportStatus.REJECTED} className="uppercase">REJECTED</option>
+                                {localReport.type === 'vehicle' && <option value={ReportStatus.RECOVERED} className="uppercase">RECOVERED</option>}
                             </select>
                         ) : (
                             <StatusBadge status={localReport.status} />

@@ -763,12 +763,12 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                                 value={myStatus}
                                 onChange={(e) => handleMyStatusChange(e.target.value as ResponderStatus)}
                                 disabled={isUpdatingStatus}
-                                className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-1 px-2 text-[11px] font-bold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-75 appearance-none cursor-pointer pr-6"
+                                className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg py-1 px-2 text-[11px] font-bold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-75 appearance-none cursor-pointer pr-6 uppercase"
                             >
-                                <option value={ResponderStatus.AVAILABLE}>🟢 Available</option>
-                                <option value={ResponderStatus.EN_ROUTE}>🔵 En Route</option>
-                                <option value={ResponderStatus.ON_SCENE}>🟡 On Scene</option>
-                                <option value={ResponderStatus.OFF_DUTY}>⚪ Off Duty</option>
+                                <option value={ResponderStatus.AVAILABLE}>🟢 AVAILABLE</option>
+                                <option value={ResponderStatus.EN_ROUTE}>🔵 EN ROUTE</option>
+                                <option value={ResponderStatus.ON_SCENE}>🟡 ON SCENE</option>
+                                <option value={ResponderStatus.OFF_DUTY}>⚪ OFF DUTY</option>
                             </select>
                             <div className="absolute top-1/2 right-2 -translate-y-1/2 pointer-events-none text-gray-400">
                                 <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

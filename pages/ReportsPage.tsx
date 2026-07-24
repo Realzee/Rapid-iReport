@@ -660,7 +660,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                     </td>
                                     <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>{safeFormat(report.reported_at, 'MMM d, yyyy HH:mm')}</td>
                                     <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>{(report as any).reported_by_name}</td>
-                                    <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>{report.status.replace(/_/g, ' ')}</td>
+                                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>{report.status.replace(/_/g, ' ').toUpperCase()}</td>
                                     <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 ${isRecoveredOrDeleted ? 'opacity-40 grayscale' : ''}`}>
                                         {safeFormat((report as any).achieved_at, 'MMM d, yyyy HH:mm', 'N/A')}
                                     </td>

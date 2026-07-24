@@ -112,18 +112,18 @@ const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onRe
                 {isBulkMode ? `${selectedIds.length} of ${filteredReports.length} selected` : `Showing ${filteredReports.length} reports.`}
             </p>
             
-            <div className="flex space-x-2 mb-4">
+            <div className="flex space-x-2 mb-4 overflow-x-auto pb-1">
                 {statusFilters.map(filter => (
                     <button 
                         key={filter}
                         onClick={() => setActiveFilter(filter)}
-                        className={`px-3 py-1 text-xs font-bold rounded-full capitalize border transition-all duration-200 ${
+                        className={`px-3 py-1 text-xs font-bold rounded-full uppercase border transition-all duration-200 whitespace-nowrap ${
                             activeFilter === filter 
                             ? 'bg-blue-600 text-white border-blue-500' 
                             : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700'
                         }`}
                     >
-                        {filter.replace('_', ' ')}
+                        {filter.replace(/_/g, ' ').toUpperCase()}
                     </button>
                 ))}
             </div>

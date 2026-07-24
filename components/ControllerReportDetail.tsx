@@ -1220,8 +1220,8 @@ const ControllerReportDetail: React.FC<{
                         <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
                             <div>
                                 <label className="text-sm font-medium">Status</label>
-                                <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value as ReportStatus)} className="w-full mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-2 px-3">
-                                    {Object.values(ReportStatus).filter(s => s !== 'deleted').map(s => <option key={s} value={s} className="capitalize">{s.replace(/_/g, ' ')}</option>)}
+                                <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value as ReportStatus)} className="w-full mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-2 px-3 uppercase font-bold">
+                                    {Object.values(ReportStatus).filter(s => s !== 'deleted').map(s => <option key={s} value={s} className="uppercase font-bold">{s.replace(/_/g, ' ').toUpperCase()}</option>)}
                                 </select>
                             </div>
 

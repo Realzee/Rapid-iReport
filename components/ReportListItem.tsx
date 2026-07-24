@@ -183,10 +183,10 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                                 onChange={handleStatusChange}
                                 disabled={isUpdating || isTerminalStatus}
                                 onClick={(e) => e.stopPropagation()}
-                                className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full py-0.5 pl-2.5 pr-6 text-[10px] font-bold text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70 appearance-none w-full max-w-[90px] sm:max-w-[120px] whitespace-nowrap overflow-hidden text-ellipsis"
+                                className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full py-0.5 pl-2.5 pr-6 text-[10px] font-bold text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70 appearance-none w-full max-w-[90px] sm:max-w-[120px] whitespace-nowrap overflow-hidden text-ellipsis uppercase"
                             >
                                 {statusOptions.map(status => (
-                                    <option key={status} value={status} className="capitalize font-bold">{status.replace(/_/g, ' ')}</option>
+                                    <option key={status} value={status} className="uppercase font-bold">{status.replace(/_/g, ' ').toUpperCase()}</option>
                                 ))}
                             </select>
                             {isUpdating ? (

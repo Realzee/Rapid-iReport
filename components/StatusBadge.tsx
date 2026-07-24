@@ -27,10 +27,10 @@ const statusStyles: Record<ReportStatus, string> = {
 const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full border ${statusStyles[status]}`}
+      className={`inline-flex items-center px-2.5 py-0.5 text-xs font-bold rounded-full border uppercase ${statusStyles[status]}`}
     >
       <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${status === ReportStatus.ACTIVE ? 'bg-current animate-ping' : 'bg-current'}`}></span>
-      {status.replace(/_/g, ' ')}
+      {status.replace(/_/g, ' ').toUpperCase()}
     </span>
   );
 };
