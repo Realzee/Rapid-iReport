@@ -308,10 +308,88 @@ const INITIAL_DEFAULT_UNITS: Omit<TK116Device, 'id' | 'pathHistory' | 'alerts'>[
   }
 ];
 
+// Dense road network waypoints (exact road lat/lng paths along major JHB / Gauteng roads)
+const ROAD_ROUTES: Record<string, [number, number][]> = {
+  // Armed Response 1: JHB CBD Road Circuit (Commissioner St -> Ntemi Piliso -> Lilian Ngoyi / Bree -> Troye St -> Albertina Sisulu)
+  'dev-1': [
+    [-26.2041, 28.0473], // Commissioner St & Rissik St
+    [-26.2039, 28.0440], // Commissioner St & Loveday St
+    [-26.2038, 28.0375], // Commissioner St & Ntemi Piliso St
+    [-26.2015, 28.0380], // Ntemi Piliso St & Rahima Moosa St
+    [-26.1990, 28.0385], // Ntemi Piliso St & Lilian Ngoyi St
+    [-26.1995, 28.0420], // Lilian Ngoyi St & Harrison St
+    [-26.2000, 28.0460], // Lilian Ngoyi St & Eloff St
+    [-26.2005, 28.0490], // Lilian Ngoyi St & Von Wielligh St
+    [-26.2010, 28.0515], // Lilian Ngoyi St & Troye St
+    [-26.2030, 28.0510], // Troye St & Rahima Moosa St
+    [-26.2052, 28.0505], // Troye St & Commissioner St
+    [-26.2047, 28.0490], // Commissioner St & Delvers St
+    [-26.2041, 28.0473]  // Commissioner St & Rissik St
+  ],
+  // Supervisor Unit Alpha: Sandton CBD Road Loop (Rivonia Rd -> Grayston Dr -> Katherine St -> Sandton Dr)
+  'dev-2': [
+    [-26.1076, 28.0567], // Rivonia Rd & 5th St (Sandton City)
+    [-26.1040, 28.0580], // Rivonia Rd & West St
+    [-26.1000, 28.0595], // Rivonia Rd & Pybus Rd
+    [-26.0965, 28.0612], // Rivonia Rd & Grayston Dr
+    [-26.0980, 28.0660], // Grayston Dr & Linden Rd
+    [-26.1008, 28.0725], // Grayston Dr & Katherine St
+    [-26.1050, 28.0680], // Katherine St & Pretoria Ave
+    [-26.1112, 28.0610], // Katherine St & Sandton Dr
+    [-26.1095, 28.0585], // Sandton Dr & Alice Ln
+    [-26.1076, 28.0567]  // Sandton Dr & Rivonia Rd
+  ],
+  // Patrol Cruiser Delta: Soweto Road Circuit (Chris Hani Rd -> Klipspruit Valley Rd -> Soweto Hwy -> Elias Motsoaledi Rd)
+  'dev-3': [
+    [-26.2580, 27.8520], // Chris Hani Rd & Klipspruit Valley Rd
+    [-26.2500, 27.8580], // Klipspruit Valley Rd & Nancefield
+    [-26.2390, 27.8680], // Klipspruit Valley Rd & Soweto Hwy
+    [-26.2340, 27.8800], // Soweto Hwy & Noordgesig
+    [-26.2300, 27.8920], // Soweto Hwy & Diepkloof
+    [-26.2380, 27.8700], // Soweto Hwy & Orlando East
+    [-26.2480, 27.8450], // Elias Motsoaledi Rd & Dobsonville
+    [-26.2510, 27.8390], // Elias Motsoaledi Rd & Chris Hani Rd
+    [-26.2540, 27.8450], // Chris Hani Rd & Moroka
+    [-26.2580, 27.8520]  // Chris Hani Rd & Klipspruit Valley Rd
+  ],
+  // Tactical Unit Bravo: Bedfordview / N3 Highway Circuit
+  'dev-4': [
+    [-26.1243, 28.1022], // R24 & Edenvale Rd
+    [-26.1350, 28.1150], // R24 Highway Eastbound
+    [-26.1480, 28.1280], // N3 Linksfield Rd Interchange
+    [-26.1600, 28.1300], // N3 Southbound
+    [-26.1730, 28.1310], // Gilloolys Interchange (N3/R24)
+    [-26.1770, 28.1120], // R24 & Marcia Ave
+    [-26.1550, 28.1060], // Concorde Rd
+    [-26.1243, 28.1022]  // Return to start
+  ]
+};
+
+// Road Grid generator for custom or dynamically created units
+const getRoadRouteForVehicle = (v: TK116Device): [number, number][] => {
+  if (ROAD_ROUTES[v.id]) return ROAD_ROUTES[v.id];
+
+  if (v.imei === '354188046036385' || v.name.includes('Armed Response')) return ROAD_ROUTES['dev-1'];
+  if (v.imei === '354188046036393' || v.name.includes('Supervisor')) return ROAD_ROUTES['dev-2'];
+  if (v.imei === '354188046036401' || v.name.includes('Patrol Cruiser')) return ROAD_ROUTES['dev-3'];
+  if (v.imei === '354188046036419' || v.name.includes('Tactical Unit')) return ROAD_ROUTES['dev-4'];
+
+  // Construct a street-aligned rectangular grid route around base coordinate
+  const bLat = v.lat;
+  const bLng = v.lng;
+  return [
+    [bLat, bLng],
+    [bLat + 0.005, bLng],             // Drive North along road axis
+    [bLat + 0.005, bLng + 0.007],      // Turn East onto cross street
+    [bLat - 0.003, bLng + 0.007],      // Turn South onto avenue
+    [bLat - 0.003, bLng],             // Turn West onto cross street
+    [bLat, bLng]                       // Turn North back to starting position
+  ];
+};
+
 const generateHistoryForUnit = (unit: TK116Device): TripHistoryItem[] => {
   const items: TripHistoryItem[] = [];
-  const baseLat = unit.lat;
-  const baseLng = unit.lng;
+  const route = getRoadRouteForVehicle(unit);
   const now = new Date();
 
   const events = [
@@ -326,15 +404,14 @@ const generateHistoryForUnit = (unit: TK116Device): TripHistoryItem[] => {
 
   events.forEach((ev, idx) => {
     const eventTime = new Date(now.getTime() - ev.timeOffset * 60 * 1000);
-    const latOffset = Math.sin(idx * 0.7) * 0.012;
-    const lngOffset = Math.cos(idx * 0.7) * 0.012;
+    const pointOnRoad = route[idx % route.length];
 
     items.push({
       id: `${unit.id}-hist-${idx}`,
       timestamp: eventTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       event: ev.label,
-      lat: Number((baseLat + latOffset).toFixed(6)),
-      lng: Number((baseLng + lngOffset).toFixed(6)),
+      lat: pointOnRoad[0],
+      lng: pointOnRoad[1],
       speed: ev.speed,
       mileage: Math.max(1000, Math.floor(unit.mileage - ev.mileageOffset)),
       fuelLevel: Math.min(100, Math.max(10, Math.floor(unit.fuelLevel - ev.fuelOffset))),
@@ -353,6 +430,8 @@ interface FleetManagementProps {
 export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => {
   const { addToast } = useToast();
   const { theme } = useTheme();
+
+  const routeProgressRef = useRef<Record<string, { targetIndex: number; progress: number }>>({});
 
   // Instant local storage initialization
   const cacheKey = `fleet_vehicles_${profile.company_id || 'default'}`;
@@ -643,34 +722,78 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
     };
   }, [fetchTrackingUnits]);
 
-  // Smooth live telemetry pulse for active moving vehicles
+  // Smooth live telemetry pulse for active moving vehicles (Road-Constrained Engine)
   useEffect(() => {
     const timer = setInterval(() => {
       setVehicles(prevVehicles => {
         return prevVehicles.map(v => {
           if (v.status !== 'moving') return v;
 
-          // Tiny GPS movement delta
-          const speedFactor = (v.speed || 40) / 36000;
-          const rad = (v.course * Math.PI) / 180;
-          const dLat = Math.cos(rad) * speedFactor;
-          const dLng = Math.sin(rad) * speedFactor;
+          const route = getRoadRouteForVehicle(v);
+          let state = routeProgressRef.current[v.id];
 
-          const newLat = Number((v.lat + dLat).toFixed(6));
-          const newLng = Number((v.lng + dLng).toFixed(6));
-          const newPath = [...v.pathHistory, [newLat, newLng] as [number, number]].slice(-25);
+          if (!state || state.targetIndex >= route.length) {
+            // Find nearest segment/waypoint on road route
+            let minDist = Infinity;
+            let nearestIdx = 1;
+            for (let i = 0; i < route.length; i++) {
+              const d = Math.hypot(route[i][0] - v.lat, route[i][1] - v.lng);
+              if (d < minDist) {
+                minDist = d;
+                nearestIdx = (i + 1) % route.length;
+              }
+            }
+            state = { targetIndex: nearestIdx, progress: 0 };
+          }
+
+          const prevIndex = (state.targetIndex - 1 + route.length) % route.length;
+          const startPt = route[prevIndex];
+          const endPt = route[state.targetIndex];
+
+          // Calculate road segment distance & step fraction
+          const dLat = endPt[0] - startPt[0];
+          const dLng = endPt[1] - startPt[1];
+          const segmentLen = Math.hypot(dLat, dLng) || 0.0001;
+
+          // Step size calculated based on vehicle speed (km/h) relative to segment length
+          const stepSize = Math.max(0.08, Math.min(0.25, ((v.speed || 50) / 3600) / (segmentLen * 111)));
+
+          let newProgress = state.progress + stepSize;
+          let newTargetIndex = state.targetIndex;
+
+          if (newProgress >= 1) {
+            newProgress = 0;
+            newTargetIndex = (state.targetIndex + 1) % route.length;
+          }
+
+          routeProgressRef.current[v.id] = { targetIndex: newTargetIndex, progress: newProgress };
+
+          const currentStart = route[(newTargetIndex - 1 + route.length) % route.length];
+          const currentEnd = route[newTargetIndex];
+
+          const newLat = Number((currentStart[0] + (currentEnd[0] - currentStart[0]) * newProgress).toFixed(6));
+          const newLng = Number((currentStart[1] + (currentEnd[1] - currentStart[1]) * newProgress).toFixed(6));
+
+          // Directional heading (bearing) along road segment
+          const segLat = currentEnd[0] - currentStart[0];
+          const segLng = currentEnd[1] - currentStart[1];
+          const courseRad = Math.atan2(segLng, segLat);
+          const newCourse = Math.round((courseRad * 180 / Math.PI + 360) % 360);
+
+          const newPath = [...v.pathHistory, [newLat, newLng] as [number, number]].slice(-30);
 
           return {
             ...v,
             lat: newLat,
             lng: newLng,
-            mileage: v.mileage + Math.floor(v.speed / 10),
+            course: newCourse,
+            mileage: v.mileage + Math.floor((v.speed || 50) / 10),
             pathHistory: newPath,
             lastUpdate: 'Just now'
           };
         });
       });
-    }, 4000);
+    }, 3500);
 
     return () => clearInterval(timer);
   }, []);
