@@ -93,11 +93,42 @@ export interface RawPacket {
   decoded: Record<string, any>;
 }
 
-const MapCenterController: React.FC<{ coords: [number, number]; zoom?: number }> = ({ coords, zoom = 14 }) => {
+const MapBoundsController: React.FC<{
+  vehicles: TK116Device[];
+  activeVehicleId: string | null;
+}> = ({ vehicles, activeVehicleId }) => {
   const map = useMap();
+  const lastKeyRef = useRef<string>('');
+
   useEffect(() => {
-    map.setView(coords, zoom, { animate: true });
-  }, [coords, map, zoom]);
+    if (!vehicles || vehicles.length === 0) return;
+
+    const currentKey = `${activeVehicleId}_${vehicles.map(v => `${v.id}:${v.lat.toFixed(4)}:${v.lng.toFixed(4)}`).join(',')}`;
+    if (lastKeyRef.current === currentKey) return;
+    lastKeyRef.current = currentKey;
+
+    if (activeVehicleId && vehicles.length === 1) {
+      const activeV = vehicles.find(v => v.id === activeVehicleId);
+      if (activeV) {
+        map.flyTo([activeV.lat, activeV.lng], Math.max(map.getZoom(), 14), { animate: true, duration: 0.8 });
+        return;
+      }
+    }
+
+    if (vehicles.length === 1) {
+      map.flyTo([vehicles[0].lat, vehicles[0].lng], 14, { animate: true, duration: 0.8 });
+    } else if (vehicles.length > 1) {
+      try {
+        const bounds = L.latLngBounds(vehicles.map(v => [v.lat, v.lng]));
+        if (bounds.isValid()) {
+          map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: true, duration: 0.8 });
+        }
+      } catch (err) {
+        console.error("Error setting map bounds:", err);
+      }
+    }
+  }, [vehicles, activeVehicleId, map]);
+
   return null;
 };
 
@@ -341,10 +372,35 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
   });
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(() => vehicles[0]?.id || 'dev-1');
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>(() => vehicles.map(v => v.id));
   const [activeSubTab, setActiveSubTab] = useState<'map' | 'geofence' | 'cmd' | 'guide' | 'packets' | 'history'>('map');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'moving' | 'stationary' | 'offline'>('all');
   const [mapStyle, setMapStyle] = useState<'street' | 'satellite'>('street');
+
+  // Multi-vehicle selection handlers
+  const handleToggleVehicleSelect = useCallback((id: string) => {
+    setSelectedVehicleIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(vId => vId !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+    setSelectedVehicleId(id);
+  }, []);
+
+  const handleToggleSelectAll = useCallback(() => {
+    if (selectedVehicleIds.length === vehicles.length) {
+      setSelectedVehicleIds([]);
+    } else {
+      setSelectedVehicleIds(vehicles.map(v => v.id));
+    }
+  }, [selectedVehicleIds.length, vehicles]);
+
+  const visibleVehicles = useMemo(() => {
+    return vehicles.filter(v => selectedVehicleIds.includes(v.id));
+  }, [vehicles, selectedVehicleIds]);
 
   // Geofence states & alerts
   const geofenceCacheKey = `geofence_zones_${profile.company_id || 'default'}`;
@@ -871,6 +927,16 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
 
           {/* Unit List */}
           <div className="flex-grow overflow-y-auto p-3 space-y-2.5">
+            <div className="flex items-center justify-between pb-1 px-1 border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              <span>Plotted Assets ({selectedVehicleIds.length}/{vehicles.length})</span>
+              <button
+                onClick={handleToggleSelectAll}
+                className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer uppercase"
+              >
+                {selectedVehicleIds.length === vehicles.length ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
+
             {filteredVehicles.length === 0 ? (
               <div className="text-center py-10 px-4 text-slate-400">
                 <Cpu className="w-8 h-8 mx-auto mb-2 opacity-40" />
@@ -879,6 +945,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
             ) : (
               filteredVehicles.map(unit => {
                 const isSelected = unit.id === selectedVehicleId;
+                const isChecked = selectedVehicleIds.includes(unit.id);
                 const statusBg = unit.status === 'moving' 
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                   : unit.status === 'stationary'
@@ -888,26 +955,44 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                 return (
                   <div
                     key={unit.id}
-                    onClick={() => setSelectedVehicleId(unit.id)}
+                    onClick={() => {
+                      setSelectedVehicleId(unit.id);
+                      if (!isChecked) {
+                        setSelectedVehicleIds(prev => [...prev, unit.id]);
+                      }
+                    }}
                     className={`p-3 rounded-2xl border transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-blue-50/80 dark:bg-blue-950/30 border-blue-500 shadow-sm'
-                        : 'bg-white dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700'
+                        : isChecked
+                        ? 'bg-white dark:bg-slate-900/60 border-slate-300 dark:border-slate-700'
+                        : 'bg-slate-50/50 dark:bg-slate-950/40 border-slate-200/60 dark:border-slate-800/40 opacity-60'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <div>
-                        <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                          {unit.name}
-                          {unit.fuelCut && (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-500 text-white animate-pulse">
-                              RELAY CUT
-                            </span>
-                          )}
-                        </h3>
-                        <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                          {unit.plate} &bull; <span className="text-[10px]">{unit.imei}</span>
-                        </p>
+                      <div className="flex items-start gap-2 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleToggleVehicleSelect(unit.id);
+                          }}
+                          className="mt-0.5 w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 truncate">
+                            {unit.name}
+                            {unit.fuelCut && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-500 text-white animate-pulse shrink-0">
+                                RELAY CUT
+                              </span>
+                            )}
+                          </h3>
+                          <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate">
+                            {unit.plate} &bull; <span className="text-[10px]">{unit.imei}</span>
+                          </p>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -1052,369 +1137,376 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
 
           {/* Tab 1: Live Interactive Leaflet Map */}
           {activeSubTab === 'map' && (
-            <div className="flex-grow relative w-full h-full min-h-[350px]">
+            <div className="flex-grow flex flex-col w-full h-full min-h-[400px]">
               
-              {/* Geofence Quick Draw Overlay Bar on Map */}
-              <div className="absolute top-3 right-3 z-20 flex flex-wrap items-center gap-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800/80">
-                <button
-                  onClick={() => {
-                    setIsDrawingGeofence(true);
-                    setDrawingGeofenceType('circle');
-                    setDrawnGeofencePoints([]);
-                    addToast('Click anywhere on the map to set circular geofence center point', 'info');
-                  }}
-                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
-                    isDrawingGeofence && drawingGeofenceType === 'circle'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/50'
-                  }`}
-                >
-                  <Target className="w-3.5 h-3.5 text-blue-500" />
-                  <span>Draw Circle Zone</span>
-                </button>
+              {/* Dedicated Top Toolbar Bar (No Overlays on Map Canvas) */}
+              <div className="bg-slate-100/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 p-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
+                {/* Left: Plotted Assets & Active Unit Telemetry Header */}
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs shrink-0">
+                    <Compass className="w-3.5 h-3.5 text-blue-500" />
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {selectedVehicleIds.length} of {vehicles.length} Assets Plotted
+                    </span>
+                    <button
+                      onClick={handleToggleSelectAll}
+                      className="ml-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline uppercase"
+                    >
+                      {selectedVehicleIds.length === vehicles.length ? 'Deselect All' : 'Select All'}
+                    </button>
+                  </div>
 
-                <button
-                  onClick={() => {
-                    setIsDrawingGeofence(true);
-                    setDrawingGeofenceType('polygon');
-                    setDrawnGeofencePoints([]);
-                    addToast('Click points on the map to build polygon vertices', 'info');
-                  }}
-                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
-                    isDrawingGeofence && drawingGeofenceType === 'polygon'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/50'
-                  }`}
-                >
-                  <Shield className="w-3.5 h-3.5 text-purple-500" />
-                  <span>Draw Polygon Zone</span>
-                </button>
+                  {selectedVehicle && (
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs min-w-0">
+                      <span className="font-extrabold text-slate-900 dark:text-slate-100 truncate">{selectedVehicle.name}</span>
+                      <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">({selectedVehicle.plate})</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                        selectedVehicle.status === 'moving' ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
+                        selectedVehicle.status === 'stationary' ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400' :
+                        'bg-slate-500/20 text-slate-400'
+                      }`}>
+                        {selectedVehicle.status.toUpperCase()}
+                      </span>
+                      <span className="text-slate-600 dark:text-slate-300 font-mono font-bold text-[11px] hidden sm:inline">{selectedVehicle.speed} km/h</span>
 
-                <button
-                  onClick={() => setActiveSubTab('geofence')}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1"
-                >
-                  <Bell className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Geofences ({geofences.filter(g => g.status === 'active').length})</span>
-                </button>
+                      <div className="flex items-center gap-1 ml-auto">
+                        <button
+                          onClick={() => handleEditVehicle(selectedVehicle)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-700"
+                          title="Edit Unit"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteVehicle(selectedVehicle.id, selectedVehicle.name)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-700"
+                          title="Delete Unit"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleEngineRelay(selectedVehicle)}
+                          disabled={isSendingCmd}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 uppercase transition-all ${
+                            selectedVehicle.fuelCut ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+                          }`}
+                          title="Remote Engine Relay Control"
+                        >
+                          <Power className="w-3 h-3" />
+                          <span>{selectedVehicle.fuelCut ? 'Restore Engine' : 'Cut Engine'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: Geofence Tools */}
+                <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                  <button
+                    onClick={() => {
+                      setIsDrawingGeofence(true);
+                      setDrawingGeofenceType('circle');
+                      setDrawnGeofencePoints([]);
+                      addToast('Click anywhere on the map to set circular geofence center point', 'info');
+                    }}
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
+                      isDrawingGeofence && drawingGeofenceType === 'circle'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    <Target className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Draw Circle Zone</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsDrawingGeofence(true);
+                      setDrawingGeofenceType('polygon');
+                      setDrawnGeofencePoints([]);
+                      addToast('Click points on the map to build polygon vertices', 'info');
+                    }}
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
+                      isDrawingGeofence && drawingGeofenceType === 'polygon'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    <Shield className="w-3.5 h-3.5 text-purple-500" />
+                    <span>Draw Polygon Zone</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveSubTab('geofence')}
+                    className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-1"
+                  >
+                    <Bell className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Geofences ({geofences.filter(g => g.status === 'active').length})</span>
+                  </button>
+                </div>
               </div>
 
               {/* Active Geofence Drawing Guidance Banner */}
               {isDrawingGeofence && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-blue-900/90 text-white backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-2xl border border-blue-400/40 flex items-center gap-3 text-xs">
-                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
-                  <div>
-                    <p className="font-bold">
+                <div className="bg-blue-900 text-white px-4 py-2 flex items-center justify-between text-xs font-medium border-b border-blue-700 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+                    <span>
                       {drawingGeofenceType === 'circle'
-                        ? 'Click on the map to place circular geofence center point'
+                        ? 'Click on the map to set circular geofence center point'
                         : `Drawing Polygon Zone: ${drawnGeofencePoints.length} vertices selected`}
-                    </p>
-                    <p className="text-[11px] text-blue-200">
-                      {drawingGeofenceType === 'circle'
-                        ? 'After clicking, adjust zone radius and alert rules.'
-                        : 'Click 3 or more points on map, then click Complete.'}
-                    </p>
+                    </span>
                   </div>
 
-                  {drawingGeofenceType === 'polygon' && drawnGeofencePoints.length >= 3 && (
+                  <div className="flex items-center gap-2">
+                    {drawingGeofenceType === 'polygon' && drawnGeofencePoints.length >= 3 && (
+                      <button
+                        onClick={() => setIsGeofenceModalOpen(true)}
+                        className="px-3 py-0.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs transition-colors"
+                      >
+                        Complete Polygon
+                      </button>
+                    )}
                     <button
                       onClick={() => {
-                        setIsGeofenceModalOpen(true);
+                        setIsDrawingGeofence(false);
+                        setDrawnGeofencePoints([]);
                       }}
-                      className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-xs transition-colors"
+                      className="px-3 py-0.5 bg-white/20 hover:bg-white/30 text-white font-bold rounded-lg text-xs transition-colors"
                     >
-                      Complete Polygon
+                      Cancel
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Clean Leaflet Map Canvas (No Floating Overlays) */}
+              <div className="flex-grow w-full h-full min-h-[350px] relative">
+                <MapContainer
+                  center={[-26.2041, 28.0473]}
+                  zoom={12}
+                  scrollWheelZoom={true}
+                  className="w-full h-full z-10"
+                  style={{ height: '100%', width: '100%' }}
+                >
+                  {mapStyle === 'street' ? (
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                      url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                    />
+                  ) : (
+                    <>
+                      <TileLayer
+                        attribution="Tiles &copy; Esri"
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                      />
+                      <TileLayer
+                        url="https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+                        pane="overlayPane"
+                      />
+                    </>
                   )}
 
-                  <button
-                    onClick={() => {
-                      setIsDrawingGeofence(false);
-                      setDrawnGeofencePoints([]);
-                    }}
-                    className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
+                  <MapClickHandler isDrawing={isDrawingGeofence} onMapClick={handleMapGeofenceClick} />
 
-              {/* Selected Unit Floating Header */}
-              {selectedVehicle && (
-                <div className="absolute top-3 left-3 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800/80 max-w-sm">
-                  <div className="flex items-center justify-between gap-3 mb-1.5">
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                        {selectedVehicle.name}
-                      </h4>
-                      <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                        {selectedVehicle.plate} &bull; IMEI {selectedVehicle.imei}
-                      </p>
-                    </div>
+                  <MapBoundsController vehicles={visibleVehicles} activeVehicleId={selectedVehicleId} />
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleEditVehicle(selectedVehicle)}
-                        className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
-                        title="Edit Unit"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteVehicle(selectedVehicle.id, selectedVehicle.name)}
-                        className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
-                        title="Delete Unit"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleToggleEngineRelay(selectedVehicle)}
-                        disabled={isSendingCmd}
-                        className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all ${
-                          selectedVehicle.fuelCut
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'bg-red-600 text-white shadow-xs'
-                        }`}
-                      >
-                        <Power className="w-3 h-3" />
-                        <span>{selectedVehicle.fuelCut ? 'Restore Engine' : 'Cut Engine'}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-[10px] bg-slate-100/60 dark:bg-slate-800/50 p-2 rounded-xl">
-                    <div>
-                      <span className="text-slate-400 block">Speed</span>
-                      <strong className="text-slate-900 dark:text-slate-100 font-extrabold">{selectedVehicle.speed} km/h</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block">Ignition</span>
-                      <strong className={selectedVehicle.accStatus ? 'text-emerald-500' : 'text-slate-500'}>
-                        {selectedVehicle.accStatus ? 'ACC ON' : 'ACC OFF'}
-                      </strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block">Voltage</span>
-                      <strong className="text-slate-900 dark:text-slate-100 font-semibold">{(selectedVehicle.batteryVoltage / 1000).toFixed(2)}V</strong>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Leaflet Map */}
-              <MapContainer
-                center={[-26.2041, 28.0473]}
-                zoom={12}
-                scrollWheelZoom={true}
-                className="w-full h-full z-10"
-                style={{ height: '100%', width: '100%' }}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url={tileUrl}
-                />
-
-                <MapClickHandler isDrawing={isDrawingGeofence} onMapClick={handleMapGeofenceClick} />
-
-                {selectedVehicle && (
-                  <MapCenterController coords={[selectedVehicle.lat, selectedVehicle.lng]} />
-                )}
-
-                {/* Render Plotted Breadcrumb Route */}
-                {selectedVehicle && selectedVehicle.pathHistory.length > 1 && (
-                  <Polyline
-                    positions={selectedVehicle.pathHistory}
-                    color="#3B82F6"
-                    weight={4}
-                    opacity={0.8}
-                    dashArray="6, 8"
-                  />
-                )}
-
-                {/* Polygon Drawing Live Lines Preview */}
-                {isDrawingGeofence && drawingGeofenceType === 'polygon' && drawnGeofencePoints.length > 0 && (
-                  <>
+                  {/* Render Plotted Breadcrumb Route */}
+                  {selectedVehicle && selectedVehicle.pathHistory.length > 1 && (
                     <Polyline
-                      positions={drawnGeofencePoints}
+                      positions={selectedVehicle.pathHistory}
                       color="#3B82F6"
-                      weight={3}
-                      dashArray="4, 4"
+                      weight={4}
+                      opacity={0.8}
+                      dashArray="6, 8"
                     />
-                    {drawnGeofencePoints.map((pt, idx) => (
-                      <Marker
-                        key={`draw-pt-${idx}`}
-                        position={pt}
-                        icon={L.divIcon({
-                          className: 'custom-draw-pt',
-                          html: `<div style="width: 12px; height: 12px; border-radius: 50%; background: #3B82F6; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
-                          iconSize: [12, 12],
-                          iconAnchor: [6, 6]
-                        })}
+                  )}
+
+                  {/* Polygon Drawing Live Lines Preview */}
+                  {isDrawingGeofence && drawingGeofenceType === 'polygon' && drawnGeofencePoints.length > 0 && (
+                    <>
+                      <Polyline
+                        positions={drawnGeofencePoints}
+                        color="#3B82F6"
+                        weight={3}
+                        dashArray="4, 4"
                       />
-                    ))}
-                  </>
-                )}
+                      {drawnGeofencePoints.map((pt, idx) => (
+                        <Marker
+                          key={`draw-pt-${idx}`}
+                          position={pt}
+                          icon={L.divIcon({
+                            className: 'custom-draw-pt',
+                            html: `<div style="width: 12px; height: 12px; border-radius: 50%; background: #3B82F6; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+                            iconSize: [12, 12],
+                            iconAnchor: [6, 6]
+                          })}
+                        />
+                      ))}
+                    </>
+                  )}
 
-                {/* Render Active Geofence Zones on Map */}
-                {geofences.filter(g => g.status === 'active').map(gf => {
-                  if (gf.type === 'circle') {
-                    return (
-                      <Circle
-                        key={gf.id}
-                        center={gf.center}
-                        radius={gf.radius}
-                        pathOptions={{
-                          color: gf.color,
-                          fillColor: gf.color,
-                          fillOpacity: 0.18,
-                          weight: 2,
-                          dashArray: '4, 6'
-                        }}
-                      >
-                        <Popup className="custom-leaflet-popup">
-                          <div className="p-1.5 min-w-[190px]">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: gf.color }} />
-                              <h4 className="font-bold text-xs text-slate-900">{gf.name}</h4>
-                            </div>
-                            <p className="text-[11px] text-slate-600 mb-1 font-mono">
-                              Radius: {gf.radius >= 1000 ? `${(gf.radius / 1000).toFixed(1)} km` : `${gf.radius}m`}
-                            </p>
-                            <p className="text-[10px] text-slate-500 mb-2">
-                              {gf.description || 'Geofence Perimeter active'}
-                            </p>
-                            <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
-                              <button
-                                onClick={() => {
-                                  setEditingGeofence(gf);
-                                  setIsGeofenceModalOpen(true);
-                                }}
-                                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[10px] font-bold"
-                              >
-                                Edit Zone
-                              </button>
-                              <button
-                                onClick={() => handleDeleteGeofence(gf.id)}
-                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md text-[10px] font-bold"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        </Popup>
-                      </Circle>
-                    );
-                  } else if (gf.type === 'polygon' && gf.polygonPoints.length >= 3) {
-                    return (
-                      <Polygon
-                        key={gf.id}
-                        positions={gf.polygonPoints}
-                        pathOptions={{
-                          color: gf.color,
-                          fillColor: gf.color,
-                          fillOpacity: 0.18,
-                          weight: 2,
-                          dashArray: '4, 6'
-                        }}
-                      >
-                        <Popup className="custom-leaflet-popup">
-                          <div className="p-1.5 min-w-[190px]">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: gf.color }} />
-                              <h4 className="font-bold text-xs text-slate-900">{gf.name}</h4>
-                            </div>
-                            <p className="text-[11px] text-slate-600 mb-1 font-mono">
-                              Polygon Area ({gf.polygonPoints.length} vertices)
-                            </p>
-                            <p className="text-[10px] text-slate-500 mb-2">
-                              {gf.description || 'Geofence Perimeter active'}
-                            </p>
-                            <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
-                              <button
-                                onClick={() => {
-                                  setEditingGeofence(gf);
-                                  setIsGeofenceModalOpen(true);
-                                }}
-                                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[10px] font-bold"
-                              >
-                                Edit Zone
-                              </button>
-                              <button
-                                onClick={() => handleDeleteGeofence(gf.id)}
-                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md text-[10px] font-bold"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        </Popup>
-                      </Polygon>
-                    );
-                  }
-                  return null;
-                })}
-
-                {/* Render Vehicle Markers */}
-                {vehicles.map(v => {
-                  const isSel = v.id === selectedVehicleId;
-                  const color = v.status === 'moving' ? '#10B981' : v.status === 'stationary' ? '#F59E0B' : '#64748B';
-
-                  const customIcon = L.divIcon({
-                    className: 'custom-vehicle-marker',
-                    html: `
-                      <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;">
-                        <div style="position: absolute; width: 36px; height: 36px; border-radius: 50%; background-color: ${color}33; border: 2px solid ${color}; transform: ${isSel ? 'scale(1.2)' : 'scale(1)'}; transition: all 0.3s;"></div>
-                        <div style="width: 20px; height: 20px; border-radius: 50%; background-color: ${color}; color: white; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; transform: rotate(${v.course}deg);">
-                          &#10148;
-                        </div>
-                      </div>
-                    `,
-                    iconSize: [36, 36],
-                    iconAnchor: [18, 18]
-                  });
-
-                  return (
-                    <Marker
-                      key={v.id}
-                      position={[v.lat, v.lng]}
-                      icon={customIcon}
-                      eventHandlers={{
-                        click: () => setSelectedVehicleId(v.id)
-                      }}
-                    >
-                      <Popup className="custom-leaflet-popup">
-                        <div className="p-1 min-w-[180px]">
-                          <h4 className="font-bold text-xs text-slate-900 mb-0.5">{v.name}</h4>
-                          <p className="text-[11px] font-mono text-slate-500 mb-2">{v.plate}</p>
-                          <div className="space-y-1 text-[11px] text-slate-700">
-                            <div className="flex justify-between">
-                              <span>Status:</span>
-                              <strong className="uppercase font-bold">{v.status.toUpperCase()}</strong>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Speed:</span>
-                              <strong>{v.speed} km/h</strong>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Battery:</span>
-                              <strong>{(v.batteryVoltage / 1000).toFixed(1)} V ({v.batteryPercent}%)</strong>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Ignition:</span>
-                              <strong>{v.accStatus ? 'ACC ON' : 'ACC OFF'}</strong>
-                            </div>
-                            {v.fuelCut && (
-                              <div className="text-red-600 font-bold text-center pt-1 border-t">
-                                RELAY CUT ACTIVE
+                  {/* Render Active Geofence Zones on Map */}
+                  {geofences.filter(g => g.status === 'active').map(gf => {
+                    if (gf.type === 'circle') {
+                      return (
+                        <Circle
+                          key={gf.id}
+                          center={gf.center}
+                          radius={gf.radius}
+                          pathOptions={{
+                            color: gf.color,
+                            fillColor: gf.color,
+                            fillOpacity: 0.18,
+                            weight: 2,
+                            dashArray: '4, 6'
+                          }}
+                        >
+                          <Popup className="custom-leaflet-popup">
+                            <div className="p-1.5 min-w-[190px]">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: gf.color }} />
+                                <h4 className="font-bold text-xs text-slate-900">{gf.name}</h4>
                               </div>
-                            )}
+                              <p className="text-[11px] text-slate-600 mb-1 font-mono">
+                                Radius: {gf.radius >= 1000 ? `${(gf.radius / 1000).toFixed(1)} km` : `${gf.radius}m`}
+                              </p>
+                              <p className="text-[10px] text-slate-500 mb-2">
+                                {gf.description || 'Geofence Perimeter active'}
+                              </p>
+                              <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
+                                <button
+                                  onClick={() => {
+                                    setEditingGeofence(gf);
+                                    setIsGeofenceModalOpen(true);
+                                  }}
+                                  className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[10px] font-bold"
+                                >
+                                  Edit Zone
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteGeofence(gf.id)}
+                                  className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md text-[10px] font-bold"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          </Popup>
+                        </Circle>
+                      );
+                    } else if (gf.type === 'polygon' && gf.polygonPoints.length >= 3) {
+                      return (
+                        <Polygon
+                          key={gf.id}
+                          positions={gf.polygonPoints}
+                          pathOptions={{
+                            color: gf.color,
+                            fillColor: gf.color,
+                            fillOpacity: 0.18,
+                            weight: 2,
+                            dashArray: '4, 6'
+                          }}
+                        >
+                          <Popup className="custom-leaflet-popup">
+                            <div className="p-1.5 min-w-[190px]">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: gf.color }} />
+                                <h4 className="font-bold text-xs text-slate-900">{gf.name}</h4>
+                              </div>
+                              <p className="text-[11px] text-slate-600 mb-1 font-mono">
+                                Polygon Area ({gf.polygonPoints.length} vertices)
+                              </p>
+                              <p className="text-[10px] text-slate-500 mb-2">
+                                {gf.description || 'Geofence Perimeter active'}
+                              </p>
+                              <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
+                                <button
+                                  onClick={() => {
+                                    setEditingGeofence(gf);
+                                    setIsGeofenceModalOpen(true);
+                                  }}
+                                  className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[10px] font-bold"
+                                >
+                                  Edit Zone
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteGeofence(gf.id)}
+                                  className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md text-[10px] font-bold"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          </Popup>
+                        </Polygon>
+                      );
+                    }
+                    return null;
+                  })}
+
+                  {/* Render Plotted Vehicle Markers */}
+                  {visibleVehicles.map(v => {
+                    const isSel = v.id === selectedVehicleId;
+                    const color = v.status === 'moving' ? '#10B981' : v.status === 'stationary' ? '#F59E0B' : '#64748B';
+
+                    const customIcon = L.divIcon({
+                      className: 'custom-vehicle-marker',
+                      html: `
+                        <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;">
+                          <div style="position: absolute; width: 36px; height: 36px; border-radius: 50%; background-color: ${color}33; border: 2px solid ${color}; transform: ${isSel ? 'scale(1.2)' : 'scale(1)'}; transition: all 0.3s;"></div>
+                          <div style="width: 20px; height: 20px; border-radius: 50%; background-color: ${color}; color: white; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; transform: rotate(${v.course}deg);">
+                            &#10148;
                           </div>
                         </div>
-                      </Popup>
-                    </Marker>
-                  );
-                })}
-              </MapContainer>
+                      `,
+                      iconSize: [36, 36],
+                      iconAnchor: [18, 18]
+                    });
+
+                    return (
+                      <Marker
+                        key={v.id}
+                        position={[v.lat, v.lng]}
+                        icon={customIcon}
+                        eventHandlers={{
+                          click: () => setSelectedVehicleId(v.id)
+                        }}
+                      >
+                        <Popup className="custom-leaflet-popup">
+                          <div className="p-1 min-w-[180px]">
+                            <h4 className="font-bold text-xs text-slate-900 mb-0.5">{v.name}</h4>
+                            <p className="text-[11px] font-mono text-slate-500 mb-2">{v.plate}</p>
+                            <div className="space-y-1 text-[11px] text-slate-700">
+                              <div className="flex justify-between">
+                                <span>Status:</span>
+                                <strong className="uppercase font-bold">{v.status.toUpperCase()}</strong>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Speed:</span>
+                                <strong>{v.speed} km/h</strong>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Battery:</span>
+                                <strong>{(v.batteryVoltage / 1000).toFixed(1)} V ({v.batteryPercent}%)</strong>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Ignition:</span>
+                                <strong>{v.accStatus ? 'ACC ON' : 'ACC OFF'}</strong>
+                              </div>
+                              {v.fuelCut && (
+                                <div className="text-red-600 font-bold text-center pt-1 border-t">
+                                  RELAY CUT ACTIVE
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    );
+                  })}
+                </MapContainer>
+              </div>
             </div>
           )}
 
