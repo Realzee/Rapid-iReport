@@ -101,6 +101,13 @@ const MapBoundsController: React.FC<{
   const lastKeyRef = useRef<string>('');
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [map, activeVehicleId]);
+
+  useEffect(() => {
     if (!vehicles || vehicles.length === 0) return;
 
     const currentKey = `${activeVehicleId}_${vehicles.map(v => `${v.id}:${v.lat.toFixed(4)}:${v.lng.toFixed(4)}`).join(',')}`;
@@ -121,7 +128,7 @@ const MapBoundsController: React.FC<{
       try {
         const bounds = L.latLngBounds(vehicles.map(v => [v.lat, v.lng]));
         if (bounds.isValid()) {
-          map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: true, duration: 0.8 });
+          map.flyToBounds(bounds, { padding: [40, 40], maxZoom: 15, animate: true, duration: 0.8 });
         }
       } catch (err) {
         console.error("Error setting map bounds:", err);
@@ -456,6 +463,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'moving' | 'stationary' | 'offline'>('all');
   const [mapStyle, setMapStyle] = useState<'street' | 'satellite'>('street');
+  const [mobileTab, setMobileTab] = useState<'map' | 'units'>('map');
 
   // Multi-vehicle selection handlers
   const handleToggleVehicleSelect = useCallback((id: string) => {
@@ -1011,11 +1019,41 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
         </div>
       </div>
 
+      {/* Mobile Screen Navigation Bar: Switch between Map & Fleet List */}
+      <div className="md:hidden bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-1.5 shrink-0 flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setMobileTab('map')}
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+            mobileTab === 'map'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+          }`}
+        >
+          <Compass className="w-4 h-4 text-blue-400" />
+          <span>Interactive Map</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('units')}
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+            mobileTab === 'units'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+          }`}
+        >
+          <Cpu className="w-4 h-4 text-emerald-400" />
+          <span>Asset List ({filteredVehicles.length})</span>
+        </button>
+      </div>
+
       {/* Main Workspace Layout */}
       <div className="flex-grow flex flex-col md:flex-row overflow-hidden relative">
 
         {/* Sidebar: Vehicle List & Filters */}
-        <div className="w-full md:w-80 lg:w-96 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 overflow-hidden">
+        <div className={`w-full md:w-80 lg:w-96 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col shrink-0 overflow-hidden ${
+          mobileTab === 'units' ? 'flex flex-grow h-full' : 'hidden md:flex'
+        }`}>
           
           {/* Search & Status Filters */}
           <div className="p-3 border-b border-slate-200 dark:border-slate-800 space-y-2.5 bg-slate-50/50 dark:bg-slate-900/50">
@@ -1083,6 +1121,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                       if (!isChecked) {
                         setSelectedVehicleIds(prev => [...prev, unit.id]);
                       }
+                      setMobileTab('map');
                     }}
                     className={`p-3 rounded-2xl border transition-all cursor-pointer ${
                       isSelected
@@ -1164,7 +1203,9 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
         </div>
 
         {/* Center Panel: Map & Sub-Tabs */}
-        <div className="flex-grow flex flex-col overflow-hidden relative">
+        <div className={`flex-grow flex-col overflow-hidden relative ${
+          mobileTab === 'map' ? 'flex flex-grow h-full min-h-[350px]' : 'hidden md:flex'
+        }`}>
 
           {/* Sub-Nav Bar */}
           <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2 shrink-0 flex items-center justify-between gap-3 overflow-x-auto">
