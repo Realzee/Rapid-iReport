@@ -566,11 +566,13 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             addToast(`Assigned ${responder.first_name} ${responder.surname} to incident ${selectedReport.ob_number}`, 'success');
             
             // Log the assignment change
-            await supabase.from('assignment_logs').insert({
+            supabase.from('assignment_logs').insert({
                 report_id: selectedReportId,
                 assigned_from: selectedReport.assigned_to || null,
                 assigned_to: responderId,
                 assigned_by: profile.id
+            }).then(({ error }) => {
+                if (error) console.warn("Assignment log insert skipped:", error.message);
             });
 
             // Log the assignment

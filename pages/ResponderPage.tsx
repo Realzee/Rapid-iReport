@@ -519,12 +519,14 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                     addToast(`Failed to assign report: ${error.message}`, 'error');
                 } else {
                     addToast('Incident successfully assigned to you.', 'success');
-                    // Log assignment
-                    await supabase.from('assignment_logs').insert({
+                    // Log assignment (fire and catch so RLS issues don't block assignment)
+                    supabase.from('assignment_logs').insert({
                         report_id: report.id,
                         assigned_from: report.assigned_to,
                         assigned_to: profile.id,
                         assigned_by: profile.id
+                    }).then(({ error }) => {
+                        if (error) console.warn("Assignment log insert skipped:", error.message);
                     });
                     // Add update
                     await supabase.from('report_updates').insert({
@@ -801,12 +803,14 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
         if (isResolving) {
             reportUpdatePayload.assigned_to = null;
             reportUpdatePayload.completed_at = new Date().toISOString();
-            updatePromises.push(supabase.from('assignment_logs').insert({
+            supabase.from('assignment_logs').insert({
                 report_id: report.id,
                 assigned_from: profile.id,
                 assigned_to: null,
                 assigned_by: profile.id
-            }));
+            }).then(({ error }) => {
+                if (error) console.warn("Assignment log insert skipped:", error.message);
+            });
         }
     
         updatePromises.push(supabase.from(tableName).update(reportUpdatePayload).eq('id', report.id));
@@ -860,12 +864,17 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                     const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
                     const updatePromises: PromiseLike<any>[] = [];
                     updatePromises.push(supabase.from(tableName).update({ assigned_to: null, status: ReportStatus.ACTIVE }).eq('id', report.id));
-                    updatePromises.push(supabase.from('assignment_logs').insert({
+                    
+                    // Log assignment change separately so any DB RLS policy issue does not block stand down
+                    supabase.from('assignment_logs').insert({
                         report_id: report.id,
                         assigned_from: profile.id,
                         assigned_to: null,
                         assigned_by: profile.id
-                    }));
+                    }).then(({ error }) => {
+                        if (error) console.warn("Assignment log insert skipped:", error.message);
+                    });
+
                     updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Responder ${profile.first_name} ${profile.surname} has stood down.` }));
 
                     const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);

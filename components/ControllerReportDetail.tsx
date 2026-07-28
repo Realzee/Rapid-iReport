@@ -335,11 +335,13 @@ const ControllerReportDetail: React.FC<{
         if (selectedResponder !== (report.assigned_to || '')) {
             updatePayload.assigned_to = selectedResponder || null;
             // Log the assignment change
-            await supabase.from('assignment_logs').insert({
+            supabase.from('assignment_logs').insert({
                 report_id: report.id,
                 assigned_from: report.assigned_to || null,
                 assigned_to: selectedResponder || null,
                 assigned_by: profile.id
+            }).then(({ error }) => {
+                if (error) console.warn("Assignment log insert skipped:", error.message);
             });
         }
 
