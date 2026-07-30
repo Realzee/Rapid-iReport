@@ -91,7 +91,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
         const { name, value } = e.target;
         setFormData(prev => {
             const updatedVehicles = [...(prev.vehicles || [])];
-            updatedVehicles[index] = { ...updatedVehicles[index], [name]: value };
+            updatedVehicles[index] = { ...updatedVehicles[index], [name]: value.toUpperCase() };
             return { ...prev, vehicles: updatedVehicles };
         });
     };
@@ -318,31 +318,31 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
                                                 <label className={labelClasses}>Make</label>
-                                                <input type="text" name="make" value={vehicle.make} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                                <input type="text" name="make" value={vehicle.make} onChange={(e) => handleVehicleChange(index, e)} className={`${inputClasses} uppercase`} />
                                             </div>
                                             <div>
                                                 <label className={labelClasses}>Model</label>
-                                                <input type="text" name="model" value={vehicle.model} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                                <input type="text" name="model" value={vehicle.model} onChange={(e) => handleVehicleChange(index, e)} className={`${inputClasses} uppercase`} />
                                             </div>
                                             <div>
                                                 <label className={labelClasses}>Reg</label>
-                                                <input type="text" name="reg" value={vehicle.reg} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                                <input type="text" name="reg" value={vehicle.reg} onChange={(e) => handleVehicleChange(index, e)} className={`${inputClasses} uppercase`} />
                                             </div>
                                             <div>
                                                 <label className={labelClasses}>Chassis No (Vin)</label>
-                                                <input type="text" name="vin" value={vehicle.vin} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                                <input type="text" name="vin" value={vehicle.vin} onChange={(e) => handleVehicleChange(index, e)} className={`${inputClasses} uppercase`} />
                                             </div>
                                             <div>
                                                 <label className={labelClasses}>Engine No</label>
-                                                <input type="text" name="engine_no" value={vehicle.engine_no} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                                <input type="text" name="engine_no" value={vehicle.engine_no} onChange={(e) => handleVehicleChange(index, e)} className={`${inputClasses} uppercase`} />
                                             </div>
                                             <div>
                                                 <label className={labelClasses}>Tracking Co</label>
-                                                <input type="text" name="tracking_co" value={vehicle.tracking_co} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                                <input type="text" name="tracking_co" value={vehicle.tracking_co} onChange={(e) => handleVehicleChange(index, e)} className={`${inputClasses} uppercase`} />
                                             </div>
                                             <div>
                                                 <label className={labelClasses}>Tracking Co Contact</label>
-                                                <input type="text" name="tracking_co_contact" value={vehicle.tracking_co_contact} onChange={(e) => handleVehicleChange(index, e)} className={inputClasses} />
+                                                <input type="text" name="tracking_co_contact" value={vehicle.tracking_co_contact} onChange={(e) => handleVehicleChange(index, e)} className={`${inputClasses} uppercase`} />
                                             </div>
                                         </div>
                                     </div>

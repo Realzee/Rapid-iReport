@@ -167,11 +167,19 @@ async function runMigrations() {
         try {
             const { error } = await supabaseAdmin.rpc('eval', { query: q });
             if (error) {
+                if (error.message.includes('exceed_egress_quota') || error.message.includes('restricted due to')) {
+                    console.log('[Tech Ops Migrations] Supabase egress quota exceeded or service restricted. Skipping auto-migrations.');
+                    break;
+                }
                 console.log(`[Tech Ops Migrations] Error executing: "${q.substring(0, 45)}..." ->`, error.message);
             } else {
                 console.log(`[Tech Ops Migrations] Executed: "${q.substring(0, 45)}..."`);
             }
         } catch (e: any) {
+            if (e?.message?.includes('exceed_egress_quota') || e?.message?.includes('restricted due to')) {
+                console.log('[Tech Ops Migrations] Supabase egress quota exceeded or service restricted.');
+                break;
+            }
             console.error('[Tech Ops Migrations] Error:', e.message);
         }
     }

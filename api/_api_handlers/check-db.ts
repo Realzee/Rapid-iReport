@@ -18,10 +18,24 @@ export default async function handler(req: any, res: any) {
         });
     }
 
+    const isQuotaError = (err: any): boolean => {
+        if (!err) return false;
+        const msg = (typeof err === 'string' ? err : (err.message || '')).toLowerCase();
+        return msg.includes('exceed_egress_quota') ||
+               msg.includes('quota') ||
+               msg.includes('restricted') ||
+               msg.includes('spend caps') ||
+               msg.includes('service for this project is restricted');
+    };
+
     try {
         // Check 1: Basic table access (profiles)
         const { error: profileError } = await supabaseAdmin.from('profiles').select('id').limit(1);
         if (profileError) {
+            if (isQuotaError(profileError)) {
+                console.warn("Database check server handler detected quota restriction. Bypassing schema error screen.", profileError.message);
+                return res.status(200).json({ status: 'valid', warning: 'Database quota limit encountered.' });
+            }
             console.error("Database schema check failed on 'profiles' table on server:", profileError);
             return res.status(200).json({
                 status: 'invalid',
@@ -43,6 +57,9 @@ export default async function handler(req: any, res: any) {
         }
 
         if (rpcError) {
+            if (isQuotaError(rpcError)) {
+                return res.status(200).json({ status: 'valid', warning: 'Database quota limit encountered.' });
+            }
             if (rpcError.code === '42883') { // "function does not exist"
                  console.error("Database schema check failed: 'get_enum_values' function missing on server.", rpcError);
                  return res.status(200).json({
