@@ -126,8 +126,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
     // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
     const { error } = await supabase.auth['signInWithPassword']({ email, password });
     if (error) {
-      addToast(error.message, 'error');
-	  setIsDirty(true); // set dirty back if login fails
+      const errMsg = error.message?.includes('exceed_egress_quota') || error.message?.includes('restricted')
+        ? 'Database quota exceeded. Please upgrade your Supabase plan or reset egress limits in your Supabase dashboard.'
+        : error.message;
+      addToast(errMsg, 'error');
+      setIsDirty(true); // set dirty back if login fails
     }
     setLoading(false);
   };
