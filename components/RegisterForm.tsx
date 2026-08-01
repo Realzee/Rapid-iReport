@@ -38,20 +38,30 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
   const [role, setRole] = useState(UserRole.USER);
   const [turnstileToken, setTurnstileToken] = useState<string | null>('dummy_token');
   
+  // Onboard New Company states
+  const [isOnboardNewCompany, setIsOnboardNewCompany] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState('');
+  const [newCompanyContactPerson, setNewCompanyContactPerson] = useState('');
+  const [newCompanyCellNumber, setNewCompanyCellNumber] = useState('');
+  const [newCompanyPsira, setNewCompanyPsira] = useState('');
+  const [newCompanyAddress, setNewCompanyAddress] = useState('');
+
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
 
   const actualCompanies = React.useMemo(() => {
-    if (!companies || companies.length === 0) {
+    // Only show approved companies for general registration
+    const approvedOnly = (companies || []).filter(c => c.status === 'approved' || c.name?.trim().toLowerCase() === 'rapid responders sa');
+    if (approvedOnly.length === 0) {
       return [{ id: 'bootstrap-pending', name: 'Rapid Responders SA' }] as Company[];
     }
-    const hasDefault = companies.some(
+    const hasDefault = approvedOnly.some(
       c => c.name && c.name.trim().toLowerCase() === 'rapid responders sa'
     );
     if (!hasDefault) {
-      return [...companies, { id: 'bootstrap-pending', name: 'Rapid Responders SA' }] as Company[];
+      return [...approvedOnly, { id: 'bootstrap-pending', name: 'Rapid Responders SA' }] as Company[];
     }
-    return companies;
+    return approvedOnly;
   }, [companies]);
 
   useEffect(() => {
@@ -87,13 +97,48 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
         addToast('Please upload a selfie to complete registration.', 'error');
         return;
     }
-    if (!companyId) {
+    if (!isOnboardNewCompany && !companyId) {
         addToast('Please select the company you are registering for.', 'error');
         return;
     }
     setLoading(true);
 
-    const targetCompanyId = companyId === 'bootstrap-pending' ? null : companyId;
+    let targetCompanyId = companyId === 'bootstrap-pending' ? null : companyId;
+
+    if (isOnboardNewCompany) {
+      if (!newCompanyName.trim() || !newCompanyContactPerson.trim() || !newCompanyCellNumber.trim()) {
+        addToast('Please complete all required company onboarding fields.', 'error');
+        setLoading(false);
+        return;
+      }
+      try {
+        const companyRes = await fetch('/api/companies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: newCompanyName,
+            contact_person: newCompanyContactPerson,
+            cell_number: newCompanyCellNumber,
+            psira_number: newCompanyPsira || null,
+            address: newCompanyAddress || null,
+            status: 'pending', // Awaiting administrator approval
+            allowed_modules: ['controller', 'tech_ops', 'fleet_management', 'guard_monitoring', 'gate_access', 'attendance', 'analytics', 'archives']
+          })
+        });
+
+        if (!companyRes.ok) {
+          const errData = await companyRes.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to submit company onboarding request.');
+        }
+
+        const newCompanyObj = await companyRes.json();
+        targetCompanyId = newCompanyObj.id;
+      } catch (err: any) {
+        addToast(`Company registration request failed: ${err.message}`, 'error');
+        setLoading(false);
+        return;
+      }
+    }
 
     // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
     const { data: signUpData, error: signUpError } = await supabase.auth['signUp']({
@@ -110,7 +155,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
                 medical_aid: medicalAid || null,
                 psira_number: psiraNumber || null,
                 company_id: targetCompanyId,
-                role: role,
+                role: isOnboardNewCompany ? UserRole.ADMIN : role,
             }
         }
     });
@@ -133,8 +178,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
     const fileExt = avatarFile.name.split('.').pop();
     const filePath = `${user.id}/avatar.${fileExt}`;
     const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, avatarFile, { upsert: true });
+         .from('avatars')
+         .upload(filePath, avatarFile, { upsert: true });
     
     if (uploadError) {
         addToast('Account created, but selfie upload failed. Please update it on your profile page.', 'warning');
@@ -153,7 +198,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
     if (profileUpdateError) {
         addToast('Account created and selfie uploaded, but could not link it to your profile. Please re-upload on your profile page.', 'warning');
     } else {
-        addToast('Success! Please verify your email. Your account is now pending administrator approval.', 'success');
+        if (isOnboardNewCompany) {
+            addToast('Success! Your company and account onboarding request has been submitted to Rapid Responders SA for approval.', 'success');
+        } else {
+            addToast('Success! Please verify your email. Your account is now pending administrator approval.', 'success');
+        }
     }
     
     setLoading(false);
@@ -205,44 +254,144 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
               </div>
             </div>
         </div>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="company_id_reg" className={labelClasses}>Company</label>
-              <div className={inputContainerClasses}>
-                <div className={iconClasses}><BuildingIcon className="w-5 h-5 text-gray-400" /></div>
-                <select
-                    id="company_id_reg"
-                    name="companyId"
-                    required
-                    value={companyId}
-                    onChange={(e) => setCompanyId(e.target.value)}
-                    className={inputClasses}
-                >
-                    <option value="" disabled>Select your company...</option>
-                    {actualCompanies.map(company => (
-                        <option key={company.id} value={company.id}>{company.name}</option>
-                    ))}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label htmlFor="role_reg" className={labelClasses}>Role</label>
-              <div className={inputContainerClasses}>
-                <select
-                    id="role_reg"
-                    name="role"
-                    required
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as UserRole)}
-                    className={`${inputClasses} !pl-3`}
-                >
-                    <option value={UserRole.USER}>User</option>
-                    <option value={UserRole.GUARD}>Guard</option>
-                    <option value={UserRole.RESPONDER}>Responder</option>
-                </select>
-              </div>
-            </div>
-          </div>
+         {/* Joining type selector tabs */}
+         <div className="flex bg-slate-100 dark:bg-slate-900/60 p-1 rounded-2xl mb-2">
+             <button
+                 type="button"
+                 onClick={() => setIsOnboardNewCompany(false)}
+                 className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-200 ${
+                     !isOnboardNewCompany
+                         ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-md shadow-slate-200/50 dark:shadow-none'
+                         : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+                 }`}
+             >
+                 Join Approved Company
+             </button>
+             <button
+                 type="button"
+                 onClick={() => setIsOnboardNewCompany(true)}
+                 className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-200 ${
+                     isOnboardNewCompany
+                         ? 'bg-white dark:bg-gray-800 text-slate-900 dark:text-white shadow-md shadow-slate-200/50 dark:shadow-none'
+                         : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+                 }`}
+             >
+                 🏢 Onboard New Company
+             </button>
+         </div>
+
+         {isOnboardNewCompany ? (
+             <div className="space-y-4 border border-blue-500/10 dark:border-blue-500/20 bg-blue-500/5 p-4 rounded-2xl mb-2">
+                 <h3 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">🏢 Company Onboarding Details</h3>
+                 
+                 <div>
+                     <label htmlFor="new_company_name" className={labelClasses}>Company Name <span className="text-red-500">*</span></label>
+                     <div className={inputContainerClasses}>
+                         <div className={iconClasses}><BuildingIcon className="w-5 h-5 text-gray-400" /></div>
+                         <input
+                             id="new_company_name"
+                             type="text"
+                             required
+                             value={newCompanyName}
+                             onChange={(e) => setNewCompanyName(e.target.value)}
+                             className={inputClasses}
+                             placeholder="e.g. Paramount Patrols"
+                         />
+                     </div>
+                 </div>
+
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div>
+                         <label htmlFor="new_company_contact" className={labelClasses}>Contact Person <span className="text-red-500">*</span></label>
+                         <input
+                             id="new_company_contact"
+                             type="text"
+                             required
+                             value={newCompanyContactPerson}
+                             onChange={(e) => setNewCompanyContactPerson(e.target.value)}
+                             className={`${inputClasses} pl-3`}
+                             placeholder="Full Name"
+                         />
+                     </div>
+                     <div>
+                         <label htmlFor="new_company_cell" className={labelClasses}>Contact Cell <span className="text-red-500">*</span></label>
+                         <input
+                             id="new_company_cell"
+                             type="tel"
+                             required
+                             value={newCompanyCellNumber}
+                             onChange={(e) => setNewCompanyCellNumber(e.target.value)}
+                             className={`${inputClasses} pl-3`}
+                             placeholder="0821234567"
+                         />
+                     </div>
+                 </div>
+
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div>
+                         <label htmlFor="new_company_psira" className={labelClasses}>PSIRA No (Optional)</label>
+                         <input
+                             id="new_company_psira"
+                             type="text"
+                             value={newCompanyPsira}
+                             onChange={(e) => setNewCompanyPsira(e.target.value.toUpperCase())}
+                             className={`${inputClasses} pl-3`}
+                             placeholder="PSIRA #"
+                         />
+                     </div>
+                     <div>
+                         <label htmlFor="new_company_address" className={labelClasses}>Address (Optional)</label>
+                         <input
+                             id="new_company_address"
+                             type="text"
+                             value={newCompanyAddress}
+                             onChange={(e) => setNewCompanyAddress(e.target.value)}
+                             className={`${inputClasses} pl-3`}
+                             placeholder="123 Office Rd"
+                         />
+                     </div>
+                 </div>
+             </div>
+         ) : (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div>
+                     <label htmlFor="company_id_reg" className={labelClasses}>Company</label>
+                     <div className={inputContainerClasses}>
+                         <div className={iconClasses}><BuildingIcon className="w-5 h-5 text-gray-400" /></div>
+                         <select
+                             id="company_id_reg"
+                             name="companyId"
+                             required
+                             value={companyId}
+                             onChange={(e) => setCompanyId(e.target.value)}
+                             className={inputClasses}
+                         >
+                             <option value="" disabled>Select your company...</option>
+                             {actualCompanies.map(company => (
+                                 <option key={company.id} value={company.id}>{company.name}</option>
+                             ))}
+                         </select>
+                     </div>
+                 </div>
+                 <div>
+                     <label htmlFor="role_reg" className={labelClasses}>Role</label>
+                     <div className={inputContainerClasses}>
+                         <select
+                             id="role_reg"
+                             name="role"
+                             required
+                             value={role}
+                             onChange={(e) => setRole(e.target.value as UserRole)}
+                             className={`${inputClasses} !pl-3`}
+                         >
+                             <option value={UserRole.USER}>User</option>
+                             <option value={UserRole.GUARD}>Guard</option>
+                             <option value={UserRole.RESPONDER}>Responder</option>
+                         </select>
+                     </div>
+                 </div>
+             </div>
+         )}
         <div>
           <label htmlFor="email_reg" className={labelClasses}>Email Address</label>
           <div className={inputContainerClasses}>

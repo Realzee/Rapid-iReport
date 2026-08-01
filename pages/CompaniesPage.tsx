@@ -179,6 +179,58 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
         setViewCompany(company);
     };
 
+    const isGlobalAdmin = useMemo(() => {
+        if (!currentUserProfile) return false;
+        const isCompanyAdmin = currentUserProfile.role === UserRole.ADMIN;
+        const isMainCompany = currentUserProfile.company?.name?.trim().toLowerCase() === 'rapid responders sa' || 
+                              currentUserProfile.company_id === 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+        return isCompanyAdmin && isMainCompany;
+    }, [currentUserProfile]);
+
+    const handleApproveCompany = async (company: Company) => {
+        try {
+            const response = await fetch('/api/companies', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: company.id,
+                    status: 'approved'
+                })
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Failed to approve company');
+            }
+            const updated = await response.json();
+            setCompanies(companies.map(c => c.id === company.id ? { ...c, ...updated } : c));
+            addToast(`Company "${company.name}" has been approved successfully!`, 'success');
+        } catch (err: any) {
+            addToast(err.message || 'Error approving company', 'error');
+        }
+    };
+
+    const handleRejectCompany = async (company: Company) => {
+        try {
+            const response = await fetch('/api/companies', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: company.id,
+                    status: 'rejected'
+                })
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Failed to reject company');
+            }
+            const updated = await response.json();
+            setCompanies(companies.map(c => c.id === company.id ? { ...c, ...updated } : c));
+            addToast(`Company "${company.name}" has been rejected.`, 'warning');
+        } catch (err: any) {
+            addToast(err.message || 'Error rejecting company', 'error');
+        }
+    };
+
     const handleSaveCompany = async (companyData: Partial<Company>, logoFile: File | null, boloBgFile: File | null) => {
         setIsSavingCompany(true);
         let finalLogoUrl = companyData.logo_url;
@@ -831,6 +883,9 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                             onEdit={handleEditCompany}
                             onDelete={handleDeleteCompany}
                             onView={handleViewCompany}
+                            isGlobalAdmin={isGlobalAdmin}
+                            onApprove={handleApproveCompany}
+                            onReject={handleRejectCompany}
                         />
                     )}
                 </div>

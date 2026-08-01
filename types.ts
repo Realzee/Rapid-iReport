@@ -105,6 +105,7 @@ export interface Company {
     allowed_modules?: string[];
     bolo_background_url?: string;
     alias?: string;
+    status?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface Profile {

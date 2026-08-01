@@ -117,6 +117,8 @@ async function runMigrations() {
         "CREATE POLICY \"Allow select tech_chat for authenticated\" ON public.tech_chat_messages FOR SELECT TO authenticated USING (true);",
         "DROP POLICY IF EXISTS \"Allow insert tech_chat for authenticated\" ON public.tech_chat_messages;",
         "CREATE POLICY \"Allow insert tech_chat for authenticated\" ON public.tech_chat_messages FOR INSERT TO authenticated WITH CHECK (true);",
+        "ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending';",
+        "UPDATE public.companies SET status = 'approved' WHERE name = 'Rapid Responders SA' OR status IS NULL;",
         "ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS bolo_background_url text;",
         "ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS alias text;",
         "ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS allowed_modules text[];",
@@ -216,6 +218,7 @@ async function runMigrations() {
                 const { error: insertError } = await supabaseAdmin.from('companies').insert({
                     name: 'Rapid Responders SA',
                     alias: 'rapid-responders',
+                    status: 'approved',
                     allowed_modules: ['controller', 'tech_ops', 'fleet_management', 'guard_monitoring', 'gate_access', 'attendance', 'analytics', 'archives']
                 });
                 if (insertError) {
