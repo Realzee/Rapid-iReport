@@ -122,7 +122,7 @@ const ControllerReportDetail: React.FC<{
                 setSharedWithCompanyIds(sharesData?.map((s: any) => s.target_company_id) || []);
             }
 
-            if (companiesError) console.error("Error fetching companies:", companiesError);
+            if (companiesError) console.warn("Company fetch warning:", companiesError?.message);
             else setCompanies(companiesData || []);
 
             if (updatesError) console.error("Error fetching report updates:", updatesError);

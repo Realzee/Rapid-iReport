@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 dotenv.config({ override: true });
 
 // Ensure correct service role key is loaded into environment variables for all API endpoints
-const SERVICE_ROLE_KEY_VAL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlnbHdkd2h3cGJxYXd1bmJrenl5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODI3NTc4OSwiZXhwIjoyMDgzODUxNzg5fQ.h8tD0STrVfQ7-eSXYJmDGoGGWKoNDr4o0SmGsYy0KRo';
+const SERVICE_ROLE_KEY_VAL = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiYnN2dGxubWpqa29iZnljdWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzODI3MTMsImV4cCI6MjEwMDk1ODcxM30.PLeuqc3AKOq5QEFC2nxXIQ3MEEns5hxx7IkBYtzx43s';
 process.env.SUPABASE_SERVICE_ROLE_KEY = SERVICE_ROLE_KEY_VAL;
 process.env.VITE_SUPABASE_SERVICE_ROLE_KEY = SERVICE_ROLE_KEY_VAL;
 
@@ -32,7 +32,7 @@ app.use((req, res, next) => {
 });
 
 const getSafeSupabaseUrl = (url: string | undefined): string => {
-    const defaultUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co';
+    const defaultUrl = 'https://zbbsvtlnmjjkobfycudw.supabase.co';
     if (!url || url === 'undefined' || url.trim() === '') return defaultUrl;
     const trimmed = url.trim();
     return trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
@@ -67,6 +67,19 @@ async function runMigrations() {
     if (!supabaseAdmin) return;
     console.log('Running system migrations for Tech Ops module...');
     const queries = [
+        `CREATE TABLE IF NOT EXISTS public.companies (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            name text NOT NULL,
+            created_at timestamptz DEFAULT now(),
+            bolo_background_url text,
+            alias text,
+            allowed_modules text[] DEFAULT ARRAY['controller', 'tech_ops', 'fleet_management', 'guard_monitoring', 'gate_access', 'attendance', 'analytics', 'archives']
+        );`,
+        "ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;",
+        "DROP POLICY IF EXISTS \"Public read companies\" ON public.companies;",
+        "CREATE POLICY \"Public read companies\" ON public.companies FOR SELECT USING (true);",
+        "DROP POLICY IF EXISTS \"Allow all for authenticated on companies\" ON public.companies;",
+        "CREATE POLICY \"Allow all for authenticated on companies\" ON public.companies FOR ALL TO authenticated USING (true) WITH CHECK (true);",
         "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'technician';",
         `CREATE TABLE IF NOT EXISTS public.tech_jobs (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -171,6 +184,10 @@ async function runMigrations() {
                     console.log('[Tech Ops Migrations] Supabase egress quota exceeded or service restricted. Skipping auto-migrations.');
                     break;
                 }
+                if (error.message.includes('Could not find the function') || error.message.includes('schema cache') || error.code === 'PGRST202') {
+                    console.log('[Tech Ops Migrations] RPC function "eval" not found in Supabase database schema cache. Auto-migrations skipped.');
+                    break;
+                }
                 console.log(`[Tech Ops Migrations] Error executing: "${q.substring(0, 45)}..." ->`, error.message);
             } else {
                 console.log(`[Tech Ops Migrations] Executed: "${q.substring(0, 45)}..."`);
@@ -178,6 +195,10 @@ async function runMigrations() {
         } catch (e: any) {
             if (e?.message?.includes('exceed_egress_quota') || e?.message?.includes('restricted due to')) {
                 console.log('[Tech Ops Migrations] Supabase egress quota exceeded or service restricted.');
+                break;
+            }
+            if (e?.message?.includes('Could not find the function') || e?.message?.includes('schema cache')) {
+                console.log('[Tech Ops Migrations] RPC function "eval" not found in Supabase database.');
                 break;
             }
             console.error('[Tech Ops Migrations] Error:', e.message);

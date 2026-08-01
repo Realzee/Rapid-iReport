@@ -277,7 +277,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         if (cError) console.error('Error fetching crime reports:', cError);
         if (aError) console.error('Error fetching emergency reports:', aError);
         if (uError) console.error('Error fetching users:', uError);
-        if (compError) console.error('Error fetching companies:', compError);
+        if (compError) console.warn('Company fetch warning:', compError?.message);
 
         const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
 

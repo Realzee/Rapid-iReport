@@ -171,8 +171,20 @@ const UsersPage: React.FC = () => {
                 }
             }
 
-            if (companiesError) console.error('Error fetching companies:', companiesError);
-            else setCompanies(companiesData || []);
+            if (companiesError) {
+                console.warn('Direct company fetch warning:', companiesError?.message);
+                try {
+                    const res = await fetch('/api/companies');
+                    if (res.ok) {
+                        const fallbackData = await res.json();
+                        setCompanies(Array.isArray(fallbackData) ? fallbackData : []);
+                    } else {
+                        setCompanies([]);
+                    }
+                } catch {
+                    setCompanies([]);
+                }
+            } else setCompanies(companiesData || []);
             
             setLoading(false);
         };

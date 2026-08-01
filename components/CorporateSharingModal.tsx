@@ -46,7 +46,7 @@ export const CorporateSharingModal: React.FC<CorporateSharingModalProps> = ({ is
         .select('*')
         .order('name');
       
-      if (compError) console.error("Error fetching companies:", compError);
+      if (compError) console.warn("Company fetch warning:", compError?.message);
       else setCompanies(compData || []);
 
     } catch (err) {

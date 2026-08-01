@@ -57,7 +57,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
               if (dbLogoUrl.includes('/storage/v1/object/') && !dbLogoUrl.includes('/object/public/')) {
                   dbLogoUrl = dbLogoUrl.replace('/storage/v1/object/', '/storage/v1/object/public/');
               }
-              if (dbLogoUrl.startsWith('yglwdwhwpbqawunbkzyy.supabase.co')) {
+              if (dbLogoUrl.includes('.supabase.co') && !dbLogoUrl.startsWith('http')) {
                   dbLogoUrl = 'https://' + dbLogoUrl;
               }
           }
@@ -68,7 +68,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
               if (dbFaviconUrl.includes('/storage/v1/object/') && !dbFaviconUrl.includes('/object/public/')) {
                   dbFaviconUrl = dbFaviconUrl.replace('/storage/v1/object/', '/storage/v1/object/public/');
               }
-              if (dbFaviconUrl.startsWith('yglwdwhwpbqawunbkzyy.supabase.co')) {
+              if (dbFaviconUrl.includes('.supabase.co') && !dbFaviconUrl.startsWith('http')) {
                   dbFaviconUrl = 'https://' + dbFaviconUrl;
               }
           }

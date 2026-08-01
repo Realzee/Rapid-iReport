@@ -62,7 +62,7 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
     const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
     const dbHost = useMemo(() => {
-        const supabaseUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co';
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://zbbsvtlnmjjkobfycudw.supabase.co';
         try {
             const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1];
             if (projectRef) {
@@ -131,8 +131,23 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                 { data: announcementsData, error: aError }
             ] = await Promise.all([companiesQuery, usersQuery, announcementsQuery]);
             
-            if (cError) console.error('Error fetching companies:', cError);
-            else setCompanies(companiesData || []);
+            if (cError) {
+                console.warn('Direct company fetch warning:', cError?.message);
+                // Try fallback to server API handler
+                try {
+                    const res = await fetch('/api/companies');
+                    if (res.ok) {
+                        const fallbackData = await res.json();
+                        setCompanies(Array.isArray(fallbackData) ? fallbackData : []);
+                    } else {
+                        setCompanies([]);
+                    }
+                } catch {
+                    setCompanies([]);
+                }
+            } else {
+                setCompanies(companiesData || []);
+            }
             
             if (uError) console.error('Error fetching users:', uError);
             else setUsers(usersData || []);
