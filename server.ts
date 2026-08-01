@@ -248,55 +248,122 @@ if (supabaseAdmin) {
                 .maybeSingle();
 
             if (compErr || !companyData) {
+                console.error('[Admin Seeding] Could not find default company "Rapid Responders SA". Error:', compErr?.message);
                 return;
             }
 
             const mainCompanyId = companyData.id;
 
-            // Check if user "zweli@msn.com" exists in profiles
-            const { data: profileData, error: profErr } = await supabaseAdmin
-                .from('profiles')
-                .select('id, role, status, company_id')
-                .eq('email', 'zweli@msn.com')
-                .maybeSingle();
-
-            if (profErr) {
-                console.error('Error querying profile for zweli@msn.com:', profErr.message);
-                return;
+            // 1. Find or Create Auth user
+            let authUser: any = null;
+            const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+            if (listError) {
+                console.error('[Admin Seeding] Error listing auth users:', listError.message);
+            } else if (listData && listData.users) {
+                authUser = listData.users.find((u: any) => u.email === 'zweli@msn.com');
             }
 
-            if (profileData) {
-                // Check if updates are needed
-                const needsUpdate = profileData.role !== 'admin' || 
-                                    profileData.status !== 'active' || 
-                                    profileData.company_id !== mainCompanyId;
+            if (!authUser) {
+                console.log('[Admin Seeding] User zweli@msn.com not found in Supabase Auth. Creating now...');
+                const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+                    email: 'zweli@msn.com',
+                    password: 'Password123!',
+                    email_confirm: true,
+                    user_metadata: {
+                        role: 'admin',
+                        status: 'active'
+                    }
+                });
+                if (createError) {
+                    console.error('[Admin Seeding] Failed to create auth user zweli@msn.com:', createError.message);
+                } else if (createData && createData.user) {
+                    console.log('[Admin Seeding] Successfully created auth user zweli@msn.com with ID:', createData.user.id);
+                    authUser = createData.user;
+                }
+            } else {
+                // Ensure password is set to 'Password123!' so they can log in successfully
+                const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+                    password: 'Password123!',
+                    email_confirm: true,
+                    user_metadata: {
+                        role: 'admin',
+                        status: 'active'
+                    }
+                });
+                if (updateAuthError) {
+                    console.error('[Admin Seeding] Failed to update/set password for zweli@msn.com in auth:', updateAuthError.message);
+                } else {
+                    console.log('[Admin Seeding] Verified/set password for zweli@msn.com to "Password123!"');
+                }
+            }
 
-                if (needsUpdate) {
-                    console.log(`Elevating zweli@msn.com (ID: ${profileData.id}) to active admin under Rapid Responders SA...`);
-                    const { error: updateErr } = await supabaseAdmin
+            // 2. Insert or update the Profile
+            if (authUser) {
+                const { data: profileData, error: profErr } = await supabaseAdmin
+                    .from('profiles')
+                    .select('id, role, status, company_id')
+                    .eq('id', authUser.id)
+                    .maybeSingle();
+
+                if (profErr) {
+                    console.error('[Admin Seeding] Error querying profile for zweli@msn.com:', profErr.message);
+                    return;
+                }
+
+                if (!profileData) {
+                    console.log('[Admin Seeding] Profile for zweli@msn.com does not exist. Creating profile...');
+                    const { error: insertErr } = await supabaseAdmin
                         .from('profiles')
-                        .update({
+                        .insert({
+                            id: authUser.id,
+                            email: 'zweli@msn.com',
+                            first_name: 'Zweli',
+                            surname: 'Admin',
                             role: 'admin',
                             status: 'active',
                             company_id: mainCompanyId
-                        })
-                        .eq('id', profileData.id);
+                        });
 
-                    if (updateErr) {
-                        console.error('Failed to elevate user zweli@msn.com:', updateErr.message);
+                    if (insertErr) {
+                        console.error('[Admin Seeding] Failed to insert profile for zweli@msn.com:', insertErr.message);
                     } else {
-                        console.log('Successfully elevated zweli@msn.com to active admin!');
+                        console.log('[Admin Seeding] Successfully created profile for zweli@msn.com as admin under Rapid Responders SA!');
+                    }
+                } else {
+                    // Check if updates are needed
+                    const needsUpdate = profileData.role !== 'admin' || 
+                                        profileData.status !== 'active' || 
+                                        profileData.company_id !== mainCompanyId;
+
+                    if (needsUpdate) {
+                        console.log(`[Admin Seeding] Elevating zweli@msn.com (ID: ${profileData.id}) to active admin in profiles...`);
+                        const { error: updateErr } = await supabaseAdmin
+                            .from('profiles')
+                            .update({
+                                role: 'admin',
+                                status: 'active',
+                                company_id: mainCompanyId,
+                                first_name: 'Zweli',
+                                surname: 'Admin'
+                            })
+                            .eq('id', profileData.id);
+
+                        if (updateErr) {
+                            console.error('[Admin Seeding] Failed to update profile for zweli@msn.com:', updateErr.message);
+                        } else {
+                            console.log('[Admin Seeding] Successfully updated profile for zweli@msn.com to active admin!');
+                        }
                     }
                 }
             }
         } catch (err: any) {
-            console.error('Failed inside ensureAdminUser loop:', err?.message || err);
+            console.error('[Admin Seeding] Error in ensureAdminUser task:', err?.message || err);
         }
     };
 
-    // Run immediately and every 10 seconds
+    // Run immediately and every 60 seconds
     ensureAdminUser();
-    setInterval(ensureAdminUser, 10000);
+    setInterval(ensureAdminUser, 60000);
 }
 
 
