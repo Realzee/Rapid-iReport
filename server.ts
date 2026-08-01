@@ -204,6 +204,32 @@ async function runMigrations() {
             console.error('[Tech Ops Migrations] Error:', e.message);
         }
     }
+
+    // Ensure the default company "Rapid Responders SA" exists in the database
+    if (supabaseAdmin) {
+        try {
+            const { data, error } = await supabaseAdmin.from('companies').select('id').eq('name', 'Rapid Responders SA').maybeSingle();
+            if (error) {
+                console.warn('Warning checking for default company "Rapid Responders SA":', error.message);
+            } else if (!data) {
+                console.log('Seeding default company "Rapid Responders SA"...');
+                const { error: insertError } = await supabaseAdmin.from('companies').insert({
+                    name: 'Rapid Responders SA',
+                    alias: 'rapid-responders',
+                    allowed_modules: ['controller', 'tech_ops', 'fleet_management', 'guard_monitoring', 'gate_access', 'attendance', 'analytics', 'archives']
+                });
+                if (insertError) {
+                    console.error('Error creating default company "Rapid Responders SA":', insertError.message);
+                } else {
+                    console.log('Successfully created default company "Rapid Responders SA"');
+                }
+            } else {
+                console.log('Default company "Rapid Responders SA" already exists with ID:', data.id);
+            }
+        } catch (err: any) {
+            console.error('Failed to run default company seeding:', err?.message || err);
+        }
+    }
 }
 runMigrations();
 
