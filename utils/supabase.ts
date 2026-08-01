@@ -466,6 +466,8 @@ class MockStorageBucket {
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64data = reader.result as string;
+          // Upgrade the in-memory value to full persistent-ready Base64
+          mockStorageInMemory.set(key, base64data);
           try {
             localStorage.setItem(key, base64data);
           } catch (storageError) {
@@ -488,27 +490,7 @@ class MockStorageBucket {
     return { data: [], error: null };
   }
   getPublicUrl(filePath: string) {
-    const key = `mock_storage_${this.bucketName}_${filePath}`;
-    const inMemoryUrl = mockStorageInMemory.get(key);
-    if (inMemoryUrl) {
-      return { data: { publicUrl: inMemoryUrl } };
-    }
-    
-    try {
-      const persistedUrl = localStorage.getItem(key);
-      if (persistedUrl) {
-        const blob = dataURLtoBlob(persistedUrl);
-        if (blob) {
-          const objectUrl = URL.createObjectURL(blob);
-          mockStorageInMemory.set(key, objectUrl);
-          return { data: { publicUrl: objectUrl } };
-        }
-      }
-    } catch (e) {
-      console.error("Error restoring file from localStorage:", e);
-    }
-    
-    return { data: { publicUrl: `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=250&auto=format&fit=crop&q=80` } };
+    return { data: { publicUrl: `https://mock-storage.local/${this.bucketName}/${filePath}` } };
   }
 }
 
@@ -548,6 +530,61 @@ const mockSupabase = {
 // Return transparent proxy mock client if in sandbox mode
 const isSandbox = typeof window !== 'undefined' && localStorage.getItem('rapid911_sandbox_mode') === 'true';
 
+// Helper to retrieve and resolve mock storage URLs to their base64/blob equivalents
+function getMockStorageValue(url: string): string | null {
+  try {
+    const cleanUrl = url.split('?')[0]; // strip query parameters or timestamp cache-busters
+    if (cleanUrl.includes('mock-storage.local/')) {
+      const parts = cleanUrl.split('mock-storage.local/');
+      if (parts.length > 1) {
+        const subPath = parts[1]; // e.g. "company-logos/some-company-id/logo.png"
+        const slashIndex = subPath.indexOf('/');
+        if (slashIndex !== -1) {
+          const bucketName = subPath.substring(0, slashIndex);
+          const filePath = subPath.substring(slashIndex + 1);
+          const key = `mock_storage_${bucketName}_${filePath}`;
+          
+          // Check in-memory map first
+          const inMemoryUrl = mockStorageInMemory.get(key);
+          if (inMemoryUrl) return inMemoryUrl;
+          
+          // Check localStorage
+          const persistedUrl = localStorage.getItem(key);
+          if (persistedUrl) return persistedUrl;
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error retrieving mock storage value:", e);
+  }
+  return null;
+}
+
+// Monkey-patch HTMLImageElement.prototype.src to transparently resolve mock-storage.local URLs to Base64
+if (isSandbox && typeof window !== 'undefined') {
+  const originalSrcDescriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+  if (originalSrcDescriptor && originalSrcDescriptor.set) {
+    Object.defineProperty(HTMLImageElement.prototype, 'src', {
+      get() {
+        return originalSrcDescriptor.get ? originalSrcDescriptor.get.call(this) : '';
+      },
+      set(value) {
+        let finalValue = value;
+        if (typeof value === 'string' && value.includes('mock-storage.local/')) {
+          const resolved = getMockStorageValue(value);
+          if (resolved) {
+            finalValue = resolved;
+          } else {
+            // Fallback placeholder
+            finalValue = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=250&auto=format&fit=crop&q=80';
+          }
+        }
+        originalSrcDescriptor.set!.call(this, finalValue);
+      }
+    });
+  }
+}
+
 // Global localStorage.setItem override to handle QuotaExceededError and private browsing restrictions safely
 if (typeof window !== 'undefined') {
   const originalSetItem = window.localStorage.setItem;
@@ -566,6 +603,26 @@ if (isSandbox && typeof window !== 'undefined') {
   window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const url = typeof input === 'string' ? input : (input instanceof URL ? input.href : input.url);
     const method = init?.method?.toUpperCase() || 'GET';
+
+    // Intercept mock-storage.local fetch requests (used for PDF generator/canvas context)
+    if (url.includes('mock-storage.local/')) {
+      const mockValue = getMockStorageValue(url);
+      if (mockValue) {
+        const blob = dataURLtoBlob(mockValue);
+        if (blob) {
+          return new Response(blob, {
+            status: 200,
+            headers: { 'Content-Type': blob.type }
+          });
+        }
+      }
+      // Fail-safe mock response
+      return new Response(new Blob([], { type: 'image/png' }), {
+        status: 200,
+        headers: { 'Content-Type': 'image/png' }
+      });
+    }
+
     const parsedUrl = new URL(url, window.location.origin);
     const path = parsedUrl.pathname;
 
