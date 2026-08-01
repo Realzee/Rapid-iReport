@@ -24,6 +24,15 @@ const AnnouncementTypeIcon: React.FC<{ type: AnnouncementType, className?: strin
     }
 };
 
+const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+    });
+};
+
 interface CompaniesPageProps {
     profile?: Profile;
     setProfile?: (profile: Profile) => void;
@@ -241,31 +250,11 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
             const dataToSave = { ...companyData, id: companyId };
 
             if (logoFile) {
-                const fileExt = logoFile.name.split('.').pop();
-                const filePath = `${companyId}/logo.${fileExt}`;
-
-                const { error: uploadError } = await supabase.storage
-                    .from('company-logos')
-                    .upload(filePath, logoFile, { upsert: true });
-
-                if (uploadError) throw uploadError;
-
-                const { data: urlData } = supabase.storage.from('company-logos').getPublicUrl(filePath);
-                finalLogoUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+                finalLogoUrl = await fileToBase64(logoFile);
             }
 
             if (boloBgFile) {
-                const fileExt = boloBgFile.name.split('.').pop();
-                const filePath = `${companyId}/bolo_background.${fileExt}`;
-
-                const { error: uploadError } = await supabase.storage
-                    .from('company-logos')
-                    .upload(filePath, boloBgFile, { upsert: true });
-
-                if (uploadError) throw uploadError;
-
-                const { data: urlData } = supabase.storage.from('company-logos').getPublicUrl(filePath);
-                finalBoloBgUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+                finalBoloBgUrl = await fileToBase64(boloBgFile);
             }
 
             let savedCompany: Company | null = null;
@@ -331,12 +320,16 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
     const confirmDeleteCompany = async () => {
         if (selectedCompany) {
             try {
-                if (selectedCompany.logo_url) {
-                    const urlParts = selectedCompany.logo_url.split('/');
-                    const filePath = urlParts.slice(urlParts.indexOf('company-logos') + 1).join('/');
-                    const [folder, file] = filePath.split('?')[0].split('/');
-                    if (folder && file) {
-                        await supabase.storage.from('company-logos').remove([`${folder}/${file}`]);
+                if (selectedCompany.logo_url && !selectedCompany.logo_url.startsWith('data:')) {
+                    try {
+                        const urlParts = selectedCompany.logo_url.split('/');
+                        const filePath = urlParts.slice(urlParts.indexOf('company-logos') + 1).join('/');
+                        const [folder, file] = filePath.split('?')[0].split('/');
+                        if (folder && file) {
+                            await supabase.storage.from('company-logos').remove([`${folder}/${file}`]);
+                        }
+                    } catch (e) {
+                        console.warn("Storage deletion ignored for Base64 or non-storage URL:", e);
                     }
                 }
 
@@ -381,22 +374,12 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
         if (!newLogoFile) return;
         setIsUploadingGlobalLogo(true);
         try {
-            const fileExt = newLogoFile.name.split('.').pop();
-            const filePath = `main-logo.${fileExt}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from('app-assets')
-                .upload(filePath, newLogoFile, { upsert: true, cacheControl: '0' });
-            
-            if (uploadError) throw uploadError;
-
-            const { data: urlData } = supabase.storage.from('app-assets').getPublicUrl(filePath);
-            const newUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+            const base64Url = await fileToBase64(newLogoFile);
 
             const response = await fetch('/api/update-setting', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: 'main_logo_url', value: newUrl })
+                body: JSON.stringify({ key: 'main_logo_url', value: base64Url })
             });
             
             if (!response.ok) {
@@ -411,7 +394,7 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                 }
             }
 
-            setMainLogoUrl(newUrl);
+            setMainLogoUrl(base64Url);
             setNewLogoFile(null);
             addToast('Main application logo updated successfully.', 'success');
 
@@ -476,22 +459,12 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
         if (!newFaviconFile) return;
         setIsUploadingFavicon(true);
         try {
-            const fileExt = newFaviconFile.name.split('.').pop();
-            const filePath = `favicon.${fileExt}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from('app-assets')
-                .upload(filePath, newFaviconFile, { upsert: true, cacheControl: '0' });
-            
-            if (uploadError) throw uploadError;
-
-            const { data: urlData } = supabase.storage.from('app-assets').getPublicUrl(filePath);
-            const newUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+            const base64Url = await fileToBase64(newFaviconFile);
 
             const response = await fetch('/api/update-setting', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: 'favicon_url', value: newUrl })
+                body: JSON.stringify({ key: 'favicon_url', value: base64Url })
             });
             
             if (!response.ok) {
@@ -506,7 +479,7 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                 }
             }
 
-            setFaviconUrl(newUrl);
+            setFaviconUrl(base64Url);
             setNewFaviconFile(null);
             addToast('App icon updated successfully.', 'success');
         } catch (error: any) {
@@ -577,31 +550,10 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
         try {
             // Case 1: A new file is being uploaded.
             if (imageFile) {
-                // If editing and an old image existed, delete it first.
-                if (announcementToEdit?.image_url) {
-                    const urlParts = announcementToEdit.image_url.split('/app-assets/');
-                    if (urlParts.length > 1) {
-                        const filePath = urlParts[1].split('?')[0];
-                        await supabase.storage.from('app-assets').remove([filePath]);
-                    }
-                }
-
-                const announcementId = announcementData.id || crypto.randomUUID();
-                const fileExt = imageFile.name.split('.').pop();
-                const filePath = `announcements/${announcementId}/image-${Date.now()}.${fileExt}`;
-                const { error: uploadError } = await supabase.storage.from('app-assets').upload(filePath, imageFile);
-                if (uploadError) throw uploadError;
-
-                const { data: urlData } = supabase.storage.from('app-assets').getPublicUrl(filePath);
-                finalImageUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+                finalImageUrl = await fileToBase64(imageFile);
             } 
             // Case 2: The existing image was removed (no new file, and url is now missing).
             else if (!announcementData.image_url && announcementToEdit?.image_url) {
-                const urlParts = announcementToEdit.image_url.split('/app-assets/');
-                if (urlParts.length > 1) {
-                    const filePath = urlParts[1].split('?')[0];
-                    await supabase.storage.from('app-assets').remove([filePath]);
-                }
                 finalImageUrl = undefined;
             }
 

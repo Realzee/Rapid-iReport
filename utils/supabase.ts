@@ -425,18 +425,89 @@ class MockChannel {
   }
 }
 
+const mockStorageInMemory = new Map<string, string>();
+
+function dataURLtoBlob(dataurl: string): Blob | null {
+  try {
+    const arr = dataurl.split(',');
+    if (arr.length < 2) return null;
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch) return null;
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  } catch (e) {
+    console.error("Failed to convert dataURL to Blob", e);
+    return null;
+  }
+}
+
 class MockStorageBucket {
   private bucketName: string;
   constructor(bucketName: string) {
     this.bucketName = bucketName;
   }
   async upload(filePath: string, file: any, options?: any) {
+    const key = `mock_storage_${this.bucketName}_${filePath}`;
+    if (file instanceof Blob || file instanceof File) {
+      try {
+        const objectUrl = URL.createObjectURL(file);
+        mockStorageInMemory.set(key, objectUrl);
+      } catch (e) {
+        console.error("Error creating Object URL:", e);
+      }
+
+      try {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          try {
+            localStorage.setItem(key, base64data);
+          } catch (storageError) {
+            console.warn("Storage quota exceeded, keeping in-memory only:", storageError);
+          }
+        };
+        reader.readAsDataURL(file);
+      } catch (e) {
+        console.error("Error reading file:", e);
+      }
+    }
     return { data: { path: filePath }, error: null };
   }
   async remove(paths: string[]) {
+    for (const p of paths) {
+      const key = `mock_storage_${this.bucketName}_${p}`;
+      mockStorageInMemory.delete(key);
+      localStorage.removeItem(key);
+    }
     return { data: [], error: null };
   }
   getPublicUrl(filePath: string) {
+    const key = `mock_storage_${this.bucketName}_${filePath}`;
+    const inMemoryUrl = mockStorageInMemory.get(key);
+    if (inMemoryUrl) {
+      return { data: { publicUrl: inMemoryUrl } };
+    }
+    
+    try {
+      const persistedUrl = localStorage.getItem(key);
+      if (persistedUrl) {
+        const blob = dataURLtoBlob(persistedUrl);
+        if (blob) {
+          const objectUrl = URL.createObjectURL(blob);
+          mockStorageInMemory.set(key, objectUrl);
+          return { data: { publicUrl: objectUrl } };
+        }
+      }
+    } catch (e) {
+      console.error("Error restoring file from localStorage:", e);
+    }
+    
     return { data: { publicUrl: `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=250&auto=format&fit=crop&q=80` } };
   }
 }
