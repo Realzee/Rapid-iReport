@@ -52,27 +52,34 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         } else if (data) {
           const settingsMap = new Map(data.map(s => [s.key, s.value]));
           // FIX: The value from Supabase can be 'unknown'. Ensure it's a string before setting state.
-          let dbLogoUrl = settingsMap.get('main_logo_url');
+          const dbLogoUrl = settingsMap.get('main_logo_url');
           if (typeof dbLogoUrl === 'string') {
-              if (dbLogoUrl.includes('/storage/v1/object/') && !dbLogoUrl.includes('/object/public/')) {
-                  dbLogoUrl = dbLogoUrl.replace('/storage/v1/object/', '/storage/v1/object/public/');
+              let logoStr = dbLogoUrl as string;
+              if (logoStr.includes('/storage/v1/object/') && !logoStr.includes('/object/public/')) {
+                  logoStr = logoStr.replace('/storage/v1/object/', '/storage/v1/object/public/');
               }
-              if (dbLogoUrl.includes('.supabase.co') && !dbLogoUrl.startsWith('http')) {
-                  dbLogoUrl = 'https://' + dbLogoUrl;
+              if (logoStr.includes('.supabase.co') && !logoStr.startsWith('http')) {
+                  logoStr = 'https://' + logoStr;
               }
+              setMainLogoUrl(logoStr);
+          } else {
+              setMainLogoUrl(defaultLogoUrl);
           }
-          setMainLogoUrl(typeof dbLogoUrl === 'string' && dbLogoUrl ? dbLogoUrl : defaultLogoUrl);
+
           // FIX: The value from Supabase can be 'unknown'. Ensure it's a string before setting state.
-          let dbFaviconUrl = settingsMap.get('favicon_url');
+          const dbFaviconUrl = settingsMap.get('favicon_url');
           if (typeof dbFaviconUrl === 'string') {
-              if (dbFaviconUrl.includes('/storage/v1/object/') && !dbFaviconUrl.includes('/object/public/')) {
-                  dbFaviconUrl = dbFaviconUrl.replace('/storage/v1/object/', '/storage/v1/object/public/');
+              let faviconStr = dbFaviconUrl as string;
+              if (faviconStr.includes('/storage/v1/object/') && !faviconStr.includes('/object/public/')) {
+                  faviconStr = faviconStr.replace('/storage/v1/object/', '/storage/v1/object/public/');
               }
-              if (dbFaviconUrl.includes('.supabase.co') && !dbFaviconUrl.startsWith('http')) {
-                  dbFaviconUrl = 'https://' + dbFaviconUrl;
+              if (faviconStr.includes('.supabase.co') && !faviconStr.startsWith('http')) {
+                  faviconStr = 'https://' + faviconStr;
               }
+              setFaviconUrl(faviconStr);
+          } else {
+              setFaviconUrl(defaultFaviconUrl);
           }
-          setFaviconUrl(typeof dbFaviconUrl === 'string' && dbFaviconUrl ? dbFaviconUrl : defaultFaviconUrl);
         }
       } catch(e) {
           console.error("Error in fetchSettings:", e);

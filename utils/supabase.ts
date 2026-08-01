@@ -366,6 +366,37 @@ const mockProfile = {
   }
 };
 
+class MockChannel {
+  private channelId: string;
+
+  constructor(channelId: string) {
+    this.channelId = channelId;
+  }
+
+  on(event: string, filter: any, callback: any) {
+    return this;
+  }
+
+  subscribe(callback?: any) {
+    if (callback) {
+      setTimeout(() => callback('SUBSCRIBED'), 0);
+    }
+    return this;
+  }
+
+  unsubscribe() {
+    return Promise.resolve();
+  }
+
+  send(payload: any) {
+    return Promise.resolve('ok');
+  }
+
+  track(state: any) {
+    return Promise.resolve('ok');
+  }
+}
+
 const mockSupabase = {
   auth: {
     getSession: () => Promise.resolve({ data: { session: mockSession }, error: null }),
@@ -387,7 +418,9 @@ const mockSupabase = {
       return Promise.resolve({ data: ['pending', 'active', 'completed', 'deleted'], error: null });
     }
     return Promise.resolve({ data: [], error: null });
-  }
+  },
+  channel: (channelId: string) => new MockChannel(channelId),
+  removeChannel: (channel: any) => Promise.resolve()
 };
 
 // Return transparent proxy mock client if in sandbox mode

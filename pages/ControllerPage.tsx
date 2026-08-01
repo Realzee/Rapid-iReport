@@ -282,9 +282,9 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
 
         const combinedReports = [
-            ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
-            ...(crimeData || []).map(r => ({ ...r, type: 'crime' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
-            ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
+            ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' as const, company_name: r.company_id ? (companiesMap.get(r.company_id) as any)?.name : undefined })),
+            ...(crimeData || []).map(r => ({ ...r, type: 'crime' as const, company_name: r.company_id ? (companiesMap.get(r.company_id) as any)?.name : undefined })),
+            ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' as const, company_name: r.company_id ? (companiesMap.get(r.company_id) as any)?.name : undefined })),
         ];
 
         // Ensure we have profiles for all reporters
