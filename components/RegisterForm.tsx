@@ -41,6 +41,17 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
 
+  useEffect(() => {
+    if (companies && companies.length > 0 && !companyId) {
+      const defaultCompany = companies.find(
+        c => c.name && c.name.trim().toLowerCase() === 'rapid responders sa'
+      );
+      if (defaultCompany) {
+        setCompanyId(defaultCompany.id);
+      }
+    }
+  }, [companies, companyId]);
+
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
