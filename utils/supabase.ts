@@ -548,6 +548,18 @@ const mockSupabase = {
 // Return transparent proxy mock client if in sandbox mode
 const isSandbox = typeof window !== 'undefined' && localStorage.getItem('rapid911_sandbox_mode') === 'true';
 
+// Global localStorage.setItem override to handle QuotaExceededError and private browsing restrictions safely
+if (typeof window !== 'undefined') {
+  const originalSetItem = window.localStorage.setItem;
+  window.localStorage.setItem = function(key: string, value: string) {
+    try {
+      originalSetItem.call(window.localStorage, key, value);
+    } catch (e) {
+      console.warn(`[localStorage Override] Failed to set "${key}" (likely quota exceeded or private mode):`, e);
+    }
+  };
+}
+
 // Inject network-level fetch mock when in sandbox mode to bypass backend API dependencies
 if (isSandbox && typeof window !== 'undefined') {
   const originalFetch = window.fetch;

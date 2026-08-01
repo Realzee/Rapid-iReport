@@ -26,13 +26,21 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   useEffect(() => {
     if (mainLogoUrl) {
-      localStorage.setItem('app_main_logo_url', mainLogoUrl);
+      try {
+        localStorage.setItem('app_main_logo_url', mainLogoUrl);
+      } catch (e) {
+        console.warn('Failed to cache app_main_logo_url in localStorage (likely quota exceeded):', e);
+      }
     }
   }, [mainLogoUrl]);
 
   useEffect(() => {
     if (faviconUrl) {
-      localStorage.setItem('app_favicon_url', faviconUrl);
+      try {
+        localStorage.setItem('app_favicon_url', faviconUrl);
+      } catch (e) {
+        console.warn('Failed to cache app_favicon_url in localStorage (likely quota exceeded):', e);
+      }
     }
   }, [faviconUrl]);
 
