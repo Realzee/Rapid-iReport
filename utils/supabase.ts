@@ -181,6 +181,20 @@ function getMockDefaultData(tableName: string): any[] {
         last_ping: new Date().toISOString(),
         company_id: '81134758-0000-4000-8000-000000000000'
       }
+    ],
+    app_settings: [
+      { key: 'main_logo_url', value: null },
+      { key: 'favicon_url', value: null }
+    ],
+    announcements: [
+      {
+        id: 'ann-1',
+        title: 'System Launch Scheduled',
+        content: 'We are proud to introduce the new Rapid iReport platform.',
+        category: 'general',
+        is_active: true,
+        created_at: new Date().toISOString()
+      }
     ]
   };
   return defaults[tableName] || [];
@@ -411,6 +425,28 @@ class MockChannel {
   }
 }
 
+class MockStorageBucket {
+  private bucketName: string;
+  constructor(bucketName: string) {
+    this.bucketName = bucketName;
+  }
+  async upload(filePath: string, file: any, options?: any) {
+    return { data: { path: filePath }, error: null };
+  }
+  async remove(paths: string[]) {
+    return { data: [], error: null };
+  }
+  getPublicUrl(filePath: string) {
+    return { data: { publicUrl: `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=250&auto=format&fit=crop&q=80` } };
+  }
+}
+
+class MockStorage {
+  from(bucketName: string) {
+    return new MockStorageBucket(bucketName);
+  }
+}
+
 const mockSupabase = {
   auth: {
     getSession: () => Promise.resolve({ data: { session: mockSession }, error: null }),
@@ -434,11 +470,329 @@ const mockSupabase = {
     return Promise.resolve({ data: [], error: null });
   },
   channel: (channelId: string) => new MockChannel(channelId),
-  removeChannel: (channel: any) => Promise.resolve()
+  removeChannel: (channel: any) => Promise.resolve(),
+  storage: new MockStorage()
 };
 
 // Return transparent proxy mock client if in sandbox mode
 const isSandbox = typeof window !== 'undefined' && localStorage.getItem('rapid911_sandbox_mode') === 'true';
+
+// Inject network-level fetch mock when in sandbox mode to bypass backend API dependencies
+if (isSandbox && typeof window !== 'undefined') {
+  const originalFetch = window.fetch;
+  window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const url = typeof input === 'string' ? input : (input instanceof URL ? input.href : input.url);
+    const method = init?.method?.toUpperCase() || 'GET';
+    const parsedUrl = new URL(url, window.location.origin);
+    const path = parsedUrl.pathname;
+
+    if (path.startsWith('/api/')) {
+      console.log(`[Sandbox Network Interceptor] Mocking ${method} ${path}`);
+      
+      // 1. GET /api/companies
+      if (path === '/api/companies' && method === 'GET') {
+        const stored = localStorage.getItem('mock_db_companies');
+        const companies = stored ? JSON.parse(stored) : getMockDefaultData('companies');
+        return new Response(JSON.stringify(companies), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // 2. POST /api/companies
+      if (path === '/api/companies' && method === 'POST') {
+        const body = JSON.parse(init?.body as string || '{}');
+        const stored = localStorage.getItem('mock_db_companies');
+        const companies = stored ? JSON.parse(stored) : getMockDefaultData('companies');
+        
+        let savedCompany;
+        if (body.id) {
+          const index = companies.findIndex((c: any) => c.id === body.id);
+          if (index !== -1) {
+            companies[index] = { ...companies[index], ...body };
+            savedCompany = companies[index];
+          } else {
+            savedCompany = { id: body.id, ...body, created_at: new Date().toISOString() };
+            companies.push(savedCompany);
+          }
+        } else {
+          const newId = crypto.randomUUID ? crypto.randomUUID() : 'company-' + Math.floor(Math.random() * 1000000);
+          savedCompany = { id: newId, ...body, created_at: new Date().toISOString() };
+          companies.push(savedCompany);
+        }
+        localStorage.setItem('mock_db_companies', JSON.stringify(companies));
+        return new Response(JSON.stringify(savedCompany), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // 3. DELETE /api/companies
+      if (path === '/api/companies' && method === 'DELETE') {
+        const body = JSON.parse(init?.body as string || '{}');
+        const stored = localStorage.getItem('mock_db_companies');
+        let companies = stored ? JSON.parse(stored) : getMockDefaultData('companies');
+        companies = companies.filter((c: any) => c.id !== body.id);
+        localStorage.setItem('mock_db_companies', JSON.stringify(companies));
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // 4. POST /api/update-setting
+      if (path === '/api/update-setting' && method === 'POST') {
+        const body = JSON.parse(init?.body as string || '{}');
+        const { key, value } = body;
+        const stored = localStorage.getItem('mock_db_app_settings');
+        const settings = stored ? JSON.parse(stored) : getMockDefaultData('app_settings');
+        const index = settings.findIndex((s: any) => s.key === key);
+        if (index !== -1) {
+          settings[index].value = value;
+        } else {
+          settings.push({ key, value });
+        }
+        localStorage.setItem('mock_db_app_settings', JSON.stringify(settings));
+        return new Response(JSON.stringify({ key, value }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // 5. GET /api/announcements
+      if (path === '/api/announcements' && method === 'GET') {
+        const stored = localStorage.getItem('mock_db_announcements');
+        const announcements = stored ? JSON.parse(stored) : getMockDefaultData('announcements');
+        return new Response(JSON.stringify(announcements), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // 6. POST /api/announcements
+      if (path === '/api/announcements' && method === 'POST') {
+        const body = JSON.parse(init?.body as string || '{}');
+        const stored = localStorage.getItem('mock_db_announcements');
+        const announcements = stored ? JSON.parse(stored) : getMockDefaultData('announcements');
+        
+        let savedAnnouncement;
+        if (body.id) {
+          const index = announcements.findIndex((a: any) => a.id === body.id);
+          if (index !== -1) {
+            announcements[index] = { ...announcements[index], ...body };
+            savedAnnouncement = announcements[index];
+          } else {
+            savedAnnouncement = { id: body.id, ...body, created_at: new Date().toISOString() };
+            announcements.push(savedAnnouncement);
+          }
+        } else {
+          const newId = crypto.randomUUID ? crypto.randomUUID() : 'announcement-' + Math.floor(Math.random() * 1000000);
+          savedAnnouncement = { id: newId, ...body, created_at: new Date().toISOString() };
+          announcements.push(savedAnnouncement);
+        }
+        localStorage.setItem('mock_db_announcements', JSON.stringify(announcements));
+        return new Response(JSON.stringify(savedAnnouncement), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // 7. DELETE /api/announcements
+      if (path === '/api/announcements' && method === 'DELETE') {
+        const body = JSON.parse(init?.body as string || '{}');
+        const stored = localStorage.getItem('mock_db_announcements');
+        let announcements = stored ? JSON.parse(stored) : getMockDefaultData('announcements');
+        announcements = announcements.filter((a: any) => a.id !== body.id);
+        localStorage.setItem('mock_db_announcements', JSON.stringify(announcements));
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // 8. POST /api/update-profile
+      if (path === '/api/update-profile' && method === 'POST') {
+        const body = JSON.parse(init?.body as string || '{}');
+        const { id, ...updates } = body;
+        const stored = localStorage.getItem('mock_db_profiles');
+        const profiles = stored ? JSON.parse(stored) : getMockDefaultData('profiles');
+        
+        let updatedProfile = null;
+        const index = profiles.findIndex((p: any) => p.id === id);
+        if (index !== -1) {
+          profiles[index] = { ...profiles[index], ...updates };
+          updatedProfile = profiles[index];
+        } else {
+          updatedProfile = { id, ...updates };
+          profiles.push(updatedProfile);
+        }
+        localStorage.setItem('mock_db_profiles', JSON.stringify(profiles));
+
+        const currProfileStr = localStorage.getItem('user_profile');
+        if (currProfileStr) {
+          const currProfile = JSON.parse(currProfileStr);
+          if (currProfile.id === id) {
+            localStorage.setItem('user_profile', JSON.stringify({ ...currProfile, ...updates }));
+          }
+        }
+
+        return new Response(JSON.stringify(updatedProfile), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // 9. POST /api/admin-users
+      if (path === '/api/admin-users' && method === 'POST') {
+        const body = JSON.parse(init?.body as string || '{}');
+        const { action, id, email, first_name, surname, role, company_id } = body;
+        const stored = localStorage.getItem('mock_db_profiles');
+        let profiles = stored ? JSON.parse(stored) : getMockDefaultData('profiles');
+        
+        if (action === 'delete') {
+          profiles = profiles.filter((p: any) => p.id !== id);
+          localStorage.setItem('mock_db_profiles', JSON.stringify(profiles));
+          return new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        let savedProfile;
+        if (id) {
+          const index = profiles.findIndex((p: any) => p.id === id);
+          if (index !== -1) {
+            profiles[index] = { ...profiles[index], email, first_name, surname, role, company_id };
+            savedProfile = profiles[index];
+          } else {
+            savedProfile = { id, email, first_name, surname, role, company_id, status: 'active' };
+            profiles.push(savedProfile);
+          }
+        } else {
+          const newId = crypto.randomUUID ? crypto.randomUUID() : 'user-' + Math.floor(Math.random() * 1000000);
+          savedProfile = { id: newId, email, first_name, surname, role, company_id, status: 'active' };
+          profiles.push(savedProfile);
+        }
+        
+        localStorage.setItem('mock_db_profiles', JSON.stringify(profiles));
+        return new Response(JSON.stringify({ success: true, profile: savedProfile }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // 10. POST /api/reset-password
+      if (path === '/api/reset-password') {
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // 11. GET /api/profiles
+      if (path === '/api/profiles' && method === 'GET') {
+        const stored = localStorage.getItem('mock_db_profiles');
+        const profiles = stored ? JSON.parse(stored) : getMockDefaultData('profiles');
+        return new Response(JSON.stringify(profiles), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // 12. GET/POST /api/guard-monitoring
+      if (path.includes('/api/guard-monitoring')) {
+        const storedLogs = localStorage.getItem('mock_db_patrol_logs') || '[]';
+        const parsedLogs = JSON.parse(storedLogs);
+        
+        if (method === 'GET') {
+          return new Response(JSON.stringify({
+            logs: parsedLogs,
+            checkpoints: [
+              { id: 'cp-1', name: 'Main Gate Sector A', location_coords: { lat: -26.1015, lng: 28.0567 } },
+              { id: 'cp-2', name: 'Guard Room', location_coords: { lat: -26.1020, lng: 28.0572 } },
+              { id: 'cp-3', name: 'North Perimeter Fence', location_coords: { lat: -26.1010, lng: 28.0560 } }
+            ],
+            schedules: []
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        if (method === 'POST') {
+          const body = JSON.parse(init?.body as string || '{}');
+          const newLog = {
+            id: crypto.randomUUID ? crypto.randomUUID() : 'log-' + Math.floor(Math.random() * 1000000),
+            guard_name: body.guard_name || 'Mock Guard',
+            checkpoint: body.checkpoint || 'Main Gate Sector A',
+            status: body.status || 'completed',
+            logged_at: new Date().toISOString(),
+            company_id: '81134758-0000-4000-8000-000000000000'
+          };
+          parsedLogs.unshift(newLog);
+          localStorage.setItem('mock_db_patrol_logs', JSON.stringify(parsedLogs));
+          return new Response(JSON.stringify({ success: true, log: newLog }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      // 13. Geocoding and utilities
+      if (path.includes('/api/reverse-geocode')) {
+        const lat = parsedUrl.searchParams.get('lat');
+        const lng = parsedUrl.searchParams.get('lng');
+        return new Response(JSON.stringify({
+          display_name: `Mock Location near Sandton Drive (${lat}, ${lng}), Johannesburg`
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (path.includes('/api/geocode')) {
+        const query = parsedUrl.searchParams.get('q') || '';
+        return new Response(JSON.stringify([
+          {
+            display_name: `${query || 'Mock Address'}, Johannesburg, South Africa`,
+            lat: -26.1015,
+            lon: 28.0567
+          }
+        ]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (path.includes('/api/saps-boundaries')) {
+        return new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (path.includes('/api/resolve-maps-link')) {
+        return new Response(JSON.stringify({ 
+          success: true, 
+          coords: { lat: -26.1015, lng: 28.0567 },
+          address: 'Resolved Mock Address, Sandton, Johannesburg'
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (path.includes('/api/legacy-api')) {
+        return new Response(JSON.stringify({ count: 0, reports: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    return originalFetch(input, init);
+  };
+}
 
 export const supabase = isSandbox
   ? (mockSupabase as any)
