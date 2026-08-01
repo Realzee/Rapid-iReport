@@ -427,6 +427,87 @@ class MockChannel {
 
 const mockStorageInMemory = new Map<string, string>();
 
+// Simple IndexedDB wrapper for large mock file storage
+const IDB_NAME = 'MockStorageDB';
+const IDB_VERSION = 1;
+const STORE_NAME = 'files';
+
+function initIndexedDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined' || !window.indexedDB) {
+      reject(new Error('IndexedDB not supported'));
+      return;
+    }
+    const request = window.indexedDB.open(IDB_NAME, IDB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function idbSet(key: string, value: string): Promise<void> {
+  return initIndexedDB()
+    .then((db) => {
+      return new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.put(value, key);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    })
+    .catch((err) => {
+      console.warn('IDB set failed:', err);
+    });
+}
+
+function idbDelete(key: string): Promise<void> {
+  return initIndexedDB()
+    .then((db) => {
+      return new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(key);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    })
+    .catch((err) => {
+      console.warn('IDB delete failed:', err);
+    });
+}
+
+function idbGetAll(): Promise<Array<{ key: string; value: string }>> {
+  return initIndexedDB()
+    .then((db) => {
+      return new Promise<Array<{ key: string; value: string }>>((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.openCursor();
+        const results: Array<{ key: string; value: string }> = [];
+        request.onsuccess = (event: any) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            results.push({ key: cursor.key as string, value: cursor.value as string });
+            cursor.continue();
+          } else {
+            resolve(results);
+          }
+        };
+        request.onerror = () => reject(request.error);
+      });
+    })
+    .catch((err) => {
+      console.warn('IDB getAll failed:', err);
+      return [];
+    });
+}
+
 function dataURLtoBlob(dataurl: string): Blob | null {
   try {
     const arr = dataurl.split(',');
@@ -462,19 +543,26 @@ class MockStorageBucket {
         console.error("Error creating Object URL:", e);
       }
 
+      // Read as Data URL (Base64) synchronously blocking so it's guaranteed in memory
       try {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64data = reader.result as string;
-          // Upgrade the in-memory value to full persistent-ready Base64
-          mockStorageInMemory.set(key, base64data);
-          try {
-            localStorage.setItem(key, base64data);
-          } catch (storageError) {
-            console.warn("Storage quota exceeded, keeping in-memory only:", storageError);
-          }
-        };
-        reader.readAsDataURL(file);
+        await new Promise<void>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64data = reader.result as string;
+            mockStorageInMemory.set(key, base64data);
+            
+            // Non-blocking persistence in IndexedDB & localStorage
+            idbSet(key, base64data);
+            try {
+              localStorage.setItem(key, base64data);
+            } catch (storageError) {
+              // Ignore quota limit errors safely
+            }
+            resolve();
+          };
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
       } catch (e) {
         console.error("Error reading file:", e);
       }
@@ -486,6 +574,7 @@ class MockStorageBucket {
       const key = `mock_storage_${this.bucketName}_${p}`;
       mockStorageInMemory.delete(key);
       localStorage.removeItem(key);
+      idbDelete(key);
     }
     return { data: [], error: null };
   }
@@ -560,6 +649,32 @@ function getMockStorageValue(url: string): string | null {
   return null;
 }
 
+// Populate mockStorageInMemory from IndexedDB and localStorage on initialization
+if (typeof window !== 'undefined') {
+  // 1. Load from localStorage
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('mock_storage_')) {
+        const val = localStorage.getItem(key);
+        if (val) mockStorageInMemory.set(key, val);
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to load initial storage from localStorage:", e);
+  }
+
+  // 2. Load from IndexedDB asynchronously (populates memory so synchronous lookups work shortly after startup)
+  idbGetAll().then((items) => {
+    items.forEach(({ key, value }) => {
+      mockStorageInMemory.set(key, value);
+    });
+    console.log(`[Mock Storage] Restored ${items.length} files from IndexedDB to memory.`);
+  }).catch(e => {
+    console.error("Failed to restore from IndexedDB:", e);
+  });
+}
+
 // Monkey-patch HTMLImageElement.prototype.src to transparently resolve mock-storage.local URLs to Base64
 if (isSandbox && typeof window !== 'undefined') {
   const originalSrcDescriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
@@ -580,6 +695,83 @@ if (isSandbox && typeof window !== 'undefined') {
           }
         }
         originalSrcDescriptor.set!.call(this, finalValue);
+      }
+    });
+  }
+
+  // Monkey-patch HTMLLinkElement.prototype.href for favicons
+  const originalHrefDescriptor = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'href');
+  if (originalHrefDescriptor && originalHrefDescriptor.set) {
+    Object.defineProperty(HTMLLinkElement.prototype, 'href', {
+      get() {
+        return originalHrefDescriptor.get ? originalHrefDescriptor.get.call(this) : '';
+      },
+      set(value) {
+        let finalValue = value;
+        if (typeof value === 'string' && value.includes('mock-storage.local/')) {
+          const resolved = getMockStorageValue(value);
+          if (resolved) {
+            finalValue = resolved;
+          }
+        }
+        originalHrefDescriptor.set!.call(this, finalValue);
+      }
+    });
+  }
+
+  // Monkey-patch Element.prototype.setAttribute to intercept 'src', 'href' or 'style'
+  const originalSetAttribute = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function(name: string, value: any) {
+    let finalValue = value;
+    const lowerName = name.toLowerCase();
+    if (typeof value === 'string' && value.includes('mock-storage.local/')) {
+      if (lowerName === 'src' || lowerName === 'href' || lowerName === 'style') {
+        const resolved = getMockStorageValue(value);
+        if (resolved) {
+          finalValue = resolved;
+        } else if (lowerName === 'src') {
+          finalValue = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=250&auto=format&fit=crop&q=80';
+        }
+      }
+    }
+    originalSetAttribute.call(this, name, finalValue);
+  };
+
+  // Monkey-patch CSSStyleDeclaration.prototype.setProperty for inline style backgrounds
+  const originalSetProperty = CSSStyleDeclaration.prototype.setProperty;
+  CSSStyleDeclaration.prototype.setProperty = function(property: string, value: string | null, priority?: string) {
+    let finalValue = value;
+    if (value && typeof value === 'string' && value.includes('mock-storage.local/')) {
+      const urlMatch = value.match(/url\(['"]?(https:\/\/mock-storage\.local\/[^'")]+)['"]?\)/);
+      if (urlMatch && urlMatch[1]) {
+        const resolved = getMockStorageValue(urlMatch[1]);
+        if (resolved) {
+          finalValue = value.replace(urlMatch[1], resolved);
+        }
+      }
+    }
+    originalSetProperty.call(this, property, finalValue, priority);
+  };
+
+  // Monkey-patch direct property setter for CSSStyleDeclaration.backgroundImage
+  const originalBgImageDescriptor = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, 'backgroundImage');
+  if (originalBgImageDescriptor && originalBgImageDescriptor.set) {
+    Object.defineProperty(CSSStyleDeclaration.prototype, 'backgroundImage', {
+      get() {
+        return originalBgImageDescriptor.get ? originalBgImageDescriptor.get.call(this) : '';
+      },
+      set(value) {
+        let finalValue = value;
+        if (typeof value === 'string' && value.includes('mock-storage.local/')) {
+          const urlMatch = value.match(/url\(['"]?(https:\/\/mock-storage\.local\/[^'")]+)['"]?\)/);
+          if (urlMatch && urlMatch[1]) {
+            const resolved = getMockStorageValue(urlMatch[1]);
+            if (resolved) {
+              finalValue = value.replace(urlMatch[1], resolved);
+            }
+          }
+        }
+        originalBgImageDescriptor.set!.call(this, finalValue);
       }
     });
   }
