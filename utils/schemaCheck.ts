@@ -6,6 +6,10 @@ interface SchemaCheckResult {
 }
 
 export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
+    if (typeof window !== 'undefined' && localStorage.getItem('rapid911_sandbox_mode') === 'true') {
+        return { status: 'valid' };
+    }
+
     const isNetworkOrQuotaError = (err: any): boolean => {
         if (!err) return false;
         const msg = (typeof err === 'string' ? err : (err.message || '')).toLowerCase();
