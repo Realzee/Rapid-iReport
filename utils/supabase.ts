@@ -315,6 +315,20 @@ class MockQueryBuilder {
     let records = this.getRecords();
     records = records.filter(r => this.matchesFilters(r));
     
+    if (this.tableName === 'profiles') {
+      const companiesKey = `mock_db_companies`;
+      const companiesStored = localStorage.getItem(companiesKey);
+      const companiesList = companiesStored ? JSON.parse(companiesStored) : getMockDefaultData('companies');
+      
+      records = records.map(r => {
+        const company = companiesList.find((c: any) => c.id === r.company_id);
+        return {
+          ...r,
+          company: company || null
+        };
+      });
+    }
+
     if (this.orderCol) {
       records.sort((a, b) => {
         const valA = a[this.orderCol!];

@@ -712,8 +712,11 @@ const App: React.FC = () => {
 
   if (profile && profile.company_id && profile.company_id !== 'bootstrap-pending') {
     const companyStatus = profile.company?.status || 'pending';
-    const isMainCompany = profile.company?.name?.trim().toLowerCase() === 'rapid responders sa' || 
-                          profile.company_id === 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+    const companyNameLower = profile.company?.name?.trim().toLowerCase() || '';
+    const isMainCompany = companyNameLower === 'rapid responders sa' || 
+                          companyNameLower.includes('rapid responders') ||
+                          profile.company_id === 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' ||
+                          profile.company_id === '81134758-0000-4000-8000-000000000000';
     
     if (!isMainCompany && companyStatus !== 'approved') {
       if (companyStatus === 'rejected') {
