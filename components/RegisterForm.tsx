@@ -41,16 +41,27 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
 
-  useEffect(() => {
-    if (companies && companies.length > 0 && !companyId) {
-      const defaultCompany = companies.find(
-        c => c.name && c.name.trim().toLowerCase() === 'rapid responders sa'
-      );
-      if (defaultCompany) {
-        setCompanyId(defaultCompany.id);
-      }
+  const actualCompanies = React.useMemo(() => {
+    if (!companies || companies.length === 0) {
+      return [{ id: 'bootstrap-pending', name: 'Rapid Responders SA' }] as Company[];
     }
-  }, [companies, companyId]);
+    const hasDefault = companies.some(
+      c => c.name && c.name.trim().toLowerCase() === 'rapid responders sa'
+    );
+    if (!hasDefault) {
+      return [...companies, { id: 'bootstrap-pending', name: 'Rapid Responders SA' }] as Company[];
+    }
+    return companies;
+  }, [companies]);
+
+  useEffect(() => {
+    const defaultCompany = actualCompanies.find(
+      c => c.name && c.name.trim().toLowerCase() === 'rapid responders sa'
+    );
+    if (defaultCompany && !companyId) {
+      setCompanyId(defaultCompany.id);
+    }
+  }, [actualCompanies, companyId]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -82,6 +93,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
     }
     setLoading(true);
 
+    const targetCompanyId = companyId === 'bootstrap-pending' ? null : companyId;
+
     // FIX: Using bracket notation to bypass potential SupabaseAuthClient type errors.
     const { data: signUpData, error: signUpError } = await supabase.auth['signUp']({
         email,
@@ -96,7 +109,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
                 ice_no: iceNo,
                 medical_aid: medicalAid || null,
                 psira_number: psiraNumber || null,
-                company_id: companyId,
+                company_id: targetCompanyId,
                 role: role,
             }
         }
@@ -206,7 +219,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
                     className={inputClasses}
                 >
                     <option value="" disabled>Select your company...</option>
-                    {companies.map(company => (
+                    {actualCompanies.map(company => (
                         <option key={company.id} value={company.id}>{company.name}</option>
                     ))}
                 </select>
