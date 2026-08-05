@@ -122,7 +122,7 @@ const ControllerReportDetail: React.FC<{
                 setSharedWithCompanyIds(sharesData?.map((s: any) => s.target_company_id) || []);
             }
 
-            if (companiesError) console.warn("Company fetch warning:", companiesError?.message);
+            if (companiesError) console.error("Error fetching companies:", companiesError);
             else setCompanies(companiesData || []);
 
             if (updatesError) console.error("Error fetching report updates:", updatesError);
@@ -335,13 +335,11 @@ const ControllerReportDetail: React.FC<{
         if (selectedResponder !== (report.assigned_to || '')) {
             updatePayload.assigned_to = selectedResponder || null;
             // Log the assignment change
-            supabase.from('assignment_logs').insert({
+            await supabase.from('assignment_logs').insert({
                 report_id: report.id,
                 assigned_from: report.assigned_to || null,
                 assigned_to: selectedResponder || null,
                 assigned_by: profile.id
-            }).then(({ error }) => {
-                if (error) console.warn("Assignment log insert skipped:", error.message);
             });
         }
 

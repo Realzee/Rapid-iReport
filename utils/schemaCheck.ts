@@ -6,25 +6,16 @@ interface SchemaCheckResult {
 }
 
 export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
-    if (typeof window !== 'undefined' && localStorage.getItem('rapid911_sandbox_mode') === 'true') {
-        return { status: 'valid' };
-    }
-
-    const isNetworkOrQuotaError = (err: any): boolean => {
+    const isNetworkError = (err: any): boolean => {
         if (!err) return false;
-        const msg = (typeof err === 'string' ? err : (err.message || '')).toLowerCase();
-        return msg.includes('failed to fetch') || 
-               msg.includes('networkerror') || 
-               msg.includes('cors') ||
-               msg.includes('load failed') ||
-               msg.includes('network connection') ||
-               msg.includes('failed to connect') ||
-               msg.includes('typeerror') ||
-               msg.includes('exceed_egress_quota') ||
-               msg.includes('quota') ||
-               msg.includes('restricted') ||
-               msg.includes('spend caps') ||
-               msg.includes('service for this project is restricted');
+        const msg = typeof err === 'string' ? err : (err.message || '');
+        return msg.toLowerCase().includes('failed to fetch') || 
+               msg.toLowerCase().includes('networkerror') || 
+               msg.toLowerCase().includes('cors') ||
+               msg.toLowerCase().includes('load failed') ||
+               msg.toLowerCase().includes('network connection') ||
+               msg.toLowerCase().includes('failed to connect') ||
+               msg.toLowerCase().includes('typeerror');
     };
 
     // Try server-side schema check first to bypass client-side CORS or ad-blocker network issues
@@ -58,8 +49,8 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
         // Check 1: Basic table access (catches RLS issues or missing tables)
         const { error: profileError } = await supabase.from('profiles').select('id').limit(1);
         if (profileError) {
-            if (isNetworkOrQuotaError(profileError)) {
-                console.warn("Database schema check encountered a network or quota issue. Skipping check.", profileError);
+            if (isNetworkError(profileError)) {
+                console.warn("Database schema check encountered a network error. Skipping check.", profileError);
                 return { status: 'valid' };
             }
             console.error("Database schema check failed on 'profiles' table:", profileError);
@@ -86,8 +77,8 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
         }
         
         if (rpcError) {
-            if (isNetworkOrQuotaError(rpcError)) {
-                console.warn("Database schema check encountered a network or quota issue during RPC. Skipping check.", rpcError);
+            if (isNetworkError(rpcError)) {
+                console.warn("Database schema check encountered a network error during RPC. Skipping check.", rpcError);
                 return { status: 'valid' };
             }
             // If the function doesn't exist, it's a schema issue.
@@ -130,8 +121,8 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
             });
             
             if (funcError) {
-                if (isNetworkOrQuotaError(funcError)) {
-                    console.warn("Database schema check encountered a network or quota issue during eval. Skipping check.", funcError);
+                if (isNetworkError(funcError)) {
+                    console.warn("Database schema check encountered a network error during eval. Skipping check.", funcError);
                     return { status: 'valid' };
                 }
                 console.warn("Schema check failed on eval:", funcError);
@@ -149,7 +140,7 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
                 };
             }
         } catch (e: any) {
-            if (isNetworkOrQuotaError(e)) {
+            if (isNetworkError(e)) {
                 console.warn("Database schema check encountered an exception during eval. Skipping check.", e);
                 return { status: 'valid' };
             }
@@ -163,8 +154,8 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
         return { status: 'valid' };
 
     } catch (e: any) {
-        if (isNetworkOrQuotaError(e)) {
-            console.warn("A network or quota error occurred during the database check. Bypassing schema error screen.", e);
+        if (isNetworkError(e)) {
+            console.warn("A network error occurred during the database check. Bypassing schema error screen.", e);
             return { status: 'valid' };
         }
         console.error("A JavaScript error occurred during the database check:", e);

@@ -710,50 +710,6 @@ const App: React.FC = () => {
     );
   }
 
-  if (profile && profile.company_id && profile.company_id !== 'bootstrap-pending') {
-    const companyStatus = profile.company?.status || 'pending';
-    const companyNameLower = profile.company?.name?.trim().toLowerCase() || '';
-    const isMainCompany = companyNameLower === 'rapid responders sa' || 
-                          companyNameLower.includes('rapid responders') ||
-                          profile.company_id === 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' ||
-                          profile.company_id === '81134758-0000-4000-8000-000000000000';
-    
-    if (!isMainCompany && companyStatus !== 'approved') {
-      if (companyStatus === 'rejected') {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-4">
-                <div className="text-center bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg max-w-lg">
-                    <AlertTriangleIcon className="w-12 h-12 mx-auto text-red-500 mb-4" />
-                    <h2 className="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Onboarding Request Declined</h2>
-                    <p className="mb-4 text-gray-600 dark:text-gray-300">The onboarding request for your company <strong>{profile.company?.name || 'your company'}</strong> has been declined by Rapid Responders SA. Please contact administration if you believe this is an error.</p>
-                    {supabase && (
-                        <button onClick={() => supabase.auth.signOut()} className="mt-6 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors">
-                            Logout
-                        </button>
-                    )}
-                </div>
-            </div>
-        );
-      } else {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-amber-50/50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-200 p-4">
-                <div className="text-center bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg max-w-lg border border-amber-200/50 dark:border-amber-900/30 animate-fade-in">
-                    <ClockIcon className="w-12 h-12 mx-auto text-amber-500 mb-4 animate-pulse" />
-                    <h2 className="text-2xl font-bold mb-2 text-amber-700 dark:text-amber-400">Company Awaiting Onboarding Approval</h2>
-                    <p className="mb-4 text-gray-600 dark:text-gray-300">The onboarding request for <strong>{profile.company?.name || 'your company'}</strong> is currently pending validation and approval by <strong>Rapid Responders SA</strong>.</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Our compliance team is verifying your company credentials and PSIRA standing (where applicable). Once approved, all registered users of your company will gain access to their respective modules.</p>
-                    {supabase && (
-                        <button onClick={() => supabase.auth.signOut()} className="mt-2 px-5 py-2.5 bg-amber-600 text-white font-semibold rounded-lg shadow-md hover:bg-amber-700 transition-colors">
-                            Logout
-                        </button>
-                    )}
-                </div>
-            </div>
-        );
-      }
-    }
-  }
-
   if (profile && profile.status === UserStatus.SUSPENDED) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-4">

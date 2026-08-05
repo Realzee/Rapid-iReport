@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 dotenv.config({ override: true });
 
 // Ensure correct service role key is loaded into environment variables for all API endpoints
-const SERVICE_ROLE_KEY_VAL = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiYnN2dGxubWpqa29iZnljdWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzODI3MTMsImV4cCI6MjEwMDk1ODcxM30.PLeuqc3AKOq5QEFC2nxXIQ3MEEns5hxx7IkBYtzx43s';
+const SERVICE_ROLE_KEY_VAL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlnbHdkd2h3cGJxYXd1bmJrenl5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODI3NTc4OSwiZXhwIjoyMDgzODUxNzg5fQ.h8tD0STrVfQ7-eSXYJmDGoGGWKoNDr4o0SmGsYy0KRo';
 process.env.SUPABASE_SERVICE_ROLE_KEY = SERVICE_ROLE_KEY_VAL;
 process.env.VITE_SUPABASE_SERVICE_ROLE_KEY = SERVICE_ROLE_KEY_VAL;
 
@@ -32,7 +32,7 @@ app.use((req, res, next) => {
 });
 
 const getSafeSupabaseUrl = (url: string | undefined): string => {
-    const defaultUrl = 'https://zbbsvtlnmjjkobfycudw.supabase.co';
+    const defaultUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co';
     if (!url || url === 'undefined' || url.trim() === '') return defaultUrl;
     const trimmed = url.trim();
     return trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
@@ -67,19 +67,6 @@ async function runMigrations() {
     if (!supabaseAdmin) return;
     console.log('Running system migrations for Tech Ops module...');
     const queries = [
-        `CREATE TABLE IF NOT EXISTS public.companies (
-            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-            name text NOT NULL,
-            created_at timestamptz DEFAULT now(),
-            bolo_background_url text,
-            alias text,
-            allowed_modules text[] DEFAULT ARRAY['controller', 'tech_ops', 'fleet_management', 'guard_monitoring', 'gate_access', 'attendance', 'analytics', 'archives']
-        );`,
-        "ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;",
-        "DROP POLICY IF EXISTS \"Public read companies\" ON public.companies;",
-        "CREATE POLICY \"Public read companies\" ON public.companies FOR SELECT USING (true);",
-        "DROP POLICY IF EXISTS \"Allow all for authenticated on companies\" ON public.companies;",
-        "CREATE POLICY \"Allow all for authenticated on companies\" ON public.companies FOR ALL TO authenticated USING (true) WITH CHECK (true);",
         "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'technician';",
         `CREATE TABLE IF NOT EXISTS public.tech_jobs (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -117,8 +104,6 @@ async function runMigrations() {
         "CREATE POLICY \"Allow select tech_chat for authenticated\" ON public.tech_chat_messages FOR SELECT TO authenticated USING (true);",
         "DROP POLICY IF EXISTS \"Allow insert tech_chat for authenticated\" ON public.tech_chat_messages;",
         "CREATE POLICY \"Allow insert tech_chat for authenticated\" ON public.tech_chat_messages FOR INSERT TO authenticated WITH CHECK (true);",
-        "ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending';",
-        "UPDATE public.companies SET status = 'approved' WHERE name = 'Rapid Responders SA' OR status IS NULL;",
         "ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS bolo_background_url text;",
         "ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS alias text;",
         "ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS allowed_modules text[];",
@@ -182,190 +167,16 @@ async function runMigrations() {
         try {
             const { error } = await supabaseAdmin.rpc('eval', { query: q });
             if (error) {
-                if (error.message.includes('exceed_egress_quota') || error.message.includes('restricted due to')) {
-                    console.log('[Tech Ops Migrations] Supabase egress quota exceeded or service restricted. Skipping auto-migrations.');
-                    break;
-                }
-                if (error.message.includes('Could not find the function') || error.message.includes('schema cache') || error.code === 'PGRST202') {
-                    console.log('[Tech Ops Migrations] RPC function "eval" not found in Supabase database schema cache. Auto-migrations skipped.');
-                    break;
-                }
                 console.log(`[Tech Ops Migrations] Error executing: "${q.substring(0, 45)}..." ->`, error.message);
             } else {
                 console.log(`[Tech Ops Migrations] Executed: "${q.substring(0, 45)}..."`);
             }
         } catch (e: any) {
-            if (e?.message?.includes('exceed_egress_quota') || e?.message?.includes('restricted due to')) {
-                console.log('[Tech Ops Migrations] Supabase egress quota exceeded or service restricted.');
-                break;
-            }
-            if (e?.message?.includes('Could not find the function') || e?.message?.includes('schema cache')) {
-                console.log('[Tech Ops Migrations] RPC function "eval" not found in Supabase database.');
-                break;
-            }
             console.error('[Tech Ops Migrations] Error:', e.message);
-        }
-    }
-
-    // Ensure the default company "Rapid Responders SA" exists in the database
-    if (supabaseAdmin) {
-        try {
-            const { data, error } = await supabaseAdmin.from('companies').select('id').eq('name', 'Rapid Responders SA').maybeSingle();
-            if (error) {
-                console.warn('Warning checking for default company "Rapid Responders SA":', error.message);
-            } else if (!data) {
-                console.log('Seeding default company "Rapid Responders SA"...');
-                const { error: insertError } = await supabaseAdmin.from('companies').insert({
-                    name: 'Rapid Responders SA',
-                    alias: 'rapid-responders',
-                    status: 'approved',
-                    allowed_modules: ['controller', 'tech_ops', 'fleet_management', 'guard_monitoring', 'gate_access', 'attendance', 'analytics', 'archives']
-                });
-                if (insertError) {
-                    console.error('Error creating default company "Rapid Responders SA":', insertError.message);
-                } else {
-                    console.log('Successfully created default company "Rapid Responders SA"');
-                }
-            } else {
-                console.log('Default company "Rapid Responders SA" already exists with ID:', data.id);
-            }
-        } catch (err: any) {
-            console.error('Failed to run default company seeding:', err?.message || err);
         }
     }
 }
 runMigrations();
-
-// Background task to ensure user "zweli@msn.com" is an active admin under Rapid Responders SA
-if (supabaseAdmin) {
-    const ensureAdminUser = async () => {
-        try {
-            // Get the main company ID
-            const { data: companyData, error: compErr } = await supabaseAdmin
-                .from('companies')
-                .select('id')
-                .eq('name', 'Rapid Responders SA')
-                .maybeSingle();
-
-            if (compErr || !companyData) {
-                console.error('[Admin Seeding] Could not find default company "Rapid Responders SA". Error:', compErr?.message);
-                return;
-            }
-
-            const mainCompanyId = companyData.id;
-
-            // 1. Find or Create Auth user
-            let authUser: any = null;
-            const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-            if (listError) {
-                console.error('[Admin Seeding] Error listing auth users:', listError.message);
-            } else if (listData && listData.users) {
-                authUser = listData.users.find((u: any) => u.email === 'zweli@msn.com');
-            }
-
-            if (!authUser) {
-                console.log('[Admin Seeding] User zweli@msn.com not found in Supabase Auth. Creating now...');
-                const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
-                    email: 'zweli@msn.com',
-                    password: 'Password123!',
-                    email_confirm: true,
-                    user_metadata: {
-                        role: 'admin',
-                        status: 'active'
-                    }
-                });
-                if (createError) {
-                    console.error('[Admin Seeding] Failed to create auth user zweli@msn.com:', createError.message);
-                } else if (createData && createData.user) {
-                    console.log('[Admin Seeding] Successfully created auth user zweli@msn.com with ID:', createData.user.id);
-                    authUser = createData.user;
-                }
-            } else {
-                // Ensure password is set to 'Password123!' so they can log in successfully
-                const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
-                    password: 'Password123!',
-                    email_confirm: true,
-                    user_metadata: {
-                        role: 'admin',
-                        status: 'active'
-                    }
-                });
-                if (updateAuthError) {
-                    console.error('[Admin Seeding] Failed to update/set password for zweli@msn.com in auth:', updateAuthError.message);
-                } else {
-                    console.log('[Admin Seeding] Verified/set password for zweli@msn.com to "Password123!"');
-                }
-            }
-
-            // 2. Insert or update the Profile
-            if (authUser) {
-                const { data: profileData, error: profErr } = await supabaseAdmin
-                    .from('profiles')
-                    .select('id, role, status, company_id')
-                    .eq('id', authUser.id)
-                    .maybeSingle();
-
-                if (profErr) {
-                    console.error('[Admin Seeding] Error querying profile for zweli@msn.com:', profErr.message);
-                    return;
-                }
-
-                if (!profileData) {
-                    console.log('[Admin Seeding] Profile for zweli@msn.com does not exist. Creating profile...');
-                    const { error: insertErr } = await supabaseAdmin
-                        .from('profiles')
-                        .insert({
-                            id: authUser.id,
-                            email: 'zweli@msn.com',
-                            first_name: 'Zweli',
-                            surname: 'Admin',
-                            role: 'admin',
-                            status: 'active',
-                            company_id: mainCompanyId
-                        });
-
-                    if (insertErr) {
-                        console.error('[Admin Seeding] Failed to insert profile for zweli@msn.com:', insertErr.message);
-                    } else {
-                        console.log('[Admin Seeding] Successfully created profile for zweli@msn.com as admin under Rapid Responders SA!');
-                    }
-                } else {
-                    // Check if updates are needed
-                    const needsUpdate = profileData.role !== 'admin' || 
-                                        profileData.status !== 'active' || 
-                                        profileData.company_id !== mainCompanyId;
-
-                    if (needsUpdate) {
-                        console.log(`[Admin Seeding] Elevating zweli@msn.com (ID: ${profileData.id}) to active admin in profiles...`);
-                        const { error: updateErr } = await supabaseAdmin
-                            .from('profiles')
-                            .update({
-                                role: 'admin',
-                                status: 'active',
-                                company_id: mainCompanyId,
-                                first_name: 'Zweli',
-                                surname: 'Admin'
-                            })
-                            .eq('id', profileData.id);
-
-                        if (updateErr) {
-                            console.error('[Admin Seeding] Failed to update profile for zweli@msn.com:', updateErr.message);
-                        } else {
-                            console.log('[Admin Seeding] Successfully updated profile for zweli@msn.com to active admin!');
-                        }
-                    }
-                }
-            }
-        } catch (err: any) {
-            console.error('[Admin Seeding] Error in ensureAdminUser task:', err?.message || err);
-        }
-    };
-
-    // Run immediately and every 60 seconds
-    ensureAdminUser();
-    setInterval(ensureAdminUser, 60000);
-}
-
 
 app.use(express.json());
 

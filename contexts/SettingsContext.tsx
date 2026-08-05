@@ -26,21 +26,13 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   useEffect(() => {
     if (mainLogoUrl) {
-      try {
-        localStorage.setItem('app_main_logo_url', mainLogoUrl);
-      } catch (e) {
-        console.warn('Failed to cache app_main_logo_url in localStorage (likely quota exceeded):', e);
-      }
+      localStorage.setItem('app_main_logo_url', mainLogoUrl);
     }
   }, [mainLogoUrl]);
 
   useEffect(() => {
     if (faviconUrl) {
-      try {
-        localStorage.setItem('app_favicon_url', faviconUrl);
-      } catch (e) {
-        console.warn('Failed to cache app_favicon_url in localStorage (likely quota exceeded):', e);
-      }
+      localStorage.setItem('app_favicon_url', faviconUrl);
     }
   }, [faviconUrl]);
 
@@ -60,34 +52,27 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         } else if (data) {
           const settingsMap = new Map(data.map(s => [s.key, s.value]));
           // FIX: The value from Supabase can be 'unknown'. Ensure it's a string before setting state.
-          const dbLogoUrl = settingsMap.get('main_logo_url');
+          let dbLogoUrl = settingsMap.get('main_logo_url');
           if (typeof dbLogoUrl === 'string') {
-              let logoStr = dbLogoUrl as string;
-              if (logoStr.includes('/storage/v1/object/') && !logoStr.includes('/object/public/')) {
-                  logoStr = logoStr.replace('/storage/v1/object/', '/storage/v1/object/public/');
+              if (dbLogoUrl.includes('/storage/v1/object/') && !dbLogoUrl.includes('/object/public/')) {
+                  dbLogoUrl = dbLogoUrl.replace('/storage/v1/object/', '/storage/v1/object/public/');
               }
-              if (logoStr.includes('.supabase.co') && !logoStr.startsWith('http')) {
-                  logoStr = 'https://' + logoStr;
+              if (dbLogoUrl.startsWith('yglwdwhwpbqawunbkzyy.supabase.co')) {
+                  dbLogoUrl = 'https://' + dbLogoUrl;
               }
-              setMainLogoUrl(logoStr);
-          } else {
-              setMainLogoUrl(defaultLogoUrl);
           }
-
+          setMainLogoUrl(typeof dbLogoUrl === 'string' && dbLogoUrl ? dbLogoUrl : defaultLogoUrl);
           // FIX: The value from Supabase can be 'unknown'. Ensure it's a string before setting state.
-          const dbFaviconUrl = settingsMap.get('favicon_url');
+          let dbFaviconUrl = settingsMap.get('favicon_url');
           if (typeof dbFaviconUrl === 'string') {
-              let faviconStr = dbFaviconUrl as string;
-              if (faviconStr.includes('/storage/v1/object/') && !faviconStr.includes('/object/public/')) {
-                  faviconStr = faviconStr.replace('/storage/v1/object/', '/storage/v1/object/public/');
+              if (dbFaviconUrl.includes('/storage/v1/object/') && !dbFaviconUrl.includes('/object/public/')) {
+                  dbFaviconUrl = dbFaviconUrl.replace('/storage/v1/object/', '/storage/v1/object/public/');
               }
-              if (faviconStr.includes('.supabase.co') && !faviconStr.startsWith('http')) {
-                  faviconStr = 'https://' + faviconStr;
+              if (dbFaviconUrl.startsWith('yglwdwhwpbqawunbkzyy.supabase.co')) {
+                  dbFaviconUrl = 'https://' + dbFaviconUrl;
               }
-              setFaviconUrl(faviconStr);
-          } else {
-              setFaviconUrl(defaultFaviconUrl);
           }
+          setFaviconUrl(typeof dbFaviconUrl === 'string' && dbFaviconUrl ? dbFaviconUrl : defaultFaviconUrl);
         }
       } catch(e) {
           console.error("Error in fetchSettings:", e);

@@ -85,7 +85,6 @@ const svgSquareIcon = `
 </svg>`;
 
 // Primary official application logo URL (used as default across app and icons)
-const fallbackSvgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgLogo)}`;
-export const logoUrl = fallbackSvgDataUrl;
-export const squareAppIconUrl = fallbackSvgDataUrl;
+export const logoUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952';
+export const squareAppIconUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952';
 

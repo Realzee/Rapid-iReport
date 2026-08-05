@@ -363,7 +363,7 @@ ALTER TABLE public.assignment_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow staff to read assignment logs" ON public.assignment_logs;
 CREATE POLICY "Allow staff to read assignment logs" ON public.assignment_logs FOR SELECT USING (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder'));
 DROP POLICY IF EXISTS "Allow staff to insert assignment logs" ON public.assignment_logs;
-CREATE POLICY "Allow staff to insert assignment logs" ON public.assignment_logs FOR INSERT WITH CHECK (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder'));
+CREATE POLICY "Allow staff to insert assignment logs" ON public.assignment_logs FOR INSERT WITH CHECK (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller'));
 
 -- Notifications
 DROP POLICY IF EXISTS "Allow select for authenticated notifications" ON public.notifications;

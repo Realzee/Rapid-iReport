@@ -38,18 +38,15 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
     if (initialData) {
       setFormData({
         ...initialData,
-        name: (initialData.name || '').toUpperCase(),
-        plate: (initialData.plate || '').toUpperCase(),
-        imei: (initialData.imei || '').toUpperCase(),
-        model: (initialData.model || 'Eelink TK116 (4G LTE)').toUpperCase(),
-        sim_number: (initialData.sim_number || '').toUpperCase()
+        model: initialData.model || 'Eelink TK116 (4G LTE)',
+        sim_number: initialData.sim_number || ''
       });
     } else {
       setFormData({ 
         name: '', 
         plate: '', 
         imei: '', 
-        model: 'EELINK TK116 (4G LTE)',
+        model: 'Eelink TK116 (4G LTE)',
         sim_number: '',
         speed_limit: 120 
       });
@@ -64,25 +61,16 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
     setSaving(true);
     setError('');
 
-    const payload = {
-      name: formData.name.trim().toUpperCase(),
-      plate: formData.plate.trim().toUpperCase(),
-      imei: formData.imei.trim().toUpperCase(),
-      model: (formData.model || 'Eelink TK116 (4G LTE)').trim().toUpperCase(),
-      sim_number: (formData.sim_number || '').trim().toUpperCase(),
-      speed_limit: formData.speed_limit
-    };
-
     try {
       if (initialData?.id) {
         try {
           const { data, error: updateError } = await supabase
             .from('tracking_units')
             .update({
-              name: payload.name,
-              plate: payload.plate,
-              imei: payload.imei,
-              speed_limit: payload.speed_limit,
+              name: formData.name,
+              plate: formData.plate,
+              imei: formData.imei,
+              speed_limit: formData.speed_limit,
               updated_at: new Date().toISOString()
             })
             .eq('id', initialData.id)
@@ -93,15 +81,25 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
             console.warn("Supabase update error (falling back to local update):", updateError.message);
             onSave({
               id: initialData.id,
-              ...payload
+              name: formData.name,
+              plate: formData.plate,
+              imei: formData.imei,
+              speed_limit: formData.speed_limit,
+              sim_number: formData.sim_number,
+              model: formData.model
             });
             return;
           }
-          onSave({ ...data, sim_number: payload.sim_number, model: payload.model });
+          onSave({ ...data, sim_number: formData.sim_number, model: formData.model });
         } catch (err) {
           onSave({
             id: initialData.id,
-            ...payload
+            name: formData.name,
+            plate: formData.plate,
+            imei: formData.imei,
+            speed_limit: formData.speed_limit,
+            sim_number: formData.sim_number,
+            model: formData.model
           });
         }
       } else {
@@ -109,10 +107,10 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
           const { data, error: insertError } = await supabase
             .from('tracking_units')
             .insert({
-              name: payload.name,
-              plate: payload.plate,
-              imei: payload.imei,
-              speed_limit: payload.speed_limit,
+              name: formData.name,
+              plate: formData.plate,
+              imei: formData.imei,
+              speed_limit: formData.speed_limit,
               company_id: profile.company_id,
               status: 'stationary',
               lat: -26.2041,
@@ -132,15 +130,25 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
             console.warn("Supabase insert error (saving locally):", insertError.message);
             onSave({
               id: `dev-${Date.now()}`,
-              ...payload
+              name: formData.name,
+              plate: formData.plate,
+              imei: formData.imei,
+              speed_limit: formData.speed_limit,
+              sim_number: formData.sim_number,
+              model: formData.model
             });
             return;
           }
-          onSave({ ...data, sim_number: payload.sim_number, model: payload.model });
+          onSave({ ...data, sim_number: formData.sim_number, model: formData.model });
         } catch (err) {
           onSave({
             id: `dev-${Date.now()}`,
-            ...payload
+            name: formData.name,
+            plate: formData.plate,
+            imei: formData.imei,
+            speed_limit: formData.speed_limit,
+            sim_number: formData.sim_number,
+            model: formData.model
           });
         }
       }
@@ -194,9 +202,9 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
                 type="text"
                 required
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value.toUpperCase() })}
-                className="w-full uppercase bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                placeholder="e.g. PATROL CRUISER 1"
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                placeholder="e.g. Patrol Cruiser 1"
               />
             </div>
 
@@ -208,8 +216,8 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
                 type="text"
                 required
                 value={formData.plate}
-                onChange={(e) => setFormData({ ...formData, plate: e.target.value.toUpperCase() })}
-                className="w-full uppercase bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                onChange={(e) => setFormData({ ...formData, plate: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                 placeholder="e.g. HW 82 GP"
               />
             </div>
@@ -225,8 +233,8 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
                 type="text"
                 required
                 value={formData.imei}
-                onChange={(e) => setFormData({ ...formData, imei: e.target.value.toUpperCase() })}
-                className="w-full font-mono uppercase bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                onChange={(e) => setFormData({ ...formData, imei: e.target.value })}
+                className="w-full font-mono bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                 placeholder="e.g. 354188046036385"
               />
             </div>
@@ -238,9 +246,9 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
               <input
                 type="text"
                 value={formData.model}
-                onChange={(e) => setFormData({ ...formData, model: e.target.value.toUpperCase() })}
-                className="w-full uppercase bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                placeholder="EELINK TK116 (4G LTE)"
+                onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                placeholder="Eelink TK116 (4G LTE)"
               />
             </div>
           </div>
@@ -253,8 +261,8 @@ export const TrackingUnitModal: React.FC<Props> = ({ profile, isOpen, onClose, o
               <input
                 type="text"
                 value={formData.sim_number}
-                onChange={(e) => setFormData({ ...formData, sim_number: e.target.value.toUpperCase() })}
-                className="w-full uppercase bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                onChange={(e) => setFormData({ ...formData, sim_number: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                 placeholder="+27 82 123 4567"
               />
             </div>

@@ -585,13 +585,11 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         }
 
         if (isTerminalStatus && reportToUpdate.assigned_to) {
-            supabase.from('assignment_logs').insert({
+            await supabase.from('assignment_logs').insert({
                 report_id: reportId,
                 assigned_from: reportToUpdate.assigned_to,
                 assigned_to: null,
                 assigned_by: profile.id
-            }).then(({ error }) => {
-                if (error) console.warn("Assignment log insert skipped:", error.message);
             });
         }
     

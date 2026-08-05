@@ -21,10 +21,10 @@ CREATE POLICY "Allow staff to read assignment logs" ON public.assignment_logs FO
     get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder')
 );
 
--- Allow staff (admin, moderator, controller, responder) to insert logs
+-- Allow staff (admin, moderator, controller) to insert logs
 DROP POLICY IF EXISTS "Allow staff to insert assignment logs" ON public.assignment_logs;
 CREATE POLICY "Allow staff to insert assignment logs" ON public.assignment_logs FOR INSERT WITH CHECK (
-    get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder')
+    get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller')
 );
 
 -- 4. Add foreign key aliases for easier joining (optional but helpful for the queries in the code)

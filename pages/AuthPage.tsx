@@ -19,20 +19,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewAbout }) => {
     useEffect(() => {
         const fetchCompanies = async () => {
             if (!supabase) return;
-            try {
-                const { data, error } = await supabase.from('companies').select('*').order('name');
-                if (!error && data && data.length > 0) {
-                    setCompanies(data);
-                    return;
-                }
-                // Fallback to API handler if direct query returned error or empty
-                const res = await fetch('/api/companies');
-                if (res.ok) {
-                    const apiData = await res.json();
-                    if (Array.isArray(apiData)) setCompanies(apiData);
-                }
-            } catch (err) {
-                console.warn('Could not fetch companies:', err);
+            const { data, error } = await supabase.from('companies').select('*').order('name');
+            if (error) {
+                console.error('Error fetching companies:', error);
+            } else {
+                setCompanies(data || []);
             }
         };
         fetchCompanies();

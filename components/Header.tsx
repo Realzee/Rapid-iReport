@@ -26,21 +26,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   const [isPTTModalOpen, setIsPTTModalOpen] = useState(false);
   const [pendingSharesCount, setPendingSharesCount] = useState(0);
   const [isSharingModalOpen, setIsSharingModalOpen] = useState(false);
-  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const { mainLogoUrl, faviconUrl, defaultLogoUrl } = useSettings();
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -427,24 +413,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
           </div>
           
           <div className="flex items-center space-x-2.5 sm:space-x-4 flex-shrink-0">
-            {/* Connectivity Status Indicator */}
-            <div 
-              className={`flex items-center space-x-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-xs font-semibold border transition-all duration-300 ${
-                isOnline 
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' 
-                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 animate-pulse'
-              }`}
-              title={isOnline ? 'Network Connected' : 'No Network Connection (Offline)'}
-            >
-              <span className="relative flex h-2 w-2">
-                {!isOnline && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                )}
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${isOnline ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-              </span>
-              <span className="hidden sm:inline text-[11px] uppercase tracking-wider">{isOnline ? 'Online' : 'Offline'}</span>
-            </div>
-
             <div className="hidden lg:block scale-75 xl:scale-90 origin-right mr-1">
               <LedClock />
             </div>

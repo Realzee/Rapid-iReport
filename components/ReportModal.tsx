@@ -400,15 +400,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
         const fieldsToUppercase = [
             'license_plate',
-            'suspect_license_plate',
             'vehicle_make',
             'vehicle_model',
             'vehicle_color',
-            'suspect_vehicle_make',
-            'suspect_vehicle_model',
-            'suspect_vehicle_color',
-            'registered_owner',
-            'owner_contact',
             'title',
             'crime_type',
             'saps_13',
@@ -417,7 +411,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             'circulation_number',
             'vin_number',
             'engine_number',
-            'year',
             'station_name',
             'io_name'
         ];

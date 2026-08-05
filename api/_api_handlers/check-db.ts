@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: any, res: any) {
-    const SERVICE_ROLE_KEY_VAL = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiYnN2dGxubWpqa29iZnljdWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzODI3MTMsImV4cCI6MjEwMDk1ODcxM30.PLeuqc3AKOq5QEFC2nxXIQ3MEEns5hxx7IkBYtzx43s';
-    const supabaseUrl = process.env.SUPABASE_URL || 'https://zbbsvtlnmjjkobfycudw.supabase.co';
+    const SERVICE_ROLE_KEY_VAL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlnbHdkd2h3cGJxYXd1bmJrenl5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODI3NTc4OSwiZXhwIjoyMDgzODUxNzg5fQ.h8tD0STrVfQ7-eSXYJmDGoGGWKoNDr4o0SmGsYy0KRo';
+    const supabaseUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co';
     
     let supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '').trim();
     if (!supabaseServiceKey || supabaseServiceKey.length < 50 || supabaseServiceKey.includes('dummy') || supabaseServiceKey === 'undefined' || supabaseServiceKey === 'null') {
@@ -18,24 +18,10 @@ export default async function handler(req: any, res: any) {
         });
     }
 
-    const isQuotaError = (err: any): boolean => {
-        if (!err) return false;
-        const msg = (typeof err === 'string' ? err : (err.message || '')).toLowerCase();
-        return msg.includes('exceed_egress_quota') ||
-               msg.includes('quota') ||
-               msg.includes('restricted') ||
-               msg.includes('spend caps') ||
-               msg.includes('service for this project is restricted');
-    };
-
     try {
         // Check 1: Basic table access (profiles)
         const { error: profileError } = await supabaseAdmin.from('profiles').select('id').limit(1);
         if (profileError) {
-            if (isQuotaError(profileError)) {
-                console.warn("Database check server handler detected quota restriction. Bypassing schema error screen.", profileError.message);
-                return res.status(200).json({ status: 'valid', warning: 'Database quota limit encountered.' });
-            }
             console.error("Database schema check failed on 'profiles' table on server:", profileError);
             return res.status(200).json({
                 status: 'invalid',
@@ -57,9 +43,6 @@ export default async function handler(req: any, res: any) {
         }
 
         if (rpcError) {
-            if (isQuotaError(rpcError)) {
-                return res.status(200).json({ status: 'valid', warning: 'Database quota limit encountered.' });
-            }
             if (rpcError.code === '42883') { // "function does not exist"
                  console.error("Database schema check failed: 'get_enum_values' function missing on server.", rpcError);
                  return res.status(200).json({

@@ -45,4 +45,4 @@ const svgLogo = `
 </svg>`;
 
 // Official application logo URL
-export const rapid911LogoUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgLogo)}`;
+export const rapid911LogoUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952';

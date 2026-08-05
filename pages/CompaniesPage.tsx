@@ -24,15 +24,6 @@ const AnnouncementTypeIcon: React.FC<{ type: AnnouncementType, className?: strin
     }
 };
 
-const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (error) => reject(error);
-        reader.readAsDataURL(file);
-    });
-};
-
 interface CompaniesPageProps {
     profile?: Profile;
     setProfile?: (profile: Profile) => void;
@@ -71,7 +62,7 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
     const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
     const dbHost = useMemo(() => {
-        const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://zbbsvtlnmjjkobfycudw.supabase.co';
+        const supabaseUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co';
         try {
             const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1];
             if (projectRef) {
@@ -140,23 +131,8 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                 { data: announcementsData, error: aError }
             ] = await Promise.all([companiesQuery, usersQuery, announcementsQuery]);
             
-            if (cError) {
-                console.warn('Direct company fetch warning:', cError?.message);
-                // Try fallback to server API handler
-                try {
-                    const res = await fetch('/api/companies');
-                    if (res.ok) {
-                        const fallbackData = await res.json();
-                        setCompanies(Array.isArray(fallbackData) ? fallbackData : []);
-                    } else {
-                        setCompanies([]);
-                    }
-                } catch {
-                    setCompanies([]);
-                }
-            } else {
-                setCompanies(companiesData || []);
-            }
+            if (cError) console.error('Error fetching companies:', cError);
+            else setCompanies(companiesData || []);
             
             if (uError) console.error('Error fetching users:', uError);
             else setUsers(usersData || []);
@@ -186,58 +162,6 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
 
     const handleViewCompany = (company: Company) => {
         setViewCompany(company);
-    };
-
-    const isGlobalAdmin = useMemo(() => {
-        if (!currentUserProfile) return false;
-        const isCompanyAdmin = currentUserProfile.role === UserRole.ADMIN;
-        const isMainCompany = currentUserProfile.company?.name?.trim().toLowerCase() === 'rapid responders sa' || 
-                              currentUserProfile.company_id === 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
-        return isCompanyAdmin && isMainCompany;
-    }, [currentUserProfile]);
-
-    const handleApproveCompany = async (company: Company) => {
-        try {
-            const response = await fetch('/api/companies', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: company.id,
-                    status: 'approved'
-                })
-            });
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Failed to approve company');
-            }
-            const updated = await response.json();
-            setCompanies(companies.map(c => c.id === company.id ? { ...c, ...updated } : c));
-            addToast(`Company "${company.name}" has been approved successfully!`, 'success');
-        } catch (err: any) {
-            addToast(err.message || 'Error approving company', 'error');
-        }
-    };
-
-    const handleRejectCompany = async (company: Company) => {
-        try {
-            const response = await fetch('/api/companies', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: company.id,
-                    status: 'rejected'
-                })
-            });
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Failed to reject company');
-            }
-            const updated = await response.json();
-            setCompanies(companies.map(c => c.id === company.id ? { ...c, ...updated } : c));
-            addToast(`Company "${company.name}" has been rejected.`, 'warning');
-        } catch (err: any) {
-            addToast(err.message || 'Error rejecting company', 'error');
-        }
     };
 
     const handleSaveCompany = async (companyData: Partial<Company>, logoFile: File | null, boloBgFile: File | null) => {
@@ -340,16 +264,12 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
     const confirmDeleteCompany = async () => {
         if (selectedCompany) {
             try {
-                if (selectedCompany.logo_url && !selectedCompany.logo_url.startsWith('data:')) {
-                    try {
-                        const urlParts = selectedCompany.logo_url.split('/');
-                        const filePath = urlParts.slice(urlParts.indexOf('company-logos') + 1).join('/');
-                        const [folder, file] = filePath.split('?')[0].split('/');
-                        if (folder && file) {
-                            await supabase.storage.from('company-logos').remove([`${folder}/${file}`]);
-                        }
-                    } catch (e) {
-                        console.warn("Storage deletion ignored for Base64 or non-storage URL:", e);
+                if (selectedCompany.logo_url) {
+                    const urlParts = selectedCompany.logo_url.split('/');
+                    const filePath = urlParts.slice(urlParts.indexOf('company-logos') + 1).join('/');
+                    const [folder, file] = filePath.split('?')[0].split('/');
+                    if (folder && file) {
+                        await supabase.storage.from('company-logos').remove([`${folder}/${file}`]);
                     }
                 }
 
@@ -591,15 +511,11 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
             // Case 1: A new file is being uploaded.
             if (imageFile) {
                 // If editing and an old image existed, delete it first.
-                if (announcementToEdit?.image_url && !announcementToEdit.image_url.startsWith('data:')) {
-                    try {
-                        const urlParts = announcementToEdit.image_url.split('/app-assets/');
-                        if (urlParts.length > 1) {
-                            const filePath = urlParts[1].split('?')[0];
-                            await supabase.storage.from('app-assets').remove([filePath]);
-                        }
-                    } catch (e) {
-                        console.warn("Could not delete old announcement image from storage:", e);
+                if (announcementToEdit?.image_url) {
+                    const urlParts = announcementToEdit.image_url.split('/app-assets/');
+                    if (urlParts.length > 1) {
+                        const filePath = urlParts[1].split('?')[0];
+                        await supabase.storage.from('app-assets').remove([filePath]);
                     }
                 }
 
@@ -614,16 +530,10 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
             } 
             // Case 2: The existing image was removed (no new file, and url is now missing).
             else if (!announcementData.image_url && announcementToEdit?.image_url) {
-                if (!announcementToEdit.image_url.startsWith('data:')) {
-                    try {
-                        const urlParts = announcementToEdit.image_url.split('/app-assets/');
-                        if (urlParts.length > 1) {
-                            const filePath = urlParts[1].split('?')[0];
-                            await supabase.storage.from('app-assets').remove([filePath]);
-                        }
-                    } catch (e) {
-                        console.warn("Could not delete removed announcement image from storage:", e);
-                    }
+                const urlParts = announcementToEdit.image_url.split('/app-assets/');
+                if (urlParts.length > 1) {
+                    const filePath = urlParts[1].split('?')[0];
+                    await supabase.storage.from('app-assets').remove([filePath]);
                 }
                 finalImageUrl = undefined;
             }
@@ -906,9 +816,6 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                             onEdit={handleEditCompany}
                             onDelete={handleDeleteCompany}
                             onView={handleViewCompany}
-                            isGlobalAdmin={isGlobalAdmin}
-                            onApprove={handleApproveCompany}
-                            onReject={handleRejectCompany}
                         />
                     )}
                 </div>

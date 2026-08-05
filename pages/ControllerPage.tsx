@@ -277,14 +277,14 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         if (cError) console.error('Error fetching crime reports:', cError);
         if (aError) console.error('Error fetching emergency reports:', aError);
         if (uError) console.error('Error fetching users:', uError);
-        if (compError) console.warn('Company fetch warning:', compError?.message);
+        if (compError) console.error('Error fetching companies:', compError);
 
         const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
 
         const combinedReports = [
-            ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' as const, company_name: r.company_id ? (companiesMap.get(r.company_id) as any)?.name : undefined })),
-            ...(crimeData || []).map(r => ({ ...r, type: 'crime' as const, company_name: r.company_id ? (companiesMap.get(r.company_id) as any)?.name : undefined })),
-            ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' as const, company_name: r.company_id ? (companiesMap.get(r.company_id) as any)?.name : undefined })),
+            ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
+            ...(crimeData || []).map(r => ({ ...r, type: 'crime' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
+            ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
         ];
 
         // Ensure we have profiles for all reporters
@@ -566,13 +566,11 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             addToast(`Assigned ${responder.first_name} ${responder.surname} to incident ${selectedReport.ob_number}`, 'success');
             
             // Log the assignment change
-            supabase.from('assignment_logs').insert({
+            await supabase.from('assignment_logs').insert({
                 report_id: selectedReportId,
                 assigned_from: selectedReport.assigned_to || null,
                 assigned_to: responderId,
                 assigned_by: profile.id
-            }).then(({ error }) => {
-                if (error) console.warn("Assignment log insert skipped:", error.message);
             });
 
             // Log the assignment

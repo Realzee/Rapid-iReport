@@ -97,7 +97,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile, onCancel
     const handleVehicleChange = (index: number, field: string, value: string) => {
         setFormData(prev => {
             const newVehicles = [...(prev.vehicles || [])];
-            newVehicles[index] = { ...newVehicles[index], [field]: value.toUpperCase() };
+            newVehicles[index] = { ...newVehicles[index], [field]: value };
             return { ...prev, vehicles: newVehicles };
         });
     };
@@ -472,31 +472,31 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profile, setProfile, onCancel
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <div>
                                                         <label className={labelClasses}>Make</label>
-                                                        <input type="text" value={vehicle.make} onChange={(e) => handleVehicleChange(index, 'make', e.target.value)} required className={`${inputClasses} uppercase`} />
+                                                        <input type="text" value={vehicle.make} onChange={(e) => handleVehicleChange(index, 'make', e.target.value)} required className={inputClasses} />
                                                     </div>
                                                     <div>
                                                         <label className={labelClasses}>Model</label>
-                                                        <input type="text" value={vehicle.model} onChange={(e) => handleVehicleChange(index, 'model', e.target.value)} required className={`${inputClasses} uppercase`} />
+                                                        <input type="text" value={vehicle.model} onChange={(e) => handleVehicleChange(index, 'model', e.target.value)} required className={inputClasses} />
                                                     </div>
                                                     <div>
                                                         <label className={labelClasses}>Reg</label>
-                                                        <input type="text" value={vehicle.reg} onChange={(e) => handleVehicleChange(index, 'reg', e.target.value)} required className={`${inputClasses} uppercase`} />
+                                                        <input type="text" value={vehicle.reg} onChange={(e) => handleVehicleChange(index, 'reg', e.target.value)} required className={inputClasses} />
                                                     </div>
                                                     <div>
                                                         <label className={labelClasses}>Chassis No (Vin)</label>
-                                                        <input type="text" value={vehicle.vin} onChange={(e) => handleVehicleChange(index, 'vin', e.target.value)} required className={`${inputClasses} uppercase`} />
+                                                        <input type="text" value={vehicle.vin} onChange={(e) => handleVehicleChange(index, 'vin', e.target.value)} required className={inputClasses} />
                                                     </div>
                                                     <div>
                                                         <label className={labelClasses}>Engine No</label>
-                                                        <input type="text" value={vehicle.engine_no} onChange={(e) => handleVehicleChange(index, 'engine_no', e.target.value)} required className={`${inputClasses} uppercase`} />
+                                                        <input type="text" value={vehicle.engine_no} onChange={(e) => handleVehicleChange(index, 'engine_no', e.target.value)} required className={inputClasses} />
                                                     </div>
                                                     <div>
                                                         <label className={labelClasses}>Tracking Co</label>
-                                                        <input type="text" value={vehicle.tracking_co} onChange={(e) => handleVehicleChange(index, 'tracking_co', e.target.value)} required className={`${inputClasses} uppercase`} />
+                                                        <input type="text" value={vehicle.tracking_co} onChange={(e) => handleVehicleChange(index, 'tracking_co', e.target.value)} required className={inputClasses} />
                                                     </div>
                                                     <div>
                                                         <label className={labelClasses}>Tracking Co Contact</label>
-                                                        <input type="text" value={vehicle.tracking_co_contact} onChange={(e) => handleVehicleChange(index, 'tracking_co_contact', e.target.value)} required className={`${inputClasses} uppercase`} />
+                                                        <input type="text" value={vehicle.tracking_co_contact} onChange={(e) => handleVehicleChange(index, 'tracking_co_contact', e.target.value)} required className={inputClasses} />
                                                     </div>
                                                 </div>
                                             </div>
