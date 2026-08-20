@@ -227,8 +227,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
 
     const isModuleAllowed = (modId: string): boolean => {
       if (!profile.company) return true;
-      const isRapid911 = profile.company.name?.toLowerCase().includes('rapid911') || false;
-      if (isRapid911) return true;
+      const compName = profile.company.name?.toLowerCase() || '';
+      const isMasterAdminComp = compName.includes('vigilix') || compName.includes('rapid911');
+      if (isMasterAdminComp) return true;
       
       if (!profile.company.allowed_modules) return false;
       return profile.company.allowed_modules.includes(modId);

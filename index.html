@@ -10,16 +10,16 @@
   <link rel="preconnect" href="https://challenges.cloudflare.com">
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#000000" />
-  <meta name="background-color" content="#000000" />
+  <meta name="theme-color" content="#030c07" />
+  <meta name="background-color" content="#030c07" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="RAPID iREPORT" />
+  <meta name="apple-mobile-web-app-title" content="Vigilix" />
   <link rel="manifest" href="/manifest.json" />
-  <title>RAPID iREPORT</title>
-  <link rel="icon" type="image/png" href="https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952" />
-  <link rel="apple-touch-icon" href="https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952" />
+  <title>Vigilix Security Monitoring System</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.ts" />
+  <link rel="apple-touch-icon" href="/assets/logo.ts" />
   <script>
     // This script runs before the page is rendered to prevent a flash of the wrong theme.
     // It applies the theme based on localStorage, defaulting to dark mode.
@@ -41,7 +41,7 @@
       } catch (_) {}
     })();
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <script>
@@ -57,63 +57,65 @@
     /* Light Mode Styles */
     .leaflet-popup-content-wrapper {
         background: #FFFFFF;
-        color: #1F2937;
+        color: #064e3b;
         border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+        border: 1px solid #d1fae5;
     }
     .leaflet-popup-tip { background: #FFFFFF; }
     .leaflet-popup-content { margin: 12px; }
     .leaflet-control-zoom-in, .leaflet-control-zoom-out {
         background-color: #FFFFFF !important;
-        color: #1F2937 !important;
-        border-color: #D1D5DB !important;
+        color: #064e3b !important;
+        border-color: #a7f3d0 !important;
     }
     .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover {
-        background-color: #F3F4F6 !important;
+        background-color: #ecfdf5 !important;
     }
     .leaflet-tooltip {
         background-color: #FFFFFF !important;
-        border: 1px solid #E5E7EB !important;
-        color: #111827 !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        border: 1px solid #a7f3d0 !important;
+        color: #064e3b !important;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
         border-radius: 6px !important;
         padding: 6px 10px !important;
     }
 
     /* Dark Mode Overrides */
     .dark .leaflet-popup-content-wrapper {
-        background: #1F2937; /* dark gray */
-        color: #FFFFFF;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        background: #06150e; /* dark obsidian emerald */
+        color: #e2e8f0;
+        box-shadow: 0 4px 16px rgba(0, 255, 102, 0.2);
+        border: 1px solid #0f3823;
     }
-    .dark .leaflet-popup-tip { background: #1F2937; }
+    .dark .leaflet-popup-tip { background: #06150e; }
     .dark .leaflet-control-zoom-in, .dark .leaflet-control-zoom-out {
-        background-color: #1F2937 !important;
-        color: #FFFFFF !important;
-        border-color: #374151 !important;
+        background-color: #06150e !important;
+        color: #4ade80 !important;
+        border-color: #15803d !important;
     }
     .dark .leaflet-control-zoom-in:hover, .dark .leaflet-control-zoom-out:hover {
-        background-color: #374151 !important;
+        background-color: #0d281a !important;
     }
     .dark .leaflet-tooltip {
-        background-color: #111827 !important; /* bg-gray-900 */
-        border: 1px solid #374151 !important; /* border-gray-700 */
-        color: #FFFFFF !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
+        background-color: #04100a !important;
+        border: 1px solid #16a34a !important;
+        color: #4ade80 !important;
+        box-shadow: 0 2px 10px rgba(0, 255, 102, 0.25) !important;
     }
-    .leaflet-tooltip-top:before { border-top-color: #374151 !important; }
-    .leaflet-tooltip-bottom:before { border-bottom-color: #374151 !important; }
-    .leaflet-tooltip-left:before { border-left-color: #374151 !important; }
-    .leaflet-tooltip-right:before { border-right-color: #374151 !important; }
-    .dark .leaflet-tooltip-top:before { border-top-color: #374151 !important; }
-    .dark .leaflet-tooltip-bottom:before { border-bottom-color: #374151 !important; }
-    .dark .leaflet-tooltip-left:before { border-left-color: #374151 !important; }
-    .dark .leaflet-tooltip-right:before { border-right-color: #374151 !important; }
+    .leaflet-tooltip-top:before { border-top-color: #15803d !important; }
+    .leaflet-tooltip-bottom:before { border-bottom-color: #15803d !important; }
+    .leaflet-tooltip-left:before { border-left-color: #15803d !important; }
+    .leaflet-tooltip-right:before { border-right-color: #15803d !important; }
+    .dark .leaflet-tooltip-top:before { border-top-color: #15803d !important; }
+    .dark .leaflet-tooltip-bottom:before { border-bottom-color: #15803d !important; }
+    .dark .leaflet-tooltip-left:before { border-left-color: #15803d !important; }
+    .dark .leaflet-tooltip-right:before { border-right-color: #15803d !important; }
 
-    /* Other styles */
-    .glow-blue { box-shadow: 0 0 15px 3px rgba(59, 130, 246, 0.7); }
-    .glow-red { box-shadow: 0 0 15px 3px rgba(239, 68, 68, 0.7); }
-    .glow-green { box-shadow: 0 0 15px 3px rgba(74, 222, 128, 0.7); }
+    /* Custom Glow Effects for Vigilix Security Branding */
+    .glow-green { box-shadow: 0 0 15px 3px rgba(34, 197, 94, 0.6); }
+    .glow-emerald { box-shadow: 0 0 20px 4px rgba(16, 185, 129, 0.7); }
+    .glow-lime { box-shadow: 0 0 15px 3px rgba(163, 230, 53, 0.6); }
     
     /* Custom Scrollbar Styles */
     ::-webkit-scrollbar {
@@ -124,113 +126,150 @@
       background: transparent;
     }
     ::-webkit-scrollbar-thumb {
-      background-color: rgba(156, 163, 175, 0.5); /* gray-400 with opacity */
+      background-color: rgba(34, 197, 94, 0.3);
       border-radius: 10px;
       border: 2px solid transparent;
       background-clip: content-box;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background-color: rgba(107, 114, 128, 0.7); /* gray-500 with opacity */
+      background-color: rgba(34, 197, 94, 0.6);
     }
     .dark ::-webkit-scrollbar-thumb {
-      background-color: rgba(107, 114, 128, 0.5); /* gray-500 with opacity */
+      background-color: rgba(34, 197, 94, 0.25);
     }
     .dark ::-webkit-scrollbar-thumb:hover {
-      background-color: rgba(156, 163, 175, 0.7); /* gray-400 with opacity */
+      background-color: rgba(74, 222, 128, 0.5);
     }
     @keyframes marquee {
       from { transform: translateX(0); }
       to { transform: translateX(-50%); }
     }
     
-    /* LED Clock Styles */
+    /* LED Clock Styles - Tactical Cyber Green Theme */
     .led-clock-container {
-      background: transparent;
-      border-radius: 4px;
-      padding: 4px 8px;
-      box-shadow: none;
+      background: rgba(4, 20, 12, 0.6);
+      border: 1px solid rgba(34, 197, 94, 0.2);
+      border-radius: 6px;
+      padding: 4px 10px;
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.1);
     }
     .segment-char { position: relative; }
     .segment { position: absolute; transition: background-color 0.2s; }
     
     /* Light Mode (LCD Style) */
-    .segment.off { background: #e5e7eb; } /* gray-200 */
+    .segment.off { background: #d1fae5; }
     .segment.lit {
-      background: #1f2937; /* gray-800 */
+      background: #064e3b;
       box-shadow: none;
     }
     
-    /* Dark Mode (LED Style) */
-    .dark .segment.off { background: #1a0000; }
+    /* Dark Mode (Vigilix Tactical Green LED Style) */
+    .dark .segment.off { background: #042010; }
     .dark .segment.lit {
-      background: #ff0000;
-      box-shadow: 0 0 3px #ff0000, 0 0 6px #ff0000;
+      background: #00ff66;
+      box-shadow: 0 0 4px #00ff66, 0 0 8px #22c55e;
     }
 
     /* Matrix Mode (LED Style) */
     .matrix .segment.off { background: #001100 !important; }
     .matrix .segment.lit {
       background: #00ff41 !important;
-      box-shadow: 0 0 3px #00ff41, 0 0 6px #00ff41 !important;
+      box-shadow: 0 0 4px #00ff41, 0 0 8px #00ff41 !important;
     }
 
-    /* Compact Segments - LARGER */
+    /* Compact Segments */
     .seg-char-compact { width: 27px; height: 42px; }
-    .seg-char-compact .s-a { top: 0; left: 3px; width: 21px; height: 3px; }
-    .seg-char-compact .s-b { top: 3px; left: 24px; width: 3px; height: 18px; }
-    .seg-char-compact .s-c { top: 21px; left: 24px; width: 3px; height: 18px; }
-    .seg-char-compact .s-d { bottom: 0; left: 3px; width: 21px; height: 3px; }
-    .seg-char-compact .s-e { top: 21px; left: 0; width: 3px; height: 18px; }
-    .seg-char-compact .s-f { top: 3px; left: 0; width: 3px; height: 18px; }
-    .seg-char-compact .s-g { top: 19.5px; left: 3px; width: 21px; height: 3px; }
-    /* Colon - LARGER */
-    .colon-compact .dot { width: 3px; height: 3px; }
+    .seg-char-compact .s-a { top: 0; left: 3px; width: 21px; height: 3px; border-radius: 1px; }
+    .seg-char-compact .s-b { top: 3px; left: 24px; width: 3px; height: 18px; border-radius: 1px; }
+    .seg-char-compact .s-c { top: 21px; left: 24px; width: 3px; height: 18px; border-radius: 1px; }
+    .seg-char-compact .s-d { bottom: 0; left: 3px; width: 21px; height: 3px; border-radius: 1px; }
+    .seg-char-compact .s-e { top: 21px; left: 0; width: 3px; height: 18px; border-radius: 1px; }
+    .seg-char-compact .s-f { top: 3px; left: 0; width: 3px; height: 18px; border-radius: 1px; }
+    .seg-char-compact .s-g { top: 19.5px; left: 3px; width: 21px; height: 3px; border-radius: 1px; }
+    
+    /* Colon */
+    .colon-compact .dot { width: 3px; height: 3px; border-radius: 1px; }
     .colon-compact .dot-top { top: 12px; }
     .colon-compact .dot-bottom { bottom: 12px; }
     
-    /* Day of week - LARGER */
+    /* Day of week */
     .led-day { 
-        color: #9ca3af; /* Light mode: gray-400 */
-        font-family: 'Arial', sans-serif; 
+        color: #6ee7b7;
+        font-family: 'JetBrains Mono', monospace; 
         font-weight: bold; 
         transition: color 0.2s, text-shadow 0.2s; 
-        font-size: 18px; 
+        font-size: 16px; 
         line-height: 1; 
     }
     .led-day.lit { 
-        color: #1f2937; /* Light mode: gray-800 */
+        color: #064e3b;
         text-shadow: none; 
     }
     
-    .dark .led-day { color: #550000; }
-    .dark .led-day.lit { color: #ffffff; text-shadow: 0 0 4px #ff4d4d; }
+    .dark .led-day { color: #065f46; }
+    .dark .led-day.lit { color: #4ade80; text-shadow: 0 0 6px #22c55e; }
 
     .matrix .led-day { color: #003300 !important; }
     .matrix .led-day.lit { color: #00ff41 !important; text-shadow: 0 0 4px #00ff41 !important; }
 
-    /* Small Text - LARGER */
+    /* Small Text */
     .led-small-text { 
-        color: #1f2937; /* Light mode: gray-800 */
+        color: #064e3b;
         text-shadow: none;
-        font-family: 'Arial', sans-serif; 
+        font-family: 'JetBrains Mono', monospace; 
         font-weight: bold; 
-        font-size: 14px; 
+        font-size: 13px; 
     }
-    .dark .led-small-text { color: #ff0000; text-shadow: 0 0 3px #ff0000; }
+    .dark .led-small-text { color: #22c55e; text-shadow: 0 0 4px #22c55e; }
     .matrix .led-small-text { color: #00ff41 !important; text-shadow: 0 0 3px #00ff41 !important; }
   </style>
 <link rel="stylesheet" href="/index.css">
 </head>
-<body class="bg-white dark:bg-black text-gray-900 dark:text-gray-100 transition-colors duration-300">
+<body class="bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 transition-colors duration-300">
   <div id="root">
     <!-- Static HTML Splash Screen (Instantly rendered before JS loads) -->
-    <div style="position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #000000; color: #ffffff; z-index: 9999; font-family: 'Inter', sans-serif;">
-      <div id="splash-logo-container" style="margin-bottom: 24px; padding-left: 16px; padding-right: 16px; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; max-width: 320px; width: 100%; display: flex; justify-content: center; align-items: center; min-height: 80px;">
-        <img id="splash-logo-img" src="https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952" alt="RAPID iREPORT Logo" style="max-height: 120px; max-width: 100%; object-fit: contain; display: block;" />
+    <div style="position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #02140a; color: #ffffff; z-index: 9999; font-family: 'Inter', sans-serif;">
+      <div id="splash-logo-container" style="margin-bottom: 28px; padding-left: 16px; padding-right: 16px; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; max-width: 360px; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 90px;">
+        <svg viewBox="0 0 560 140" style="max-height: 110px; max-width: 100%; width: 100%; object-fit: contain; display: block;" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="sShieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#052e16"/>
+              <stop offset="100%" stop-color="#000d06"/>
+            </linearGradient>
+            <linearGradient id="sLimeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#a3e635"/>
+              <stop offset="100%" stop-color="#22c55e"/>
+            </linearGradient>
+            <linearGradient id="sSilverGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="100%" stop-color="#94a3b8"/>
+            </linearGradient>
+          </defs>
+          <g transform="translate(10, 10)">
+            <path d="M 60 4 L 112 24 L 112 76 C 112 104 60 120 60 120 C 60 120 8 104 8 76 L 8 24 Z" fill="none" stroke="#22c55e" stroke-width="3"/>
+            <path d="M 60 6 L 110 25 L 110 75 C 110 102 60 117 60 117 C 60 117 10 102 10 75 L 10 25 Z" fill="url(#sShieldGrad)" stroke="#15803d" stroke-width="1.5"/>
+            <circle cx="60" cy="62" r="32" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.6"/>
+            <g transform="translate(60, 60)">
+              <path d="M -16 -8 L 8 -16 L 22 -6 L 22 8 L -16 8 Z" fill="#0f172a" stroke="#22c55e" stroke-width="1.5"/>
+              <circle cx="16" cy="1" r="6" fill="#022c22" stroke="#22c55e" stroke-width="1.5"/>
+              <circle cx="16" cy="1" r="3" fill="#4ade80"/>
+              <circle cx="16" cy="1" r="1.5" fill="#ffffff"/>
+              <path d="M -10 8 L -10 18 L -4 18" fill="none" stroke="#16a34a" stroke-width="2"/>
+            </g>
+          </g>
+          <g transform="translate(136, 20)">
+            <text x="0" y="56" font-family="'Inter', sans-serif" font-weight="900" font-size="52" fill="url(#sSilverGrad)" letter-spacing="4">VIGILIX</text>
+            <rect x="0" y="68" width="380" height="3" fill="url(#sLimeGrad)" rx="1.5"/>
+            <g transform="translate(0, 88)">
+              <rect x="0" y="-12" width="270" height="18" fill="#022c22" rx="4" stroke="#16a34a" stroke-width="1"/>
+              <text x="6" y="1" font-family="'Inter', sans-serif" font-weight="800" font-size="11" fill="#4ade80" letter-spacing="2">SECURITY MONITORING SYSTEM</text>
+            </g>
+          </g>
+        </svg>
       </div>
-      <!-- Spinner -->
-      <div style="width: 40px; height: 40px; border: 4px solid #3b82f6; border-top-color: transparent; border-radius: 50%; fill: none; animation: spin 1s linear infinite;"></div>
-      <p style="margin-top: 24px; font-size: 12px; letter-spacing: 0.1em; color: #9ca3af; text-transform: uppercase; font-weight: 500;">loading</p>
+      <!-- Tactical Emerald Spinner -->
+      <div style="width: 42px; height: 42px; border: 3px solid rgba(34, 197, 94, 0.2); border-top-color: #22c55e; border-right-color: #a3e635; border-radius: 50%; animation: spin 0.8s linear infinite; box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);"></div>
+      <p style="margin-top: 20px; font-size: 11px; letter-spacing: 0.25em; color: #4ade80; text-transform: uppercase; font-weight: 700; font-family: 'JetBrains Mono', monospace;">INITIALIZING SYSTEM...</p>
     </div>
 
     <script>
@@ -253,7 +292,7 @@
     <style>
       @keyframes pulse {
         0%, 100% { opacity: 1; }
-        50% { opacity: .5; }
+        50% { opacity: .6; }
       }
       @keyframes spin {
         to { transform: rotate(360deg); }

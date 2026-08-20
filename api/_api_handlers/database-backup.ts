@@ -154,7 +154,7 @@ export default async function handler(req: any, res: any) {
             // If SQL format is requested
             if (format === 'sql') {
                 let sqlScript = `-- ==========================================================================\n`;
-                sqlScript += `-- RAPID iREPORT PostgreSQL Full Database Backup Snapshot\n`;
+                sqlScript += `-- Vigilix Security Monitoring System - PostgreSQL Full Database Backup Snapshot\n`;
                 sqlScript += `-- Exported At: ${timestamp}\n`;
                 sqlScript += `-- Exported By: ${userEmail}\n`;
                 sqlScript += `-- Total Tables: ${Object.keys(tablesData).length} | Total Records: ${totalRecords}\n`;
@@ -196,10 +196,10 @@ export default async function handler(req: any, res: any) {
                 }
 
                 sqlScript += `COMMIT;\n`;
-                sqlScript += `-- End of RAPID iREPORT Backup Snapshot\n`;
+                sqlScript += `-- End of Vigilix Security Monitoring System Backup Snapshot\n`;
 
                 res.setHeader('Content-Type', 'application/sql');
-                res.setHeader('Content-Disposition', `attachment; filename="rapid_ireport_db_backup_${filenameDate}.sql"`);
+                res.setHeader('Content-Disposition', `attachment; filename="vigilix_db_backup_${filenameDate}.sql"`);
                 return res.status(200).send(sqlScript);
             }
 

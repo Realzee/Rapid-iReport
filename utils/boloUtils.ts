@@ -684,7 +684,7 @@ export const generateAndShareBolo = async (
         const copyrightY = height - 20;
         ctx.font = '12px Arial, sans-serif';
         ctx.textBaseline = 'alphabetic';
-        const copyrightText = `Copyright © ${new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)`;
+        const copyrightText = `Copyright © ${new Date().getFullYear()} Vigilix Security Monitoring System (Pty) Ltd`;
         const copyrightMetrics = ctx.measureText(copyrightText);
         const logoH = 24;
         const logoW = rapidLogo ? (rapidLogo.width / rapidLogo.height) * logoH : 0;
@@ -723,7 +723,7 @@ export const generateAndShareBolo = async (
                     const file = new File([blob], filename, { type: 'image/png' });
                     const companyNumber = profile.company?.cell_number?.replace(/\D/g, '') || '';
                     
-                    let caption = `*RAPID iREPORT BOLO*\n`;
+                    let caption = `*VIGILIX SECURITY MONITORING BOLO*\n`;
                     caption += `*Type:* ${String(report.type).toUpperCase()}\n`;
                     caption += `*Ref:* ${report.ob_number || 'N/A'}\n`;
                     caption += `*Title:* ${report.title || (report.license_plate ? report.license_plate : '')}\n`;
@@ -759,7 +759,7 @@ export const generateAndShareBolo = async (
                     const filename = `bolo-${(report.ob_number || 'new').replace(/\//g, '-')}.png`;
                     const file = new File([blob], filename, { type: 'image/png' });
                     
-                    let caption = `*RAPID iREPORT NEW BOLO*\n`;
+                    let caption = `*VIGILIX SECURITY MONITORING NEW BOLO*\n`;
                     caption += `*Type:* ${String(report.type).toUpperCase()}\n`;
                     caption += `*Ref:* ${report.ob_number || 'N/A'}\n`;
                     caption += report.license_plate ? `*Reg:* ${report.license_plate}\n` : '';
@@ -802,7 +802,7 @@ export const generateAndShareBolo = async (
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
 
-                    let captionText = `*RAPID iREPORT NEW BOLO*\n`;
+                    let captionText = `*VIGILIX SECURITY MONITORING NEW BOLO*\n`;
                     captionText += `*Type:* ${String(report.type).toUpperCase()}\n`;
                     captionText += `*Ref:* ${report.ob_number || 'N/A'}\n`;
                     captionText += report.license_plate ? `*Reg:* ${report.license_plate}\n` : '';

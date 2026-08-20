@@ -1,17 +1,17 @@
 {
-  "name": "RAPID iREPORT Community Safety System",
-  "short_name": "RAPID iREPORT",
-  "description": "Rapid iReport Community Safety & Tracking System",
+  "name": "Vigilix Security Monitoring System",
+  "short_name": "Vigilix",
+  "description": "Vigilix Security Monitoring System - Advanced Tactical Safety, Incident & Fleet Tracking Platform",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#021c0e",
+  "theme_color": "#16a34a",
   "orientation": "any",
   "icons": [
     {
-      "src": "https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952",
+      "src": "/assets/logo.ts",
       "sizes": "192x192 512x512",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ]

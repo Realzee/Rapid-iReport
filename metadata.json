@@ -1,6 +1,6 @@
 {
-  "name": "RAPID iREPORT Community Safety System",
-  "description": "A professional, modern community safety reporting system optimized with Cloudflare infrastructure for high performance and security. Allows real-time incident tracking, advanced mapping, and analytics with a robust Supabase backend.",
+  "name": "Vigilix Security Monitoring System",
+  "description": "Vigilix Security Monitoring System - Advanced Tactical Community Safety, Incident & Guarding Platform with real-time mapping, biometric attendance, ANPR, fleet tracking, and incident monitoring.",
   "requestFramePermissions": [
     "geolocation",
     "microphone",
