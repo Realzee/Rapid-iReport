@@ -15,9 +15,11 @@ import profilesHandler from './_api_handlers/profiles.js';
 import resetPasswordHandler from './_api_handlers/reset-password.js';
 import resolveMapsLinkHandler from './_api_handlers/resolve-maps-link.js';
 import sapsBoundariesHandler from './_api_handlers/saps-boundaries.js';
+import databaseBackupHandler from './_api_handlers/database-backup.js';
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Setup supabaseAdmin
 const SERVICE_ROLE_KEY_VAL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlnbHdkd2h3cGJxYXd1bmJrenl5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODI3NTc4OSwiZXhwIjoyMDgzODUxNzg5fQ.h8tD0STrVfQ7-eSXYJmDGoGGWKoNDr4o0SmGsYy0KRo';
@@ -66,6 +68,7 @@ app.all(['/api/profiles', '/api/profiles/'], handle(profilesHandler));
 app.all(['/api/reset-password', '/api/reset-password/'], handle(resetPasswordHandler));
 app.all(['/api/resolve-maps-link', '/api/resolve-maps-link/'], handle(resolveMapsLinkHandler));
 app.all(['/api/saps-boundaries', '/api/saps-boundaries/'], handle(sapsBoundariesHandler));
+app.all(['/api/database-backup', '/api/database-backup/'], handle(databaseBackupHandler));
 
 // Specific API Route Aliases for consolidated endpoints
 app.all(['/api/update-profile', '/api/update-profile/'], handle(profilesHandler));

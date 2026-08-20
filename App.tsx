@@ -248,22 +248,29 @@ const App: React.FC = () => {
     let presenceInterval: number | undefined;
 
     const setupPresence = async (userId: string) => {
-        try {
-            const response = await fetch('/api/update-profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, last_seen_at: new Date().toISOString() })
-            });
-            
-            if (!response.ok) {
-                const text = await response.text();
-                console.warn(`Presence update failed with status ${response.status}: ${text.substring(0, 100)}`);
+        // Only run initial update if tab is visible
+        if (document.visibilityState === 'visible') {
+            try {
+                const response = await fetch('/api/update-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, last_seen_at: new Date().toISOString() })
+                });
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.warn(`Presence update failed with status ${response.status}: ${text.substring(0, 100)}`);
+                }
+            } catch (err) {
+                console.warn("Could not update presence:", err);
             }
-        } catch (err) {
-            console.warn("Could not update presence:", err);
         }
 
         presenceInterval = window.setInterval(async () => {
+            // Avoid executing database updates if tab is hidden or backgrounded
+            if (document.visibilityState !== 'visible') {
+                return;
+            }
             try {
                 const response = await fetch('/api/update-profile', {
                     method: 'POST',
@@ -278,7 +285,7 @@ const App: React.FC = () => {
             } catch (error) {
                 console.warn('Error updating presence interval:', error);
             }
-        }, 60000);
+        }, 120000); // 120 seconds (2 minutes) interval cuts database updates in half
     };
 
     if (session?.user && supabase) {

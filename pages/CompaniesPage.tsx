@@ -697,22 +697,22 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
             
             {currentUserProfile?.role === UserRole.ADMIN && (
                 <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 backdrop-blur-lg shadow-lg">
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-                        <DatabaseIcon className="w-7 h-7" />
-                        Database Management
-                    </h3>
-                    <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
-                            <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Database Backup</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                Create a full backup of the PostgreSQL database. This requires using the `pg_dump` command-line tool.
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                                <DatabaseIcon className="w-7 h-7 text-blue-500" />
+                                Database Backup & Disaster Recovery
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 max-w-2xl">
+                                Full database backup and restore utility for Administrators. Generate portable JSON or SQL snapshots, restore previous database points, view real-time table record counts, or copy CLI commands.
                             </p>
                         </div>
                         <button 
                             onClick={() => setIsBackupModalOpen(true)}
-                            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition"
+                            className="px-5 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition flex items-center space-x-2 whitespace-nowrap self-start sm:self-auto"
                         >
-                            Generate Backup Command
+                            <DatabaseIcon className="w-4 h-4" />
+                            <span>Backup & Restore Center</span>
                         </button>
                     </div>
                 </div>
@@ -862,6 +862,7 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                 isOpen={isBackupModalOpen}
                 onClose={() => setIsBackupModalOpen(false)}
                 dbHost={dbHost}
+                profile={currentUserProfile}
             />
             {confirmAction && (
                 <ConfirmModal

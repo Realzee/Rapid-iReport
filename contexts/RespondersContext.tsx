@@ -49,9 +49,41 @@ export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (!supabase) return;
 
         const channel = supabase.channel('public:profiles-responders')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: 'role=eq.responder' }, (payload) => {
-                // Handle real-time updates
-                fetchResponders();
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: 'role=eq.responder' }, (payload: any) => {
+                // Save database quota by updating local state directly from the realtime payload instead of executing fetch queries
+                if (payload.eventType === 'INSERT') {
+                    const p = payload.new as Profile;
+                    const newR: Responder = {
+                        id: p.id,
+                        first_name: p.first_name,
+                        surname: p.surname,
+                        status: p.responder_status || ResponderStatus.OFF_DUTY,
+                        location_coords: p.location_coords || undefined,
+                    };
+                    setResponders(prev => {
+                        if (prev.some(r => r.id === newR.id)) return prev;
+                        return [...prev, newR];
+                    });
+                } else if (payload.eventType === 'UPDATE') {
+                    const p = payload.new as Profile;
+                    setResponders(prev => prev.map(r => {
+                        if (r.id === p.id) {
+                            return {
+                                ...r,
+                                first_name: p.first_name || r.first_name,
+                                surname: p.surname || r.surname,
+                                status: p.responder_status || r.status || ResponderStatus.OFF_DUTY,
+                                location_coords: p.location_coords || r.location_coords,
+                            };
+                        }
+                        return r;
+                    }));
+                } else if (payload.eventType === 'DELETE') {
+                    const oldId = payload.old?.id;
+                    if (oldId) {
+                        setResponders(prev => prev.filter(r => r.id !== oldId));
+                    }
+                }
             })
             .subscribe();
 

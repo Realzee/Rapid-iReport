@@ -720,8 +720,79 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
     // Subscribe to real-time changes
     const channel = supabase
       .channel('public-tracking-units')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tracking_units' }, () => {
-        fetchTrackingUnits();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tracking_units' }, (payload: any) => {
+        // Optimize database quota usage: update local state directly from realtime payload instead of re-fetching everything
+        if (payload.eventType === 'INSERT') {
+          const item = payload.new;
+          const newV: TK116Device = {
+            id: item.id,
+            name: item.name || `Unit`,
+            plate: item.plate || 'NO PLATE',
+            imei: item.imei || '354188046000000',
+            simNumber: item.sim_number || '+27 82 000 0000',
+            model: item.model || 'Eelink TK116 4G',
+            status: (item.status as any) || 'stationary',
+            lat: Number(item.lat) || -26.2041,
+            lng: Number(item.lng) || 28.0473,
+            speed: Number(item.speed) || 0,
+            course: Number(item.course) || 0,
+            batteryVoltage: Number(item.battery_voltage) || 12600,
+            batteryPercent: Number(item.battery_percent) || 95,
+            accStatus: Boolean(item.acc_status),
+            fuelCut: Boolean(item.fuel_cut),
+            mileage: Number(item.mileage) || 100000,
+            fuelLevel: Number(item.fuel_level) || 80,
+            lastUpdate: item.updated_at ? new Date(item.updated_at).toLocaleTimeString() : 'Just now',
+            speedLimit: Number(item.speed_limit) || 120,
+            pathHistory: [[Number(item.lat) || -26.2041, Number(item.lng) || 28.0473]],
+            alerts: []
+          };
+          setVehicles(prev => {
+            if (prev.some(v => v.id === newV.id)) return prev;
+            return [...prev, newV];
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const item = payload.new;
+          setVehicles(prev => prev.map(v => {
+            if (v.id === item.id) {
+              const updatedLat = Number(item.lat) || v.lat;
+              const updatedLng = Number(item.lng) || v.lng;
+              const pathHistory = [...v.pathHistory];
+              if (pathHistory.length === 0 || pathHistory[pathHistory.length - 1][0] !== updatedLat || pathHistory[pathHistory.length - 1][1] !== updatedLng) {
+                pathHistory.push([updatedLat, updatedLng]);
+                if (pathHistory.length > 50) pathHistory.shift(); // keep last 50 points
+              }
+              return {
+                ...v,
+                name: item.name || v.name,
+                plate: item.plate || v.plate,
+                imei: item.imei || v.imei,
+                simNumber: item.sim_number || v.simNumber,
+                model: item.model || v.model,
+                status: (item.status as any) || v.status,
+                lat: updatedLat,
+                lng: updatedLng,
+                speed: Number(item.speed) !== undefined ? Number(item.speed) : v.speed,
+                course: Number(item.course) !== undefined ? Number(item.course) : v.course,
+                batteryVoltage: Number(item.battery_voltage) || v.batteryVoltage,
+                batteryPercent: Number(item.battery_percent) || v.batteryPercent,
+                accStatus: item.acc_status !== undefined ? Boolean(item.acc_status) : v.accStatus,
+                fuelCut: item.fuel_cut !== undefined ? Boolean(item.fuel_cut) : v.fuelCut,
+                mileage: Number(item.mileage) || v.mileage,
+                fuelLevel: Number(item.fuel_level) !== undefined ? Number(item.fuel_level) : v.fuelLevel,
+                lastUpdate: item.updated_at ? new Date(item.updated_at).toLocaleTimeString() : v.lastUpdate,
+                speedLimit: Number(item.speed_limit) || v.speedLimit,
+                pathHistory
+              };
+            }
+            return v;
+          }));
+        } else if (payload.eventType === 'DELETE') {
+          const oldId = payload.old?.id;
+          if (oldId) {
+            setVehicles(prev => prev.filter(v => v.id !== oldId));
+          }
+        }
       })
       .subscribe();
 

@@ -84,6 +84,23 @@ export default async function handler(req: any, res: any) {
             return res.status(400).json({ error: 'User ID is required' });
         }
 
+        // Fast path for presence heartbeats (which only update last_seen_at)
+        const isPresenceUpdate = (Object.keys(dbPayload).length === 1 && dbPayload.last_seen_at !== undefined);
+        if (isPresenceUpdate) {
+            try {
+                const { error: updateError } = await supabaseAdmin
+                    .from('profiles')
+                    .update({ last_seen_at: dbPayload.last_seen_at })
+                    .eq('id', userId);
+
+                if (updateError) throw updateError;
+                return res.status(200).json({ success: true, last_seen_at: dbPayload.last_seen_at });
+            } catch (error: any) {
+                console.error('Caught error in update-profile presence fast path:', error);
+                return res.status(200).json({ success: false, message: 'Presence update failed, ignored to prevent spam' });
+            }
+        }
+
         // List of fallback columns in case database query is not possible/empty
         let validColumns = [
             'id', 'email', 'first_name', 'surname', 'role', 'status', 'company_id', 
