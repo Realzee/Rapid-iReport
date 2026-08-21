@@ -21,23 +21,16 @@ input, textarea, select, option, [contenteditable="true"] {
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  
-  /* Vigilix Cyber Emerald Palette */
-  --color-primary-50: #f0fdf4;
-  --color-primary-100: #dcfce7;
-  --color-primary-200: #bbf7d0;
-  --color-primary-300: #86efac;
-  --color-primary-400: #4ade80;
-  --color-primary-500: #22c55e;
-  --color-primary-600: #16a34a;
-  --color-primary-700: #15803d;
-  --color-primary-800: #166534;
-  --color-primary-900: #14532d;
-  --color-primary-950: #052e16;
-  
-  --color-cyber-neon: #00ff66;
-  --color-cyber-lime: #a3e635;
-  --color-cyber-dark: #02140a;
+  --color-primary-50: #fef2f2;
+  --color-primary-100: #fee2e2;
+  --color-primary-200: #fecaca;
+  --color-primary-300: #fca5a5;
+  --color-primary-400: #f87171;
+  --color-primary-500: #ef4444;
+  --color-primary-600: #dc2626;
+  --color-primary-700: #b91c1c;
+  --color-primary-800: #991b1b;
+  --color-primary-900: #7f1d1d;
   
   --color-matrix-green: #00ff41;
   --color-matrix-dark: #003b00;
@@ -101,7 +94,7 @@ input, textarea, select, option, [contenteditable="true"] {
 
 @layer components {
   .btn-primary {
-    @apply bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_15px_rgba(34,197,94,0.4)];
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   .btn-secondary {
@@ -109,11 +102,11 @@ input, textarea, select, option, [contenteditable="true"] {
   }
   
   .btn-outline {
-    @apply border border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply border border-primary-600 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-success {
-    @apply bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_15px_rgba(34,197,94,0.4)];
+    @apply bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-danger {
@@ -177,7 +170,7 @@ input, textarea, select, option, [contenteditable="true"] {
   height: 100%;
   width: 100%;
   border-radius: 50%;
-  background-color: rgba(34, 197, 94, 0.6); /* Vigilix Cyber Emerald */
+  background-color: rgba(220, 38, 38, 0.6); /* Red-600 */
   animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }
 
@@ -195,7 +188,7 @@ input, textarea, select, option, [contenteditable="true"] {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(34, 197, 94, 0.3);
+  background-color: rgba(156, 163, 175, 0.5);
   border-radius: 20px;
 }
 
@@ -204,7 +197,7 @@ input, textarea, select, option, [contenteditable="true"] {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(34, 197, 94, 0.6);
+  background-color: rgba(107, 114, 128, 0.8);
 }
 
 .matrix .custom-scrollbar::-webkit-scrollbar-thumb:hover {

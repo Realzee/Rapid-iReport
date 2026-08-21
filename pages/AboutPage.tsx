@@ -53,11 +53,11 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLogin }) => {
                 <div className="flex items-center gap-3">
                     <img 
                         src={mainLogoUrl} 
-                        alt="Vigilix Logo" 
+                        alt="Rapid911 Logo" 
                         className="h-10 w-auto" 
                         onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} 
                     />
-                    <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">
+                    <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                         Help & User Manual
                     </span>
                 </div>
@@ -65,7 +65,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLogin }) => {
                     <ThemeToggle />
                     <button 
                         onClick={onBackToLogin}
-                        className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
                     >
                         Back to Login
                     </button>
@@ -86,7 +86,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLogin }) => {
                     <div className="relative w-full h-64 md:h-80 rounded-2xl overflow-hidden mb-10 shadow-lg border border-gray-200 dark:border-gray-800">
                         <img 
                             src={heroBannerUrl} 
-                            alt="Vigilix Security Monitoring System Banner" 
+                            alt="Rapid911 Safety Platform Banner" 
                             className="w-full h-full object-cover"
                             referrerPolicy="no-referrer"
                             onError={(e) => {
@@ -96,10 +96,10 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLogin }) => {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-900/70 to-transparent flex flex-col justify-end p-6 md:p-8">
                             <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white mb-2 uppercase">
-                                Vigilix Interactive Manual
+                                Rapid911 Interactive Manual
                             </h1>
                             <p className="text-gray-300 text-sm md:text-lg max-w-2xl font-medium">
-                                Your comprehensive guide to executing high-fidelity operations on the Vigilix security monitoring, guarding patrols, and dispatch management system.
+                                Your comprehensive guide to executing high-fidelity operations on the community safety, guarding patrols, and dispatch management system.
                             </p>
                         </div>
                     </div>
@@ -124,7 +124,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLogin }) => {
                                                 }}
                                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium transition-all ${
                                                     isActive 
-                                                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20 shadow-sm' 
+                                                        ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/20 shadow-sm' 
                                                         : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
                                                 }`}
                                             >
@@ -137,15 +137,15 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLogin }) => {
                             </div>
 
                             {/* Rapid Help Box */}
-                            <div className="p-5 bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-xl shadow-md border border-emerald-500/20">
+                            <div className="p-5 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-xl shadow-md border border-blue-500/20">
                                 <PhoneCallIcon className="w-8 h-8 mb-3 opacity-90" />
                                 <h4 className="font-bold mb-1">Need Urgent Support?</h4>
-                                <p className="text-xs text-emerald-100 mb-4 leading-relaxed">
+                                <p className="text-xs text-blue-100 mb-4 leading-relaxed">
                                     For command-center system disruptions or urgent deployment inquiries, please call the active hotline.
                                 </p>
                                 <a 
                                     href="tel:+27846910111" 
-                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-white text-emerald-700 font-bold text-xs rounded-md shadow-sm hover:bg-emerald-50 transition-colors"
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-white text-blue-700 font-bold text-xs rounded-md shadow-sm hover:bg-blue-50 transition-colors"
                                 >
                                     Call +27 84 69 10111
                                 </a>
@@ -159,12 +159,12 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLogin }) => {
                             {activeTab === 'intro' && (
                                 <div className="space-y-6">
                                     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 md:p-8 shadow-sm">
-                                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-3 border-b border-gray-100 dark:border-gray-800 pb-3 text-emerald-600 dark:text-emerald-400">
+                                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-3 border-b border-gray-100 dark:border-gray-800 pb-3 text-blue-600 dark:text-blue-400">
                                             <BookOpenIcon className="w-7 h-7" />
                                             Platform Introduction
                                         </h2>
                                         <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-6 text-lg">
-                                            The <strong>Vigilix Security Monitoring System</strong> is a modern, unified hub designed specifically for professional guarding, community safety, and emergency response teams. It seamlessly connects community members reporting local incidents, active guard forces patrolling commercial sites, and central controllers dispatching armed responders in real-time.
+                                            The <strong>Rapid911 Community Safety and Guarding Platform</strong> is a modern, unified hub designed specifically for active security companies like <strong>Excellerate Services</strong>. It seamlessly connects community members reporting local incidents, active guard forces patrolling commercial sites, and central controllers dispatching armed responders in real-time.
                                         </p>
 
                                         <h3 className="text-lg font-bold mb-3">Key System Roles & Ecosystem</h3>

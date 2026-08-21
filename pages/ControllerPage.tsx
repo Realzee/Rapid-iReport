@@ -33,9 +33,8 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const { requestWakeLock, releaseWakeLock } = useWakeLock();
     const isModuleAllowed = (modId: string): boolean => {
         if (!profile.company) return true;
-        const compName = profile.company.name?.toLowerCase() || '';
-        const isMasterAdminComp = compName.includes('vigilix') || compName.includes('rapid911');
-        if (isMasterAdminComp) return true;
+        const isRapid911 = profile.company.name?.toLowerCase().includes('rapid911') || false;
+        if (isRapid911) return true;
         if (!profile.company.allowed_modules) return false;
         return profile.company.allowed_modules.includes(modId);
     };

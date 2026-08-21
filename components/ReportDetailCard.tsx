@@ -620,7 +620,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             const copyrightY = height - 20;
             ctx.font = '12px Arial, sans-serif';
             ctx.textBaseline = 'alphabetic';
-            const copyrightText = `Copyright © ${new Date().getFullYear()} Vigilix Security Monitoring System (Pty) Ltd`;
+            const copyrightText = `Copyright © ${new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)`;
             const copyrightMetrics = ctx.measureText(copyrightText);
             const logoH = 24;
             const logoW = rapidLogo ? (rapidLogo.width / rapidLogo.height) * logoH : 0;
@@ -657,7 +657,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     const file = new File([blob], filename, { type: 'image/png' });
                     const companyNumber = profile.company?.cell_number?.replace(/\D/g, '') || '';
                     
-                    let caption = `*VIGILIX SECURITY MONITORING BOLO*\n`;
+                    let caption = `*RAPID iREPORT BOLO*\n`;
                     caption += `*Type:* ${report.type.toUpperCase()}\n`;
                     caption += `*Ref:* ${report.ob_number}\n`;
                     caption += `*Title:* ${report.title}\n`;
@@ -1139,7 +1139,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                             /* Read-only sharing list for normal users/responders */
                             <div className="space-y-1.5">
                                 {isGlobal ? (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-normal">This report is marked as globally visible across the Vigilix Security Monitoring network.</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-normal">This report is marked as globally visible across the RAPID iREPORT network.</p>
                                 ) : reportShares.length > 0 ? (
                                     <div className="space-y-1.5 pt-1">
                                         {reportShares.map(share => {

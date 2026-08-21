@@ -98,7 +98,7 @@ export async function registerBiometrics(email: string, password: string): Promi
     const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
         challenge,
         rp: {
-            name: "Vigilix Security Monitoring System",
+            name: "Rapid911 Community Safety",
             id: window.location.hostname,
         },
         user: {

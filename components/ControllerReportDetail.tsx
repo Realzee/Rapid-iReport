@@ -805,7 +805,7 @@ const ControllerReportDetail: React.FC<{
             const copyrightY = height - 20;
             ctx.font = '12px Arial, sans-serif';
             ctx.textBaseline = 'alphabetic';
-            const copyrightText = `Copyright © ${new Date().getFullYear()} Vigilix Security Monitoring System (Pty) Ltd`;
+            const copyrightText = `Copyright © ${new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)`;
             const copyrightMetrics = ctx.measureText(copyrightText);
             const logoH = 24;
             const logoW = rapidLogo ? (rapidLogo.width / rapidLogo.height) * logoH : 0;
@@ -842,7 +842,7 @@ const ControllerReportDetail: React.FC<{
                     const file = new File([blob], filename, { type: 'image/png' });
                     const companyNumber = profile.company?.cell_number?.replace(/\D/g, '') || '';
                     
-                    let caption = `*VIGILIX SECURITY MONITORING BOLO*\n`;
+                    let caption = `*RAPID iREPORT BOLO*\n`;
                     caption += `*Type:* ${report.type.toUpperCase()}\n`;
                     caption += `*Ref:* ${report.ob_number}\n`;
                     caption += `*Title:* ${report.title}\n`;

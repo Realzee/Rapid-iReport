@@ -401,9 +401,8 @@ const App: React.FC = () => {
 
       const isModuleAllowed = (modId: string): boolean => {
         if (!profile.company) return true;
-        const compName = profile.company.name?.toLowerCase() || '';
-        const isMasterAdminComp = compName.includes('vigilix') || compName.includes('rapid911');
-        if (isMasterAdminComp) return true;
+        const isRapid911 = profile.company.name?.toLowerCase().includes('rapid911') || false;
+        if (isRapid911) return true;
         
         if (!profile.company.allowed_modules) return false;
         return profile.company.allowed_modules.includes(modId);
@@ -630,12 +629,12 @@ const App: React.FC = () => {
 
   if (loading || (session && profileLoading)) {
     return (
-        <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#02140a] text-white z-[9999] overflow-hidden">
+        <div className="fixed inset-0 flex flex-col items-center justify-center bg-black text-white z-[9999] overflow-hidden">
              <div className="mb-6 animate-pulse px-4">
-                 <img src={mainLogoUrl} alt="Vigilix Logo" className="max-w-xs md:max-w-md h-auto mx-auto opacity-90 object-contain" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
+                 <img src={mainLogoUrl} alt="Rapid911 Logo" className="max-w-xs md:max-w-md h-auto mx-auto opacity-90 object-contain" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
              </div>
-             <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-             <p className="mt-6 text-xs tracking-widest text-emerald-400 uppercase font-medium font-mono">loading vigilix system</p>
+             <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+             <p className="mt-6 text-xs tracking-widest text-gray-400 uppercase font-medium">loading</p>
         </div>
     )
   }
@@ -747,9 +746,9 @@ const App: React.FC = () => {
   return (
     <div className={`min-h-screen relative overflow-x-hidden ${theme === 'matrix' ? 'matrix' : ''}`}>
       <MatrixRain />
-      <div className={`absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white via-emerald-50/20 to-white dark:from-[#020b06] dark:via-[#04140a]/80 dark:to-[#020b06] z-0 transition-all duration-500 ease-in-out print:hidden ${theme === 'matrix' ? 'hidden' : ''}`}></div>
-      <div className={`hidden md:block absolute top-[20%] left-[10%] w-72 h-72 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-full filter blur-3xl opacity-100 dark:opacity-40 animate-pulse print:hidden ${theme === 'matrix' ? 'hidden' : ''}`} style={{ animationDuration: '8s' }}></div>
-      <div className={`hidden md:block absolute bottom-[5%] right-[5%] w-96 h-96 bg-green-500/10 dark:bg-green-600/20 rounded-full filter blur-3xl opacity-100 dark:opacity-40 animate-pulse print:hidden ${theme === 'matrix' ? 'hidden' : ''}`} style={{ animationDuration: '10s' }}></div>
+      <div className={`absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white via-gray-50 to-white dark:from-black dark:via-gray-900/60 dark:to-black z-0 transition-all duration-500 ease-in-out print:hidden ${theme === 'matrix' ? 'hidden' : ''}`}></div>
+      <div className={`hidden md:block absolute top-[20%] left-[10%] w-72 h-72 bg-blue-400/30 dark:bg-blue-400/60 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse print:hidden ${theme === 'matrix' ? 'hidden' : ''}`} style={{ animationDuration: '8s' }}></div>
+      <div className={`hidden md:block absolute bottom-[5%] right-[5%] w-96 h-96 bg-indigo-400/30 dark:bg-indigo-600/60 rounded-full filter blur-3xl opacity-100 dark:opacity-20 animate-pulse print:hidden ${theme === 'matrix' ? 'hidden' : ''}`} style={{ animationDuration: '10s' }}></div>
       
       <ToastContainer />
 
@@ -770,13 +769,13 @@ const App: React.FC = () => {
                     {renderView()}
                   </main>
                   <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">
-                      <img src={mainLogoUrl} alt="Vigilix Mini Logo" className="w-auto min-w-[32px] h-4 opacity-0 transition-opacity duration-300" onLoad={(e) => { e.currentTarget.style.opacity = '1'; }} onError={(e) => { 
+                      <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto min-w-[32px] h-4 opacity-0 transition-opacity duration-300" onLoad={(e) => { e.currentTarget.style.opacity = '1'; }} onError={(e) => { 
                           e.currentTarget.style.opacity = '1';
                           if (e.currentTarget.src !== defaultLogoUrl) {
                               e.currentTarget.src = defaultLogoUrl;
                           }
                       }} />
-                      <span>Copyright &copy; {new Date().getFullYear()} Vigilix Security Monitoring System (Pty) Ltd</span>
+                      <span>Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd)</span>
                   </footer>
                 </div>
               </EventsProvider>

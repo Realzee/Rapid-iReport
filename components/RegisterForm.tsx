@@ -138,14 +138,14 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
   
   const inputContainerClasses = "mt-1 relative";
   const iconClasses = "absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none";
-  const inputClasses = "w-full bg-slate-50/50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800/80 rounded-xl py-3 pl-10 pr-3 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200";
+  const inputClasses = "w-full bg-slate-50/50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800/80 rounded-xl py-3 pl-10 pr-3 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200";
   const labelClasses = "block text-sm font-medium text-slate-700 dark:text-slate-300";
 
 
   return (
     <div className="w-full max-w-md">
       <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-2">Create an Account</h2>
-      <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Join the Vigilix security network.</p>
+      <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Join the community safety network.</p>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -274,7 +274,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/20 dark:shadow-emerald-950/40 hover:shadow-emerald-500/30 transition-all duration-200 flex justify-center items-center hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 dark:shadow-blue-900/10 hover:shadow-blue-500/30 transition-all duration-200 flex justify-center items-center hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Create Account'}
           </button>
@@ -294,7 +294,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
       </form>
       <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
         Already have an account?{' '}
-        <button onClick={onSwitchToLogin} className="font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300">
+        <button onClick={onSwitchToLogin} className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
           Sign In
         </button>
       </p>
