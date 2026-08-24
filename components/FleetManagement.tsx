@@ -19,7 +19,13 @@ import {
   MapPin,
   Clock,
   Terminal,
-  Car
+  Car,
+  Crosshair,
+  Locate,
+  Maximize2,
+  Minimize2,
+  Zap,
+  Eye
 } from 'lucide-react';
 import { Profile } from '../types';
 import { useToast } from '../contexts/ToastContext';
@@ -82,45 +88,111 @@ export interface RawPacket {
 const MapBoundsController: React.FC<{
   vehicles: TK116Device[];
   activeVehicleId: string | null;
-}> = ({ vehicles, activeVehicleId }) => {
+  autoFollow?: boolean;
+  centerTrigger?: number;
+  fitAllTrigger?: number;
+}> = ({ vehicles, activeVehicleId, autoFollow = true, centerTrigger = 0, fitAllTrigger = 0 }) => {
   const map = useMap();
   const lastKeyRef = useRef<string>('');
+  const lastCenterTriggerRef = useRef<number>(centerTrigger);
+  const lastFitAllTriggerRef = useRef<number>(fitAllTrigger);
 
+  // Auto resize handling on container change, mount and window resize
   useEffect(() => {
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [map, activeVehicleId]);
+    map.invalidateSize();
+    const container = map.getContainer();
+    if (!container) return;
 
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        map.invalidateSize();
+      });
+      resizeObserver.observe(container);
+    }
+
+    const handleWindowResize = () => {
+      map.invalidateSize();
+    };
+    window.addEventListener('resize', handleWindowResize);
+
+    const timer1 = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+    const timer2 = setTimeout(() => {
+      map.invalidateSize();
+    }, 300);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      if (resizeObserver) resizeObserver.disconnect();
+      window.removeEventListener('resize', handleWindowResize);
+    };
+  }, [map]);
+
+  // Handle explicit center on active vehicle
+  useEffect(() => {
+    if (centerTrigger > 0 && centerTrigger !== lastCenterTriggerRef.current) {
+      lastCenterTriggerRef.current = centerTrigger;
+      if (activeVehicleId) {
+        const activeV = vehicles.find(v => v.id === activeVehicleId);
+        if (activeV) {
+          map.flyTo([activeV.lat, activeV.lng], Math.max(map.getZoom(), 15), { animate: true, duration: 0.8 });
+          return;
+        }
+      }
+    }
+  }, [centerTrigger, activeVehicleId, vehicles, map]);
+
+  // Handle explicit fit all vehicles bounds
+  useEffect(() => {
+    if (fitAllTrigger > 0 && fitAllTrigger !== lastFitAllTriggerRef.current) {
+      lastFitAllTriggerRef.current = fitAllTrigger;
+      if (vehicles.length > 0) {
+        try {
+          const bounds = L.latLngBounds(vehicles.map(v => [v.lat, v.lng]));
+          if (bounds.isValid()) {
+            map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: true, duration: 0.8 });
+          }
+        } catch (e) {
+          console.warn("Fit all bounds error:", e);
+        }
+      }
+    }
+  }, [fitAllTrigger, vehicles, map]);
+
+  // Real-time tracking and auto-centering
   useEffect(() => {
     if (!vehicles || vehicles.length === 0) return;
 
-    const currentKey = `${activeVehicleId}_${vehicles.map(v => `${v.id}:${v.lat.toFixed(4)}:${v.lng.toFixed(4)}`).join(',')}`;
-    if (lastKeyRef.current === currentKey) return;
-    lastKeyRef.current = currentKey;
-
-    if (activeVehicleId && vehicles.length === 1) {
+    if (activeVehicleId && autoFollow) {
       const activeV = vehicles.find(v => v.id === activeVehicleId);
       if (activeV) {
-        map.flyTo([activeV.lat, activeV.lng], Math.max(map.getZoom(), 14), { animate: true, duration: 0.8 });
-        return;
+        const currentPosKey = `${activeVehicleId}_${activeV.lat.toFixed(5)}_${activeV.lng.toFixed(5)}`;
+        if (lastKeyRef.current !== currentPosKey) {
+          lastKeyRef.current = currentPosKey;
+          map.flyTo([activeV.lat, activeV.lng], Math.max(map.getZoom(), 15), { animate: true, duration: 0.8 });
+          return;
+        }
       }
     }
 
-    if (vehicles.length === 1) {
-      map.flyTo([vehicles[0].lat, vehicles[0].lng], 14, { animate: true, duration: 0.8 });
-    } else if (vehicles.length > 1) {
-      try {
-        const bounds = L.latLngBounds(vehicles.map(v => [v.lat, v.lng]));
-        if (bounds.isValid()) {
-          map.flyToBounds(bounds, { padding: [40, 40], maxZoom: 15, animate: true, duration: 0.8 });
+    if (!activeVehicleId && vehicles.length > 0) {
+      const currentKey = vehicles.map(v => `${v.id}:${v.lat.toFixed(4)}:${v.lng.toFixed(4)}`).join(',');
+      if (lastKeyRef.current !== currentKey) {
+        lastKeyRef.current = currentKey;
+        try {
+          const bounds = L.latLngBounds(vehicles.map(v => [v.lat, v.lng]));
+          if (bounds.isValid()) {
+            map.flyToBounds(bounds, { padding: [40, 40], maxZoom: 15, animate: true, duration: 0.8 });
+          }
+        } catch (err) {
+          console.error("Error setting map bounds:", err);
         }
-      } catch (err) {
-        console.error("Error setting map bounds:", err);
       }
     }
-  }, [vehicles, activeVehicleId, map]);
+  }, [vehicles, activeVehicleId, autoFollow, map]);
 
   return null;
 };
@@ -341,8 +413,12 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
   const [activeSubTab, setActiveSubTab] = useState<'map' | 'history' | 'packets' | 'guide'>('map');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'moving' | 'stationary' | 'offline'>('all');
-  const [mapStyle, setMapStyle] = useState<'street' | 'satellite'>('street');
+  const [mapStyle, setMapStyle] = useState<'street' | 'dark' | 'satellite'>('street');
   const [mobileTab, setMobileTab] = useState<'map' | 'units'>('map');
+  const [autoFollow, setAutoFollow] = useState(true);
+  const [centerTrigger, setCenterTrigger] = useState(0);
+  const [fitAllTrigger, setFitAllTrigger] = useState(0);
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
 
   // Modals & UI states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -876,6 +952,21 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
 
                       <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <button
+                          onClick={() => {
+                            setSelectedVehicleId(unit.id);
+                            if (!isChecked) {
+                              setSelectedVehicleIds(prev => [...prev, unit.id]);
+                            }
+                            setActiveSubTab('map');
+                            setMobileTab('map');
+                            setCenterTrigger(Date.now());
+                          }}
+                          className="p-1.5 rounded-lg text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors"
+                          title="Show & Track on Map"
+                        >
+                          <Locate className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => handleEditVehicle(unit)}
                           className="p-1 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
                           title="Edit Unit"
@@ -926,6 +1017,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
         <div 
           id="tracking-main-panel"
           className={`flex-grow flex-col overflow-hidden relative ${
+            isMapFullscreen ? 'fixed inset-0 z-50 bg-white dark:bg-slate-950 flex' :
             mobileTab === 'map' ? 'flex flex-grow h-full min-h-[350px]' : 'hidden md:flex'
           }`}
         >
@@ -986,29 +1078,40 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
               </button>
             </div>
 
-            {/* Map Style Selector */}
+            {/* Map Controls */}
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">Layer:</span>
               <button
-                onClick={() => setMapStyle(prev => prev === 'street' ? 'satellite' : 'street')}
+                onClick={() => setMapStyle(prev => prev === 'street' ? 'dark' : prev === 'dark' ? 'satellite' : 'street')}
                 className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200/60 dark:border-slate-700/60 cursor-pointer"
+                title="Switch Map Layer (Street / Dark / Satellite)"
               >
                 <Layers className="w-3 h-3 text-blue-500" />
                 <span className="uppercase font-bold tracking-wider">{mapStyle.toUpperCase()}</span>
               </button>
+
+              {activeSubTab === 'map' && (
+                <button
+                  onClick={() => setIsMapFullscreen(prev => !prev)}
+                  className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200/60 dark:border-slate-700/60 cursor-pointer"
+                  title={isMapFullscreen ? "Exit Fullscreen" : "Fullscreen Map"}
+                >
+                  {isMapFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                </button>
+              )}
             </div>
           </div>
 
           {/* Sub-Tab 1: Live Interactive Leaflet Map */}
           {activeSubTab === 'map' && (
-            <div className="flex-grow flex flex-col w-full h-full min-h-[400px]">
+            <div className="flex-grow flex flex-col w-full h-full min-h-[450px] relative">
               
               {/* Telemetry Summary Header */}
               <div className="bg-slate-100/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 p-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
                 {/* Active Unit Focus & Key Metrics */}
                 {selectedVehicle ? (
                   <div className="flex items-center gap-2 flex-wrap min-w-0">
-                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs shadow-xs">
                       <span className="font-extrabold text-slate-900 dark:text-slate-100">{selectedVehicle.name}</span>
                       <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">({selectedVehicle.plate})</span>
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
@@ -1021,14 +1124,14 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                     </div>
 
                     {/* Speed Indicator */}
-                    <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+                    <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs shadow-xs">
                       <Gauge className="w-3.5 h-3.5 text-blue-500" />
                       <span className="text-slate-500 dark:text-slate-400">Speed:</span>
                       <strong className="font-mono font-bold text-slate-900 dark:text-slate-100">{selectedVehicle.speed} km/h</strong>
                     </div>
 
                     {/* Ignition Indicator */}
-                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold ${
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold shadow-xs ${
                       selectedVehicle.accStatus 
                         ? 'bg-emerald-500/10 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
@@ -1038,7 +1141,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                     </div>
 
                     {/* Coordinates */}
-                    <div className="hidden lg:flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-500 dark:text-slate-400">
+                    <div className="hidden lg:flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-500 dark:text-slate-400 shadow-xs">
                       <MapPin className="w-3 h-3 text-red-500" />
                       <span>{selectedVehicle.lat.toFixed(5)}, {selectedVehicle.lng.toFixed(5)}</span>
                     </div>
@@ -1047,26 +1150,61 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                   <div className="text-xs text-slate-500">Select a vehicle from the left to monitor live metrics</div>
                 )}
 
+                {/* Map Fast Control Badges */}
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-500">
-                    {selectedVehicleIds.length} of {vehicles.length} Shown on Map
-                  </span>
+                  <button
+                    onClick={() => {
+                      setAutoFollow(prev => !prev);
+                    }}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                      autoFollow
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                        : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
+                    }`}
+                    title="Toggle Auto-Follow Map Camera on Selected Vehicle"
+                  >
+                    <span className={`w-2 h-2 rounded-full ${autoFollow ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                    <span>Auto-Follow: {autoFollow ? 'ON' : 'OFF'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setCenterTrigger(Date.now())}
+                    className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs"
+                    title="Center Map on Selected Vehicle"
+                  >
+                    <Crosshair className="w-3.5 h-3.5 text-blue-500" />
+                    <span className="hidden sm:inline">Center Vehicle</span>
+                  </button>
+
+                  <button
+                    onClick={() => setFitAllTrigger(Date.now())}
+                    className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs"
+                    title="Fit all monitored vehicles in map frame"
+                  >
+                    <Navigation className="w-3.5 h-3.5 text-slate-500" />
+                    <span className="hidden sm:inline">Fit All ({visibleVehicles.length})</span>
+                  </button>
                 </div>
               </div>
 
               {/* Leaflet Map Canvas */}
-              <div className="flex-grow w-full h-full min-h-[350px] relative">
+              <div className="flex-grow w-full h-full min-h-[400px] relative">
                 <MapContainer
                   center={[-26.2041, 28.0473]}
                   zoom={12}
                   scrollWheelZoom={true}
                   className="w-full h-full z-10"
-                  style={{ height: '100%', width: '100%' }}
+                  style={{ height: '100%', width: '100%', minHeight: '400px' }}
                 >
                   {mapStyle === 'street' ? (
                     <TileLayer
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                       url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                    />
+                  ) : mapStyle === 'dark' ? (
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                      url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                     />
                   ) : (
                     <>
@@ -1081,7 +1219,13 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                     </>
                   )}
 
-                  <MapBoundsController vehicles={visibleVehicles} activeVehicleId={selectedVehicleId} />
+                  <MapBoundsController 
+                    vehicles={visibleVehicles} 
+                    activeVehicleId={selectedVehicleId} 
+                    autoFollow={autoFollow}
+                    centerTrigger={centerTrigger}
+                    fitAllTrigger={fitAllTrigger}
+                  />
 
                   {/* Route Breadcrumb Polyline for Selected Unit */}
                   {selectedVehicle && selectedVehicle.pathHistory.length > 1 && (

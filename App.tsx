@@ -734,7 +734,7 @@ const App: React.FC = () => {
     );
   }
 
-  const isFullWidthView = view === 'controller' || profile?.role === UserRole.RESPONDER;
+  const isFullWidthView = view === 'controller' || view === 'fleet_management' || profile?.role === UserRole.RESPONDER;
   const isUserView = profile?.role === UserRole.USER;
   
   const mainPaddingTopClass = isAnnouncementVisible ? 'pt-[90px] sm:pt-[120px]' : 'pt-[60px] sm:pt-[80px]';
