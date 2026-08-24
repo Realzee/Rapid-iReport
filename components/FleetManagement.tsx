@@ -206,8 +206,8 @@ const INITIAL_DEFAULT_UNITS: Omit<TK116Device, 'id' | 'pathHistory' | 'alerts'>[
     simNumber: '+27 82 901 2345',
     model: 'Eelink TK116 4G',
     status: 'moving',
-    lat: -26.1950,
-    lng: 28.0350,
+    lat: -26.1945,
+    lng: 28.0345,
     speed: 54,
     course: 140,
     batteryVoltage: 12800,
@@ -224,8 +224,8 @@ const INITIAL_DEFAULT_UNITS: Omit<TK116Device, 'id' | 'pathHistory' | 'alerts'>[
     simNumber: '+27 83 456 7890',
     model: 'Eelink TK116 4G',
     status: 'moving',
-    lat: -26.1075,
-    lng: 28.0535,
+    lat: -26.1055,
+    lng: 28.0543,
     speed: 68,
     course: 45,
     batteryVoltage: 13200,
@@ -242,8 +242,8 @@ const INITIAL_DEFAULT_UNITS: Omit<TK116Device, 'id' | 'pathHistory' | 'alerts'>[
     simNumber: '+27 84 112 3344',
     model: 'Eelink TK116 4G',
     status: 'stationary',
-    lat: -26.2580,
-    lng: 27.8520,
+    lat: -26.1075,
+    lng: 28.0538,
     speed: 0,
     course: 0,
     batteryVoltage: 12400,
@@ -260,8 +260,8 @@ const INITIAL_DEFAULT_UNITS: Omit<TK116Device, 'id' | 'pathHistory' | 'alerts'>[
     simNumber: '+27 82 888 9900',
     model: 'Eelink TK116 4G',
     status: 'moving',
-    lat: -26.0120,
-    lng: 28.1150,
+    lat: -26.0210,
+    lng: 28.1075,
     speed: 42,
     course: 220,
     batteryVoltage: 12600,
@@ -277,86 +277,75 @@ const INITIAL_DEFAULT_UNITS: Omit<TK116Device, 'id' | 'pathHistory' | 'alerts'>[
 const ROAD_ROUTES: Record<string, [number, number][]> = {
   // Johannesburg CBD / Braamfontein / M1 Highway / Rosebank loop
   'dev-1': [
-    [-26.1950, 28.0350], // Nelson Mandela Bridge / Bertha St
-    [-26.1920, 28.0355], // Biccard St / Jorissen St
-    [-26.1880, 28.0360], // Jan Smuts Ave
-    [-26.1840, 28.0380], // Empire Rd M71
-    [-26.1800, 28.0410], // M1 North onramp
-    [-26.1740, 28.0445], // M1 North past Parktown
-    [-26.1660, 28.0475], // M1 North past Houghton
-    [-26.1580, 28.0510], // M1 North past Killarney
-    [-26.1500, 28.0550], // M1 North past Glenhove Rd
-    [-26.1420, 28.0585], // M1 North offramp Corlett Drive
-    [-26.1425, 28.0530], // Corlett Drive west
-    [-26.1440, 28.0470], // Corlett Dr & Oxford Rd intersection
-    [-26.1480, 28.0450], // Oxford Rd south past Rosebank Mall
-    [-26.1560, 28.0435], // Oxford Rd past Riviera
-    [-26.1650, 28.0415], // Oxford Rd past Parktown
-    [-26.1750, 28.0395], // Oxford Rd towards Jan Smuts Ave
-    [-26.1850, 28.0365], // Jan Smuts Ave south
-    [-26.1950, 28.0350]  // Return to Bertha St
+    [-26.1945, 28.0345], // Nelson Mandela Bridge / Bertha St
+    [-26.1880, 28.0360], // Jan Smuts Ave north past Wits
+    [-26.1840, 28.0375], // Jan Smuts Ave & Empire Road (M71)
+    [-26.1800, 28.0405], // Empire Road to M1 Onramp
+    [-26.1740, 28.0440], // M1 Northbound past Parktown
+    [-26.1660, 28.0475], // M1 Northbound past Houghton
+    [-26.1580, 28.0510], // M1 Northbound past Killarney
+    [-26.1500, 28.0545], // M1 Northbound past Glenhove Rd
+    [-26.1420, 28.0580], // M1 Northbound Offramp to Corlett Drive
+    [-26.1435, 28.0465], // Corlett Drive west to Oxford Road
+    [-26.1480, 28.0445], // Oxford Road south past Rosebank Mall
+    [-26.1560, 28.0430], // Oxford Road south past Riviera
+    [-26.1650, 28.0410], // Oxford Road south past Parktown Ridge
+    [-26.1750, 28.0390], // Oxford Road connecting back to Jan Smuts Ave
+    [-26.1880, 28.0360], // Jan Smuts Ave south
+    [-26.1945, 28.0345]  // Bertha St (closed loop)
   ],
 
-  // Sandton Central / Sandhurst / Katherine St / Grayston Dr / Rivonia Rd / 5th St loop
+  // Sandton Central: 5th St -> Rivonia Rd -> Grayston Dr -> Katherine St -> 5th St (Closed Road Loop)
   'dev-2': [
-    [-26.1075, 28.0535], // Katherine St & 5th St intersection
-    [-26.1065, 28.0545], // Katherine St northbound
-    [-26.1054, 28.0560], // Katherine St past Stella St
-    [-26.1042, 28.0578], // Katherine St & West St intersection
-    [-26.1031, 28.0594], // Katherine St
-    [-26.1020, 28.0610], // Katherine St & Pretoria Ave
-    [-26.1006, 28.0632], // Katherine St & Pybus Rd
-    [-26.0991, 28.0655], // Katherine St
-    [-26.0978, 28.0675], // Katherine St & Linden St
-    [-26.0963, 28.0698], // Katherine St & Grayston Drive intersection
-    [-26.0969, 28.0680], // Grayston Drive (M40) westbound
-    [-26.0976, 28.0655], // Grayston Drive
-    [-26.0984, 28.0630], // Grayston Drive & Helen Rd
-    [-26.0992, 28.0605], // Grayston Drive & 5th St
-    [-26.1002, 28.0580], // Grayston Drive & Rivonia Road intersection
-    [-26.1012, 28.0568], // Rivonia Road (M9) southbound
-    [-26.1024, 28.0556], // Rivonia Road & Fredman Drive
-    [-26.1036, 28.0544], // Rivonia Road past 5th Street
-    [-26.1048, 28.0532], // Rivonia Road past Sandton City
-    [-26.1060, 28.0520], // Rivonia Road past Maude Street
-    [-26.1072, 28.0508], // Rivonia Road & Sandton Drive intersection
-    [-26.1078, 28.0512], // Sandton Drive connector
-    [-26.1072, 28.0522], // 5th Street east
-    [-26.1075, 28.0535]  // Katherine St & 5th St loop completion
+    [-26.1075, 28.0538], // 5th Street & Katherine Street intersection
+    [-26.1066, 28.0540], // 5th Street westbound towards Rivonia Road
+    [-26.1055, 28.0543], // 5th Street & Rivonia Road intersection
+    [-26.1040, 28.0552], // Rivonia Road (M9) & West Street
+    [-26.1026, 28.0560], // Rivonia Road (M9) & Stella Street
+    [-26.1012, 28.0568], // Rivonia Road (M9) & Fredman Drive
+    [-26.0988, 28.0582], // Rivonia Road (M9) north past Sandton City
+    [-26.0965, 28.0598], // Rivonia Road (M9) & Grayston Drive (M40) intersection
+    [-26.0964, 28.0635], // Grayston Drive (M40) eastbound past Helen Rd
+    [-26.0963, 28.0665], // Grayston Drive (M40) eastbound past Linden St
+    [-26.0962, 28.0700], // Grayston Drive (M40) & Katherine Street intersection
+    [-26.0980, 28.0678], // Katherine Street (M85) southbound past Linden St
+    [-26.1005, 28.0645], // Katherine Street (M85) southbound past Pybus Rd
+    [-26.1022, 28.0618], // Katherine Street (M85) southbound past Pretoria Ave
+    [-26.1042, 28.0588], // Katherine Street (M85) southbound past West St
+    [-26.1058, 28.0562], // Katherine Street (M85) southbound past Stella St
+    [-26.1075, 28.0538]  // Katherine Street (M85) & 5th Street (closed loop)
   ],
 
-  // Soweto / Chris Hani Road & Klipspruit Valley / Soweto Highway loop
+  // Soweto: Chris Hani Rd -> Klipspruit Valley Rd -> Soweto Hwy -> Nasrec Rd (Closed Road Loop)
   'dev-3': [
-    [-26.2580, 27.8520], // Chris Hani Rd / Baragwanath Hospital
-    [-26.2560, 27.8580], // Chris Hani Rd eastbound
-    [-26.2535, 27.8650], // Chris Hani Rd & Klipspruit Valley Rd
+    [-26.2580, 27.8520], // Chris Hani Rd (Baragwanath)
+    [-26.2550, 27.8600], // Chris Hani Rd eastbound
+    [-26.2530, 27.8650], // Chris Hani Rd & Klipspruit Valley Rd junction
     [-26.2490, 27.8720], // Klipspruit Valley Rd (M10) northbound
     [-26.2440, 27.8790], // Klipspruit Valley Rd
     [-26.2380, 27.8860], // Klipspruit Valley Rd & Soweto Hwy junction
-    [-26.2340, 27.8940], // Soweto Highway (M70)
+    [-26.2340, 27.8940], // Soweto Highway (M70) past Orlando
     [-26.2300, 27.9050], // Soweto Highway past Nasrec
-    [-26.2350, 27.9010], // Nasrec Rd southbound
-    [-26.2420, 27.8920], // Nasrec Rd & Diepkloof
-    [-26.2480, 27.8830], // Diepkloof Zone 6
+    [-26.2380, 27.8990], // Nasrec Rd southbound
+    [-26.2460, 27.8880], // Immink Drive / Diepkloof
     [-26.2540, 27.8680], // Old Potch Rd
-    [-26.2580, 27.8520]  // Return to Baragwanath
+    [-26.2580, 27.8520]  // Return to Chris Hani Rd (closed loop)
   ],
 
-  // Midrand / Waterfall / Mall of Africa / Maxwell Dr / Woodmead loop
+  // Midrand / Waterfall: Maxwell Drive -> Woodmead Drive -> K101 -> Allandale Rd (Closed Road Loop)
   'dev-4': [
-    [-26.0120, 28.1150], // Allandale Road (M39)
-    [-26.0165, 28.1110], // Maxwell Drive Waterfall
-    [-26.0210, 28.1075], // Maxwell Drive & Magwa Cres (Mall of Africa)
+    [-26.0120, 28.1150], // Allandale Road (M39) & Maxwell Dr
+    [-26.0165, 28.1110], // Maxwell Drive (Waterfall Estate)
+    [-26.0210, 28.1075], // Maxwell Drive past Mall of Africa
     [-26.0270, 28.1040], // Maxwell Drive south
     [-26.0340, 28.0990], // Maxwell Drive & Woodmead Drive junction
-    [-26.0420, 28.0950], // Woodmead Drive (R55)
-    [-26.0520, 28.0900], // Woodmead Drive south
-    [-26.0620, 28.0850], // Woodmead Drive & Woodlands
+    [-26.0420, 28.0950], // Woodmead Drive (R55) south
+    [-26.0520, 28.0900], // Woodmead Drive
     [-26.0560, 28.0940], // Western Service Road
-    [-26.0450, 28.1020], // Old Pretoria Main Rd / K101
+    [-26.0450, 28.1020], // Old Pretoria Main Rd (K101)
     [-26.0320, 28.1090], // K101 northbound
     [-26.0190, 28.1135], // K101 & Allandale Rd
-    [-26.0120, 28.1150]  // Return to Allandale Road
+    [-26.0120, 28.1150]  // Return to Allandale Rd (closed loop)
   ]
 };
 
@@ -397,7 +386,7 @@ const getRoadRouteForVehicle = (v: TK116Device): [number, number][] => {
   if (ROAD_ROUTES[v.id]) return ROAD_ROUTES[v.id];
   if (v.imei === '354188046036385' || v.name.toLowerCase().includes('armed response')) return ROAD_ROUTES['dev-1'];
   if (v.imei === '354188046036393' || v.name.toLowerCase().includes('supervisor')) return ROAD_ROUTES['dev-2'];
-  if (v.imei === '354188046036401' || v.name.toLowerCase().includes('patrol')) return ROAD_ROUTES['dev-3'];
+  if (v.imei === '354188046036401' || v.name.toLowerCase().includes('patrol')) return ROAD_ROUTES['dev-2'];
   if (v.imei === '354188046036419' || v.name.toLowerCase().includes('tactical')) return ROAD_ROUTES['dev-4'];
 
   // Check proximity to known road corridors (within ~20km)
@@ -425,8 +414,31 @@ const getRoadRouteForVehicle = (v: TK116Device): [number, number][] => {
   return generateGridRoadRoute(v.lat, v.lng);
 };
 
+// Constructs a 100% road-aligned polyline trail that follows exact road geometries
+const buildRoadPathTrail = (
+  route: [number, number][],
+  targetIndex: number,
+  currentLat: number,
+  currentLng: number,
+  trailPointsCount = 14
+): [number, number][] => {
+  if (!route || route.length === 0) return [[currentLat, currentLng]];
+
+  const trail: [number, number][] = [];
+  const total = route.length;
+  // Preceding waypoints strictly along the road route behind the vehicle
+  const count = Math.min(trailPointsCount, total);
+  for (let i = count - 1; i >= 1; i--) {
+    const idx = (targetIndex - i + total * 10) % total;
+    trail.push([route[idx][0], route[idx][1]]);
+  }
+  // Current interpolated position on the road segment
+  trail.push([currentLat, currentLng]);
+  return trail;
+};
+
 // Computes consecutive preceding waypoints along the road for clean breadcrumb initialization
-const getPrecedingRoadPath = (unit: TK116Device, count = 10): [number, number][] => {
+const getPrecedingRoadPath = (unit: TK116Device, count = 12): [number, number][] => {
   const route = getRoadRouteForVehicle(unit);
   if (!route || route.length === 0) return [[unit.lat, unit.lng]];
 
@@ -441,13 +453,7 @@ const getPrecedingRoadPath = (unit: TK116Device, count = 10): [number, number][]
     }
   }
 
-  const path: [number, number][] = [];
-  for (let k = count - 1; k >= 0; k--) {
-    const idx = (bestIdx - k + route.length * 10) % route.length;
-    path.push([route[idx][0], route[idx][1]]);
-  }
-
-  return path;
+  return buildRoadPathTrail(route, bestIdx, unit.lat, unit.lng, count);
 };
 
 const generateHistoryForUnit = (unit: TK116Device): TripHistoryItem[] => {
@@ -497,7 +503,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
   const routeProgressRef = useRef<Record<string, { targetIndex: number; progress: number }>>({});
 
   // Local storage initialization for instant rendering
-  const cacheKey = `fleet_vehicles_v2_${profile.company_id || 'default'}`;
+  const cacheKey = `fleet_vehicles_v4_${profile.company_id || 'default'}`;
   const [vehicles, setVehicles] = useState<TK116Device[]>(() => {
     try {
       const cached = localStorage.getItem(cacheKey);
@@ -506,7 +512,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map(v => ({
             ...v,
-            pathHistory: v.pathHistory && v.pathHistory.length > 2 ? v.pathHistory : getPrecedingRoadPath(v, 12)
+            pathHistory: getPrecedingRoadPath(v, 14)
           }));
         }
       }
@@ -522,7 +528,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
       };
       return {
         ...unitObj,
-        pathHistory: getPrecedingRoadPath(unitObj, 12)
+        pathHistory: getPrecedingRoadPath(unitObj, 14)
       };
     });
   });
@@ -770,7 +776,7 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
           const courseRad = Math.atan2(segLng, segLat);
           const newCourse = Math.round((courseRad * 180 / Math.PI + 360) % 360);
 
-          const newPath = [...v.pathHistory, [newLat, newLng] as [number, number]].slice(-30);
+          const newPath = buildRoadPathTrail(route, newTargetIndex, newLat, newLng, 14);
 
           // Random slight speed variation to reflect real-world vehicle flow
           const currentSpeed = Math.max(25, Math.min(v.speedLimit || 120, v.speed + Math.floor(Math.random() * 7) - 3));
