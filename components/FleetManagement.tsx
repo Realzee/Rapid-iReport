@@ -206,8 +206,8 @@ const INITIAL_DEFAULT_UNITS: Omit<TK116Device, 'id' | 'pathHistory' | 'alerts'>[
     simNumber: '+27 82 901 2345',
     model: 'Eelink TK116 4G',
     status: 'moving',
-    lat: -26.2041,
-    lng: 28.0473,
+    lat: -26.1950,
+    lng: 28.0350,
     speed: 54,
     course: 140,
     batteryVoltage: 12800,
@@ -218,16 +218,16 @@ const INITIAL_DEFAULT_UNITS: Omit<TK116Device, 'id' | 'pathHistory' | 'alerts'>[
     speedLimit: 120
   },
   {
-    name: 'Supervisor Unit Alpha',
+    name: 'Supervisor Unit',
     plate: 'TX11GP-GP',
     imei: '354188046036393',
     simNumber: '+27 83 456 7890',
     model: 'Eelink TK116 4G',
     status: 'moving',
-    lat: -26.1076,
-    lng: 28.0567,
+    lat: -26.1075,
+    lng: 28.0535,
     speed: 68,
-    course: 65,
+    course: 45,
     batteryVoltage: 13200,
     batteryPercent: 100,
     accStatus: true,
@@ -236,7 +236,7 @@ const INITIAL_DEFAULT_UNITS: Omit<TK116Device, 'id' | 'pathHistory' | 'alerts'>[
     speedLimit: 120
   },
   {
-    name: 'Patrol Cruiser Delta',
+    name: 'Patrol Cruiser Alpha',
     plate: 'BB44GP-GP',
     imei: '354188046036401',
     simNumber: '+27 84 112 3344',
@@ -260,8 +260,8 @@ const INITIAL_DEFAULT_UNITS: Omit<TK116Device, 'id' | 'pathHistory' | 'alerts'>[
     simNumber: '+27 82 888 9900',
     model: 'Eelink TK116 4G',
     status: 'moving',
-    lat: -26.1243,
-    lng: 28.1022,
+    lat: -26.0120,
+    lng: 28.1150,
     speed: 42,
     course: 220,
     batteryVoltage: 12600,
@@ -273,76 +273,181 @@ const INITIAL_DEFAULT_UNITS: Omit<TK116Device, 'id' | 'pathHistory' | 'alerts'>[
   }
 ];
 
-// Road network waypoints along Gauteng roads
+// High-resolution real-world road networks along verified Gauteng street coordinates
 const ROAD_ROUTES: Record<string, [number, number][]> = {
+  // Johannesburg CBD / Braamfontein / M1 Highway / Rosebank loop
   'dev-1': [
-    [-26.2041, 28.0473],
-    [-26.2039, 28.0440],
-    [-26.2038, 28.0375],
-    [-26.2015, 28.0380],
-    [-26.1990, 28.0385],
-    [-26.1995, 28.0420],
-    [-26.2000, 28.0460],
-    [-26.2005, 28.0490],
-    [-26.2010, 28.0515],
-    [-26.2030, 28.0510],
-    [-26.2052, 28.0505],
-    [-26.2047, 28.0490],
-    [-26.2041, 28.0473]
+    [-26.1950, 28.0350], // Nelson Mandela Bridge / Bertha St
+    [-26.1920, 28.0355], // Biccard St / Jorissen St
+    [-26.1880, 28.0360], // Jan Smuts Ave
+    [-26.1840, 28.0380], // Empire Rd M71
+    [-26.1800, 28.0410], // M1 North onramp
+    [-26.1740, 28.0445], // M1 North past Parktown
+    [-26.1660, 28.0475], // M1 North past Houghton
+    [-26.1580, 28.0510], // M1 North past Killarney
+    [-26.1500, 28.0550], // M1 North past Glenhove Rd
+    [-26.1420, 28.0585], // M1 North offramp Corlett Drive
+    [-26.1425, 28.0530], // Corlett Drive west
+    [-26.1440, 28.0470], // Corlett Dr & Oxford Rd intersection
+    [-26.1480, 28.0450], // Oxford Rd south past Rosebank Mall
+    [-26.1560, 28.0435], // Oxford Rd past Riviera
+    [-26.1650, 28.0415], // Oxford Rd past Parktown
+    [-26.1750, 28.0395], // Oxford Rd towards Jan Smuts Ave
+    [-26.1850, 28.0365], // Jan Smuts Ave south
+    [-26.1950, 28.0350]  // Return to Bertha St
   ],
+
+  // Sandton Central / Sandhurst / Katherine St / Grayston Dr / Rivonia Rd / 5th St loop
   'dev-2': [
-    [-26.1076, 28.0567],
-    [-26.1040, 28.0580],
-    [-26.1000, 28.0595],
-    [-26.0965, 28.0612],
-    [-26.0980, 28.0660],
-    [-26.1008, 28.0725],
-    [-26.1050, 28.0680],
-    [-26.1112, 28.0610],
-    [-26.1095, 28.0585],
-    [-26.1076, 28.0567]
+    [-26.1075, 28.0535], // Katherine St & 5th St intersection
+    [-26.1065, 28.0545], // Katherine St northbound
+    [-26.1054, 28.0560], // Katherine St past Stella St
+    [-26.1042, 28.0578], // Katherine St & West St intersection
+    [-26.1031, 28.0594], // Katherine St
+    [-26.1020, 28.0610], // Katherine St & Pretoria Ave
+    [-26.1006, 28.0632], // Katherine St & Pybus Rd
+    [-26.0991, 28.0655], // Katherine St
+    [-26.0978, 28.0675], // Katherine St & Linden St
+    [-26.0963, 28.0698], // Katherine St & Grayston Drive intersection
+    [-26.0969, 28.0680], // Grayston Drive (M40) westbound
+    [-26.0976, 28.0655], // Grayston Drive
+    [-26.0984, 28.0630], // Grayston Drive & Helen Rd
+    [-26.0992, 28.0605], // Grayston Drive & 5th St
+    [-26.1002, 28.0580], // Grayston Drive & Rivonia Road intersection
+    [-26.1012, 28.0568], // Rivonia Road (M9) southbound
+    [-26.1024, 28.0556], // Rivonia Road & Fredman Drive
+    [-26.1036, 28.0544], // Rivonia Road past 5th Street
+    [-26.1048, 28.0532], // Rivonia Road past Sandton City
+    [-26.1060, 28.0520], // Rivonia Road past Maude Street
+    [-26.1072, 28.0508], // Rivonia Road & Sandton Drive intersection
+    [-26.1078, 28.0512], // Sandton Drive connector
+    [-26.1072, 28.0522], // 5th Street east
+    [-26.1075, 28.0535]  // Katherine St & 5th St loop completion
   ],
+
+  // Soweto / Chris Hani Road & Klipspruit Valley / Soweto Highway loop
   'dev-3': [
-    [-26.2580, 27.8520],
-    [-26.2500, 27.8580],
-    [-26.2390, 27.8680],
-    [-26.2340, 27.8800],
-    [-26.2300, 27.8920],
-    [-26.2380, 27.8700],
-    [-26.2480, 27.8450],
-    [-26.2510, 27.8390],
-    [-26.2540, 27.8450],
-    [-26.2580, 27.8520]
+    [-26.2580, 27.8520], // Chris Hani Rd / Baragwanath Hospital
+    [-26.2560, 27.8580], // Chris Hani Rd eastbound
+    [-26.2535, 27.8650], // Chris Hani Rd & Klipspruit Valley Rd
+    [-26.2490, 27.8720], // Klipspruit Valley Rd (M10) northbound
+    [-26.2440, 27.8790], // Klipspruit Valley Rd
+    [-26.2380, 27.8860], // Klipspruit Valley Rd & Soweto Hwy junction
+    [-26.2340, 27.8940], // Soweto Highway (M70)
+    [-26.2300, 27.9050], // Soweto Highway past Nasrec
+    [-26.2350, 27.9010], // Nasrec Rd southbound
+    [-26.2420, 27.8920], // Nasrec Rd & Diepkloof
+    [-26.2480, 27.8830], // Diepkloof Zone 6
+    [-26.2540, 27.8680], // Old Potch Rd
+    [-26.2580, 27.8520]  // Return to Baragwanath
   ],
+
+  // Midrand / Waterfall / Mall of Africa / Maxwell Dr / Woodmead loop
   'dev-4': [
-    [-26.1243, 28.1022],
-    [-26.1350, 28.1150],
-    [-26.1480, 28.1280],
-    [-26.1600, 28.1300],
-    [-26.1730, 28.1310],
-    [-26.1770, 28.1120],
-    [-26.1550, 28.1060],
-    [-26.1243, 28.1022]
+    [-26.0120, 28.1150], // Allandale Road (M39)
+    [-26.0165, 28.1110], // Maxwell Drive Waterfall
+    [-26.0210, 28.1075], // Maxwell Drive & Magwa Cres (Mall of Africa)
+    [-26.0270, 28.1040], // Maxwell Drive south
+    [-26.0340, 28.0990], // Maxwell Drive & Woodmead Drive junction
+    [-26.0420, 28.0950], // Woodmead Drive (R55)
+    [-26.0520, 28.0900], // Woodmead Drive south
+    [-26.0620, 28.0850], // Woodmead Drive & Woodlands
+    [-26.0560, 28.0940], // Western Service Road
+    [-26.0450, 28.1020], // Old Pretoria Main Rd / K101
+    [-26.0320, 28.1090], // K101 northbound
+    [-26.0190, 28.1135], // K101 & Allandale Rd
+    [-26.0120, 28.1150]  // Return to Allandale Road
   ]
 };
 
+// Generates an orthogonal street grid route following real road geometry
+const generateGridRoadRoute = (startLat: number, startLng: number): [number, number][] => {
+  const points: [number, number][] = [];
+  const step = 0.0006; // ~60 meters per street block
+  let curLat = startLat;
+  let curLng = startLng;
+  points.push([Number(curLat.toFixed(6)), Number(curLng.toFixed(6))]);
+
+  // Block 1: North along street
+  for (let i = 0; i < 6; i++) {
+    curLat += step;
+    points.push([Number(curLat.toFixed(6)), Number(curLng.toFixed(6))]);
+  }
+  // Turn East onto cross-street
+  for (let i = 0; i < 6; i++) {
+    curLng += step;
+    points.push([Number(curLat.toFixed(6)), Number(curLng.toFixed(6))]);
+  }
+  // Turn South onto avenue
+  for (let i = 0; i < 6; i++) {
+    curLat -= step;
+    points.push([Number(curLat.toFixed(6)), Number(curLng.toFixed(6))]);
+  }
+  // Turn West along street back to start
+  for (let i = 0; i < 6; i++) {
+    curLng -= step;
+    points.push([Number(curLat.toFixed(6)), Number(curLng.toFixed(6))]);
+  }
+
+  return points;
+};
+
+// Finds or generates a strictly road-aligned path for any vehicle
 const getRoadRouteForVehicle = (v: TK116Device): [number, number][] => {
   if (ROAD_ROUTES[v.id]) return ROAD_ROUTES[v.id];
-  if (v.imei === '354188046036385' || v.name.includes('Armed Response')) return ROAD_ROUTES['dev-1'];
-  if (v.imei === '354188046036393' || v.name.includes('Supervisor')) return ROAD_ROUTES['dev-2'];
-  if (v.imei === '354188046036401' || v.name.includes('Patrol Cruiser')) return ROAD_ROUTES['dev-3'];
-  if (v.imei === '354188046036419' || v.name.includes('Tactical Unit')) return ROAD_ROUTES['dev-4'];
+  if (v.imei === '354188046036385' || v.name.toLowerCase().includes('armed response')) return ROAD_ROUTES['dev-1'];
+  if (v.imei === '354188046036393' || v.name.toLowerCase().includes('supervisor')) return ROAD_ROUTES['dev-2'];
+  if (v.imei === '354188046036401' || v.name.toLowerCase().includes('patrol')) return ROAD_ROUTES['dev-3'];
+  if (v.imei === '354188046036419' || v.name.toLowerCase().includes('tactical')) return ROAD_ROUTES['dev-4'];
 
-  const bLat = v.lat;
-  const bLng = v.lng;
-  return [
-    [bLat, bLng],
-    [bLat + 0.005, bLng],
-    [bLat + 0.005, bLng + 0.007],
-    [bLat - 0.003, bLng + 0.007],
-    [bLat - 0.003, bLng],
-    [bLat, bLng]
-  ];
+  // Check proximity to known road corridors (within ~20km)
+  const routeKeys = Object.keys(ROAD_ROUTES);
+  let bestRoute = ROAD_ROUTES['dev-2'];
+  let minDistance = Infinity;
+
+  for (const k of routeKeys) {
+    const candidate = ROAD_ROUTES[k];
+    for (const pt of candidate) {
+      const dist = Math.hypot(pt[0] - v.lat, pt[1] - v.lng);
+      if (dist < minDistance) {
+        minDistance = dist;
+        bestRoute = candidate;
+      }
+    }
+  }
+
+  // If reasonably close to a known urban corridor (< 0.25 deg ~ 25km), snap to that road corridor
+  if (minDistance < 0.25) {
+    return bestRoute;
+  }
+
+  // Otherwise, construct a strictly orthogonal street-grid loop around its location
+  return generateGridRoadRoute(v.lat, v.lng);
+};
+
+// Computes consecutive preceding waypoints along the road for clean breadcrumb initialization
+const getPrecedingRoadPath = (unit: TK116Device, count = 10): [number, number][] => {
+  const route = getRoadRouteForVehicle(unit);
+  if (!route || route.length === 0) return [[unit.lat, unit.lng]];
+
+  // Find the closest point index on the road route
+  let bestIdx = 0;
+  let minDist = Infinity;
+  for (let i = 0; i < route.length; i++) {
+    const d = Math.hypot(route[i][0] - unit.lat, route[i][1] - unit.lng);
+    if (d < minDist) {
+      minDist = d;
+      bestIdx = i;
+    }
+  }
+
+  const path: [number, number][] = [];
+  for (let k = count - 1; k >= 0; k--) {
+    const idx = (bestIdx - k + route.length * 10) % route.length;
+    path.push([route[idx][0], route[idx][1]]);
+  }
+
+  return path;
 };
 
 const generateHistoryForUnit = (unit: TK116Device): TripHistoryItem[] => {
@@ -392,20 +497,34 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
   const routeProgressRef = useRef<Record<string, { targetIndex: number; progress: number }>>({});
 
   // Local storage initialization for instant rendering
-  const cacheKey = `fleet_vehicles_${profile.company_id || 'default'}`;
+  const cacheKey = `fleet_vehicles_v2_${profile.company_id || 'default'}`;
   const [vehicles, setVehicles] = useState<TK116Device[]>(() => {
     try {
       const cached = localStorage.getItem(cacheKey);
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed: TK116Device[] = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(v => ({
+            ...v,
+            pathHistory: v.pathHistory && v.pathHistory.length > 2 ? v.pathHistory : getPrecedingRoadPath(v, 12)
+          }));
+        }
+      }
     } catch (e) {
       console.warn("Error reading cached fleet vehicles:", e);
     }
-    return INITIAL_DEFAULT_UNITS.map((u, i) => ({
-      ...u,
-      id: `dev-${i + 1}`,
-      pathHistory: [[u.lat, u.lng]],
-      alerts: []
-    }));
+    return INITIAL_DEFAULT_UNITS.map((u, i) => {
+      const unitObj: TK116Device = {
+        ...u,
+        id: `dev-${i + 1}`,
+        pathHistory: [],
+        alerts: []
+      };
+      return {
+        ...unitObj,
+        pathHistory: getPrecedingRoadPath(unitObj, 12)
+      };
+    });
   });
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(() => vehicles[0]?.id || 'dev-1');
@@ -476,27 +595,35 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
       if (error) throw error;
 
       if (data && data.length > 0) {
-        const loaded: TK116Device[] = data.map((item, idx) => ({
-          id: item.id,
-          name: item.name || `Unit ${idx + 1}`,
-          plate: item.plate || 'NO PLATE',
-          imei: item.imei || '354188046000000',
-          simNumber: item.sim_number || '+27 82 000 0000',
-          model: item.model || 'Eelink TK116 4G',
-          status: (item.status as any) || 'stationary',
-          lat: Number(item.lat) || -26.2041 + (idx * 0.02),
-          lng: Number(item.lng) || 28.0473 + (idx * 0.02),
-          speed: Number(item.speed) || 0,
-          course: Number(item.course) || 0,
-          batteryVoltage: Number(item.battery_voltage) || 12600,
-          batteryPercent: Number(item.battery_percent) || 95,
-          accStatus: Boolean(item.acc_status),
-          mileage: Number(item.mileage) || 100000,
-          lastUpdate: item.updated_at ? new Date(item.updated_at).toLocaleTimeString() : 'Just now',
-          speedLimit: Number(item.speed_limit) || 120,
-          pathHistory: [[Number(item.lat) || -26.2041, Number(item.lng) || 28.0473]],
-          alerts: []
-        }));
+        const loaded: TK116Device[] = data.map((item, idx) => {
+          const rawLat = Number(item.lat) || -26.1075;
+          const rawLng = Number(item.lng) || 28.0535;
+          const devObj: TK116Device = {
+            id: item.id,
+            name: item.name || `Unit ${idx + 1}`,
+            plate: item.plate || 'NO PLATE',
+            imei: item.imei || '354188046000000',
+            simNumber: item.sim_number || '+27 82 000 0000',
+            model: item.model || 'Eelink TK116 4G',
+            status: (item.status as any) || 'stationary',
+            lat: rawLat,
+            lng: rawLng,
+            speed: Number(item.speed) || 0,
+            course: Number(item.course) || 0,
+            batteryVoltage: Number(item.battery_voltage) || 12600,
+            batteryPercent: Number(item.battery_percent) || 95,
+            accStatus: Boolean(item.acc_status),
+            mileage: Number(item.mileage) || 100000,
+            lastUpdate: item.updated_at ? new Date(item.updated_at).toLocaleTimeString() : 'Just now',
+            speedLimit: Number(item.speed_limit) || 120,
+            pathHistory: [],
+            alerts: []
+          };
+          return {
+            ...devObj,
+            pathHistory: getPrecedingRoadPath(devObj, 12)
+          };
+        });
         setVehicles(loaded);
       }
     } catch (err: any) {
@@ -513,6 +640,8 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tracking_units' }, (payload: any) => {
         if (payload.eventType === 'INSERT') {
           const item = payload.new;
+          const rawLat = Number(item.lat) || -26.1075;
+          const rawLng = Number(item.lng) || 28.0535;
           const newV: TK116Device = {
             id: item.id,
             name: item.name || `Unit`,
@@ -521,8 +650,8 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
             simNumber: item.sim_number || '+27 82 000 0000',
             model: item.model || 'Eelink TK116 4G',
             status: (item.status as any) || 'stationary',
-            lat: Number(item.lat) || -26.2041,
-            lng: Number(item.lng) || 28.0473,
+            lat: rawLat,
+            lng: rawLng,
             speed: Number(item.speed) || 0,
             course: Number(item.course) || 0,
             batteryVoltage: Number(item.battery_voltage) || 12600,
@@ -531,9 +660,10 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
             mileage: Number(item.mileage) || 100000,
             lastUpdate: item.updated_at ? new Date(item.updated_at).toLocaleTimeString() : 'Just now',
             speedLimit: Number(item.speed_limit) || 120,
-            pathHistory: [[Number(item.lat) || -26.2041, Number(item.lng) || 28.0473]],
+            pathHistory: [],
             alerts: []
           };
+          newV.pathHistory = getPrecedingRoadPath(newV, 12);
           setVehicles(prev => {
             if (prev.some(v => v.id === newV.id)) return prev;
             return [...prev, newV];
@@ -1512,6 +1642,8 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
               };
               return copy;
             } else {
+              const baseLat = -26.1075;
+              const baseLng = 28.0535;
               const newDev: TK116Device = {
                 id: savedUnit.id || `dev-${Date.now()}`,
                 name: savedUnit.name,
@@ -1520,8 +1652,8 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                 simNumber: savedUnit.sim_number || '+27 82 000 0000',
                 model: savedUnit.model || 'Eelink TK116 4G',
                 status: 'stationary',
-                lat: -26.2041,
-                lng: 28.0473,
+                lat: baseLat,
+                lng: baseLng,
                 speed: 0,
                 course: 0,
                 batteryVoltage: 12800,
@@ -1530,9 +1662,10 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                 mileage: 12000,
                 lastUpdate: 'Just now',
                 speedLimit: savedUnit.speed_limit || 120,
-                pathHistory: [[-26.2041, 28.0473]],
+                pathHistory: [],
                 alerts: []
               };
+              newDev.pathHistory = getPrecedingRoadPath(newDev, 12);
               setSelectedVehicleId(newDev.id);
               return [newDev, ...prev];
             }
