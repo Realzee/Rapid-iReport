@@ -318,6 +318,7 @@ const createIncidentIcon = (report: Report, isSelected: boolean, isInHighRisk: b
         'vehicle': '#3b82f6', // blue-500
         'crime': '#eab308',   // yellow-500
         'emergency': '#ef4444', // red-500
+        'roadside': '#0d9488', // teal-600
     };
 
     const color = isInHighRisk ? '#DC2626' : (typeColors[report.type || 'crime'] || '#6b7280'); // gray-500 fallback
@@ -330,8 +331,9 @@ const createIncidentIcon = (report: Report, isSelected: boolean, isInHighRisk: b
         <path d="M2 10l3.5-3.5A2 2 0 0 1 7 6h10a2 2 0 0 1 1.5.5L22 10"></path>`;
     const crimeSvgPath = `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>`;
     const emergencySvgPath = `<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path>`;
+    const roadsideSvgPath = `<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>`;
     
-    const iconSvgPath = report.type === 'vehicle' ? carSvgPath : (report.type === 'emergency' ? emergencySvgPath : crimeSvgPath);
+    const iconSvgPath = report.type === 'vehicle' ? carSvgPath : (report.type === 'roadside' ? roadsideSvgPath : (report.type === 'emergency' ? emergencySvgPath : crimeSvgPath));
 
     const size = isSelected ? 52 : (isInHighRisk ? 48 : 40);
     const scale = isSelected ? 1.15 : (isInHighRisk ? 1.1 : 1);

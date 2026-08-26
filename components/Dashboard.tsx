@@ -325,7 +325,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             })),
             ...(emergencyData || []).map(r => ({
                 ...r, 
-                type: 'emergency' as const,
+                type: (r.emergency_type === 'Roadside Assistance' ? 'roadside' : 'emergency') as ('roadside' | 'emergency'),
                 company_name: r.company_id ? companiesMap.get(r.company_id) : undefined
             }))
         ];
@@ -357,7 +357,14 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         fetchData();
 
         const handleReportChange = async (payload: any) => {
-            const reportType = payload.table === 'vehicle_reports' ? 'vehicle' : (payload.table === 'emergency_reports' ? 'emergency' : 'crime');
+            let reportType: 'vehicle' | 'crime' | 'emergency' | 'roadside' = 'vehicle';
+            if (payload.table === 'vehicle_reports') {
+                reportType = 'vehicle';
+            } else if (payload.table === 'emergency_reports') {
+                reportType = payload.new?.emergency_type === 'Roadside Assistance' || payload.old?.emergency_type === 'Roadside Assistance' ? 'roadside' : 'emergency';
+            } else {
+                reportType = 'crime';
+            }
             const newReport = { ...payload.new, type: reportType };
 
             // Filter incoming reports for non-global admins

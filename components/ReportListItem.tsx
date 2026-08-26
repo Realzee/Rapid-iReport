@@ -159,6 +159,13 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                             {' · '}
                             {(report as any).vehicle_make} {(report as any).vehicle_model} ({(report as any).vehicle_color})
                         </p>
+                    ) : report.type === 'roadside' ? (
+                         <p className="flex-1 min-w-0 truncate">
+                            <span className={`${severityStyles[report.severity]} font-bold uppercase`}>{report.severity.toUpperCase()}</span>
+                            {' · '}
+                            {(report as any).assistance_type || (report as any).emergency_type || 'Roadside Assistance'}
+                            {(report as any).license_plate && ` · ${(report as any).license_plate}`}
+                        </p>
                     ) : report.type === 'emergency' ? (
                          <p className="flex-1 min-w-0 truncate">
                             <span className={`${severityStyles[report.severity]} font-bold uppercase`}>{report.severity.toUpperCase()}</span>

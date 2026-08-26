@@ -1,13 +1,13 @@
 import React from 'react';
-import { CarIcon, AlertTriangleIcon, CrimeIcon } from './icons';
+import { CarIcon, AlertTriangleIcon, CrimeIcon, WrenchIcon } from './icons';
 
 interface ReportTypeBadgeProps {
-  type: 'vehicle' | 'crime' | 'emergency';
+  type: 'vehicle' | 'crime' | 'emergency' | 'roadside' | string;
   className?: string;
   showText?: boolean;
 }
 
-const typeStyles = {
+const typeStyles: Record<string, { bg: string; text: string; border: string; icon: React.FC<any>; label: string }> = {
   vehicle: {
     bg: 'bg-yellow-500/20',
     text: 'text-yellow-600 dark:text-yellow-400',
@@ -21,6 +21,13 @@ const typeStyles = {
     border: 'border-orange-500/30',
     icon: AlertTriangleIcon,
     label: 'Emergency'
+  },
+  roadside: {
+    bg: 'bg-teal-500/20',
+    text: 'text-teal-600 dark:text-teal-400',
+    border: 'border-teal-500/30',
+    icon: WrenchIcon,
+    label: 'Roadside'
   },
   crime: {
     bg: 'bg-red-500/20',
@@ -44,3 +51,4 @@ const ReportTypeBadge: React.FC<ReportTypeBadgeProps> = ({ type, className = '',
 };
 
 export default ReportTypeBadge;
+

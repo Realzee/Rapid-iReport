@@ -52,7 +52,7 @@ interface ReportsPageProps {
 }
 
 const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
-    const [reports, setReports] = useState<(Report & {type: 'vehicle' | 'crime' | 'emergency'})[]>(() => {
+    const [reports, setReports] = useState<(Report & {type: 'vehicle' | 'crime' | 'emergency' | 'roadside'})[]>(() => {
         try {
             const cached = localStorage.getItem(`reports_page_reports_${profile.id}`);
             return cached ? JSON.parse(cached) : [];
@@ -138,7 +138,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     }, [responders, profile?.id]);
     
     const [searchTerm, setSearchTerm] = useState('');
-    const [filters, setFilters] = useState<{ type: 'all' | 'vehicle' | 'crime' | 'emergency', severity: Severity | 'all' }>({
+    const [filters, setFilters] = useState<{ type: 'all' | 'vehicle' | 'crime' | 'emergency' | 'roadside', severity: Severity | 'all' }>({
         type: 'all',
         severity: 'all'
     });
@@ -233,10 +233,13 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
             console.error("Error fetching data:", vError || cError || aError || uError || rError || compError || sharesError);
         } else {
             const combined = [
-                ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
-                ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
-                ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' }))
-            ] as (Report & {type: 'vehicle' | 'crime' | 'emergency'})[];
+                ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' as const })),
+                ...(crimeData || []).map(r => ({ ...r, type: 'crime' as const })),
+                ...(emergencyData || []).map(r => ({
+                    ...r,
+                    type: (r.emergency_type === 'Roadside Assistance' ? 'roadside' : 'emergency') as ('roadside' | 'emergency')
+                }))
+            ] as (Report & {type: 'vehicle' | 'crime' | 'emergency' | 'roadside'})[];
             setReports(combined);
             setIncomingShares(sharesData || []);
             setUsers(usersData || []);
@@ -544,6 +547,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                         <select value={filters.type} onChange={e => handleFilterChange('type', e.target.value)} className={`${filterInputClasses} w-full`}>
                             <option value="all">All Types</option>
                             <option value="vehicle">Vehicle</option>
+                            <option value="roadside">Roadside</option>
                             <option value="crime">Crime</option>
                             <option value="emergency">Emergency</option>
                         </select>

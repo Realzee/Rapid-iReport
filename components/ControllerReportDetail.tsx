@@ -270,7 +270,7 @@ const ControllerReportDetail: React.FC<{
 
         let tableName = '';
         if (report.type === 'vehicle') tableName = 'vehicle_reports';
-        else if (report.type === 'emergency') tableName = 'emergency_reports';
+        else if (report.type === 'emergency' || report.type === 'roadside') tableName = 'emergency_reports';
         else tableName = 'crime_reports';
 
         const updatePayload: { status?: ReportStatus; assigned_to?: string | null; completed_at?: string | null; is_global?: boolean; shared_with_company_ids?: string[] } = {};
@@ -384,7 +384,7 @@ const ControllerReportDetail: React.FC<{
             return;
         }
 
-        const tableName = report.type === 'vehicle' ? 'vehicle_reports' : (report.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
+        const tableName = report.type === 'vehicle' ? 'vehicle_reports' : ((report.type === 'emergency' || report.type === 'roadside') ? 'emergency_reports' : 'crime_reports');
         const { error } = await supabase.from(tableName).update({ 
             status: ReportStatus.DELETED,
             deleted_by: profile.id,

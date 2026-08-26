@@ -73,7 +73,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     const handleSaveSharing = async () => {
         setIsSavingShares(true);
         try {
-            const tableName = localReport.type === 'vehicle' ? 'vehicle_reports' : (localReport.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
+            const tableName = localReport.type === 'vehicle' ? 'vehicle_reports' : ((localReport.type === 'emergency' || localReport.type === 'roadside') ? 'emergency_reports' : 'crime_reports');
             
             // 1. Update is_global in report table
             const { error: reportErr } = await supabase
@@ -148,7 +148,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 return;
             }
             
-            const tableName = localReport.type === 'vehicle' ? 'vehicle_reports' : (localReport.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
+            const tableName = localReport.type === 'vehicle' ? 'vehicle_reports' : ((localReport.type === 'emergency' || localReport.type === 'roadside') ? 'emergency_reports' : 'crime_reports');
             const { data, error } = await supabase
                 .from(tableName)
                 .select('*')
@@ -198,7 +198,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         const newStatus = e.target.value as ReportStatus;
         setStatusUpdateLoading(true);
 
-        const tableName = localReport.type === 'vehicle' ? 'vehicle_reports' : (localReport.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
+        const tableName = localReport.type === 'vehicle' ? 'vehicle_reports' : ((localReport.type === 'emergency' || localReport.type === 'roadside') ? 'emergency_reports' : 'crime_reports');
         const { error } = await supabase
             .from(tableName)
             .update({ status: newStatus })

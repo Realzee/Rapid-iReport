@@ -7,7 +7,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../utils/supabase';
 import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport, EmergencyReport } from '../types';
-import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon, CheckCircleIcon, TrashIcon } from '../components/icons';
+import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon, CheckCircleIcon, TrashIcon, WrenchIcon } from '../components/icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
 import { sapsStations } from '../data/policeStations';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
@@ -30,7 +30,7 @@ interface ReportModalProps {
     onReportSubmitted?: () => void;
 }
 
-type ReportType = 'vehicle' | 'crime' | 'emergency';
+type ReportType = 'vehicle' | 'crime' | 'emergency' | 'roadside';
 
 const geocodeLocation = async (location: string): Promise<{coords: LocationCoords | null, boundary: any | null, boundingbox: [number, number, number, number] | null}> => {
     try {
@@ -235,7 +235,10 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             setInitialData(data);
             setFormData(data);
 
-            setReportType(reportToEdit ? (reportToEdit.type as ReportType) : (isQuickAdd ? 'vehicle' : 'vehicle'));
+            const initialReportType = reportToEdit 
+                ? (reportToEdit.type === 'roadside' || (reportToEdit as any).emergency_type === 'Roadside Assistance' ? 'roadside' : (reportToEdit.type as ReportType)) 
+                : (isQuickAdd ? 'vehicle' : 'vehicle');
+            setReportType(initialReportType);
             setMapVisible(false);
             setShowRecoveryMap(!!(data as any).recovered_location_coords);
             setImagePreviews(reportToEdit?.evidence_images || []);
@@ -608,7 +611,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             let reportData: any;
             let tableName: 'vehicle_reports' | 'crime_reports' | 'emergency_reports';
             if (reportType === 'vehicle') tableName = 'vehicle_reports';
-            else if (reportType === 'emergency') tableName = 'emergency_reports';
+            else if (reportType === 'emergency' || reportType === 'roadside') tableName = 'emergency_reports';
             else tableName = 'crime_reports';
             
             const commonData = {
@@ -650,6 +653,29 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     suspect_vehicle_make: formData.vehicle_involved === 'true' ? (formData.suspect_vehicle_make || null) : null,
                     suspect_vehicle_model: formData.vehicle_involved === 'true' ? (formData.suspect_vehicle_model || null) : null,
                     suspect_vehicle_color: formData.vehicle_involved === 'true' ? (formData.suspect_vehicle_color || null) : null,
+                };
+            } else if (reportType === 'roadside') {
+                const { location_boundary, location_boundingbox, ...roadsideCommonData } = commonData;
+                const assistanceType = formData.assistance_type || formData.emergency_type || 'General Assistance';
+                reportData = {
+                    ...roadsideCommonData,
+                    title: formData.title || `Roadside Assistance: ${assistanceType}`,
+                    status: formData.status || (reportToEdit ? reportToEdit.status : ReportStatus.ACTIVE),
+                    emergency_type: 'Roadside Assistance',
+                    location: formData.location || 'Unknown Location',
+                    vehicle_involved: true,
+                    vehicles_involved: 1,
+                    injuries_reported: formData.injuries_reported === 'true',
+                    fatalities_reported: formData.fatalities_reported === 'true',
+                    license_plate: formData.license_plate || 'N/A',
+                    vehicle_make: formData.vehicle_make || 'N/A',
+                    vehicle_model: formData.vehicle_model || 'N/A',
+                    vehicle_color: formData.vehicle_color || 'N/A',
+                    vin_number: formData.vin_number || null,
+                    engine_number: formData.engine_number || null,
+                    cas_number: formData.cas_number || null,
+                    station_name: formData.station_name || null,
+                    date_of_incident: formData.date_of_incident || null,
                 };
             } else if (reportType === 'emergency') {
                 // Exclude location_boundary and location_boundingbox for emergency reports as the table might not support them yet
@@ -952,10 +978,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 
                 {(!reportToEdit && !isQuickAdd) && (
                     <div className="mb-6">
-                        <div className="flex bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
-                            <button type="button" onClick={() => { setReportType('vehicle'); setFormData(prev => ({ ...prev, status: ReportStatus.STOLEN, vehicle_involved: 'true' })); }} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'vehicle' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-5 h-5" /> Vehicle</button>
-                            <button type="button" onClick={() => { setReportType('emergency'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE, vehicle_involved: 'false' })); }} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'emergency' ? 'bg-orange-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><AlertTriangleIcon className="w-5 h-5" /> Emergency</button>
-                            <button type="button" onClick={() => { setReportType('crime'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE, vehicle_involved: 'false' })); }} className={`w-1/3 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${reportType === 'crime' ? 'bg-red-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CrimeIcon className="w-5 h-5" /> Crime</button>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
+                            <button type="button" onClick={() => { setReportType('vehicle'); setFormData(prev => ({ ...prev, status: ReportStatus.STOLEN, vehicle_involved: 'true' })); }} className={`py-2 text-xs sm:text-sm font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${reportType === 'vehicle' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-4 h-4" /> Vehicle</button>
+                            <button type="button" onClick={() => { setReportType('roadside'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE, emergency_type: 'Roadside Assistance', assistance_type: 'Breakdown / Mechanical', vehicle_involved: 'true', vehicles_involved: '1' })); }} className={`py-2 text-xs sm:text-sm font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${reportType === 'roadside' ? 'bg-teal-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><WrenchIcon className="w-4 h-4" /> Roadside</button>
+                            <button type="button" onClick={() => { setReportType('emergency'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE, vehicle_involved: 'false' })); }} className={`py-2 text-xs sm:text-sm font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${reportType === 'emergency' ? 'bg-orange-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><AlertTriangleIcon className="w-4 h-4" /> Emergency</button>
+                            <button type="button" onClick={() => { setReportType('crime'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE, vehicle_involved: 'false' })); }} className={`py-2 text-xs sm:text-sm font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${reportType === 'crime' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CrimeIcon className="w-4 h-4" /> Crime</button>
                         </div>
                     </div>
                 )}
@@ -1104,6 +1131,123 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                         <option key={s} value={s}>{s.replace(/_/g, ' ').toUpperCase()}</option>
                                     ))}
                                 </select>
+                            </div>
+                        </div>
+                    ) : reportType === 'roadside' ? (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="assistance_type" className={labelClasses}>Assistance Needed</label>
+                                    <select name="assistance_type" id="assistance_type" value={formData.assistance_type || 'Breakdown / Mechanical'} onChange={(e) => {
+                                        const val = e.target.value;
+                                        setFormData((prev: any) => ({
+                                            ...prev,
+                                            assistance_type: val,
+                                            title: prev.title || `Roadside Assistance: ${val}`
+                                        }));
+                                    }} className={inputClasses}>
+                                        <option value="Breakdown / Mechanical">Breakdown / Mechanical Failure</option>
+                                        <option value="Flat Tyre / Tire Change">Flat Tyre / Tire Puncture</option>
+                                        <option value="Battery Jump Start">Flat Battery / Jump Start</option>
+                                        <option value="Towing / Recovery">Flatbed Towing / Recovery</option>
+                                        <option value="Out of Fuel / Fuel Delivery">Out of Fuel / Fuel Delivery</option>
+                                        <option value="Vehicle Lockout">Vehicle Lockout (Keys Locked In)</option>
+                                        <option value="Overheating / Radiator">Overheating / Coolant Leak</option>
+                                        <option value="Stuck / Winch Extraction">Stuck / Winch Extraction (Mud/Sand)</option>
+                                        <option value="Accident Scene Assistance">Accident Scene Assistance</option>
+                                        <option value="Other Assistance">Other Roadside Assistance</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="title" className={labelClasses}>Incident / Call Title</label>
+                                    <input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. Stranded with flat tyre on N1 North" />
+                                </div>
+                            </div>
+
+                            {/* Vehicle Details */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-teal-50 dark:bg-teal-950/30 rounded-lg border border-teal-200 dark:border-teal-800/60">
+                                <div className="md:col-span-2 text-sm font-bold text-teal-800 dark:text-teal-300 mb-1 flex items-center gap-2">
+                                    <CarIcon className="w-4 h-4" /> Stranded Vehicle Information
+                                </div>
+                                <div><label htmlFor="license_plate" className={labelClasses}>Registration / License Plate</label><input type="text" name="license_plate" id="license_plate" value={formData.license_plate || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. CA 123-456 / ND 9988" /></div>
+                                <div><label htmlFor="vehicle_make" className={labelClasses}>Make</label><input type="text" name="vehicle_make" id="vehicle_make" value={formData.vehicle_make || ''} onChange={handleChange} className={inputClasses} list="makes-list" placeholder="e.g. Toyota" /></div>
+                                <div><label htmlFor="vehicle_model" className={labelClasses}>Model</label><input type="text" name="vehicle_model" id="vehicle_model" value={formData.vehicle_model || ''} onChange={handleChange} className={inputClasses} list="models-list" placeholder="e.g. Hilux / Corolla" /></div>
+                                <div><label htmlFor="vehicle_color" className={labelClasses}>Colour</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" placeholder="e.g. White" /></div>
+                            </div>
+
+                            {/* Location Section */}
+                            <div className="space-y-4">
+                                <label htmlFor="location" className={labelClasses}>Breakdown Location / Landmark</label>
+                                <div className="relative mt-1" ref={suggestionsRef}>
+                                    <input type="text" name="location" id="location" value={formData.location || ''} onChange={handleChange} className={`${inputClasses} !mt-0 pr-10`} placeholder="e.g. N1 North before Rivonia Rd offramp" autoComplete="off"/>
+                                    <button type="button" onClick={() => setMapVisible(!isMapVisible)} className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-teal-500 dark:text-gray-400 dark:hover:text-teal-400 transition-colors" title="Pin location on map">
+                                        <MapPinIcon className="w-5 h-5" />
+                                    </button>
+                                    
+                                    {/* ADDRESS SUGGESTIONS DROPDOWN */}
+                                    {((addressSuggestions.length > 0 || (formData.location && formData.location.trim().length >= 3 && !formData.location_coords)) && (
+                                        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                            {addressSuggestions.map((suggestion, index) => (
+                                                <button
+                                                    type="button"
+                                                    key={suggestion.place_id || index}
+                                                    onClick={() => handleSuggestionClick(suggestion)}
+                                                    className="w-full text-left p-3 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700/50 last:border-0"
+                                                >
+                                                    {suggestion.display_name}
+                                                </button>
+                                            ))}
+                                            {formData.location && formData.location.trim().length >= 3 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSuggestionClick({ display_name: formData.location.trim(), is_custom: true })}
+                                                    className="w-full text-left p-3 text-xs text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/40 font-medium transition-colors border-t border-gray-100 dark:border-gray-700/50 last:border-0"
+                                                >
+                                                    Use custom address: "{formData.location.trim()}"
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <label htmlFor="map_link" className={labelClasses}>Live Location / Google Maps Link (Optional)</label>
+                                <input type="text" name="map_link" id="map_link" value={formData.map_link || ''} onChange={handleChange} className={inputClasses} placeholder="Paste WhatsApp live location or Google Maps link..." />
+                            </div>
+
+                            {isMapVisible && (
+                                <div className="mt-2">
+                                     <LocationPicker
+                                        initialCoords={formData.location_coords}
+                                        onLocationChange={handleLocationChange}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="severity" className={labelClasses}>Priority / Urgency</label>
+                                    <select name="severity" id="severity" value={formData.severity || Severity.MEDIUM} onChange={handleChange} className={`${inputClasses} uppercase font-bold`}>
+                                        <option value={Severity.LOW}>LOW (Safe parking / non-blocking)</option>
+                                        <option value={Severity.MEDIUM}>MEDIUM (Suburban road / shoulder)</option>
+                                        <option value={Severity.HIGH}>HIGH (Busy highway shoulder / night)</option>
+                                        <option value={Severity.CRITICAL}>CRITICAL (Blocking active lane / danger zone)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="status" className={labelClasses}>Status</label>
+                                    <select name="status" id="status" value={formData.status || ReportStatus.ACTIVE} onChange={handleChange} className={inputClasses}>
+                                        {Object.values(ReportStatus).filter(s => s !== ReportStatus.DELETED).map(s => (
+                                            <option key={s} value={s}>{s.replace(/_/g, ' ').toUpperCase()}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label htmlFor="cas_number" className={labelClasses}>Reference / Dispatch Ref</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. RSA-89201" /></div>
+                                <div><label htmlFor="date_of_incident" className={labelClasses}>Date / Time of Incident</label><input type="date" name="date_of_incident" id="date_of_incident" value={formData.date_of_incident || ''} onChange={handleChange} className={inputClasses} /></div>
                             </div>
                         </div>
                     ) : reportType === 'emergency' ? (

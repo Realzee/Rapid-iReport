@@ -326,7 +326,58 @@ export interface EmergencyReport {
   shared_with_company_ids?: string[];
 }
 
-export type Report = VehicleReport | CrimeReport | EmergencyReport;
+export interface RoadsideReport {
+  id: string;
+  type?: 'roadside';
+  ob_number: string;
+  title: string;
+  description: string;
+  location: string;
+  emergency_type: string; // e.g. "Roadside Assistance"
+  assistance_type?: string;
+  severity: Severity;
+  status: ReportStatus;
+  reported_by: string; // profile id
+  assigned_to?: string; // profile id of responder
+  reported_at: string; // ISO date string
+  location_coords?: LocationCoords;
+  evidence_images?: string[];
+  location_boundary?: any; // GeoJSON
+  location_boundingbox?: [number, number, number, number]; // south, north, west, east
+  deleted_by?: string; // profile id
+  deleted_at?: string; // ISO date string
+  completed_at?: string; // ISO date string
+  vehicle_involved?: boolean;
+  vehicles_involved?: number;
+  injuries_reported?: boolean;
+  fatalities_reported?: boolean;
+  license_plate?: string;
+  vehicle_make?: string;
+  vehicle_model?: string;
+  vehicle_color?: string;
+  vin_number?: string;
+  engine_number?: string;
+  cas_number?: string;
+  station_name?: string;
+  date_of_incident?: string;
+  crime_outcome?: string;
+  cit_success?: boolean;
+  arrests?: number;
+  guns_recovered?: number;
+  other_recoveries?: string;
+  recovered_location_coords?: LocationCoords;
+  recovered_at?: string;
+  saps_13?: string;
+  pound_name?: string;
+  has_arrests?: boolean;
+  has_firearms?: boolean;
+  company_id?: string;
+  company_name?: string;
+  is_global?: boolean;
+  shared_with_company_ids?: string[];
+}
+
+export type Report = VehicleReport | CrimeReport | EmergencyReport | RoadsideReport;
 
 export interface Responder {
     id: string;
