@@ -907,7 +907,7 @@ const ControllerReportDetail: React.FC<{
                             )}
                         </div>
                         <p className="font-mono text-sm text-gray-500 dark:text-gray-400">
-                            {report.type === 'roadside' ? `Card No: ${(report as any).card_number || report.ob_number}` : report.ob_number}
+                            {report.type === 'roadside' ? `Car No: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
                         </p>
                     </div>
                      <button onClick={() => setIsTimelineVisible(!isTimelineVisible)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition">
@@ -951,7 +951,7 @@ const ControllerReportDetail: React.FC<{
                 <DetailField label="Description"><p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{report.description}</p></DetailField>
                 
                 <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <DetailField label={report.type === 'vehicle' ? "Last Seen Location" : "Location"} className="flex-grow">
+                    <DetailField label={report.type === 'vehicle' ? "Last Seen Location" : (report.type === 'roadside' ? "Breakdown Location" : "Location")} className="flex-grow">
                         <p className="text-gray-800 dark:text-gray-200 font-semibold">{(report as any).location || (report as any).last_seen_location || 'N/A'}</p>
                     </DetailField>
                     {(report.location_coords || report.map_link) && (
@@ -970,6 +970,72 @@ const ControllerReportDetail: React.FC<{
                         </button>
                     )}
                 </div>
+
+                {report.type === 'roadside' && (report as any).drop_off_location && (
+                    <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <DetailField label="Drop Off Location" className="flex-grow">
+                            <p className="text-indigo-950 dark:text-indigo-200 font-semibold">{(report as any).drop_off_location}</p>
+                        </DetailField>
+                        {(report as any).drop_off_location_coords && (
+                            <button 
+                                onClick={() => {
+                                    const coords = (report as any).drop_off_location_coords;
+                                    const url = `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
+                                    window.open(url, '_blank');
+                                }}
+                                className="self-start sm:self-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs flex items-center gap-1 transition"
+                            >
+                                <span>Drop Off Map ↗</span>
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {report.type === 'roadside' && (
+                    <div className="p-3 bg-teal-50/50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/60 rounded-lg space-y-3">
+                        <div className="text-xs font-bold text-teal-800 dark:text-teal-300 uppercase tracking-wider">
+                            Roadside Assistance Details
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {(report as any).driver_name && (
+                                <DetailField label="Driver Name" className="col-span-2">
+                                    <span className="font-semibold text-gray-900 dark:text-white">{(report as any).driver_name}</span>
+                                </DetailField>
+                            )}
+                            {((report as any).date_of_incident || (report as any).incident_time) && (
+                                <DetailField label="Incident Date & Time" className="col-span-2">
+                                    <span className="font-medium text-gray-800 dark:text-gray-200">
+                                        {[(report as any).date_of_incident, (report as any).incident_time].filter(Boolean).join(' at ')}
+                                    </span>
+                                </DetailField>
+                            )}
+                            <div className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 text-center">
+                                <p className="text-[10px] text-gray-500 uppercase font-bold">Rollback</p>
+                                <p className={`text-xs font-bold mt-0.5 ${(report as any).rollback ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400'}`}>
+                                    {(report as any).rollback ? 'YES' : 'NO'}
+                                </p>
+                            </div>
+                            <div className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 text-center">
+                                <p className="text-[10px] text-gray-500 uppercase font-bold">Recovery</p>
+                                <p className={`text-xs font-bold mt-0.5 ${(report as any).recovery ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400'}`}>
+                                    {(report as any).recovery ? 'YES' : 'NO'}
+                                </p>
+                            </div>
+                            <div className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 text-center">
+                                <p className="text-[10px] text-gray-500 uppercase font-bold">Dreamtec</p>
+                                <p className={`text-xs font-bold mt-0.5 ${(report as any).dreamtec ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400'}`}>
+                                    {(report as any).dreamtec ? 'YES' : 'NO'}
+                                </p>
+                            </div>
+                            <div className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 text-center">
+                                <p className="text-[10px] text-gray-500 uppercase font-bold">Family Run</p>
+                                <p className={`text-xs font-bold mt-0.5 ${(report as any).family_run ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400'}`}>
+                                    {(report as any).family_run ? 'YES' : 'NO'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 
                 {((report as any).license_plate || (report as any).vehicle_make || (report as any).vehicle_model || (report as any).vehicle_color || (report as any).year || (report as any).vin_number || (report as any).engine_number || (report as any).circulation_number) && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">

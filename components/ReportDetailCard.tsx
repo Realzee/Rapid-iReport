@@ -776,8 +776,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                         <p className="font-bold text-gray-900 dark:text-white uppercase">{localReport.severity.toUpperCase()}</p>
                     </div>
                     <div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{localReport.type === 'roadside' ? 'Card Number' : 'OB Number'}</p>
-                        <p className="font-mono text-gray-900 dark:text-white font-semibold">{(localReport as any).card_number || localReport.ob_number}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{localReport.type === 'roadside' ? 'Car Number' : 'OB Number'}</p>
+                        <p className="font-mono text-gray-900 dark:text-white font-semibold">{(localReport as any).car_number || (localReport as any).card_number || localReport.ob_number}</p>
                     </div>
                      <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported</p>
@@ -785,10 +785,51 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     </div>
                     {(localReport as any).date_of_incident && (
                         <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Incident Date</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Incident Date & Time</p>
                             <p className="text-gray-900 dark:text-white">
                                 {safeFormat((localReport as any).date_of_incident, 'MMM d, yyyy', (localReport as any).date_of_incident)}
+                                {(localReport as any).incident_time ? ` at ${(localReport as any).incident_time}` : ''}
                             </p>
+                        </div>
+                    )}
+                    {localReport.type === 'roadside' && (localReport as any).driver_name && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Driver Name</p>
+                            <p className="text-gray-900 dark:text-white font-semibold">{(localReport as any).driver_name}</p>
+                        </div>
+                    )}
+                    {localReport.type === 'roadside' && (localReport as any).drop_off_location && (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Drop Off Location</p>
+                            <p className="text-gray-900 dark:text-white font-semibold">{(localReport as any).drop_off_location}</p>
+                        </div>
+                    )}
+                    {localReport.type === 'roadside' && (
+                        <div className="col-span-2 grid grid-cols-4 gap-2 pt-2 border-t border-gray-100 dark:border-gray-800 text-center">
+                            <div className="p-1.5 bg-gray-50 dark:bg-gray-800 rounded">
+                                <p className="text-[10px] text-gray-500 uppercase font-bold">Rollback</p>
+                                <p className={`text-xs font-bold ${(localReport as any).rollback ? 'text-teal-600' : 'text-gray-400'}`}>
+                                    {(localReport as any).rollback ? 'YES' : 'NO'}
+                                </p>
+                            </div>
+                            <div className="p-1.5 bg-gray-50 dark:bg-gray-800 rounded">
+                                <p className="text-[10px] text-gray-500 uppercase font-bold">Recovery</p>
+                                <p className={`text-xs font-bold ${(localReport as any).recovery ? 'text-teal-600' : 'text-gray-400'}`}>
+                                    {(localReport as any).recovery ? 'YES' : 'NO'}
+                                </p>
+                            </div>
+                            <div className="p-1.5 bg-gray-50 dark:bg-gray-800 rounded">
+                                <p className="text-[10px] text-gray-500 uppercase font-bold">Dreamtec</p>
+                                <p className={`text-xs font-bold ${(localReport as any).dreamtec ? 'text-teal-600' : 'text-gray-400'}`}>
+                                    {(localReport as any).dreamtec ? 'YES' : 'NO'}
+                                </p>
+                            </div>
+                            <div className="p-1.5 bg-gray-50 dark:bg-gray-800 rounded">
+                                <p className="text-[10px] text-gray-500 uppercase font-bold">Family Run</p>
+                                <p className={`text-xs font-bold ${(localReport as any).family_run ? 'text-teal-600' : 'text-gray-400'}`}>
+                                    {(localReport as any).family_run ? 'YES' : 'NO'}
+                                </p>
+                            </div>
                         </div>
                     )}
                     {localReport.type === 'vehicle' && (localReport as any).tracker_company && (

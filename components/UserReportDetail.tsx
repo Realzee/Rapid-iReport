@@ -157,7 +157,7 @@ const UserReportDetail: React.FC<{
                         )}
                     </div>
                     <p className="font-mono text-sm text-gray-500 dark:text-gray-400">
-                        {report.type === 'roadside' ? `Card No: ${(report as any).card_number || report.ob_number}` : report.ob_number}
+                        {report.type === 'roadside' ? `Car No: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
                     </p>
                 </div>
                 <div className="flex-shrink-0 flex items-center gap-2">

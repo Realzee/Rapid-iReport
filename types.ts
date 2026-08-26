@@ -284,6 +284,17 @@ export interface EmergencyReport {
   description: string;
   location: string;
   emergency_type: string;
+  assistance_type?: string;
+  card_number?: string;
+  car_number?: string;
+  driver_name?: string;
+  drop_off_location?: string;
+  drop_off_location_coords?: LocationCoords;
+  rollback?: boolean;
+  recovery?: boolean;
+  dreamtec?: boolean;
+  family_run?: boolean;
+  incident_time?: string;
   severity: Severity;
   status: ReportStatus;
   reported_by: string; // profile id
@@ -336,6 +347,15 @@ export interface RoadsideReport {
   emergency_type: string; // e.g. "Roadside Assistance"
   assistance_type?: string;
   card_number?: string;
+  car_number?: string;
+  driver_name?: string;
+  drop_off_location?: string;
+  drop_off_location_coords?: LocationCoords;
+  rollback?: boolean;
+  recovery?: boolean;
+  dreamtec?: boolean;
+  family_run?: boolean;
+  incident_time?: string;
   severity: Severity;
   status: ReportStatus;
   reported_by: string; // profile id

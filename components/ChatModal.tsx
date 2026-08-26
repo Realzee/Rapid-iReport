@@ -19,7 +19,7 @@ const ChatWidget: React.FC<{
                 <div>
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">{reportTitle}</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                        {report.type === 'roadside' ? `Card No: ${(report as any).card_number || report.ob_number}` : report.ob_number}
+                        {report.type === 'roadside' ? `Car No: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">

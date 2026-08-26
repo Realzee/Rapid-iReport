@@ -646,7 +646,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                                         <div className="flex items-center gap-2">
                                             <span className={`w-2 h-2 rounded-full ${report.severity === 'critical' ? 'bg-red-500 animate-pulse' : report.severity === 'high' ? 'bg-orange-500' : 'bg-blue-500'}`}></span>
                                             <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
-                                                {report.type === 'roadside' ? `CARD: ${(report as any).card_number || report.ob_number}` : report.ob_number}
+                                                {report.type === 'roadside' ? `CAR: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
                                             </span>
                                         </div>
                                         <StatusBadge status={report.status} />
@@ -942,7 +942,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                             <StatusBadge status={report.status} />
                         </div>
                         <p className="font-mono text-sm text-gray-500 dark:text-gray-400">
-                            {report.type === 'roadside' ? `Card No: ${(report as any).card_number || report.ob_number}` : `OB: ${report.ob_number}`}
+                            {report.type === 'roadside' ? `Car No: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : `OB: ${report.ob_number}`}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">

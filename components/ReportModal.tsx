@@ -179,17 +179,30 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     
     // Address suggestion state
     const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+    const [dropOffAddressSuggestions, setDropOffAddressSuggestions] = useState<any[]>([]);
     const [stationSuggestions, setStationSuggestions] = useState<string[]>([]);
     const [isGeocoding, setIsGeocoding] = useState(false);
     const debounceTimeoutRef = useRef<number | null>(null);
+    const dropOffDebounceTimeoutRef = useRef<number | null>(null);
     const suggestionsRef = useRef<HTMLDivElement>(null);
+    const dropOffSuggestionsRef = useRef<HTMLDivElement>(null);
     const stationSuggestionsRef = useRef<HTMLDivElement>(null);
+    const [isDropOffMapVisible, setIsDropOffMapVisible] = useState(false);
 
     const getInitialData = useCallback(() => {
         if (reportToEdit) {
             const location = reportToEdit.type === 'vehicle' ? (reportToEdit as any).last_seen_location : (reportToEdit as any).location;
             return {
                 date_of_incident: (reportToEdit as any).date_of_incident || ((reportToEdit as any).reported_at ? new Date((reportToEdit as any).reported_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+                incident_time: (reportToEdit as any).incident_time || ((reportToEdit as any).reported_at ? new Date((reportToEdit as any).reported_at).toTimeString().slice(0, 5) : new Date().toTimeString().slice(0, 5)),
+                driver_name: (reportToEdit as any).driver_name || '',
+                drop_off_location: (reportToEdit as any).drop_off_location || '',
+                drop_off_location_coords: (reportToEdit as any).drop_off_location_coords || null,
+                rollback: (reportToEdit as any).rollback ?? false,
+                recovery: (reportToEdit as any).recovery ?? false,
+                dreamtec: (reportToEdit as any).dreamtec ?? false,
+                family_run: (reportToEdit as any).family_run ?? false,
+                car_number: (reportToEdit as any).car_number || (reportToEdit as any).card_number || (reportToEdit as any).ob_number || '',
                 tracker_company: (reportToEdit as any).tracker_company || '',
                 ...reportToEdit,
                 location,
@@ -217,6 +230,15 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             pound_name: '',
             year: '',
             date_of_incident: new Date().toISOString().split('T')[0],
+            incident_time: new Date().toTimeString().slice(0, 5),
+            driver_name: '',
+            drop_off_location: '',
+            drop_off_location_coords: null,
+            rollback: false,
+            recovery: false,
+            dreamtec: false,
+            family_run: false,
+            car_number: '',
             tracker_company: '',
             io_name: '',
             io_contact: '',
@@ -241,9 +263,28 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 : (isQuickAdd ? 'vehicle' : 'vehicle');
             setReportType(initialReportType);
             setMapVisible(false);
+            setIsDropOffMapVisible(false);
             setShowRecoveryMap(!!(data as any).recovered_location_coords);
             setImagePreviews(reportToEdit?.evidence_images || []);
             setImageFiles([]);
+
+            // Auto-fetch logged-in profile to auto-populate Driver Name for Roadside reports
+            // @ts-ignore
+            supabase.auth.getUser().then(({ data: { user } }: any) => {
+                if (user) {
+                    supabase.from('profiles').select('first_name, surname, username, email').eq('id', user.id).maybeSingle().then(({ data: prof }: any) => {
+                        if (prof) {
+                            const fullName = `${prof.first_name || ''} ${prof.surname || ''}`.trim() || prof.username || prof.email || '';
+                            setFormData((prev: any) => {
+                                if (!prev.driver_name && !(reportToEdit as any)?.driver_name) {
+                                    return { ...prev, driver_name: fullName };
+                                }
+                                return prev;
+                            });
+                        }
+                    });
+                }
+            });
         }
     }, [isOpen, reportToEdit, isQuickAdd, getInitialData]);
 
@@ -322,10 +363,36 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         return () => { if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current) };
     }, [formData.location, formData.location_coords]);
 
+    // Drop-off Address suggestion logic
+    useEffect(() => {
+        if (formData.drop_off_location_coords || !formData.drop_off_location || formData.drop_off_location.length < 3) {
+            setDropOffAddressSuggestions([]);
+            return;
+        }
+
+        if (dropOffDebounceTimeoutRef.current) clearTimeout(dropOffDebounceTimeoutRef.current);
+
+        dropOffDebounceTimeoutRef.current = window.setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/geocode?q=${encodeURIComponent(formData.drop_off_location)}&limit=5`);
+                if (response.ok) setDropOffAddressSuggestions(await response.json());
+                else setDropOffAddressSuggestions([]);
+            } catch (error) {
+                console.error("Drop-off address suggestion fetch failed:", error);
+                setDropOffAddressSuggestions([]);
+            }
+        }, 400);
+
+        return () => { if (dropOffDebounceTimeoutRef.current) clearTimeout(dropOffDebounceTimeoutRef.current) };
+    }, [formData.drop_off_location, formData.drop_off_location_coords]);
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
                 setAddressSuggestions([]);
+            }
+            if (dropOffSuggestionsRef.current && !dropOffSuggestionsRef.current.contains(event.target as Node)) {
+                setDropOffAddressSuggestions([]);
             }
             if (stationSuggestionsRef.current && !stationSuggestionsRef.current.contains(event.target as Node)) {
                 setStationSuggestions([]);
@@ -334,6 +401,37 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    const handleDropOffSuggestionClick = (suggestion: any) => {
+        if (suggestion.is_custom) {
+            setFormData((prev: any) => ({
+                ...prev,
+                drop_off_location: suggestion.display_name,
+                drop_off_location_coords: null,
+            }));
+            setDropOffAddressSuggestions([]);
+            return;
+        }
+
+        const lat = parseFloat(suggestion.lat);
+        const lng = parseFloat(suggestion.lon);
+        const coords = (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) ? { lat, lng } : null;
+
+        setFormData((prev: any) => ({
+            ...prev,
+            drop_off_location: suggestion.display_name,
+            drop_off_location_coords: coords,
+        }));
+        setDropOffAddressSuggestions([]);
+    };
+
+    const handleDropOffLocationChange = (coords: LocationCoords, address: string) => {
+        setFormData((prev: any) => ({
+            ...prev,
+            drop_off_location: address,
+            drop_off_location_coords: coords,
+        }));
+    };
 
     const handleSuggestionClick = (suggestion: any) => {
         if (suggestion.is_custom) {
@@ -492,6 +590,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             } else {
                 setFormData({ ...formData, location: processedValue, location_coords: null, location_boundary: null, location_boundingbox: null });
             }
+        } else if (name === 'drop_off_location') {
+            setFormData({ ...formData, drop_off_location: processedValue, drop_off_location_coords: null });
         } else if (name === 'station_name') {
             setFormData({ ...formData, station_name: processedValue });
             if (processedValue.length >= 2) {
@@ -658,12 +758,21 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             } else if (reportType === 'roadside') {
                 const { location_boundary, location_boundingbox, ...roadsideCommonData } = commonData;
                 const assistanceType = formData.assistance_type || formData.emergency_type || 'General Assistance';
+                const driverName = formData.driver_name || `${profileData?.first_name || ''} ${profileData?.surname || ''}`.trim() || profileData?.username || user.email || 'Automated Driver';
                 reportData = {
                     ...roadsideCommonData,
                     title: formData.title || `Roadside Assistance: ${assistanceType}`,
                     status: formData.status || (reportToEdit ? reportToEdit.status : ReportStatus.ACTIVE),
                     emergency_type: 'Roadside Assistance',
+                    assistance_type: assistanceType,
                     location: formData.location || 'Unknown Location',
+                    drop_off_location: formData.drop_off_location || null,
+                    drop_off_location_coords: formData.drop_off_location_coords || null,
+                    driver_name: driverName,
+                    rollback: Boolean(formData.rollback),
+                    recovery: Boolean(formData.recovery),
+                    dreamtec: Boolean(formData.dreamtec),
+                    family_run: Boolean(formData.family_run),
                     vehicle_involved: true,
                     vehicles_involved: 1,
                     injuries_reported: formData.injuries_reported === 'true',
@@ -677,6 +786,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     cas_number: formData.cas_number || null,
                     station_name: formData.station_name || null,
                     date_of_incident: formData.date_of_incident || null,
+                    incident_time: formData.incident_time || null,
                 };
             } else if (reportType === 'emergency') {
                 // Exclude location_boundary and location_boundingbox for emergency reports as the table might not support them yet
@@ -844,6 +954,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         ...reportData,
                         id: reportId,
                         ob_number: ob_number,
+                        car_number: isRoadside ? ob_number : undefined,
                         card_number: isRoadside ? ob_number : undefined,
                         status: reportData.status || (tableName === 'vehicle_reports' ? ReportStatus.STOLEN : ReportStatus.ACTIVE),
                         reported_by: user.id,
@@ -1140,7 +1251,40 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         </div>
                     ) : reportType === 'roadside' ? (
                         <div className="space-y-4">
+                            {/* Car Number Automated Banner */}
+                            <div className="p-3 bg-teal-50 dark:bg-teal-950/40 rounded-lg border border-teal-200 dark:border-teal-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs shadow-sm">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-teal-900 dark:text-teal-200 uppercase tracking-wide">Car Number:</span>
+                                    <span className="font-mono text-teal-700 dark:text-teal-300 font-extrabold text-sm bg-white dark:bg-teal-900/60 px-2.5 py-0.5 rounded border border-teal-300 dark:border-teal-700">
+                                        {reportToEdit?.car_number || (reportToEdit as any)?.card_number || reportToEdit?.ob_number || formData.car_number || `${generateRoadsideCardNumber(1, new Date())} (Automated)`}
+                                    </span>
+                                    <span className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">(Automated)</span>
+                                </div>
+                                <span className="inline-flex items-center text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-teal-200/70 text-teal-900 dark:bg-teal-900 dark:text-teal-200">
+                                    Format: 000/00/00/0000 (Seq/Wk/Mo/Yr)
+                                </span>
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="driver_name" className={labelClasses}>
+                                        Driver Name <span className="text-xs font-normal text-teal-600 dark:text-teal-400">(Automated Login)</span>
+                                    </label>
+                                    <div className="relative">
+                                        <input 
+                                            type="text" 
+                                            name="driver_name" 
+                                            id="driver_name" 
+                                            value={formData.driver_name || ''} 
+                                            onChange={handleChange} 
+                                            className={inputClasses} 
+                                            placeholder="Auto-filled from logged in user" 
+                                        />
+                                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded font-medium">
+                                            Auto-Login
+                                        </span>
+                                    </div>
+                                </div>
                                 <div>
                                     <label htmlFor="assistance_type" className={labelClasses}>Assistance Needed</label>
                                     <select name="assistance_type" id="assistance_type" value={formData.assistance_type || 'Breakdown / Mechanical'} onChange={(e) => {
@@ -1163,9 +1307,42 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                         <option value="Other Assistance">Other Roadside Assistance</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label htmlFor="title" className={labelClasses}>Incident / Call Title</label>
                                     <input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. Stranded with flat tyre on N1 North" />
+                                </div>
+                                <div>
+                                    <label htmlFor="cas_number" className={labelClasses}>Reference / Dispatch Ref</label>
+                                    <input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. RSA-89201" />
+                                </div>
+                            </div>
+
+                            {/* Date and Time Section */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <div>
+                                    <label htmlFor="date_of_incident" className={labelClasses}>Date of Incident</label>
+                                    <input 
+                                        type="date" 
+                                        name="date_of_incident" 
+                                        id="date_of_incident" 
+                                        value={formData.date_of_incident || ''} 
+                                        onChange={handleChange} 
+                                        className={inputClasses} 
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="incident_time" className={labelClasses}>Time of Incident</label>
+                                    <input 
+                                        type="time" 
+                                        name="incident_time" 
+                                        id="incident_time" 
+                                        value={formData.incident_time || ''} 
+                                        onChange={handleChange} 
+                                        className={inputClasses} 
+                                    />
                                 </div>
                             </div>
 
@@ -1180,12 +1357,38 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                 <div><label htmlFor="vehicle_color" className={labelClasses}>Colour</label><input type="text" name="vehicle_color" id="vehicle_color" value={formData.vehicle_color || ''} onChange={handleChange} className={inputClasses} list="colors-list" placeholder="e.g. White" /></div>
                             </div>
 
-                            {/* Location Section */}
-                            <div className="space-y-4">
-                                <label htmlFor="location" className={labelClasses}>Breakdown Location / Landmark</label>
-                                <div className="relative mt-1" ref={suggestionsRef}>
-                                    <input type="text" name="location" id="location" value={formData.location || ''} onChange={handleChange} className={`${inputClasses} !mt-0 pr-10`} placeholder="e.g. N1 North before Rivonia Rd offramp" autoComplete="off"/>
-                                    <button type="button" onClick={() => setMapVisible(!isMapVisible)} className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-teal-500 dark:text-gray-400 dark:hover:text-teal-400 transition-colors" title="Pin location on map">
+                            {/* Breakdown Location Section (Pindrop / Allow Typing) */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label htmlFor="location" className={labelClasses}>
+                                        Breakdown Location <span className="text-xs font-normal text-gray-500">(Pindrop / Allow Typing)</span>
+                                    </label>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setMapVisible(!isMapVisible)} 
+                                        className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 flex items-center gap-1"
+                                    >
+                                        <MapPinIcon className="w-3.5 h-3.5" />
+                                        {isMapVisible ? 'Hide Map' : 'Pindrop on Map'}
+                                    </button>
+                                </div>
+                                <div className="relative" ref={suggestionsRef}>
+                                    <input 
+                                        type="text" 
+                                        name="location" 
+                                        id="location" 
+                                        value={formData.location || ''} 
+                                        onChange={handleChange} 
+                                        className={`${inputClasses} !mt-0 pr-10`} 
+                                        placeholder="Type breakdown address, landmark, or street..." 
+                                        autoComplete="off"
+                                    />
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setMapVisible(!isMapVisible)} 
+                                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-teal-500 dark:text-gray-400 dark:hover:text-teal-400 transition-colors" 
+                                        title="Pin breakdown location on map"
+                                    >
                                         <MapPinIcon className="w-5 h-5" />
                                     </button>
                                     
@@ -1214,21 +1417,183 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                         </div>
                                     ))}
                                 </div>
+                                {isMapVisible && (
+                                    <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                                        <div className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1.5 flex items-center gap-1">
+                                            <MapPinIcon className="w-3.5 h-3.5 text-teal-600" /> Pindrop Breakdown Location
+                                        </div>
+                                        <LocationPicker
+                                            initialCoords={formData.location_coords}
+                                            onLocationChange={handleLocationChange}
+                                        />
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="space-y-4">
-                                <label htmlFor="map_link" className={labelClasses}>Live Location / Google Maps Link (Optional)</label>
-                                <input type="text" name="map_link" id="map_link" value={formData.map_link || ''} onChange={handleChange} className={inputClasses} placeholder="Paste WhatsApp live location or Google Maps link..." />
-                            </div>
-
-                            {isMapVisible && (
-                                <div className="mt-2">
-                                     <LocationPicker
-                                        initialCoords={formData.location_coords}
-                                        onLocationChange={handleLocationChange}
-                                    />
+                            {/* Drop Off Location Section (Pindrop / Allow Typing) */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label htmlFor="drop_off_location" className={labelClasses}>
+                                        Drop Off Location <span className="text-xs font-normal text-gray-500">(Pindrop / Allow Typing)</span>
+                                    </label>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setIsDropOffMapVisible(!isDropOffMapVisible)} 
+                                        className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1"
+                                    >
+                                        <MapPinIcon className="w-3.5 h-3.5" />
+                                        {isDropOffMapVisible ? 'Hide Map' : 'Pindrop Drop Off on Map'}
+                                    </button>
                                 </div>
-                            )}
+                                <div className="relative" ref={dropOffSuggestionsRef}>
+                                    <input 
+                                        type="text" 
+                                        name="drop_off_location" 
+                                        id="drop_off_location" 
+                                        value={formData.drop_off_location || ''} 
+                                        onChange={handleChange} 
+                                        className={`${inputClasses} !mt-0 pr-10`} 
+                                        placeholder="Type drop off destination, workshop, home, or impound yard..." 
+                                        autoComplete="off"
+                                    />
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setIsDropOffMapVisible(!isDropOffMapVisible)} 
+                                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-indigo-500 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors" 
+                                        title="Pin drop-off location on map"
+                                    >
+                                        <MapPinIcon className="w-5 h-5" />
+                                    </button>
+                                    
+                                    {/* DROP OFF ADDRESS SUGGESTIONS DROPDOWN */}
+                                    {((dropOffAddressSuggestions.length > 0 || (formData.drop_off_location && formData.drop_off_location.trim().length >= 3 && !formData.drop_off_location_coords)) && (
+                                        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                            {dropOffAddressSuggestions.map((suggestion, index) => (
+                                                <button
+                                                    type="button"
+                                                    key={suggestion.place_id || index}
+                                                    onClick={() => handleDropOffSuggestionClick(suggestion)}
+                                                    className="w-full text-left p-3 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700/50 last:border-0"
+                                                >
+                                                    {suggestion.display_name}
+                                                </button>
+                                            ))}
+                                            {formData.drop_off_location && formData.drop_off_location.trim().length >= 3 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDropOffSuggestionClick({ display_name: formData.drop_off_location.trim(), is_custom: true })}
+                                                    className="w-full text-left p-3 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-medium transition-colors border-t border-gray-100 dark:border-gray-700/50 last:border-0"
+                                                >
+                                                    Use custom destination: "{formData.drop_off_location.trim()}"
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                {isDropOffMapVisible && (
+                                    <div className="mt-2 p-2 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-lg border border-indigo-200 dark:border-indigo-800/60">
+                                        <div className="text-xs font-semibold text-indigo-800 dark:text-indigo-300 mb-1.5 flex items-center gap-1">
+                                            <MapPinIcon className="w-3.5 h-3.5 text-indigo-600" /> Pindrop Destination / Drop Off Location
+                                        </div>
+                                        <LocationPicker
+                                            initialCoords={formData.drop_off_location_coords}
+                                            onLocationChange={handleDropOffLocationChange}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Service Operations Y/N Toggles (Rollback, Recovery, Dreamtec, Family Run) */}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+                                <div className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                                    Service Operations & Dispatch Flags
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    {/* Rollback : Y/N */}
+                                    <div className="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col justify-between items-center text-center gap-2 shadow-xs">
+                                        <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Rollback</span>
+                                        <div className="flex items-center rounded-md bg-gray-100 dark:bg-gray-700 p-0.5 w-full">
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData((prev: any) => ({ ...prev, rollback: true }))}
+                                                className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${formData.rollback ? 'bg-teal-600 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                                            >
+                                                Y
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData((prev: any) => ({ ...prev, rollback: false }))}
+                                                className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${!formData.rollback ? 'bg-gray-400 dark:bg-gray-600 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                                            >
+                                                N
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Recovery : Y/N */}
+                                    <div className="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col justify-between items-center text-center gap-2 shadow-xs">
+                                        <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Recovery</span>
+                                        <div className="flex items-center rounded-md bg-gray-100 dark:bg-gray-700 p-0.5 w-full">
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData((prev: any) => ({ ...prev, recovery: true }))}
+                                                className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${formData.recovery ? 'bg-teal-600 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                                            >
+                                                Y
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData((prev: any) => ({ ...prev, recovery: false }))}
+                                                className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${!formData.recovery ? 'bg-gray-400 dark:bg-gray-600 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                                            >
+                                                N
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Dreamtec : Y/N */}
+                                    <div className="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col justify-between items-center text-center gap-2 shadow-xs">
+                                        <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Dreamtec</span>
+                                        <div className="flex items-center rounded-md bg-gray-100 dark:bg-gray-700 p-0.5 w-full">
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData((prev: any) => ({ ...prev, dreamtec: true }))}
+                                                className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${formData.dreamtec ? 'bg-teal-600 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                                            >
+                                                Y
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData((prev: any) => ({ ...prev, dreamtec: false }))}
+                                                className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${!formData.dreamtec ? 'bg-gray-400 dark:bg-gray-600 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                                            >
+                                                N
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Family Run : Y/N */}
+                                    <div className="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col justify-between items-center text-center gap-2 shadow-xs">
+                                        <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Family Run</span>
+                                        <div className="flex items-center rounded-md bg-gray-100 dark:bg-gray-700 p-0.5 w-full">
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData((prev: any) => ({ ...prev, family_run: true }))}
+                                                className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${formData.family_run ? 'bg-teal-600 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                                            >
+                                                Y
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData((prev: any) => ({ ...prev, family_run: false }))}
+                                                className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${!formData.family_run ? 'bg-gray-400 dark:bg-gray-600 text-white shadow-xs' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                                            >
+                                                N
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -1248,24 +1613,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                         ))}
                                     </select>
                                 </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label htmlFor="cas_number" className={labelClasses}>Reference / Dispatch Ref</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. RSA-89201" /></div>
-                                <div><label htmlFor="date_of_incident" className={labelClasses}>Date / Time of Incident</label><input type="date" name="date_of_incident" id="date_of_incident" value={formData.date_of_incident || ''} onChange={handleChange} className={inputClasses} /></div>
-                            </div>
-
-                            {/* Card Number indicator */}
-                            <div className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                                <div>
-                                    <span className="font-bold text-gray-700 dark:text-gray-300">Card Number:</span>{' '}
-                                    <span className="font-mono text-teal-600 dark:text-teal-400 font-bold">
-                                        {reportToEdit?.ob_number || formData.ob_number || `${generateRoadsideCardNumber(1, new Date())} (Auto-generated on save)`}
-                                    </span>
-                                </div>
-                                <span className="inline-flex items-center text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300">
-                                    Format: 000/00/00/0000 (Seq/Wk/Mo/Yr)
-                                </span>
                             </div>
                         </div>
                     ) : reportType === 'emergency' ? (

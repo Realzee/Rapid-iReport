@@ -54,7 +54,7 @@ const PublicReportDetailModal: React.FC<PublicReportDetailModalProps> = ({ isOpe
                             <div className="flex-grow">
                                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
                                 <p className="font-mono text-sm text-gray-500 dark:text-gray-400">
-                                    {report.type === 'roadside' ? `Card No: ${(report as any).card_number || report.ob_number}` : report.ob_number}
+                                    {report.type === 'roadside' ? `Car No: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
                                 </p>
                             </div>
                             <div className="flex-shrink-0">

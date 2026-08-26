@@ -29,8 +29,8 @@ const PrintableReport: React.FC<PrintableReportProps> = ({ report, timelineEvent
       {/* Main Details */}
       <section className="mt-6 grid grid-cols-3 gap-6 text-sm">
         <div className="bg-gray-100 p-3 rounded-md border border-gray-200">
-          <p className="text-xs font-bold text-gray-500 uppercase">{report.type === 'roadside' ? 'Card Number' : 'OB Number'}</p>
-          <p className="font-mono text-lg font-semibold">{(report as any).card_number || report.ob_number}</p>
+          <p className="text-xs font-bold text-gray-500 uppercase">{report.type === 'roadside' ? 'Car Number' : 'OB Number'}</p>
+          <p className="font-mono text-lg font-semibold">{(report as any).car_number || (report as any).card_number || report.ob_number}</p>
         </div>
         <div className="bg-gray-100 p-3 rounded-md border border-gray-200">
           <p className="text-xs font-bold text-gray-500 uppercase">Status</p>

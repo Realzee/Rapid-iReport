@@ -146,7 +146,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                             )}
                         </div>
                         <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate mt-0.5">
-                            {report.type === 'roadside' ? `CARD: ${(report as any).card_number || report.ob_number}` : report.ob_number}
+                            {report.type === 'roadside' ? `CAR: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
                         </p>
                     </div>
                 </div>
