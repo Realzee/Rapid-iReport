@@ -339,8 +339,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 company_name: companyMap.get(r.company_id || '') || 'N/A'
             }))
             .filter(report => {
+                const cardNumber = (report as any).card_number || '';
                 const searchMatch = searchTerm === '' ||
                     report.ob_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    cardNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     (isVehicleReport(report) && report.license_plate.toLowerCase().includes(searchTerm.toLowerCase())) ||
                     (isEmergencyReport(report) && report.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
                     (!isVehicleReport(report) && !isEmergencyReport(report) && report.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -583,7 +585,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                     />
                                 </th>
                                 <SortableHeader label="Type" sortKey="type" sortConfig={sortConfig} onSort={handleSort} />
-                                <SortableHeader label="OB Number / Title" sortKey="ob_number" sortConfig={sortConfig} onSort={handleSort} />
+                                <SortableHeader label="OB / Card No / Title" sortKey="ob_number" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Company" sortKey="company_name" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Severity" sortKey="severity" sortConfig={sortConfig} onSort={handleSort} />
                                 <SortableHeader label="Reported At" sortKey="reported_at" sortConfig={sortConfig} onSort={handleSort} />
@@ -651,7 +653,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                         )}
                                         <div className={isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}>
                                             <div className="text-sm font-medium text-gray-900 dark:text-white">{isVehicleReport(report) ? report.license_plate : report.title}</div>
-                                            <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</div>
+                                            <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                                                {report.type === 'roadside' ? `CARD: ${(report as any).card_number || report.ob_number}` : report.ob_number}
+                                            </div>
                                         </div>
                                     </td>
                                     <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-medium ${isRecoveredOrDeleted ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>

@@ -18,6 +18,7 @@ import { MapStyle } from '../components/MapStyleToggle';
 import { useFormPersistence } from '../useFormPersistence';
 import { logUserAction } from '../utils/logger';
 import { LocationPicker, parseLocationInput, reverseGeocode } from './LocationPicker';
+import { generateRoadsideCardNumber, getWeekNumber } from '../utils/cardNumber';
 
 import { useSettings } from '../contexts/SettingsContext';
 import { generateAndShareBolo } from '../utils/boloUtils';
@@ -831,15 +832,19 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 let successfulInsertData: any = null;
 
                 // Retry up to 10 times if we hit a unique constraint violation
+                const isRoadside = reportType === 'roadside' || (reportData as any)?.emergency_type === 'Roadside Assistance';
                 for (let attempt = 0; attempt < 10; attempt++) {
                     const currentSequence = (initialSequence || 1) + attempt;
                     const paddedSequence = String(currentSequence).padStart(4, '0');
-                    const ob_number = `${initial}${paddedSequence}/${month}/${year}`;
+                    const ob_number = isRoadside 
+                        ? generateRoadsideCardNumber(currentSequence, now) 
+                        : `${initial}${paddedSequence}/${month}/${year}`;
 
                     const insertData = {
                         ...reportData,
                         id: reportId,
                         ob_number: ob_number,
+                        card_number: isRoadside ? ob_number : undefined,
                         status: reportData.status || (tableName === 'vehicle_reports' ? ReportStatus.STOLEN : ReportStatus.ACTIVE),
                         reported_by: user.id,
                         reported_at: now.toISOString(),
@@ -1248,6 +1253,19 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div><label htmlFor="cas_number" className={labelClasses}>Reference / Dispatch Ref</label><input type="text" name="cas_number" id="cas_number" value={formData.cas_number || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. RSA-89201" /></div>
                                 <div><label htmlFor="date_of_incident" className={labelClasses}>Date / Time of Incident</label><input type="date" name="date_of_incident" id="date_of_incident" value={formData.date_of_incident || ''} onChange={handleChange} className={inputClasses} /></div>
+                            </div>
+
+                            {/* Card Number indicator */}
+                            <div className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                                <div>
+                                    <span className="font-bold text-gray-700 dark:text-gray-300">Card Number:</span>{' '}
+                                    <span className="font-mono text-teal-600 dark:text-teal-400 font-bold">
+                                        {reportToEdit?.ob_number || formData.ob_number || `${generateRoadsideCardNumber(1, new Date())} (Auto-generated on save)`}
+                                    </span>
+                                </div>
+                                <span className="inline-flex items-center text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300">
+                                    Format: 000/00/00/0000 (Seq/Wk/Mo/Yr)
+                                </span>
                             </div>
                         </div>
                     ) : reportType === 'emergency' ? (

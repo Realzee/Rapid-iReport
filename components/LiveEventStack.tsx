@@ -129,7 +129,9 @@ const LiveEventItem: React.FC<{
                                         </span>
                                     )}
                                 </div>
-                                <p className="font-mono text-xs text-gray-500 dark:text-gray-400 truncate">{report.ob_number}</p>
+                                <p className="font-mono text-xs text-gray-500 dark:text-gray-400 truncate">
+                                    {report.type === 'roadside' ? `CARD: ${(report as any).card_number || report.ob_number}` : report.ob_number}
+                                </p>
                             </div>
                         </div>
                     </div>

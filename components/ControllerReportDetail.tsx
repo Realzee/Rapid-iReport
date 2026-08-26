@@ -906,7 +906,9 @@ const ControllerReportDetail: React.FC<{
                                 <GlobeIcon className="w-5 h-5 text-blue-500 flex-shrink-0" title="Global Report" />
                             )}
                         </div>
-                        <p className="font-mono text-sm text-gray-500 dark:text-gray-400">{report.ob_number}</p>
+                        <p className="font-mono text-sm text-gray-500 dark:text-gray-400">
+                            {report.type === 'roadside' ? `Card No: ${(report as any).card_number || report.ob_number}` : report.ob_number}
+                        </p>
                     </div>
                      <button onClick={() => setIsTimelineVisible(!isTimelineVisible)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50 transition">
                         {isTimelineVisible ? <ChevronUpIcon className="w-5 h-5"/> : <ChevronDownIcon className="w-5 h-5" />}

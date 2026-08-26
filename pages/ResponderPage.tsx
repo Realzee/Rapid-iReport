@@ -645,7 +645,9 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                                     <div className="flex justify-between items-start mb-2">
                                         <div className="flex items-center gap-2">
                                             <span className={`w-2 h-2 rounded-full ${report.severity === 'critical' ? 'bg-red-500 animate-pulse' : report.severity === 'high' ? 'bg-orange-500' : 'bg-blue-500'}`}></span>
-                                            <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{report.ob_number}</span>
+                                            <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+                                                {report.type === 'roadside' ? `CARD: ${(report as any).card_number || report.ob_number}` : report.ob_number}
+                                            </span>
                                         </div>
                                         <StatusBadge status={report.status} />
                                     </div>
@@ -939,7 +941,9 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                             </h2>
                             <StatusBadge status={report.status} />
                         </div>
-                        <p className="font-mono text-sm text-gray-500 dark:text-gray-400">OB: {report.ob_number}</p>
+                        <p className="font-mono text-sm text-gray-500 dark:text-gray-400">
+                            {report.type === 'roadside' ? `Card No: ${(report as any).card_number || report.ob_number}` : `OB: ${report.ob_number}`}
+                        </p>
                     </div>
                     <div className="flex items-center gap-2">
                          <button onClick={() => openChat(report)} className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium text-sm">

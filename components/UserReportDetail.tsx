@@ -156,7 +156,9 @@ const UserReportDetail: React.FC<{
                             <UsersIcon className="w-5 h-5 text-blue-500 flex-shrink-0" title="Shared with specific companies" />
                         )}
                     </div>
-                    <p className="font-mono text-sm text-gray-500 dark:text-gray-400">{report.ob_number}</p>
+                    <p className="font-mono text-sm text-gray-500 dark:text-gray-400">
+                        {report.type === 'roadside' ? `Card No: ${(report as any).card_number || report.ob_number}` : report.ob_number}
+                    </p>
                 </div>
                 <div className="flex-shrink-0 flex items-center gap-2">
                     {canEdit && (

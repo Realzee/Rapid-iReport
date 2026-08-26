@@ -776,8 +776,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                         <p className="font-bold text-gray-900 dark:text-white uppercase">{localReport.severity.toUpperCase()}</p>
                     </div>
                     <div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">OB Number</p>
-                        <p className="font-mono text-gray-900 dark:text-white">{localReport.ob_number}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{localReport.type === 'roadside' ? 'Card Number' : 'OB Number'}</p>
+                        <p className="font-mono text-gray-900 dark:text-white font-semibold">{(localReport as any).card_number || localReport.ob_number}</p>
                     </div>
                      <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported</p>

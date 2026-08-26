@@ -335,6 +335,7 @@ export interface RoadsideReport {
   location: string;
   emergency_type: string; // e.g. "Roadside Assistance"
   assistance_type?: string;
+  card_number?: string;
   severity: Severity;
   status: ReportStatus;
   reported_by: string; // profile id

@@ -18,7 +18,9 @@ const ChatWidget: React.FC<{
             <header className="flex-shrink-0 p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700/50">
                 <div>
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">{reportTitle}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">{report.ob_number}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                        {report.type === 'roadside' ? `Card No: ${(report as any).card_number || report.ob_number}` : report.ob_number}
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={onMinimize} className="p-1 rounded-full text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-colors" title="Minimize">
