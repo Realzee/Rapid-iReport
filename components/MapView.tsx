@@ -8,6 +8,7 @@ import { CheckCircleIcon, ShareIcon, GlobeIcon, UsersIcon } from './icons';
 import MapStyleToggle, { MapStyle } from './MapStyleToggle';
 import { useTheme } from '../contexts/ThemeContext';
 import { booleanPointInPolygon, point } from '@turf/turf';
+import { getCartoTileUrl, CARTO_ATTRIBUTION, ESRI_SATELLITE_TILE, ESRI_LABELS_TILE } from '../utils/mapTileUtils';
 
 interface MapViewProps {
   reports: Report[];
@@ -761,17 +762,11 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
     const selectedResponder = responders.find(r => r.id === selectedResponderId);
 
     const streetTile = {
-        url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        url: getCartoTileUrl('voyager'),
+        attribution: CARTO_ATTRIBUTION
     };
-    const satelliteTile = {
-        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        attribution: 'Tiles &copy; Esri'
-    };
-    const satelliteLabelsTile = {
-        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-        attribution: ''
-    };
+    const satelliteTile = ESRI_SATELLITE_TILE;
+    const satelliteLabelsTile = ESRI_LABELS_TILE;
 
 
     const areaStyle = {

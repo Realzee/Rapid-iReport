@@ -12,6 +12,7 @@ import { useChat } from '../contexts/ChatContext';
 import ImagePreviewModal from './ImagePreviewModal';
 import IncidentReportPreviewModal from './IncidentReportPreviewModal';
 import { FileText, Printer } from 'lucide-react';
+import { getCartoTileUrl, CARTO_ATTRIBUTION } from '../utils/mapTileUtils';
 
 const markerIcon = new L.Icon({
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -59,10 +60,10 @@ const UserReportDetail: React.FC<{
     const { theme } = useTheme();
     const { openChat } = useChat();
 
-    const lightMapUrl = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-    const darkMapUrl = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+    const lightMapUrl = getCartoTileUrl('voyager');
+    const darkMapUrl = getCartoTileUrl('dark');
     const tileUrl = theme === 'dark' ? darkMapUrl : lightMapUrl;
-    const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    const attribution = CARTO_ATTRIBUTION;
 
     useEffect(() => {
         const fetchDetails = async () => { 

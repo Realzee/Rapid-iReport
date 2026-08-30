@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext';
 import { WrenchIcon } from '../components/icons';
 import { logUserAction } from '../utils/logger';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { getCartoTileUrl, CARTO_ATTRIBUTION } from '../utils/mapTileUtils';
 
 interface TechnicianDashboardPageProps {
     profile: Profile;
@@ -701,8 +702,8 @@ const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = ({ profi
                                                 style={{ height: '100%', width: '100%', backgroundColor: '#f0f0f0' }}
                                             >
                                                 <TileLayer
-                                                    attribution='&copy; OpenStreetMap contributors'
-                                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                                    attribution={CARTO_ATTRIBUTION}
+                                                    url={getCartoTileUrl('voyager')}
                                                 />
                                                 <Marker position={selectedJob.location_coords ? [selectedJob.location_coords.lat, selectedJob.location_coords.lng] : defaultPosition}>
                                                     <Popup>

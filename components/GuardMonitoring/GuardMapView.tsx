@@ -2,6 +2,7 @@ import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { Responder, ResponderStatus } from '../../types';
+import { getCartoTileUrl, CARTO_ATTRIBUTION } from '../../utils/mapTileUtils';
 
 interface GuardMapViewProps {
     guards: any[];
@@ -54,8 +55,8 @@ const GuardMapView: React.FC<GuardMapViewProps> = ({ guards, sites = [] }) => {
         <div className="h-[500px] w-full rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow">
             <MapContainer center={[-26.2041, 28.0473]} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                 <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url={getCartoTileUrl('voyager')}
+                    attribution={CARTO_ATTRIBUTION}
                 />
                 
                 {/* Sites and Geofences */}

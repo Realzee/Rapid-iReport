@@ -28,6 +28,7 @@ import {
   Eye
 } from 'lucide-react';
 import { Profile } from '../types';
+import { getCartoTileUrl, CARTO_ATTRIBUTION, ESRI_SATELLITE_TILE, ESRI_LABELS_TILE } from '../utils/mapTileUtils';
 import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../utils/supabase';
@@ -1334,22 +1335,22 @@ export const FleetManagement: React.FC<FleetManagementProps> = ({ profile }) => 
                 >
                   {mapStyle === 'street' ? (
                     <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                      url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                      attribution={CARTO_ATTRIBUTION}
+                      url={getCartoTileUrl('voyager')}
                     />
                   ) : mapStyle === 'dark' ? (
                     <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                      url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                      attribution={CARTO_ATTRIBUTION}
+                      url={getCartoTileUrl('dark')}
                     />
                   ) : (
                     <>
                       <TileLayer
-                        attribution="Tiles &copy; Esri"
-                        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        attribution={ESRI_SATELLITE_TILE.attribution}
+                        url={ESRI_SATELLITE_TILE.url}
                       />
                       <TileLayer
-                        url="https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+                        url={ESRI_LABELS_TILE.url}
                         pane="overlayPane"
                       />
                     </>

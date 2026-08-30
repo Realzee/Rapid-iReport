@@ -2,6 +2,7 @@ import React from 'react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { getCartoTileUrl, CARTO_ATTRIBUTION } from '../utils/mapTileUtils';
 
 // Fix for default marker icons in Leaflet using CDN URLs to avoid build/import issues
 const DefaultIcon = L.icon({
@@ -23,7 +24,8 @@ const LocationMap: React.FC<LocationMapProps> = ({ lat, lng }) => {
         <div className="h-64 w-full rounded-lg overflow-hidden">
             <MapContainer center={[lat, lng]} zoom={15} style={{ height: '100%', width: '100%' }}>
                 <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                    url={getCartoTileUrl('voyager')}
+                    attribution={CARTO_ATTRIBUTION}
                 />
                 <Marker position={[lat, lng]} />
             </MapContainer>

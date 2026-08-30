@@ -5,6 +5,7 @@ import L from 'leaflet';
 import { LocationCoords } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { LayersIcon, CrosshairIcon } from './icons';
+import { getCartoTileUrl, CARTO_ATTRIBUTION, ESRI_SATELLITE_TILE, ESRI_LABELS_TILE } from '../utils/mapTileUtils';
 
 // --- Helper Functions ---
 export const formatAddress = (data: any): string => {
@@ -188,17 +189,11 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
     const [mapStyle, setMapStyle] = useState<'street' | 'satellite'>('street');
 
     const streetTile = {
-        url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        url: getCartoTileUrl('voyager'),
+        attribution: CARTO_ATTRIBUTION
     };
-    const satelliteTile = {
-        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        attribution: 'Tiles &copy; Esri'
-    };
-    const satelliteLabelsTile = {
-        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-        attribution: ''
-    };
+    const satelliteTile = ESRI_SATELLITE_TILE;
+    const satelliteLabelsTile = ESRI_LABELS_TILE;
     
     // Address suggestion states
     const [searchQuery, setSearchQuery] = useState('');

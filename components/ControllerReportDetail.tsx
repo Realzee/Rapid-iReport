@@ -19,6 +19,7 @@ import { LocationPicker } from './LocationPicker';
 import { getRecoveryInsights, RecoveryInsight } from '../utils/aiService';
 import { BrainIcon, MapPinIcon as LuMapPinIcon, HistoryIcon, FileText } from 'lucide-react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import { getCartoTileUrl, CARTO_ATTRIBUTION } from '../utils/mapTileUtils';
 
 const DetailField: React.FC<{ label: string, children: React.ReactNode, className?: string }> = ({ label, children, className }) => (
     <div className={className}>
@@ -1111,7 +1112,7 @@ const ControllerReportDetail: React.FC<{
                                 keyboard={false}
                                 zoomControl={false}
                             >
-                                <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+                                <TileLayer url={getCartoTileUrl('voyager')} attribution={CARTO_ATTRIBUTION} />
                                 <Marker position={[(report as any).recovered_location_coords.lat, (report as any).recovered_location_coords.lng]} />
                             </MapContainer>
                         </div>
