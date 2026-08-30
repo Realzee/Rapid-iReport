@@ -3,26 +3,27 @@
  */
 
 export const CARTO_API_KEY = 
-    (typeof process !== 'undefined' && process.env?.VITE_CARTO_API_KEY) || 
+    ((typeof process !== 'undefined' && process.env?.VITE_CARTO_API_KEY) || 
     (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_CARTO_API_KEY) || 
-    'cb1_2k96_1_ffe3c6fd9b38ca5339b379b3';
+    'cb1_2k96_1_ffe3c6fd9b38ca5339b379b3').trim();
 
 export const CARTO_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
 /**
- * Returns CARTO Basemap Raster Tile URLs with authentication parameters
+ * Returns CARTO Basemap Raster Tile URLs with authentication parameters.
+ * CARTO requires the `key` parameter (e.g. ?key=YOUR_API_KEY).
  */
 export function getCartoTileUrl(style: 'voyager' | 'dark' | 'light' = 'voyager'): string {
-    const keyParam = CARTO_API_KEY ? `?api_key=${CARTO_API_KEY}` : '';
+    const keyParam = CARTO_API_KEY ? `?key=${CARTO_API_KEY}&api_key=${CARTO_API_KEY}` : '';
     
     switch (style) {
         case 'dark':
-            return `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${keyParam}`;
+            return `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png${keyParam}`;
         case 'light':
-            return `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png${keyParam}`;
+            return `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png${keyParam}`;
         case 'voyager':
         default:
-            return `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png${keyParam}`;
+            return `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png${keyParam}`;
     }
 }
 
