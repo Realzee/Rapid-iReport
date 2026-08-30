@@ -12,6 +12,8 @@ import { useChat } from '../contexts/ChatContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { generateAndShareBolo } from '../utils/boloUtils';
 import ImagePreviewModal from './ImagePreviewModal';
+import IncidentReportPreviewModal from './IncidentReportPreviewModal';
+import { FileText, Printer } from 'lucide-react';
 
 interface ReportDetailCardProps {
     report: Report;
@@ -29,6 +31,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+    const [incidentReportModalOpen, setIncidentReportModalOpen] = useState(false);
     const { addToast } = useToast();
     const { openChat } = useChat();
     const { mainLogoUrl } = useSettings();
@@ -1231,18 +1234,29 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
 
 
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 grid grid-cols-2 gap-3">
-                <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold">
-                    <WhatsappIcon className="w-5 h-5"/> Share
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 space-y-3">
+                {/* Incident Information Report Preview & Print Action */}
+                <button 
+                    onClick={() => setIncidentReportModalOpen(true)} 
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-lg shadow-sm hover:shadow transition-all text-sm"
+                >
+                    <FileText className="w-4 h-4" />
+                    <span>Incident Information Report (Preview & Print)</span>
                 </button>
-                 <button onClick={() => generateBoloImage('download')} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 btn-primary text-sm disabled:opacity-50 disabled:cursor-wait">
-                    {isGeneratingBolo ? (
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                        <DownloadIcon className="w-5 h-5"/>
-                    )}
-                    <span>{isGeneratingBolo ? 'Generating...' : 'BOLO Card'}</span>
-                </button>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold">
+                        <WhatsappIcon className="w-5 h-5"/> Share
+                    </button>
+                    <button onClick={() => generateBoloImage('download')} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 btn-primary text-sm disabled:opacity-50 disabled:cursor-wait">
+                        {isGeneratingBolo ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                            <DownloadIcon className="w-5 h-5"/>
+                        )}
+                        <span>{isGeneratingBolo ? 'Generating...' : 'BOLO Card'}</span>
+                    </button>
+                </div>
             </div>
             {canManageReport && !(localReport as any).is_legacy && !localReport.id.startsWith('legacy-') && (
                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 grid grid-cols-2 gap-3">
@@ -1256,6 +1270,13 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             )}
             </div>
             <ImagePreviewModal isOpen={!!previewImageUrl} onClose={() => setPreviewImageUrl(null)} imageUrl={previewImageUrl} />
+            <IncidentReportPreviewModal
+                isOpen={incidentReportModalOpen}
+                onClose={() => setIncidentReportModalOpen(false)}
+                report={localReport}
+                reporterName={reporter ? `${reporter.first_name} ${reporter.surname}` : 'Unknown'}
+                company={profile.company}
+            />
         </div>
     );
 };

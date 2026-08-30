@@ -10,22 +10,23 @@ export function getWeekNumber(date: Date = new Date()): number {
 }
 
 /**
- * Calculates the week number for the current month (1 to 5).
- * Monday-based week calculation within the current month.
+ * Calculates the week number for the current month (strictly between 1 and 4).
+ * - Days 1 to 7   -> Week 1
+ * - Days 8 to 14  -> Week 2
+ * - Days 15 to 21 -> Week 3
+ * - Days 22+      -> Week 4
  */
 export function getWeekOfMonth(date: Date = new Date()): number {
     const day = date.getDate();
-    const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-    const dayOfWeek = (firstDay.getDay() + 6) % 7; // Monday = 0, ..., Sunday = 6
-    return Math.ceil((day + dayOfWeek) / 7);
+    return Math.min(4, Math.max(1, Math.ceil(day / 7)));
 }
 
 export const getWeekNumberForMonth = getWeekOfMonth;
 
 /**
  * Generates a Roadside Car / Card Number in the required format:
- * 000(number)/00(week number for the current month)/00(month)/0000(year)
- * Example: 001/05/08/2026
+ * 000(number)/00(week number for current month, 01-04)/00(month)/0000(year)
+ * Example: 001/04/08/2026
  */
 export function generateRoadsideCardNumber(sequence: number = 1, date: Date = new Date()): string {
     const seqStr = String(sequence).padStart(3, '0');

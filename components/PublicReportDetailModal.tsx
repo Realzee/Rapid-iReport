@@ -7,6 +7,8 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import { useTheme } from '../contexts/ThemeContext';
 import ImagePreviewModal from './ImagePreviewModal';
+import IncidentReportPreviewModal from './IncidentReportPreviewModal';
+import { FileText } from 'lucide-react';
 
 const markerIcon = new L.Icon({
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -33,6 +35,7 @@ const DetailItem: React.FC<{ label: string; value?: string | React.ReactNode }> 
 const PublicReportDetailModal: React.FC<PublicReportDetailModalProps> = ({ isOpen, onClose, report }) => {
     const { theme } = useTheme();
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+    const [incidentReportModalOpen, setIncidentReportModalOpen] = useState(false);
 
     if (!isOpen || !report) return null;
 
@@ -133,10 +136,25 @@ const PublicReportDetailModal: React.FC<PublicReportDetailModalProps> = ({ isOpe
                         <div>
                             <DetailItem label="Description" value={<p className="whitespace-pre-wrap text-sm">{report.description}</p>} />
                         </div>
+
+                        <div className="pt-2">
+                            <button 
+                                onClick={() => setIncidentReportModalOpen(true)}
+                                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-lg shadow-sm hover:shadow transition-all text-sm"
+                            >
+                                <FileText className="w-4 h-4" />
+                                <span>Incident Information Report (Preview & Print)</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
             <ImagePreviewModal isOpen={!!previewImageUrl} onClose={() => setPreviewImageUrl(null)} imageUrl={previewImageUrl} />
+            <IncidentReportPreviewModal 
+                isOpen={incidentReportModalOpen} 
+                onClose={() => setIncidentReportModalOpen(false)} 
+                report={report} 
+            />
         </>
     );
 };

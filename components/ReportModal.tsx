@@ -1261,7 +1261,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     <span className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">(Automated)</span>
                                 </div>
                                 <span className="inline-flex items-center text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-teal-200/70 text-teal-900 dark:bg-teal-900 dark:text-teal-200">
-                                    Format: 000/00/00/0000 (Number/Wk of Month/Month/Year)
+                                    Format: 000/00/00/0000 (Seq/Wk 01-04/Mo/Yr)
                                 </span>
                             </div>
 

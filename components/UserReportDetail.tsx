@@ -10,6 +10,8 @@ import L from 'leaflet';
 import { useTheme } from '../contexts/ThemeContext';
 import { useChat } from '../contexts/ChatContext';
 import ImagePreviewModal from './ImagePreviewModal';
+import IncidentReportPreviewModal from './IncidentReportPreviewModal';
+import { FileText, Printer } from 'lucide-react';
 
 const markerIcon = new L.Icon({
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -53,6 +55,7 @@ const UserReportDetail: React.FC<{
     const [updates, setUpdates] = useState<ReportUpdate[]>([]);
     const [assignmentHistory, setAssignmentHistory] = useState<AssignmentLog[]>([]);
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+    const [incidentReportModalOpen, setIncidentReportModalOpen] = useState(false);
     const { theme } = useTheme();
     const { openChat } = useChat();
 
@@ -331,13 +334,29 @@ const UserReportDetail: React.FC<{
                     </div>
                 </div>
                  
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-700/50">
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700/50 space-y-3">
+                    <button 
+                        onClick={() => setIncidentReportModalOpen(true)} 
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-lg shadow-sm hover:shadow transition-all text-sm"
+                    >
+                        <FileText className="w-4 h-4" />
+                        <span>Incident Information Report (Preview & Print)</span>
+                    </button>
+
                     <button onClick={() => openChat(report)} className="w-full py-2 px-4 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition">
                         Open Live Chat
                     </button>
                 </div>
             </div>
             <ImagePreviewModal isOpen={!!previewImageUrl} onClose={() => setPreviewImageUrl(null)} imageUrl={previewImageUrl} />
+            <IncidentReportPreviewModal
+                isOpen={incidentReportModalOpen}
+                onClose={() => setIncidentReportModalOpen(false)}
+                report={report}
+                timelineEvents={timelineEvents}
+                reporterName={`${profile.first_name} ${profile.surname}`}
+                company={profile.company}
+            />
         </div>
     );
 };

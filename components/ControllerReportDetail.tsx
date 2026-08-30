@@ -5,6 +5,7 @@ import { safeFormat, safeFormatDistanceToNow } from '../utils/dateUtils';
 import { supabase } from '../utils/supabase';
 import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon } from './icons';
 import PrintableReport from './PrintableReport';
+import IncidentReportPreviewModal from './IncidentReportPreviewModal';
 import ReportTypeBadge from './ReportTypeBadge';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from './ConfirmModal';
@@ -16,7 +17,7 @@ import { generateAndShareBolo } from '../utils/boloUtils';
 import { logUserAction } from '../utils/logger';
 import { LocationPicker } from './LocationPicker';
 import { getRecoveryInsights, RecoveryInsight } from '../utils/aiService';
-import { BrainIcon, MapPinIcon as LuMapPinIcon, HistoryIcon } from 'lucide-react';
+import { BrainIcon, MapPinIcon as LuMapPinIcon, HistoryIcon, FileText } from 'lucide-react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 
 const DetailField: React.FC<{ label: string, children: React.ReactNode, className?: string }> = ({ label, children, className }) => (
@@ -74,6 +75,7 @@ const ControllerReportDetail: React.FC<{
     const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
     const [isGeneratingBolo, setIsGeneratingBolo] = useState(false);
     const [isTimelineVisible, setIsTimelineVisible] = useState(true);
+    const [incidentReportModalOpen, setIncidentReportModalOpen] = useState(false);
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
     const [recoveredCoords, setRecoveredCoords] = useState<LocationCoords | null>((report as any).recovered_location_coords || null);
     const [recoveredAddress, setRecoveredAddress] = useState<string>('');
@@ -1268,8 +1270,18 @@ const ControllerReportDetail: React.FC<{
                     <button onClick={() => openChat(report)} className="w-full py-2 px-4 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition disabled:opacity-50">Open Live Chat</button>
                     <button onClick={() => setAssignmentModalOpen(true)} disabled={!canManageReport || isTerminalStatus || (report as any).is_legacy || report.id.startsWith('legacy-')} className="w-full py-2 px-4 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 transition disabled:opacity-50 disabled:cursor-not-allowed">Manage Status</button>
                 </div>
+                
+                {/* Incident Information Report Preview & Print Action */}
+                <button 
+                    onClick={() => setIncidentReportModalOpen(true)} 
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-lg shadow-sm hover:shadow transition-all text-sm"
+                >
+                    <FileText className="w-4 h-4" />
+                    <span>Incident Information Report (Preview & Print)</span>
+                </button>
+
                  <div className="grid grid-cols-3 gap-3">
-                     <button onClick={() => window.print()} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold"><PrintIcon className="w-5 h-5"/> Print</button>
+                     <button onClick={() => setIncidentReportModalOpen(true)} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold"><PrintIcon className="w-5 h-5"/> Print</button>
                      <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold"><WhatsappIcon className="w-5 h-5"/> Share</button>
                      <button onClick={() => generateBoloImage('download')} disabled={isGeneratingBolo || isActionLoading} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50"><DownloadIcon className="w-5 h-5"/> BOLO</button>
                  </div>
@@ -1430,6 +1442,14 @@ const ControllerReportDetail: React.FC<{
                 confirmVariant="primary"
             />
             <ImagePreviewModal isOpen={!!previewImageUrl} onClose={() => setPreviewImageUrl(null)} imageUrl={previewImageUrl} />
+            <IncidentReportPreviewModal
+                isOpen={incidentReportModalOpen}
+                onClose={() => setIncidentReportModalOpen(false)}
+                report={report}
+                timelineEvents={timelineEvents}
+                reporterName={reporter ? `${reporter.first_name} ${reporter.surname}` : 'Unknown'}
+                company={profile.company}
+            />
         </div>
         </>
     );

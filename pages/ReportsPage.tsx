@@ -11,6 +11,8 @@ import ConfirmModal from '../components/ConfirmModal';
 import { logUserAction } from '../utils/logger';
 import { BulkShareModal } from '../components/BulkShareModal';
 import { safeFormat } from '../utils/dateUtils';
+import IncidentReportPreviewModal from '../components/IncidentReportPreviewModal';
+import { FileText, Printer } from 'lucide-react';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
@@ -145,6 +147,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' } | null>({ key: 'reported_at', direction: 'descending' });
 
     const [detailModalReport, setDetailModalReport] = useState<Report | null>(null);
+    const [incidentReportModalReport, setIncidentReportModalReport] = useState<Report | null>(null);
     const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
         return !!localStorage.getItem('new-report');
     });
@@ -673,7 +676,15 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                                         {safeFormat((report as any).achieved_at, 'MMM d, yyyy HH:mm', 'N/A')}
                                     </td>
                                     <td className={`px-6 py-4 whitespace-nowrap text-right text-sm font-medium ${isRecoveredOrDeleted ? 'opacity-40 grayscale' : ''}`}>
-                                        <div className="flex items-center justify-end space-x-4">
+                                        <div className="flex items-center justify-end space-x-3">
+                                            <button 
+                                                onClick={() => setIncidentReportModalReport(report)} 
+                                                className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center gap-1 font-medium"
+                                                title="Preview and Print Incident Information Report"
+                                            >
+                                                <FileText className="w-3.5 h-3.5" />
+                                                <span>Report</span>
+                                            </button>
                                             <button onClick={() => setDetailModalReport(report)} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">View</button>
                                             <button onClick={() => handleRestoreClick(report)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">Restore</button>
                                             <button onClick={() => handleDeleteClick(report)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">Delete</button>
@@ -781,6 +792,13 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
                 selectedReports={selectedReports}
                 profile={profile}
                 onBulkShared={fetchData}
+            />
+
+            <IncidentReportPreviewModal
+                isOpen={!!incidentReportModalReport}
+                onClose={() => setIncidentReportModalReport(null)}
+                report={incidentReportModalReport}
+                company={profile.company}
             />
         </div>
     );
