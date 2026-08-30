@@ -1,24 +1,23 @@
--- RAPID iREPORT - Emergency Reports Database Schema
--- Run this in the Supabase SQL Editor to enable emergency reporting.
+-- Comprehensive Schema Fix for emergency_reports table
+-- Run this in your Supabase SQL Editor to ensure all fields are available
 
--- 1. Create the emergency_reports table
 CREATE TABLE IF NOT EXISTS public.emergency_reports (
-    id uuid NOT NULL DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
-    ob_number text NOT NULL UNIQUE,
-    title text,
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    ob_number text UNIQUE NOT NULL,
+    emergency_type text NOT NULL,
     description text NOT NULL,
     location text NOT NULL,
-    emergency_type text NOT NULL, -- e.g., Head-on, Rear-end, Pedestrian, etc.
-    severity text NOT NULL,
-    status text NOT NULL DEFAULT 'Active',
-    reported_by uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    assigned_to uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
-    company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL,
-    reported_at timestamp with time zone NOT NULL DEFAULT now(),
-    completed_at timestamp with time zone,
     location_coords jsonb,
     location_boundary jsonb,
     location_boundingbox numeric[],
+    severity text NOT NULL,
+    status text NOT NULL DEFAULT 'Active',
+    reported_by uuid REFERENCES public.profiles(id) NOT NULL,
+    reported_at timestamp with time zone DEFAULT now() NOT NULL,
+    completed_at timestamp with time zone,
+    assigned_to uuid REFERENCES public.profiles(id),
+    company_id uuid REFERENCES public.companies(id) NOT NULL,
+    image_url text,
     evidence_images text[],
     assistance_type text,
     card_number text,
@@ -37,13 +36,13 @@ CREATE TABLE IF NOT EXISTS public.emergency_reports (
     vin_number text,
     engine_number text,
     vehicle_involved boolean DEFAULT false,
-    vehicles_involved integer DEFAULT 1,
-    injuries_reported boolean DEFAULT false,
-    fatalities_reported boolean DEFAULT false,
+    vehicles_involved integer DEFAULT 0,
     license_plate text,
     vehicle_make text,
     vehicle_model text,
     vehicle_color text,
+    injuries_reported boolean DEFAULT false,
+    fatalities_reported boolean DEFAULT false,
     crime_outcome text,
     cit_success boolean DEFAULT false,
     arrests integer DEFAULT 0,
@@ -58,7 +57,7 @@ CREATE TABLE IF NOT EXISTS public.emergency_reports (
     is_public boolean DEFAULT false
 );
 
--- Ensure all columns exist even if table was created previously
+-- Ensure all columns exist even if the table was created earlier
 ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS assistance_type text;
 ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS card_number text;
 ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS car_number text;
@@ -122,10 +121,10 @@ BEGIN
     END IF;
 END $$;
 
--- 2. Enable RLS
+-- Enable RLS
 ALTER TABLE public.emergency_reports ENABLE ROW LEVEL SECURITY;
 
--- 3. Create RLS Policies
+-- Policies for emergency_reports
 DROP POLICY IF EXISTS "Users read own emergency reports" ON public.emergency_reports;
 CREATE POLICY "Users read own emergency reports" ON public.emergency_reports FOR SELECT USING (auth.uid() = reported_by);
 
@@ -134,54 +133,24 @@ CREATE POLICY "Users create emergency reports" ON public.emergency_reports FOR I
 
 DROP POLICY IF EXISTS "Staff manage company emergency reports" ON public.emergency_reports;
 CREATE POLICY "Staff manage company emergency reports" ON public.emergency_reports FOR ALL USING (
-    EXISTS (
-        SELECT 1 FROM public.profiles
-        WHERE id = auth.uid()
-        AND (
-            (role::text IN ('admin', 'super_admin', 'controller', 'technician', 'moderator') 
-              AND (company_id = emergency_reports.company_id 
-                   OR emergency_reports.is_global = true 
-                   OR (emergency_reports.shared_with_company_ids IS NOT NULL AND company_id = ANY(emergency_reports.shared_with_company_ids))))
-            OR (role::text = 'responder' 
-              AND (assigned_to = auth.uid() 
-                   OR company_id = emergency_reports.company_id 
-                   OR emergency_reports.is_global = true))
-        )
+  EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND (
+      (role::text IN ('admin', 'super_admin', 'controller', 'technician', 'moderator') 
+        AND (company_id = emergency_reports.company_id 
+             OR emergency_reports.is_global = true 
+             OR (emergency_reports.shared_with_company_ids IS NOT NULL AND company_id = ANY(emergency_reports.shared_with_company_ids))))
+      OR (role::text = 'responder' 
+        AND (assigned_to = auth.uid() 
+             OR company_id = emergency_reports.company_id 
+             OR emergency_reports.is_global = true))
     )
+  )
 );
 
 DROP POLICY IF EXISTS "Users update own emergency reports" ON public.emergency_reports;
 CREATE POLICY "Users update own emergency reports" ON public.emergency_reports FOR UPDATE USING (auth.uid() = reported_by);
 
--- 4. Update the OB Sequence Function to include emergency reports
-CREATE OR REPLACE FUNCTION public.get_next_ob_sequence(p_company_id uuid, p_report_date timestamp with time zone)
-RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE
-    report_month integer := extract(month from p_report_date);
-    report_year integer := extract(year from p_report_date);
-    max_seq integer;
-BEGIN
-    SELECT MAX(seq) INTO max_seq
-    FROM (
-        SELECT CAST(substring(ob_number from 2 for 4) AS integer) as seq 
-        FROM public.vehicle_reports 
-        WHERE extract(year from reported_at) = report_year AND extract(month from reported_at) = report_month
-        AND ob_number ~ '^[A-Z][0-9]{4}/[0-9]{2}/[0-9]{4}$'
-        UNION ALL
-        SELECT CAST(substring(ob_number from 2 for 4) AS integer) as seq 
-        FROM public.crime_reports 
-        WHERE extract(year from reported_at) = report_year AND extract(month from reported_at) = report_month
-        AND ob_number ~ '^[A-Z][0-9]{4}/[0-9]{2}/[0-9]{4}$'
-        UNION ALL
-        SELECT CAST(substring(ob_number from 2 for 4) AS integer) as seq 
-        FROM public.emergency_reports 
-        WHERE extract(year from reported_at) = report_year AND extract(month from reported_at) = report_month
-        AND ob_number ~ '^[A-Z][0-9]{4}/[0-9]{2}/[0-9]{4}$'
-    ) AS combined;
-    
-    RETURN COALESCE(max_seq, 0) + 1;
-END;
-$$;
-
+-- Refresh PostgREST schema cache
 NOTIFY pgrst, 'reload schema';

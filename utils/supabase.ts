@@ -19,3 +19,27 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('undefined') || sup
 export const supabase = (supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('undefined') && supabaseAnonKey !== 'undefined' && supabaseUrl.startsWith('http'))
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
+
+/**
+ * Utility to parse PostgREST or Postgres schema mismatch errors to detect missing columns.
+ */
+export function extractMissingColumn(errorMessage: string): string | null {
+  if (!errorMessage || typeof errorMessage !== 'string') return null;
+  
+  // PostgREST: "Could not find the 'column_name' column of 'table_name' in the schema cache"
+  const match1 = errorMessage.match(/Could not find the ['"]([^'"]+)['"] column/i);
+  if (match1 && match1[1]) return match1[1];
+
+  // Postgres: column "column_name" of relation "table_name" does not exist
+  const match2 = errorMessage.match(/column ["']?([a-zA-Z0-9_]+)["']? of relation/i);
+  if (match2 && match2[1]) return match2[1];
+
+  // column table.column does not exist or column "column" does not exist
+  const match3 = errorMessage.match(/column ["']?([a-zA-Z0-9_.]+)["']? does not exist/i);
+  if (match3 && match3[1]) {
+      const parts = match3[1].split('.');
+      return parts[parts.length - 1];
+  }
+
+  return null;
+}

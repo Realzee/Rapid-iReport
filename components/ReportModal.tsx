@@ -5,7 +5,7 @@
  */
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase } from '../utils/supabase';
+import { supabase, extractMissingColumn } from '../utils/supabase';
 import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport, EmergencyReport } from '../types';
 import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon, CheckCircleIcon, TrashIcon, WrenchIcon } from '../components/icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
@@ -846,8 +846,35 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             }
 
             if (reportToEdit) {
-                 const { error } = await supabase.from(tableName).update(reportData).eq('id', reportToEdit.id);
-                 if (error) throw error;
+                 let updatePayload = { ...reportData };
+                 let updateSuccess = false;
+                 let lastUpdateError: any = null;
+
+                 for (let attempt = 0; attempt < 12; attempt++) {
+                     const { error } = await supabase.from(tableName).update(updatePayload).eq('id', reportToEdit.id);
+                     if (!error) {
+                         updateSuccess = true;
+                         break;
+                     }
+                     lastUpdateError = error;
+                     const missingCol = extractMissingColumn(error.message || '');
+                     if (missingCol && missingCol in updatePayload) {
+                         console.warn(`[Schema Resilience] Column '${missingCol}' missing in table '${tableName}'. Preserving note in description and retrying update...`);
+                         const val = updatePayload[missingCol];
+                         if (val !== undefined && val !== null && typeof val !== 'object') {
+                             const label = missingCol.replace(/_/g, ' ');
+                             if (updatePayload.description && !updatePayload.description.includes(`[${label}:`)) {
+                                 updatePayload.description = `${updatePayload.description}\n[${label}: ${val}]`;
+                             }
+                         }
+                         delete updatePayload[missingCol];
+                         continue;
+                     }
+                     throw error;
+                 }
+
+                 if (!updateSuccess) throw lastUpdateError || new Error("Failed to update report.");
+
                  logUserAction(user.id, 'UPDATE_REPORT', `Updated report ${reportToEdit.id} (${reportToEdit.ob_number})`);
                  
                  // Show WhatsApp confirm for updates too
@@ -950,7 +977,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         ? generateRoadsideCardNumber(currentSequence, now) 
                         : `${initial}${paddedSequence}/${month}/${year}`;
 
-                    const insertData = {
+                    const insertData: any = {
                         ...reportData,
                         id: reportId,
                         ob_number: ob_number,
@@ -963,12 +990,47 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         cos_name: tableName === 'vehicle_reports' ? companyName : undefined,
                     };
 
-                    const { error: insertError } = await supabase.from(tableName).insert(insertData);
+                    let currentInsertPayload = { ...insertData };
+                    let singleInsertSuccess = false;
+                    let singleInsertError = null;
+
+                    // Inner loop to strip any missing columns if the database schema is missing optional columns
+                    for (let colRetry = 0; colRetry < 12; colRetry++) {
+                        const { error: insertError } = await supabase.from(tableName).insert(currentInsertPayload);
+                        if (!insertError) {
+                            singleInsertSuccess = true;
+                            break;
+                        }
+                        singleInsertError = insertError;
+
+                        // Check for unique constraint violation (Postgres error code 23505) -> break to outer OB sequence retry loop
+                        if (insertError.code === '23505' || (insertError.message && insertError.message.includes('unique constraint'))) {
+                            break;
+                        }
+
+                        // Check if column is missing from schema cache
+                        const missingCol = extractMissingColumn(insertError.message || '');
+                        if (missingCol && missingCol in currentInsertPayload) {
+                            console.warn(`[Schema Resilience] Column '${missingCol}' missing in table '${tableName}'. Preserving note in description and retrying insert...`);
+                            const val = currentInsertPayload[missingCol];
+                            if (val !== undefined && val !== null && typeof val !== 'object' && missingCol !== 'id' && missingCol !== 'ob_number') {
+                                const label = missingCol.replace(/_/g, ' ');
+                                if (currentInsertPayload.description && !currentInsertPayload.description.includes(`[${label}:`)) {
+                                    currentInsertPayload.description = `${currentInsertPayload.description}\n[${label}: ${val}]`;
+                                }
+                            }
+                            delete currentInsertPayload[missingCol];
+                            continue;
+                        }
+
+                        // Other error -> break and throw
+                        break;
+                    }
                     
-                    if (!insertError) {
+                    if (singleInsertSuccess) {
                         success = true;
                         finalObNumber = ob_number;
-                        successfulInsertData = insertData;
+                        successfulInsertData = currentInsertPayload;
 
                         // Save new vehicle report to the legacy system
                         if (tableName === 'vehicle_reports') {
@@ -1023,14 +1085,16 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     }
 
                     // Check for unique constraint violation (Postgres error code 23505)
-                    if (insertError.code === '23505' || (insertError.message && insertError.message.includes('unique constraint'))) {
-                        lastError = insertError;
+                    if (singleInsertError && (singleInsertError.code === '23505' || (singleInsertError.message && singleInsertError.message.includes('unique constraint')))) {
+                        lastError = singleInsertError;
                         // Small random delay before retry to help with concurrent requests
                         await new Promise(resolve => setTimeout(resolve, Math.random() * 200));
                         continue;
                     }
 
-                    throw insertError;
+                    if (singleInsertError) {
+                        throw singleInsertError;
+                    }
                 }
 
                 if (!success) {
