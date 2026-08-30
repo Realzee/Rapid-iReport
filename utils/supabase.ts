@@ -43,3 +43,58 @@ export function extractMissingColumn(errorMessage: string): string | null {
 
   return null;
 }
+
+/**
+ * Safely fetches the next OB sequence number.
+ * Tries RPC first. If RPC fails (e.g. function overloading collision or missing function),
+ * falls back to directly querying existing tables to calculate max sequence for the current month/year.
+ */
+export async function getSafeNextObSequence(companyId?: string | null, date: Date = new Date()): Promise<number> {
+  if (!supabase) return 1;
+
+  try {
+    const { data: seq, error } = await supabase.rpc('get_next_ob_sequence', {
+      p_company_id: companyId || null,
+      p_report_date: date.toISOString()
+    });
+
+    if (!error && typeof seq === 'number' && seq > 0) {
+      return seq;
+    }
+    if (error) {
+      console.warn('[OB Sequence RPC Warning]', error.message, '- Using resilient fallback query.');
+    }
+  } catch (err) {
+    console.warn('[OB Sequence RPC Exception]', err, '- Using resilient fallback query.');
+  }
+
+  // Fallback: Query tables directly to find max sequence for the month/year
+  try {
+    const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
+    const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
+
+    const [vRes, cRes, eRes] = await Promise.all([
+      supabase.from('vehicle_reports').select('ob_number').gte('reported_at', startOfMonth).lte('reported_at', endOfMonth).limit(500),
+      supabase.from('crime_reports').select('ob_number').gte('reported_at', startOfMonth).lte('reported_at', endOfMonth).limit(500),
+      supabase.from('emergency_reports').select('ob_number').gte('reported_at', startOfMonth).lte('reported_at', endOfMonth).limit(500).then(r => r, () => ({ data: [] }))
+    ]);
+
+    let maxSeq = 0;
+    const allReports = [...(vRes?.data || []), ...(cRes?.data || []), ...(eRes?.data || [])];
+    for (const rep of allReports) {
+      if (rep && rep.ob_number && typeof rep.ob_number === 'string') {
+        const match = rep.ob_number.match(/^[A-Z]?(\d{4})\//);
+        if (match && match[1]) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxSeq) {
+            maxSeq = num;
+          }
+        }
+      }
+    }
+    return maxSeq + 1;
+  } catch (fallbackErr) {
+    console.warn('[OB Sequence Fallback Error]', fallbackErr);
+    return 1;
+  }
+}

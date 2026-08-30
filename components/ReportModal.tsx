@@ -5,7 +5,7 @@
  */
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase, extractMissingColumn } from '../utils/supabase';
+import { supabase, extractMissingColumn, getSafeNextObSequence } from '../utils/supabase';
 import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport, EmergencyReport } from '../types';
 import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon, CheckCircleIcon, TrashIcon, WrenchIcon } from '../components/icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
@@ -956,12 +956,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 const month = (now.getMonth() + 1).toString().padStart(2, '0');
                 const year = now.getFullYear();
 
-                const { data: initialSequence, error: rpcError } = await supabase.rpc('get_next_ob_sequence', {
-                    p_company_id: companyId,
-                    p_report_date: now.toISOString()
-                });
-                
-                if (rpcError) throw new Error(`Failed to generate OB Number: ${rpcError.message}`);
+                const initialSequence = await getSafeNextObSequence(companyId, now);
 
                 let success = false;
                 let lastError = null;

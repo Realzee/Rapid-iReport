@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Profile, Attendance } from '../types';
-import { supabase } from '../utils/supabase';
+import { supabase, getSafeNextObSequence } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
 import ClockInModal from '../components/ClockInModal';
 import { AlertOctagon, ShieldAlert, Bell, Loader2, MapPin, Radio, Wifi } from 'lucide-react';
@@ -136,15 +136,12 @@ export const GuardDashboardPage: React.FC<GuardDashboardPageProps> = ({ profile 
             let ob_number = `PANIC-${Date.now().toString().slice(-6)}`;
             
             try {
-                const { data: seq } = await supabase.rpc('get_next_ob_sequence', {
-                    p_company_id: profile.company_id,
-                    p_report_date: now.toISOString()
-                });
+                const seq = await getSafeNextObSequence(profile.company_id, now);
                 if (seq) {
                     ob_number = `${initial}${String(seq).padStart(4, '0')}/${month}/${year}`;
                 }
             } catch (rpcErr) {
-                console.error('Failed to retrieve OB number via RPC, falling back to timestamp:', rpcErr);
+                console.error('Failed to retrieve OB number, falling back to timestamp:', rpcErr);
             }
 
             // 3. Prepare the database payload
