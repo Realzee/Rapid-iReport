@@ -709,8 +709,10 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
     const isGreenStamp = localReport.status === 'recovered' || localReport.status === 'resolved' || localReport.status === ReportStatus.RECOVERED || localReport.status === ReportStatus.RESOLVED;
 
+    const isRoadside = localReport.type === 'roadside' || (localReport as any).emergency_type === 'Roadside Assistance';
+
     return (
-        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-auto relative overflow-hidden">
+        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-auto relative overflow-hidden print:hidden">
             {isRecoveredOrDeleted && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 select-none bg-black/5 dark:bg-black/10">
                     <div className={`border-8 border-double ${
@@ -1244,19 +1246,21 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     <span>Incident Information Report (Preview & Print)</span>
                 </button>
 
-                <div className="grid grid-cols-2 gap-3">
-                    <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold">
-                        <WhatsappIcon className="w-5 h-5"/> Share
-                    </button>
-                    <button onClick={() => generateBoloImage('download')} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 btn-primary text-sm disabled:opacity-50 disabled:cursor-wait">
-                        {isGeneratingBolo ? (
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                            <DownloadIcon className="w-5 h-5"/>
-                        )}
-                        <span>{isGeneratingBolo ? 'Generating...' : 'BOLO Card'}</span>
-                    </button>
-                </div>
+                {!isRoadside && (
+                    <div className="grid grid-cols-2 gap-3">
+                        <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold">
+                            <WhatsappIcon className="w-5 h-5"/> Share
+                        </button>
+                        <button onClick={() => generateBoloImage('download')} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 btn-primary text-sm disabled:opacity-50 disabled:cursor-wait">
+                            {isGeneratingBolo ? (
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                                <DownloadIcon className="w-5 h-5"/>
+                            )}
+                            <span>{isGeneratingBolo ? 'Generating...' : 'BOLO Card'}</span>
+                        </button>
+                    </div>
+                )}
             </div>
             {canManageReport && !(localReport as any).is_legacy && !localReport.id.startsWith('legacy-') && (
                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 grid grid-cols-2 gap-3">

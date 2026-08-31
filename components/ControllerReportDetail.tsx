@@ -889,15 +889,11 @@ const ControllerReportDetail: React.FC<{
             setIsGeneratingBolo(false);
         }
     };
+
+    const isRoadside = report.type === 'roadside' || (report as any).emergency_type === 'Roadside Assistance';
     
     return (
         <>
-            <PrintableReport 
-                report={report} 
-                timelineEvents={timelineEvents} 
-                reporterName={reporter ? `${reporter.first_name} ${reporter.surname}` : 'Unknown'}
-                company={profile.company}
-            />
             <div className="bg-white/70 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg flex flex-col h-auto print:hidden relative">
             <div className="flex-shrink-0">
                 <div className="flex justify-between items-start">
@@ -1281,11 +1277,12 @@ const ControllerReportDetail: React.FC<{
                     <span>Incident Information Report (Preview & Print)</span>
                 </button>
 
-                 <div className="grid grid-cols-3 gap-3">
-                     <button onClick={() => setIncidentReportModalOpen(true)} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold"><PrintIcon className="w-5 h-5"/> Print</button>
-                     <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold"><WhatsappIcon className="w-5 h-5"/> Share</button>
-                     <button onClick={() => generateBoloImage('download')} disabled={isGeneratingBolo || isActionLoading} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50"><DownloadIcon className="w-5 h-5"/> BOLO</button>
-                 </div>
+                 {!isRoadside && (
+                     <div className="grid grid-cols-2 gap-3">
+                         <button onClick={handleShareWhatsApp} className="flex items-center justify-center gap-2 py-2 px-3 bg-green-600/90 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-semibold"><WhatsappIcon className="w-5 h-5"/> Share</button>
+                         <button onClick={() => generateBoloImage('download')} disabled={isGeneratingBolo || isActionLoading} className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50"><DownloadIcon className="w-5 h-5"/> BOLO</button>
+                     </div>
+                 )}
                  {canManageReport && (
                     <div className="grid grid-cols-2 gap-3">
                         <button onClick={() => onEdit(report)} disabled={isActionLoading} className="w-full flex items-center justify-center gap-2 py-2 bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-700 dark:text-yellow-400 font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Edit Details</button>

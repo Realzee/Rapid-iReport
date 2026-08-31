@@ -33,10 +33,10 @@ export const IncidentReportPreviewModal: React.FC<IncidentReportPreviewModalProp
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex justify-center items-start p-2 sm:p-6 print:p-0 print:bg-white print:static">
+    <div className="printable-modal fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex justify-center items-start p-2 sm:p-6 print:p-0 print:bg-white print:static print:block print:inset-auto print:m-0">
       {/* Modal Container */}
       <div 
-        className="relative bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden my-auto max-h-[92vh] print:max-h-none print:h-auto print:border-none print:shadow-none print:w-full print:m-0 print:rounded-none"
+        className="relative bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden my-auto max-h-[92vh] print:max-h-none print:h-auto print:border-none print:shadow-none print:w-full print:m-0 print:p-0 print:rounded-none print:bg-transparent"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Control Bar (Hidden on Print) */}
@@ -61,7 +61,7 @@ export const IncidentReportPreviewModal: React.FC<IncidentReportPreviewModalProp
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs sm:text-sm font-bold rounded-lg shadow-sm transition-all"
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs sm:text-sm font-bold rounded-lg shadow-sm transition-all cursor-pointer"
               title="Print or Save as PDF"
             >
               <Printer className="w-4 h-4" />
@@ -69,7 +69,7 @@ export const IncidentReportPreviewModal: React.FC<IncidentReportPreviewModalProp
             </button>
             <button
               onClick={onClose}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition cursor-pointer"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
@@ -78,8 +78,8 @@ export const IncidentReportPreviewModal: React.FC<IncidentReportPreviewModalProp
         </div>
 
         {/* Scrollable Preview Paper Area */}
-        <div className="overflow-y-auto p-4 sm:p-8 flex justify-center bg-gray-200 dark:bg-gray-950/80 flex-grow print:p-0 print:bg-white print:overflow-visible">
-          <div className="bg-white text-gray-900 w-full max-w-3xl shadow-xl rounded-lg p-6 sm:p-10 border border-gray-300 print:border-none print:shadow-none print:p-0 print:max-w-none print:rounded-none">
+        <div className="overflow-y-auto p-4 sm:p-8 flex justify-center bg-gray-200 dark:bg-gray-950/80 flex-grow print:p-0 print:m-0 print:bg-white print:overflow-visible">
+          <div className="printable-document bg-white text-gray-900 w-full max-w-3xl shadow-xl rounded-lg p-6 sm:p-10 border border-gray-300 print:border-none print:shadow-none print:p-0 print:m-0 print:max-w-none print:rounded-none">
             <PrintableReport
               report={report}
               timelineEvents={timelineEvents}

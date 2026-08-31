@@ -145,7 +145,7 @@ const UserReportDetail: React.FC<{
     const canEdit = report.status === ReportStatus.PENDING;
 
     return (
-        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-full max-h-[calc(100vh-12rem)]">
+        <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300 flex flex-col h-full max-h-[calc(100vh-12rem)] print:hidden">
             <div className="flex justify-between items-start mb-4 flex-shrink-0 gap-4">
                 <div className="flex-grow min-w-0">
                     <div className="flex items-center gap-2 mb-1">

@@ -273,3 +273,70 @@ input, textarea, select, option, [contenteditable="true"] {
   border-color: var(--color-matrix-green) !important;
   box-shadow: 0 0 12px rgba(0, 255, 65, 0.5);
 }
+
+/* Print Optimization */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 12mm 12mm;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 100% !important;
+    font-size: 12pt;
+  }
+
+  /* Hide app shell and standard web interface elements */
+  header, nav, footer, aside, [role="navigation"], .matrix-bg, .no-print, .print-hidden {
+    display: none !important;
+  }
+
+  /* For printable modal dialogs, remove backdrop shadows, centering and offsets */
+  .printable-modal {
+    position: static !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
+  .printable-modal > div {
+    max-height: none !important;
+    height: auto !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  .printable-document {
+    display: block !important;
+    visibility: visible !important;
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Avoid page breaks inside logical report sections */
+  section, .page-break-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
