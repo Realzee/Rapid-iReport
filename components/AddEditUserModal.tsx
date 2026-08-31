@@ -208,9 +208,9 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                             </select>
                         </div>
                     </div>
-                    {formData.role === UserRole.RESPONDER && (
+                    {(formData.role === UserRole.RESPONDER || formData.role === UserRole.ROADSIDE_DRIVER || formData.role === UserRole.DRIVER) && (
                         <div>
-                            <label htmlFor="responder_status" className={labelClasses}>Responder Status</label>
+                            <label htmlFor="responder_status" className={labelClasses}>Driver / Responder Status</label>
                             <select name="responder_status" id="responder_status" value={formData.responder_status || ''} onChange={handleChange} className={inputClasses}>
                                 {Object.values(ResponderStatus).map(status => <option key={status} value={status} className="capitalize">{status.replace(/_/g, ' ')}</option>)}
                             </select>

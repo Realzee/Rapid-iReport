@@ -306,6 +306,16 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       return null;
     }
 
+    if (profile.role === UserRole.ROADSIDE_DRIVER || profile.role === UserRole.DRIVER) {
+      return (
+        <>
+          <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>
+            <WrenchIcon className="w-4 h-4 mr-2 text-teal-500" /> Roadside Operations
+          </button>
+        </>
+      );
+    }
+
     if (profile.role === UserRole.TECHNICIAN) {
       return (
         <>
@@ -380,7 +390,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     );
   }
 
-  const headerContainerClasses = currentView === 'controller' || profile.role === UserRole.RESPONDER || profile.role === UserRole.USER
+  const headerContainerClasses = currentView === 'controller' || profile.role === UserRole.RESPONDER || profile.role === UserRole.ROADSIDE_DRIVER || profile.role === UserRole.DRIVER || profile.role === UserRole.USER
     ? "px-4 sm:px-6 lg:px-8" // Full-width views
     : "container mx-auto px-4 sm:px-6 lg:px-8"; // Centered for others
 

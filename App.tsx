@@ -9,6 +9,7 @@ import AuthPage from './pages/AuthPage';
 import ProfilePage from './pages/ProfilePage';
 import ControllerPage from './pages/ControllerPage';
 import ResponderPage from './pages/ResponderPage';
+import RoadsideDriverPage from './pages/RoadsideDriverPage';
 import GuardDashboardPage from './pages/GuardDashboardPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 
@@ -46,7 +47,7 @@ import { useToast } from './contexts/ToastContext';
 import { useTheme } from './contexts/ThemeContext';
 import MatrixRain from './components/MatrixRain';
 
-type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'fleet_management';
+type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'fleet_management' | 'roadside_driver';
 
 const isProfileComplete = (profile: Profile) => {
     if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
@@ -567,6 +568,12 @@ const App: React.FC = () => {
                     : <ResponderPage profile={profile} setProfile={setProfile} />;
             }
 
+            if (profile.role === UserRole.ROADSIDE_DRIVER || profile.role === UserRole.DRIVER) {
+                return view === 'profile'
+                    ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
+                    : <RoadsideDriverPage profile={profile} setProfile={setProfile} />;
+            }
+
             if (profile.role === UserRole.GUARD) {
                 if (view === 'gate_access') return <GateAccessPage profile={profile} />;
                 if (view === 'patrol_scanner') return <PatrolPage profile={profile} />;
@@ -614,6 +621,7 @@ const App: React.FC = () => {
               case 'companies': return <CompaniesPage profile={profile} setProfile={setProfile} />;
               case 'guard_monitoring': return <GuardMonitoringPage profile={profile} />;
               case 'gate_access': return <GateAccessPage profile={profile} />;
+              case 'roadside_driver': return <RoadsideDriverPage profile={profile} setProfile={setProfile} />;
               case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />;
               case 'map':
               default: return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} setView={handleSetView} />;

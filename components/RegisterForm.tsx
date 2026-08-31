@@ -215,6 +215,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
                     <option value={UserRole.USER}>User</option>
                     <option value={UserRole.GUARD}>Guard</option>
                     <option value={UserRole.RESPONDER}>Responder</option>
+                    <option value={UserRole.ROADSIDE_DRIVER}>Roadside Assistance Driver</option>
                 </select>
               </div>
             </div>
