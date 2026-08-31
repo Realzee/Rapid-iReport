@@ -568,7 +568,7 @@ const App: React.FC = () => {
                     : <ResponderPage profile={profile} setProfile={setProfile} />;
             }
 
-            if (profile.role === UserRole.ROADSIDE_DRIVER || profile.role === UserRole.DRIVER) {
+            if (profile.role === UserRole.RAS_DRIVER || (profile.role as string) === 'roadside_driver' || (profile.role as string) === 'driver') {
                 return view === 'profile'
                     ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
                     : <RoadsideDriverPage profile={profile} setProfile={setProfile} />;

@@ -226,12 +226,20 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     const classGetter = mobile ? mobileNavLinkClasses : navLinkClasses;
 
     const isModuleAllowed = (modId: string): boolean => {
+      if ([UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role)) return true;
       if (!profile.company) return true;
       const isRapid911 = profile.company.name?.toLowerCase().includes('rapid911') || false;
       if (isRapid911) return true;
       
-      if (!profile.company.allowed_modules) return false;
-      return profile.company.allowed_modules.includes(modId) || (modId === 'roadside_driver' && profile.company.allowed_modules.includes('roadside'));
+      if (!profile.company.allowed_modules || profile.company.allowed_modules.length === 0) return true;
+      if (profile.company.allowed_modules.includes(modId)) return true;
+      if (modId === 'roadside_driver') {
+        return profile.company.allowed_modules.includes('roadside') ||
+               profile.company.allowed_modules.includes('roadside_driver') ||
+               profile.company.allowed_modules.includes('roadside_assistance') ||
+               profile.role === UserRole.CONTROLLER;
+      }
+      return false;
     };
 
     if (profile.role === UserRole.USER) {
@@ -311,10 +319,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       return null;
     }
 
-    if (profile.role === UserRole.ROADSIDE_DRIVER || profile.role === UserRole.DRIVER) {
+    if (profile.role === UserRole.RAS_DRIVER || (profile.role as string) === 'roadside_driver' || (profile.role as string) === 'driver') {
       return (
         <>
-          <button onClick={() => clickHandler('dashboard')} className={classGetter('dashboard')}>
+          <button onClick={() => clickHandler('roadside_driver')} className={classGetter('roadside_driver')}>
             <WrenchIcon className="w-4 h-4 mr-2 text-teal-500" /> Roadside Operations
           </button>
         </>
@@ -400,7 +408,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     );
   }
 
-  const headerContainerClasses = currentView === 'controller' || profile.role === UserRole.RESPONDER || profile.role === UserRole.ROADSIDE_DRIVER || profile.role === UserRole.DRIVER || profile.role === UserRole.USER
+  const isDriver = profile.role === UserRole.RAS_DRIVER || (profile.role as string) === 'roadside_driver' || (profile.role as string) === 'driver';
+  const headerContainerClasses = currentView === 'controller' || currentView === 'roadside_driver' || profile.role === UserRole.RESPONDER || isDriver || profile.role === UserRole.USER
     ? "px-4 sm:px-6 lg:px-8" // Full-width views
     : "container mx-auto px-4 sm:px-6 lg:px-8"; // Centered for others
 

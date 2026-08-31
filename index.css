@@ -297,9 +297,8 @@ input, textarea, select, option, [contenteditable="true"] {
     display: none !important;
   }
 
-  /* Isolate printable modal content when printing a report modal */
-  body:has(.printable-modal) *:not(:has(.printable-modal)):not(.printable-modal *):not(.printable-modal),
-  body.is-printing-report *:not(:has(.printable-modal)):not(.printable-modal *):not(.printable-modal) {
+  /* Isolate printable modal content by hiding its direct sibling elements in the container */
+  *:has(> .printable-modal) > *:not(.printable-modal) {
     display: none !important;
   }
 

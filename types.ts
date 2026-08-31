@@ -8,8 +8,7 @@ export enum UserRole {
   SUPERVISOR = 'supervisor',
   USER = 'user',
   TECHNICIAN = 'technician',
-  ROADSIDE_DRIVER = 'roadside_driver',
-  DRIVER = 'driver',
+  RAS_DRIVER = 'ras_driver',
 }
 
 export enum UserStatus {
