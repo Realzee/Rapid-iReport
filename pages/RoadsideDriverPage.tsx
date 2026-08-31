@@ -301,6 +301,14 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
         );
     }, [selectedReportId, assignedReports, allRoadsideReports, activeDispatches]);
 
+    // Check if driver is in Ready/Available status
+    const isReady = profile.responder_status === ResponderStatus.AVAILABLE;
+
+    const handleToggleReady = () => {
+        const nextStatus = isReady ? ResponderStatus.OFF_DUTY : ResponderStatus.AVAILABLE;
+        handleStatusChange(nextStatus);
+    };
+
     // Change Driver Status
     const handleStatusChange = async (newStatus: ResponderStatus) => {
         const updatedProfile = { ...profile, responder_status: newStatus };
@@ -480,51 +488,78 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
                         </div>
                     </div>
 
-                    {/* Middle: Shift Status Selector */}
-                    <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800/80 p-1 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-x-auto">
-                        <button
-                            onClick={() => handleStatusChange(ResponderStatus.AVAILABLE)}
-                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-                                profile.responder_status === ResponderStatus.AVAILABLE
-                                    ? 'bg-green-600 text-white shadow-md'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                            }`}
-                        >
-                            <span className="w-2 h-2 rounded-full bg-green-300 animate-pulse"></span>
-                            Available
-                        </button>
-                        <button
-                            onClick={() => handleStatusChange(ResponderStatus.EN_ROUTE)}
-                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-                                profile.responder_status === ResponderStatus.EN_ROUTE
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                            }`}
-                        >
-                            <span className="w-2 h-2 rounded-full bg-blue-300 animate-pulse"></span>
-                            En Route
-                        </button>
-                        <button
-                            onClick={() => handleStatusChange(ResponderStatus.ON_SCENE)}
-                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-                                profile.responder_status === ResponderStatus.ON_SCENE
-                                    ? 'bg-amber-600 text-white shadow-md'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                            }`}
-                        >
-                            <span className="w-2 h-2 rounded-full bg-amber-300 animate-pulse"></span>
-                            On Scene
-                        </button>
-                        <button
-                            onClick={() => handleStatusChange(ResponderStatus.OFF_DUTY)}
-                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-                                profile.responder_status === ResponderStatus.OFF_DUTY
-                                    ? 'bg-gray-600 text-white shadow-md'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                            }`}
-                        >
-                            Off Duty
-                        </button>
+                    {/* Middle: Shift & Ready/Busy Dispatch Status Selector */}
+                    <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/80 p-1.5 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                        {/* Ready / Busy Toggle Switch */}
+                        <div className="flex items-center gap-2 pl-1 pr-2 border-r border-gray-300 dark:border-gray-700">
+                            <button
+                                onClick={handleToggleReady}
+                                className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none ring-2 ring-offset-1 ring-offset-white dark:ring-offset-gray-900 ${
+                                    isReady ? 'bg-emerald-500 ring-emerald-400' : 'bg-gray-400 dark:bg-gray-600 ring-gray-400'
+                                }`}
+                                title={isReady ? 'Currently READY to receive calls. Click to set BUSY.' : 'Currently BUSY. Click to set READY.'}
+                            >
+                                <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform flex items-center justify-center ${
+                                        isReady ? 'translate-x-6 text-emerald-600' : 'translate-x-1 text-gray-500'
+                                    }`}
+                                >
+                                    {isReady ? <Check className="w-3 h-3 stroke-[3]" /> : <AlertCircle className="w-3 h-3 stroke-[3]" />}
+                                </span>
+                            </button>
+                            <span className={`text-[11px] font-black uppercase tracking-wider ${
+                                isReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400'
+                            }`}>
+                                {isReady ? 'Ready' : 'Busy'}
+                            </span>
+                        </div>
+
+                        {/* Shift Status Pills */}
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => handleStatusChange(ResponderStatus.AVAILABLE)}
+                                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                                    profile.responder_status === ResponderStatus.AVAILABLE
+                                        ? 'bg-green-600 text-white shadow-md'
+                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                }`}
+                            >
+                                <span className="w-2 h-2 rounded-full bg-green-300 animate-pulse"></span>
+                                Available
+                            </button>
+                            <button
+                                onClick={() => handleStatusChange(ResponderStatus.EN_ROUTE)}
+                                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                                    profile.responder_status === ResponderStatus.EN_ROUTE
+                                        ? 'bg-blue-600 text-white shadow-md'
+                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                }`}
+                            >
+                                <span className="w-2 h-2 rounded-full bg-blue-300 animate-pulse"></span>
+                                En Route
+                            </button>
+                            <button
+                                onClick={() => handleStatusChange(ResponderStatus.ON_SCENE)}
+                                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                                    profile.responder_status === ResponderStatus.ON_SCENE
+                                        ? 'bg-amber-600 text-white shadow-md'
+                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                }`}
+                            >
+                                <span className="w-2 h-2 rounded-full bg-amber-300 animate-pulse"></span>
+                                On Scene
+                            </button>
+                            <button
+                                onClick={() => handleStatusChange(ResponderStatus.OFF_DUTY)}
+                                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                                    profile.responder_status === ResponderStatus.OFF_DUTY
+                                        ? 'bg-gray-600 text-white shadow-md'
+                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                }`}
+                            >
+                                Off Duty
+                            </button>
+                        </div>
                     </div>
 
                     {/* Right Controls: WakeLock, GPS, SOS, New Callout, Chat */}
@@ -577,6 +612,69 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
 
             {/* Main Content Area */}
             <main className="max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 flex-grow flex flex-col gap-4">
+                {/* Ready / Busy Dispatch Availability Banner */}
+                <div className={`p-4 rounded-2xl border shadow-sm transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+                    isReady
+                        ? 'bg-emerald-500/10 dark:bg-emerald-950/20 border-emerald-500/30 text-emerald-950 dark:text-emerald-100'
+                        : 'bg-amber-500/10 dark:bg-amber-950/20 border-amber-500/30 text-amber-950 dark:text-amber-100'
+                }`}>
+                    <div className="flex items-center gap-3.5">
+                        <div className={`p-3 rounded-2xl border ${
+                            isReady
+                                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                                : 'bg-amber-500/20 border-amber-500/40 text-amber-600 dark:text-amber-400'
+                        }`}>
+                            {isReady ? <CheckCircle2 className="w-6 h-6 animate-pulse" /> : <AlertCircle className="w-6 h-6" />}
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-base font-bold">
+                                    {isReady ? 'Driver Status: READY FOR DISPATCH' : 'Driver Status: BUSY / REQUESTS PAUSED'}
+                                </h3>
+                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider border ${
+                                    isReady
+                                        ? 'bg-emerald-500 text-white border-emerald-400'
+                                        : 'bg-amber-500 text-white border-amber-400'
+                                }`}>
+                                    {isReady ? 'Active Ready' : 'Busy / Paused'}
+                                </span>
+                            </div>
+                            <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
+                                {isReady
+                                    ? 'Control room & dispatchers can route new roadside assistance requests to your unit.'
+                                    : 'New roadside assistance requests are currently paused for your unit. Toggle to Ready when available for new callouts.'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Prominent Quick Toggle Button */}
+                    <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-200/50 dark:border-gray-800/50">
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Dispatch Control:
+                        </span>
+                        <button
+                            onClick={handleToggleReady}
+                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition shadow-md flex items-center gap-2 active:scale-95 cursor-pointer ${
+                                isReady
+                                    ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-500/20'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20'
+                            }`}
+                        >
+                            {isReady ? (
+                                <>
+                                    <AlertCircle className="w-4 h-4" />
+                                    <span>Set to BUSY</span>
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    <span>Set to READY</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+
                 {/* KPI & Quick Status Strip */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-3.5 rounded-2xl shadow-sm flex items-center justify-between">
