@@ -600,6 +600,7 @@ const App: React.FC = () => {
               if (view === 'attendance') return <AttendancePage />;
               if (view === 'tech_ops') return <TechOpsPage />;
               if (view === 'fleet_management') return <FleetManagement profile={profile} />;
+              if (view === 'roadside_driver') return <RoadsideDriverPage profile={profile} setProfile={setProfile} />;
               return view === 'profile'
                   ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
                   : <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;

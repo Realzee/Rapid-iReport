@@ -13,7 +13,7 @@ import { CorporateSharingModal } from './CorporateSharingModal';
 
 interface HeaderProps {
     currentView: string;
-    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'fleet_management') => void;
+    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'fleet_management' | 'roadside_driver') => void;
     profile: Profile;
     onNotificationClick: (notification: Notification) => void;
 }
@@ -187,7 +187,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     setMobileMenuOpen(false);
   };
 
-  const handleMobileLinkClick = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'attendance' | 'technician_dashboard' | 'tech_ops' | 'about' | 'fleet_management') => {
+  const handleMobileLinkClick = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'attendance' | 'technician_dashboard' | 'tech_ops' | 'about' | 'fleet_management' | 'roadside_driver') => {
       setView(view);
       setMobileMenuOpen(false);
   }
@@ -231,7 +231,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       if (isRapid911) return true;
       
       if (!profile.company.allowed_modules) return false;
-      return profile.company.allowed_modules.includes(modId);
+      return profile.company.allowed_modules.includes(modId) || (modId === 'roadside_driver' && profile.company.allowed_modules.includes('roadside'));
     };
 
     if (profile.role === UserRole.USER) {
@@ -273,6 +273,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
           {isModuleAllowed('controller') && (
             <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>
               <RadioTowerIcon className="w-4 h-4 mr-2" /> Controller
+            </button>
+          )}
+          {isModuleAllowed('roadside_driver') && (
+            <button onClick={() => clickHandler('roadside_driver')} className={classGetter('roadside_driver')}>
+              <WrenchIcon className="w-4 h-4 mr-2 text-amber-500 dark:text-amber-400" /> Roadside Driver
             </button>
           )}
           {isModuleAllowed('tech_ops') && (
@@ -335,6 +340,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         {isModuleAllowed('controller') && (
           <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>
             <RadioTowerIcon className="w-4 h-4 mr-2" /> Controller
+          </button>
+        )}
+        {isModuleAllowed('roadside_driver') && (
+          <button onClick={() => clickHandler('roadside_driver')} className={classGetter('roadside_driver')}>
+            <WrenchIcon className="w-4 h-4 mr-2 text-amber-500 dark:text-amber-400" /> Roadside Driver
           </button>
         )}
         {isModuleAllowed('tech_ops') && (

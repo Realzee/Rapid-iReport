@@ -29,7 +29,11 @@ export const IncidentReportPreviewModal: React.FC<IncidentReportPreviewModalProp
   const refNumber = (report as any).car_number || (report as any).card_number || report.ob_number;
 
   const handlePrint = () => {
+    document.body.classList.add('is-printing-report');
     window.print();
+    setTimeout(() => {
+      document.body.classList.remove('is-printing-report');
+    }, 1000);
   };
 
   return (
