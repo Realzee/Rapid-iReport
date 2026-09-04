@@ -289,31 +289,57 @@ input, textarea, select, option, [contenteditable="true"] {
     overflow: visible !important;
     height: auto !important;
     min-height: 100% !important;
-    font-size: 12pt;
+    font-size: 11pt;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  /* Hide app shell and standard web interface elements */
-  header, nav, footer, aside, [role="navigation"], .matrix-bg, .no-print, .print-hidden, .print\:hidden {
-    display: none !important;
+  html.dark, body.dark, html.matrix, body.matrix {
+    background: #ffffff !important;
+    color: #111827 !important;
   }
 
-  /* Completely collapse and hide the main application shell when printing a report modal or document */
+  /* When printing a report docket from modal, hide the entire React application shell (#root) */
   body.is-printing-report #root,
-  body:has(.printable-modal) #root,
-  body:has(.printable-document) #root {
-    visibility: hidden !important;
+  body:has(.printable-modal) #root {
+    display: none !important;
     height: 0 !important;
     max-height: 0 !important;
     overflow: hidden !important;
   }
 
-  /* Isolate printable modal container positioning & cleanup for paper */
-  .printable-modal,
-  .printable-document {
+  /* Hide app shell headers, navs, footers, and elements marked hidden on print */
+  #root header,
+  #root nav,
+  #root footer,
+  #root aside,
+  [role="navigation"],
+  .matrix-bg,
+  .no-print,
+  .print-hidden,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Ensure the docket header and footer inside PrintableReport are ALWAYS visible */
+  .printable-document header,
+  .printable-modal header,
+  .printable-report header {
+    display: flex !important;
     visibility: visible !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
+  }
+
+  .printable-document footer,
+  .printable-modal footer,
+  .printable-report footer {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* Printable modal container positioning & cleanup for paper */
+  .printable-modal {
+    position: static !important;
+    inset: auto !important;
     width: 100% !important;
     height: auto !important;
     min-height: auto !important;
@@ -321,30 +347,41 @@ input, textarea, select, option, [contenteditable="true"] {
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
+    color: #111827 !important;
     box-shadow: none !important;
     border: none !important;
     display: block !important;
     overflow: visible !important;
-    z-index: 999999 !important;
+    z-index: auto !important;
+    visibility: visible !important;
   }
 
-  .printable-modal *,
-  .printable-document * {
+  .printable-modal * {
     visibility: visible !important;
   }
 
   .printable-modal > div {
-    max-height: none !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
     height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
     box-shadow: none !important;
     border: none !important;
+    overflow: visible !important;
+  }
+
+  .printable-modal .overflow-y-auto {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
     padding: 0 !important;
     margin: 0 !important;
     background: #ffffff !important;
-    overflow: visible !important;
-    width: 100% !important;
-    max-width: none !important;
-    position: static !important;
+    display: block !important;
   }
 
   .printable-modal .print\:hidden,
@@ -353,10 +390,11 @@ input, textarea, select, option, [contenteditable="true"] {
     visibility: hidden !important;
   }
 
-  .printable-document {
+  .printable-document,
+  .printable-report {
+    position: static !important;
     display: block !important;
     visibility: visible !important;
-    position: relative !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -365,6 +403,7 @@ input, textarea, select, option, [contenteditable="true"] {
     color: #111827 !important;
     box-shadow: none !important;
     border: none !important;
+    overflow: visible !important;
   }
 
   /* Avoid page breaks inside logical report sections */

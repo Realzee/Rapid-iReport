@@ -31,7 +31,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({
   const logo = company?.logo_url || logoUrl;
 
   return (
-    <div className={className || "hidden print:block p-8 font-sans text-gray-900 bg-white"}>
+    <div className={`printable-report ${className || "p-8 font-sans text-gray-900 bg-white"}`}>
       {/* Official Header */}
       <header className="flex justify-between items-start pb-5 border-b-2 border-gray-900">
         <div className="space-y-1">

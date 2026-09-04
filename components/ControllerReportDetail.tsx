@@ -4,7 +4,6 @@ import { Report, Profile, VehicleReport, EmergencyReport, ReportStatus, Responde
 import { safeFormat, safeFormatDistanceToNow } from '../utils/dateUtils';
 import { supabase } from '../utils/supabase';
 import { CheckCircleIcon, AssignResponderIcon, ZapIcon, PrintIcon, TrashIcon, WhatsappIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon } from './icons';
-import PrintableReport from './PrintableReport';
 import IncidentReportPreviewModal from './IncidentReportPreviewModal';
 import ReportTypeBadge from './ReportTypeBadge';
 import { useToast } from '../contexts/ToastContext';

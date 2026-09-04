@@ -1,7 +1,8 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Report, Company } from '../types';
 import PrintableReport from './PrintableReport';
-import { Printer, Download, X, FileText, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Printer, X, FileText, ShieldCheck } from 'lucide-react';
 
 interface IncidentReportPreviewModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export const IncidentReportPreviewModal: React.FC<IncidentReportPreviewModalProp
   }, [isOpen]);
 
   if (!isOpen || !report) return null;
+  if (typeof document === 'undefined') return null;
 
   const isRoadside = report.type === 'roadside' || (report as any).emergency_type === 'Roadside Assistance';
   const refNumber = (report as any).car_number || (report as any).card_number || report.ob_number;
@@ -40,13 +42,13 @@ export const IncidentReportPreviewModal: React.FC<IncidentReportPreviewModalProp
   const handlePrint = () => {
     document.body.classList.add('is-printing-report');
     window.print();
-    setTimeout(() => {
-      document.body.classList.remove('is-printing-report');
-    }, 1000);
   };
 
-  return (
-    <div className="printable-modal fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex justify-center items-start p-2 sm:p-6 print:p-0 print:bg-white print:static print:block print:inset-auto print:m-0">
+  const modalContent = (
+    <div 
+      className="printable-modal fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex justify-center items-start p-2 sm:p-6 print:p-0 print:bg-white print:static print:block print:inset-auto print:m-0"
+      onClick={onClose}
+    >
       {/* Modal Container */}
       <div 
         className="relative bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden my-auto max-h-[92vh] print:max-h-none print:h-auto print:border-none print:shadow-none print:w-full print:m-0 print:p-0 print:rounded-none print:bg-transparent"
@@ -61,9 +63,11 @@ export const IncidentReportPreviewModal: React.FC<IncidentReportPreviewModalProp
             <div>
               <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <span>Incident Information Report</span>
-                <span className="text-xs font-mono font-normal bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">
-                  {refNumber}
-                </span>
+                {refNumber && (
+                  <span className="text-xs font-mono font-normal bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">
+                    {refNumber}
+                  </span>
+                )}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Official docket preview &bull; Ready to print or export as PDF
@@ -98,7 +102,7 @@ export const IncidentReportPreviewModal: React.FC<IncidentReportPreviewModalProp
               timelineEvents={timelineEvents}
               reporterName={reporterName}
               company={company}
-              className="block font-sans text-gray-900 bg-white"
+              className="block font-sans text-gray-900 bg-white printable-report"
             />
           </div>
         </div>
@@ -128,6 +132,8 @@ export const IncidentReportPreviewModal: React.FC<IncidentReportPreviewModalProp
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default IncidentReportPreviewModal;
