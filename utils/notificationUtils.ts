@@ -86,7 +86,7 @@ export const updateFaviconBadge = (count: number, faviconUrl: string) => {
   };
 };
 
-export const updateDocumentTitle = (count: number, baseTitle: string = 'Rapid iReport') => {
+export const updateDocumentTitle = (count: number, baseTitle: string = 'Rapid Report') => {
   if (count > 0) {
     document.title = `(${count}) ${baseTitle}`;
   } else {

@@ -100,7 +100,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
            const link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
            if (link) link.href = faviconUrl;
        }
-       document.title = 'Rapid iReport';
+       document.title = 'Rapid Report';
     };
   }, [faviconUrl]);
 

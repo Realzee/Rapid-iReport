@@ -1185,7 +1185,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                             /* Read-only sharing list for normal users/responders */
                             <div className="space-y-1.5">
                                 {isGlobal ? (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-normal">This report is marked as globally visible across the RAPID iREPORT network.</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-normal">This report is marked as globally visible across the Rapid Report network.</p>
                                 ) : reportShares.length > 0 ? (
                                     <div className="space-y-1.5 pt-1">
                                         {reportShares.map(share => {

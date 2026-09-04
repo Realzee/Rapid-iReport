@@ -40,7 +40,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({
               OFFICIAL DOCKET
             </span>
             <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-              RAPID iREPORT DISPATCH
+              RAPID REPORT DISPATCH
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
@@ -365,7 +365,7 @@ const PrintableReport: React.FC<PrintableReportProps> = ({
 
       {/* Footer */}
       <footer className="mt-6 text-center text-[10px] text-gray-500 border-t border-gray-300 pt-3 space-y-0.5">
-        <p className="font-bold tracking-wider">RAPID iREPORT &bull; CONFIDENTIAL LAW ENFORCEMENT & SAFETY DOCKET</p>
+        <p className="font-bold tracking-wider">RAPID REPORT &bull; CONFIDENTIAL LAW ENFORCEMENT & SAFETY DOCKET</p>
         <p>Copyright &copy; {new Date().getFullYear()} Rapid 911 Rapid Rescue PTY (Ltd). All rights reserved.</p>
       </footer>
     </div>

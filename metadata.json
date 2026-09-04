@@ -1,6 +1,6 @@
 {
-  "name": "RAPID iREPORT Community Safety System",
-  "description": "A professional, modern community safety reporting system optimized with Cloudflare infrastructure for high performance and security. Allows real-time incident tracking, advanced mapping, and analytics with a robust Supabase backend.",
+  "name": "Rapid Report",
+  "description": "A professional, modern community safety reporting and roadside dispatch system. Allows real-time incident tracking, advanced mapping, official docket generation, and analytics.",
   "requestFramePermissions": [
     "geolocation",
     "microphone",

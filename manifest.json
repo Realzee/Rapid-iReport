@@ -1,7 +1,7 @@
 {
-  "name": "RAPID iREPORT Community Safety System",
-  "short_name": "RAPID iREPORT",
-  "description": "Rapid iReport Community Safety & Tracking System",
+  "name": "Rapid Report Community Safety System",
+  "short_name": "Rapid Report",
+  "description": "Rapid Report Community Safety & Tracking System",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

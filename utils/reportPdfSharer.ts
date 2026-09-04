@@ -70,7 +70,7 @@ export function buildReportWhatsAppCaption(report: Report, company?: Company | n
 
   const r = report as any;
 
-  let text = `🚨 *RAPID iREPORT - ${isRoadside ? 'ROADSIDE ASSISTANCE DOCKET' : 'INCIDENT INFORMATION REPORT'}*\n`;
+  let text = `🚨 *RAPID REPORT - ${isRoadside ? 'ROADSIDE ASSISTANCE DOCKET' : 'INCIDENT INFORMATION REPORT'}*\n`;
   text += `━━━━━━━━━━━━━━━━━━━━━\n`;
   text += `📋 *Reference:* ${refNumber}\n`;
   text += `🏢 *Company / Provider:* ${companyName}\n`;
