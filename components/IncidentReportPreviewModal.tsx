@@ -23,6 +23,15 @@ export const IncidentReportPreviewModal: React.FC<IncidentReportPreviewModalProp
   reporterName,
   company,
 }) => {
+  React.useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('is-printing-report');
+      return () => {
+        document.body.classList.remove('is-printing-report');
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen || !report) return null;
 
   const isRoadside = report.type === 'roadside' || (report as any).emergency_type === 'Roadside Assistance';

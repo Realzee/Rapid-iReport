@@ -297,13 +297,20 @@ input, textarea, select, option, [contenteditable="true"] {
     display: none !important;
   }
 
-  /* Isolate printable modal content by hiding its direct sibling elements in the container */
-  *:has(> .printable-modal) > *:not(.printable-modal) {
-    display: none !important;
+  /* Completely collapse and hide the main application shell when printing a report modal or document */
+  body.is-printing-report #root,
+  body:has(.printable-modal) #root,
+  body:has(.printable-document) #root {
+    visibility: hidden !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
   }
 
-  /* Printable modal container positioning & cleanup for paper */
-  .printable-modal {
+  /* Isolate printable modal container positioning & cleanup for paper */
+  .printable-modal,
+  .printable-document {
+    visibility: visible !important;
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
@@ -321,6 +328,11 @@ input, textarea, select, option, [contenteditable="true"] {
     z-index: 999999 !important;
   }
 
+  .printable-modal *,
+  .printable-document * {
+    visibility: visible !important;
+  }
+
   .printable-modal > div {
     max-height: none !important;
     height: auto !important;
@@ -332,11 +344,13 @@ input, textarea, select, option, [contenteditable="true"] {
     overflow: visible !important;
     width: 100% !important;
     max-width: none !important;
+    position: static !important;
   }
 
   .printable-modal .print\:hidden,
   .printable-modal .print-hidden {
     display: none !important;
+    visibility: hidden !important;
   }
 
   .printable-document {
@@ -354,7 +368,7 @@ input, textarea, select, option, [contenteditable="true"] {
   }
 
   /* Avoid page breaks inside logical report sections */
-  section, .page-break-avoid {
+  section, .page-break-avoid, tr {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }

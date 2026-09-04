@@ -101,8 +101,11 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
     // Live Geolocation State
     const [isGpsSharing, setIsGpsSharing] = useState(true);
     const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+    const [lastGpsSyncTime, setLastGpsSyncTime] = useState<Date | null>(null);
+    const [isGpsActive, setIsGpsActive] = useState<boolean>(false);
     const [wakeLockActive, setWakeLockActive] = useState(false);
     const watchIdRef = useRef<number | null>(null);
+    const lastCoordsRef = useRef<{ lat: number; lng: number } | null>(profile.location_coords || null);
 
     // Note / Comment input state per report
     const [newNotes, setNewNotes] = useState<{ [reportId: string]: string }>({});
@@ -152,39 +155,54 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
         };
     }, [profile.responder_status, requestWakeLock, releaseWakeLock]);
 
-    // Live GPS Location Tracking
+    // Check if driver is in Ready/Available status
+    const isReady = profile.responder_status === ResponderStatus.AVAILABLE;
+
+    // Helper to push location coordinates to Supabase DB
+    const pushLocationToDb = useCallback(async (coords?: { lat: number; lng: number }) => {
+        const targetCoords = coords || lastCoordsRef.current;
+        if (!supabase || !profile.id || !targetCoords) return;
+
+        try {
+            const nowIso = new Date().toISOString();
+            await supabase
+                .from('profiles')
+                .update({
+                    location_coords: targetCoords,
+                    last_seen_at: nowIso,
+                })
+                .eq('id', profile.id);
+
+            setLastGpsSyncTime(new Date());
+        } catch (e) {
+            console.warn('Error pushing 60s GPS location update to Supabase:', e);
+        }
+    }, [profile.id]);
+
+    // Continuous Live Geolocation Watcher (Keeps local coordinates fresh for UI map)
     useEffect(() => {
-        if (!isGpsSharing || !navigator.geolocation) return;
+        if (!isGpsSharing || !navigator.geolocation) {
+            setIsGpsActive(false);
+            return;
+        }
 
-        const handlePosition = async (pos: GeolocationPosition) => {
+        const handlePosition = (pos: GeolocationPosition) => {
             const { latitude, longitude, accuracy } = pos.coords;
-            setGpsAccuracy(Math.round(accuracy));
-
             const newCoords = { lat: latitude, lng: longitude };
-            const updatedProfile = {
-                ...profile,
+            setGpsAccuracy(Math.round(accuracy));
+            setIsGpsActive(true);
+            lastCoordsRef.current = newCoords;
+
+            setProfile(prev => ({
+                ...prev,
                 location_coords: newCoords,
                 last_seen_at: new Date().toISOString(),
-            };
-            setProfile(updatedProfile);
-
-            if (supabase && profile.id) {
-                try {
-                    await supabase
-                        .from('profiles')
-                        .update({
-                            location_coords: newCoords,
-                            last_seen_at: new Date().toISOString(),
-                        })
-                        .eq('id', profile.id);
-                } catch (e) {
-                    console.warn('Error pushing GPS location to Supabase:', e);
-                }
-            }
+            }));
         };
 
         const handleError = (err: GeolocationPositionError) => {
-            console.warn('GPS position error:', err.message);
+            console.warn('GPS position watch error:', err.message);
+            setIsGpsActive(false);
         };
 
         watchIdRef.current = navigator.geolocation.watchPosition(handlePosition, handleError, {
@@ -196,9 +214,63 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
         return () => {
             if (watchIdRef.current !== null) {
                 navigator.geolocation.clearWatch(watchIdRef.current);
+                watchIdRef.current = null;
             }
         };
-    }, [isGpsSharing, profile.id, setProfile]);
+    }, [isGpsSharing, setProfile]);
+
+    // 60-Second Database Update Interval when Driver Status is 'Ready'
+    useEffect(() => {
+        if (!isReady || !isGpsSharing) return;
+
+        // Immediate position push on becoming 'Ready'
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    lastCoordsRef.current = coords;
+                    setGpsAccuracy(Math.round(pos.coords.accuracy));
+                    pushLocationToDb(coords);
+                },
+                (err) => {
+                    console.warn('Initial Ready 60s GPS fix error:', err.message);
+                    if (lastCoordsRef.current) {
+                        pushLocationToDb(lastCoordsRef.current);
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        } else if (lastCoordsRef.current) {
+            pushLocationToDb(lastCoordsRef.current);
+        }
+
+        // Repeat DB update every 60 seconds
+        const intervalId = setInterval(() => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                        lastCoordsRef.current = coords;
+                        setGpsAccuracy(Math.round(pos.coords.accuracy));
+                        pushLocationToDb(coords);
+                    },
+                    (err) => {
+                        console.warn('Interval 60s GPS fetch failed, using cached position:', err.message);
+                        if (lastCoordsRef.current) {
+                            pushLocationToDb(lastCoordsRef.current);
+                        }
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else if (lastCoordsRef.current) {
+                pushLocationToDb(lastCoordsRef.current);
+            }
+        }, 60000);
+
+        return () => {
+            clearInterval(intervalId);
+        };
+    }, [isReady, isGpsSharing, pushLocationToDb]);
 
     // Fetch reports
     const fetchReports = useCallback(async () => {
@@ -300,9 +372,6 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
             null
         );
     }, [selectedReportId, assignedReports, allRoadsideReports, activeDispatches]);
-
-    // Check if driver is in Ready/Available status
-    const isReady = profile.responder_status === ResponderStatus.AVAILABLE;
 
     const handleToggleReady = () => {
         const nextStatus = isReady ? ResponderStatus.OFF_DUTY : ResponderStatus.AVAILABLE;
@@ -641,8 +710,10 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
                             </div>
                             <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
                                 {isReady
-                                    ? 'Control room & dispatchers can route new roadside assistance requests to your unit.'
-                                    : 'New roadside assistance requests are currently paused for your unit. Toggle to Ready when available for new callouts.'}
+                                    ? `Control room & dispatchers can route new requests. GPS location is continuously tracked and synced to database every 60s ${
+                                        lastGpsSyncTime ? `(Last DB sync: ${lastGpsSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})` : ''
+                                    }`
+                                    : 'New roadside assistance requests & location tracking are currently paused. Toggle to Ready when available for new callouts.'}
                             </p>
                         </div>
                     </div>
@@ -725,14 +796,24 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
 
                     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-3.5 rounded-2xl shadow-sm flex items-center justify-between">
                         <div>
-                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                GPS Telemetry
-                            </p>
+                            <div className="flex items-center gap-1.5">
+                                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    GPS (60s DB Sync)
+                                </p>
+                                {isReady && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+                            </div>
                             <p className="text-sm font-bold text-gray-900 dark:text-white mt-1 truncate">
-                                {gpsAccuracy ? `±${gpsAccuracy}m Accuracy` : 'GPS Live'}
+                                {isReady
+                                    ? (gpsAccuracy ? `±${gpsAccuracy}m Accuracy` : 'GPS Tracking Active')
+                                    : 'Paused (Busy)'}
                             </p>
+                            {lastGpsSyncTime && isReady && (
+                                <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                    Synced {lastGpsSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                </p>
+                            )}
                         </div>
-                        <div className="p-3 bg-indigo-500/10 text-indigo-600 rounded-2xl">
+                        <div className={`p-3 rounded-2xl ${isReady ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-gray-500/10 text-gray-400'}`}>
                             <Compass className="w-5 h-5" />
                         </div>
                     </div>
