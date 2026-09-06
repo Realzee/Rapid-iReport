@@ -457,7 +457,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     }, [reports, allUsers]);
 
     useEffect(() => {
-        const responderProfiles = allUsers.filter(p => p.role === UserRole.RESPONDER);
+        const responderProfiles = allUsers.filter(p => p.role === UserRole.RESPONDER || p.role === UserRole.RAS_DRIVER || p.role === 'roadside_driver');
         const mappedResponders: Responder[] = responderProfiles.map(p => ({
             id: p.id,
             first_name: p.first_name,
@@ -547,7 +547,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const handleAssignResponder = async (responderId: string) => {
         if (!selectedReportId || !selectedReport) return;
 
-        const tableName = selectedReport.type === 'vehicle' ? 'vehicle_reports' : (selectedReport.type === 'emergency' ? 'emergency_reports' : 'crime_reports');
+        const tableName = selectedReport.type === 'vehicle' ? 'vehicle_reports' : (selectedReport.type === 'emergency' || selectedReport.type === 'roadside' ? 'emergency_reports' : 'crime_reports');
         const responder = responders.find(r => r.id === responderId);
         
         if (!responder) return;

@@ -75,7 +75,7 @@ export const CorporateSharingModal: React.FC<CorporateSharingModalProps> = ({ is
       // Update the main report's shared_with_company_ids
       const tableName = share.report_type === 'vehicle' 
           ? 'vehicle_reports' 
-          : share.report_type === 'emergency' 
+          : (share.report_type === 'emergency' || share.report_type === 'roadside')
               ? 'emergency_reports' 
               : 'crime_reports';
 

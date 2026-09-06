@@ -287,7 +287,8 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
                 .from('emergency_reports')
                 .select('*')
                 .or(`emergency_type.eq.Roadside Assistance,type.eq.roadside`)
-                .order('reported_at', { ascending: false });
+                .order('reported_at', { ascending: false })
+                .limit(200);
 
             if (error) throw error;
 
