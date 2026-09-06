@@ -21,6 +21,7 @@ import RoadsideCompletionModal from '../components/RoadsideCompletionModal';
 import RoadsideQuickReportModal from '../components/RoadsideQuickReportModal';
 import IncidentReportPreviewModal from '../components/IncidentReportPreviewModal';
 import ConfirmModal from '../components/ConfirmModal';
+import { InvoiceGenerator } from '../components/InvoiceGenerator';
 import {
     Wrench,
     Truck,
@@ -97,6 +98,7 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
     const [completingReport, setCompletingReport] = useState<Report | null>(null);
     const [previewingReport, setPreviewingReport] = useState<Report | null>(null);
     const [isSosConfirmOpen, setIsSosConfirmOpen] = useState(false);
+    const [invoiceReport, setInvoiceReport] = useState<Report | null>(null);
 
     // Live Geolocation State
     const [isGpsSharing, setIsGpsSharing] = useState(true);
@@ -1077,6 +1079,15 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
                                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                                 <span>Complete & Sign</span>
                                             </button>
+
+                                            {/* Invoice */}
+                                            <button
+                                                onClick={() => setInvoiceReport(selectedReport)}
+                                                className="col-span-2 sm:col-span-1 py-2.5 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow transition flex items-center justify-center gap-1.5 active:scale-95"
+                                            >
+                                                <FileText className="w-3.5 h-3.5" />
+                                                <span>{selectedReport.invoice ? 'View Invoice' : 'Generate Invoice'}</span>
+                                            </button>
                                         </div>
                                     </div>
 
@@ -1474,7 +1485,25 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
                 />
             )}
 
-            {/* 5. SOS Panic Confirmation */}
+            {/* 5. Roadside Invoice Generator */}
+            {invoiceReport && (
+                <InvoiceGenerator
+                    report={invoiceReport}
+                    company={profile.company}
+                    onClose={() => setInvoiceReport(null)}
+                    onSaveInvoice={(updatedReport) => {
+                        // In a real app we'd save to Supabase here
+                        // For now we'll just optimistically update the state
+                        setAllRoadsideReports(prev => prev.map(r => r.id === updatedReport.id ? updatedReport : r));
+                        setAssignedReports(prev => prev.map(r => r.id === updatedReport.id ? updatedReport : r));
+                        if (selectedReportId === updatedReport.id) {
+                             // Assuming local state is driving the view
+                        }
+                    }}
+                />
+            )}
+
+            {/* 6. SOS Panic Confirmation */}
             <ConfirmModal
                 isOpen={isSosConfirmOpen}
                 onClose={() => setIsSosConfirmOpen(false)}

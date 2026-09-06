@@ -338,6 +338,39 @@ export interface EmergencyReport {
   shared_with_company_ids?: string[];
 }
 
+export interface InvoiceItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+}
+
+export interface RoadsideInvoice {
+  invoice_number: string;
+  created_at: string;
+  due_date: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_id_number?: string;
+  vehicle_reg?: string;
+  vehicle_make_model?: string;
+  pickup_location?: string;
+  destination_location?: string;
+  provider_name?: string;
+  provider_phone?: string;
+  driver_name?: string;
+  items: InvoiceItem[];
+  subtotal: number;
+  vat_percentage: number;
+  vat_amount: number;
+  discount: number;
+  total_amount: number;
+  payment_status: 'Unpaid' | 'Paid' | 'Pending Insurance' | 'Cancelled';
+  payment_method?: 'Cash' | 'Card' | 'EFT' | 'Insurance Claim' | 'Mobile Money';
+  notes?: string;
+}
+
 export interface RoadsideReport {
   id: string;
   type?: 'roadside';
@@ -397,6 +430,7 @@ export interface RoadsideReport {
   company_name?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];
+  invoice?: RoadsideInvoice;
 }
 
 export type Report = VehicleReport | CrimeReport | EmergencyReport | RoadsideReport;
