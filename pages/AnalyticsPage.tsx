@@ -46,9 +46,9 @@ const AnalyticsPage: React.FC = () => {
                 { data: crimeData, error: cError },
                 { data: emergencyData, error: aError },
             ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*'),
-                supabase.from('crime_reports').select('*'),
-                supabase.from('emergency_reports').select('*'),
+                supabase.from('vehicle_reports').select('id, status, reported_at, created_at, reported_by, company_id, location, city, category, priority, vehicle_type, vehicle_make, vehicle_model, license_plate, is_global, is_stolen, shared_with_company_ids'),
+                supabase.from('crime_reports').select('id, status, reported_at, created_at, reported_by, company_id, location, city, category, priority, crime_type, is_global, shared_with_company_ids'),
+                supabase.from('emergency_reports').select('id, status, reported_at, created_at, reported_by, company_id, location, city, category, priority, emergency_type, is_global, shared_with_company_ids'),
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
