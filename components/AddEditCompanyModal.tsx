@@ -13,6 +13,8 @@ interface AddEditCompanyModalProps {
 
 export const AVAILABLE_MODULES = [
     { id: 'controller', name: 'Controller Dashboard' },
+    { id: 'ems_dispatch', name: 'EMS Dispatch (Emergency Medical Services)' },
+    { id: 'roadside_driver', name: 'Roadside Driver Operations' },
     { id: 'tech_ops', name: 'Tech Ops (Technical Operations)' },
     { id: 'fleet_management', name: 'Vehicle Tracking' },
     { id: 'guard_monitoring', name: 'Guarding & Patrols' },

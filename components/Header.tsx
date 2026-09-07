@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, memo } from 'react';
-import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, GlobeIcon, RadioTowerIcon, BuildingIcon, HistoryIcon, SearchIcon, ChartBarIcon, MapIcon, UsersIcon, ClipboardCheckIcon, ScanIcon, WrenchIcon, ShareIcon, CarIcon } from './icons';
+import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, GlobeIcon, RadioTowerIcon, BuildingIcon, HistoryIcon, SearchIcon, ChartBarIcon, MapIcon, UsersIcon, ClipboardCheckIcon, ScanIcon, WrenchIcon, ShareIcon, CarIcon, AmbulanceIcon } from './icons';
 import { Profile, UserRole, Notification } from '../types';
 import { supabase } from '../utils/supabase';
 import { useSettings } from '../contexts/SettingsContext';
@@ -285,7 +285,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
           )}
           {isModuleAllowed('ems_dispatch') && (
             <button onClick={() => clickHandler('ems_dispatch')} className={classGetter('ems_dispatch')}>
-              <span className="w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse" /> EMS Dispatch
+              <AmbulanceIcon className="w-4 h-4 mr-2 text-red-500 dark:text-red-400" /> EMS Dispatch
             </button>
           )}
           {isModuleAllowed('roadside_driver') && (
@@ -324,6 +324,16 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       return null;
     }
 
+    if (profile.role === UserRole.EMS_CONTROLLER || (profile.role as string) === 'ems_controller') {
+      return (
+        <>
+          <button onClick={() => clickHandler('ems_dispatch')} className={classGetter('ems_dispatch')}>
+            <AmbulanceIcon className="w-4 h-4 mr-2 text-red-500 dark:text-red-400" /> EMS Dispatch
+          </button>
+        </>
+      );
+    }
+
     if (profile.role === UserRole.RAS_DRIVER || (profile.role as string) === 'roadside_driver' || (profile.role as string) === 'driver') {
       return (
         <>
@@ -357,7 +367,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         )}
         {isModuleAllowed('ems_dispatch') && (
           <button onClick={() => clickHandler('ems_dispatch')} className={classGetter('ems_dispatch')}>
-            <span className="w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse" /> EMS Dispatch
+            <AmbulanceIcon className="w-4 h-4 mr-2 text-red-500 dark:text-red-400" /> EMS Dispatch
           </button>
         )}
         {isModuleAllowed('roadside_driver') && (
