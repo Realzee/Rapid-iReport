@@ -48,8 +48,14 @@ const LiveEventItem: React.FC<{
     const isRecoveredOrDeleted = report.status === 'recovered' || report.status === 'deleted' || report.status === 'resolved' || report.status === 'closed' || report.status === 'rejected';
     const isUnallocated = !report.assigned_to && !isRecoveredOrDeleted;
 
+    // Report is considered opened if it is currently selected or has been viewed/opened
+    const isOpened = isSelected || !isUnviewed;
+
+    // Only flash reports when the report is NOT opened
+    const shouldFlash = !isOpened && (isPanic || isUnallocated || isUnviewed);
+
     // Age-based coloring
-    const ageBorderClass = isRecoveredOrDeleted ? 'border-l-gray-400 dark:border-l-gray-600' : (isUnallocated ? 'border-l-red-600 dark:border-l-red-500' : getAgeColorClass(report.reported_at));
+    const ageBorderClass = isRecoveredOrDeleted ? 'border-l-gray-400 dark:border-l-gray-600' : (shouldFlash && isUnallocated ? 'border-l-red-600 dark:border-l-red-500' : getAgeColorClass(report.reported_at));
     const ageTextClass = isRecoveredOrDeleted ? 'text-gray-450' : getAgeTextClass(report.reported_at);
 
     const isSharedFromOtherCompany = profile.company_id && report.company_id && report.company_id !== profile.company_id;
@@ -59,16 +65,16 @@ const LiveEventItem: React.FC<{
         ? 'border-blue-500 ring-2 ring-blue-500/50' 
         : (isRecoveredOrDeleted 
             ? 'border-gray-200 dark:border-gray-700/50'
-            : (isPanic || isUnallocated ? 'border-red-500 ring-2 ring-red-500/60' : 'border-gray-200 dark:border-gray-700/50'));
+            : (shouldFlash ? 'border-red-500 ring-2 ring-red-500/60' : 'border-gray-200 dark:border-gray-700/50'));
         
     const bgClass = isSelected 
         ? 'bg-blue-500/10 dark:bg-gray-900/60' 
         : (isRecoveredOrDeleted
             ? 'bg-gray-150/50 dark:bg-gray-900/10 hover:bg-gray-200/50 dark:hover:bg-gray-900/20'
-            : (isPanic || isUnallocated ? 'bg-red-500/10 dark:bg-red-950/20' : 'bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60'));
+            : (shouldFlash ? 'bg-red-500/10 dark:bg-red-950/20' : 'bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60'));
         
-    // Flash animation for unallocated, panic, or unviewed reports (keeps flashing until attended to)
-    const pulseClass = (isPanic || isUnallocated) ? 'animate-pulse ring-2 ring-red-500/80' : (isUnviewed ? 'animate-pulse ring-2 ring-yellow-400/50' : '');
+    // Flash animation ONLY when report is NOT opened
+    const pulseClass = shouldFlash ? 'animate-pulse ring-2 ring-red-500/80' : '';
 
     const hasImages = report.evidence_images && report.evidence_images.length > 0;
     const assignedResponderName = report.assigned_to ? responderMap.get(report.assigned_to) : null;
@@ -111,68 +117,70 @@ const LiveEventItem: React.FC<{
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                             <ReportTypeBadge type={report.type as any} showText={false} className="p-1 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                    <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight truncate">{title}</p>
-                                    {report.is_global && (
-                                        <GlobeIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Global Report" />
-                                    )}
-                                    {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
-                                        <UsersIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Shared with specific companies" />
-                                    )}
-                                    {isSharedFromOtherCompany && (
-                                        <span className="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200 border border-blue-200 dark:border-blue-900 leading-none flex-shrink-0" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
-                                            Shared
-                                        </span>
-                                    )}
-                                    {isUnviewed && (
-                                        <span className="px-1.5 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded-full animate-bounce">
-                                            NEW
-                                        </span>
-                                    )}
-                                    {isUnallocated && (
-                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-600 text-white uppercase tracking-wider animate-pulse shadow-sm flex-shrink-0">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                                            UNALLOCATED
-                                        </span>
-                                    )}
+                                <div className="flex items-center gap-1.5 min-w-0 flex-wrap sm:flex-nowrap">
+                                    <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight truncate min-w-0 flex-1" title={title}>{title}</p>
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                        {report.is_global && (
+                                            <GlobeIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Global Report" />
+                                        )}
+                                        {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
+                                            <UsersIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Shared with specific companies" />
+                                        )}
+                                        {isSharedFromOtherCompany && (
+                                            <span className="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200 border border-blue-200 dark:border-blue-900 leading-none flex-shrink-0" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
+                                                Shared
+                                            </span>
+                                        )}
+                                        {!isOpened && isUnviewed && (
+                                            <span className="px-1.5 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded-full animate-bounce flex-shrink-0">
+                                                NEW
+                                            </span>
+                                        )}
+                                        {isUnallocated && (
+                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-600 text-white uppercase tracking-wider shadow-sm flex-shrink-0 ${shouldFlash ? 'animate-pulse' : ''}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full bg-white ${shouldFlash ? 'animate-ping' : ''}`} />
+                                                UNALLOCATED
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                                <p className="font-mono text-xs text-gray-500 dark:text-gray-400 truncate">
+                                <p className="font-mono text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5" title={report.type === 'roadside' ? `CAR: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}>
                                     {report.type === 'roadside' ? `CAR: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
                                 </p>
                             </div>
                         </div>
                     </div>
                     <div className="mt-1.5 text-xs text-gray-700 dark:text-gray-300">
-                        <p className="text-gray-500 dark:text-gray-400 line-clamp-2">{report.description}</p>
+                        <p className="text-gray-500 dark:text-gray-400 line-clamp-3 break-words">{report.description}</p>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                            <span className={`px-1.5 py-0.5 rounded uppercase font-bold text-xs ${severityTagStyles[report.severity]}`}>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400 min-w-0 flex-1">
+                            <span className={`px-1.5 py-0.5 rounded uppercase font-bold text-xs flex-shrink-0 ${severityTagStyles[report.severity]}`}>
                                 {report.severity.toUpperCase()}
                             </span>
                             {hasImages && (
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 flex-shrink-0">
                                     <CameraIcon className="w-3.5 h-3.5" />
                                     <span>{report.evidence_images?.length}</span>
                                 </div>
                             )}
-                            <div className="flex items-center gap-1 truncate" title={`Reported by: ${reporterName}`}>
-                                <UserIcon className="w-3.5 h-3.5" />
-                                <span className="truncate">{reporterName}</span>
+                            <div className="flex items-center gap-1 min-w-0" title={`Reported by: ${reporterName}`}>
+                                <UserIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                                <span className="truncate max-w-[140px] sm:max-w-[200px]">{reporterName}</span>
                             </div>
                             {assignedResponderName && (
-                                <div className="flex items-center gap-1 truncate" title={`Assigned to: ${assignedResponderName}`}>
-                                    <NavigationIcon className="w-3.5 h-3.5" />
-                                    <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{assignedResponderName}</span>
+                                <div className="flex items-center gap-1 min-w-0" title={`Assigned to: ${assignedResponderName}`}>
+                                    <NavigationIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                                    <span className="font-medium text-gray-600 dark:text-gray-300 truncate max-w-[140px] sm:max-w-[200px]">{assignedResponderName}</span>
                                 </div>
                             )}
                             {isSharedFromOtherCompany && (
-                                <div className="flex items-center gap-1 truncate text-blue-600 dark:text-blue-400 font-medium" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
+                                <div className="flex items-center gap-1 min-w-0 text-blue-600 dark:text-blue-400 font-medium" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
                                     <UsersIcon className="w-3.5 h-3.5 flex-shrink-0" />
-                                    <span className="truncate">From: {sharingCompanyName || 'Partner'}</span>
+                                    <span className="truncate max-w-[140px] sm:max-w-[200px]">From: {sharingCompanyName || 'Partner'}</span>
                                 </div>
                             )}
-                            <div className={`flex items-center gap-1 ${ageTextClass}`}>
+                            <div className={`flex items-center gap-1 flex-shrink-0 ${ageTextClass}`}>
                                 <ClockIcon className="w-3.5 h-3.5" />
                                 <span>{safeFormat(report.reported_at, 'HH:mm')}</span>
                             </div>

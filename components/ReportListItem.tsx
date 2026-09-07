@@ -34,6 +34,18 @@ const severityBorderColors: Record<Severity, string> = {
 
 const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onClick, profile, reporterName, onStatusUpdate, companyLogoUrl, showCheckbox, checked, sharingCompany }) => {
   const [isUpdating, setIsUpdating] = useState(false);
+  const [hasBeenOpened, setHasBeenOpened] = useState(false);
+
+  React.useEffect(() => {
+    if (isSelected) {
+      setHasBeenOpened(true);
+    }
+  }, [isSelected]);
+
+  const handleContainerClick = () => {
+    setHasBeenOpened(true);
+    onClick();
+  };
   
   const canUpdateStatus = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role) || 
                           (profile.role === UserRole.RESPONDER && report.assigned_to === profile.id);
@@ -58,19 +70,21 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
   }, [report.status]);
 
   const isUnallocated = !report.assigned_to && !isTerminalStatus && !isRecoveredOrDeleted;
+  const isOpened = isSelected || hasBeenOpened;
+  const shouldFlash = !isOpened && isUnallocated;
 
   const borderColor = isSelected 
     ? 'border-blue-500' 
     : (isRecoveredOrDeleted 
       ? 'border-gray-300 dark:border-gray-700' 
-      : (isUnallocated 
+      : (shouldFlash 
         ? 'border-red-500 ring-2 ring-red-500/80' 
         : (isTerminalStatus ? 'border-gray-300 dark:border-gray-700' : severityBorderColors[report.severity])));
   const bgColor = isSelected 
     ? 'bg-blue-500/10 dark:bg-blue-500/30' 
     : (isRecoveredOrDeleted 
       ? 'bg-gray-150/50 dark:bg-gray-900/10' 
-      : (isUnallocated 
+      : (shouldFlash 
         ? 'bg-red-500/10 dark:bg-red-950/20 animate-pulse' 
         : (isTerminalStatus ? 'bg-gray-200/50 dark:bg-gray-900/50' : 'bg-gray-50/50 dark:bg-gray-800/60')));
   const textColor = (isTerminalStatus || isRecoveredOrDeleted) ? 'text-gray-500 dark:text-gray-500' : 'text-gray-800 dark:text-white';
@@ -83,7 +97,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
 
   return (
     <div 
-        onClick={onClick}
+        onClick={handleContainerClick}
         className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4 relative overflow-hidden group ${bgColor} ${borderColor} hover:bg-gray-100 dark:hover:bg-gray-800`}
     >
         {isRecoveredOrDeleted && (
@@ -134,30 +148,32 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                         />
                     )}
                     <div className="flex-1 min-w-0 flex flex-col">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap sm:flex-nowrap">
                             <ReportTypeBadge type={report.type as any} showText={false} className="p-1 flex-shrink-0" />
-                            <p className={`font-bold text-sm ${textColor} group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate`}>
+                            <p className={`font-bold text-sm ${textColor} group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors truncate min-w-0 flex-1`} title={report.type === 'vehicle' ? (report as any).license_plate : report.title}>
                                 {report.type === 'vehicle' ? (report as any).license_plate : report.title}
                             </p>
-                            {report.is_global && (
-                                <GlobeIcon className="w-3 h-3 text-blue-500 flex-shrink-0" title="Globally Shared Report" />
-                            )}
-                            {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
-                                <UsersIcon className="w-3 h-3 text-purple-500 flex-shrink-0" title="Shared with partner companies" />
-                            )}
-                            {isSharedFromOtherCompany && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 border border-blue-200 dark:border-blue-800 leading-none flex-shrink-0" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
-                                    Shared
-                                </span>
-                            )}
-                            {isUnallocated && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-600 text-white uppercase tracking-wider animate-pulse shadow-sm flex-shrink-0">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                                    UNALLOCATED
-                                </span>
-                            )}
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                                {report.is_global && (
+                                    <GlobeIcon className="w-3 h-3 text-blue-500 flex-shrink-0" title="Globally Shared Report" />
+                                )}
+                                {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
+                                    <UsersIcon className="w-3 h-3 text-purple-500 flex-shrink-0" title="Shared with partner companies" />
+                                )}
+                                {isSharedFromOtherCompany && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 border border-blue-200 dark:border-blue-800 leading-none flex-shrink-0" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
+                                        Shared
+                                    </span>
+                                )}
+                                {isUnallocated && (
+                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-600 text-white uppercase tracking-wider shadow-sm flex-shrink-0 ${shouldFlash ? 'animate-pulse' : ''}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full bg-white ${shouldFlash ? 'animate-ping' : ''}`} />
+                                        UNALLOCATED
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate mt-0.5">
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate mt-0.5" title={report.type === 'roadside' ? `CAR: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}>
                             {report.type === 'roadside' ? `CAR: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
                         </p>
                     </div>
@@ -165,30 +181,30 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
             </div>
 
             <div className="mt-2 flex items-start justify-between gap-2">
-                <div className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 min-w-0 flex-1">
+                <div className="flex items-start gap-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300 min-w-0 flex-1">
                     <ReportTypeBadge type={report.type as any} className="flex-shrink-0 mt-0.5" />
                     {report.type === 'vehicle' ? (
-                        <p className="flex-1 min-w-0 truncate">
+                        <p className="flex-1 min-w-0 break-words">
                             <span className={`${severityStyles[report.severity]} font-bold uppercase`}>{report.severity.toUpperCase()}</span>
                             {' · '}
                             {(report as any).vehicle_make} {(report as any).vehicle_model} ({(report as any).vehicle_color})
                         </p>
                     ) : report.type === 'roadside' ? (
-                         <p className="flex-1 min-w-0 truncate">
+                         <p className="flex-1 min-w-0 break-words">
                             <span className={`${severityStyles[report.severity]} font-bold uppercase`}>{report.severity.toUpperCase()}</span>
                             {' · '}
                             {(report as any).assistance_type || (report as any).emergency_type || 'Roadside Assistance'}
                             {(report as any).license_plate && ` · ${(report as any).license_plate}`}
                         </p>
                     ) : report.type === 'emergency' ? (
-                         <p className="flex-1 min-w-0 truncate">
+                         <p className="flex-1 min-w-0 break-words">
                             <span className={`${severityStyles[report.severity]} font-bold uppercase`}>{report.severity.toUpperCase()}</span>
                             {' · '}
                             {(report as any).emergency_type}
                             {(report as any).license_plate && ` · ${(report as any).license_plate}`}
                         </p>
                     ) : (
-                         <p className="flex-1 min-w-0 truncate">
+                         <p className="flex-1 min-w-0 break-words">
                             <span className={`${severityStyles[report.severity]} font-bold uppercase`}>{report.severity.toUpperCase()}</span>
                             {' · '}
                             {(report as any).crime_type}
