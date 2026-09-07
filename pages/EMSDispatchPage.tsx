@@ -13,7 +13,7 @@ import {
 import { supabase } from '../utils/supabase';
 import { EMSReportGenerator } from './EMSReportGenerator';
 import MapView from '../components/MapView';
-import { HeartPulse, FileText } from 'lucide-react';
+import { HeartPulse, FileText, Edit2, Trash2, Plus, Building2, Truck, Phone, AlertCircle, X } from 'lucide-react';
 import { 
   PlusIcon, 
   SearchIcon, 
@@ -45,6 +45,15 @@ interface HospitalFacility {
   contact: string;
 }
 
+interface EMSUnit {
+  id: string;
+  name: string;
+  type: string;
+  status: ResponderStatus;
+  callSign: string;
+  cert: string;
+}
+
 const DEFAULT_HOSPITALS: HospitalFacility[] = [
   { id: 'h1', name: 'Charlotte Maxeke Academic Hospital', level: 'Level 1 Trauma', status: 'Open', distanceEta: '8.2 km (12 mins)', contact: '011 488 4911' },
   { id: 'h2', name: 'Chris Hani Baragwanath Hospital', level: 'Level 1 Trauma Center', status: 'Open', distanceEta: '14.5 km (20 mins)', contact: '011 933 8000' },
@@ -53,7 +62,7 @@ const DEFAULT_HOSPITALS: HospitalFacility[] = [
   { id: 'h5', name: 'Life Fourways Hospital', level: 'Level 2 Trauma Center', status: 'Open', distanceEta: '18.2 km (22 mins)', contact: '011 875 1000' },
 ];
 
-const DEFAULT_UNITS = [
+const DEFAULT_UNITS: EMSUnit[] = [
   { id: 'u1', name: 'Medic Alpha-1 (ALS)', type: 'Advanced Life Support', status: ResponderStatus.AVAILABLE, callSign: 'A-1', cert: 'ALS' },
   { id: 'u2', name: 'Ambulance Bravo-2 (ILS)', type: 'Intermediate Life Support', status: ResponderStatus.EN_ROUTE, callSign: 'B-2', cert: 'ILS' },
   { id: 'u3', name: 'Medic Charlie-3 (ALS)', type: 'Rapid Response Vehicle', status: ResponderStatus.ON_SCENE, callSign: 'C-3', cert: 'ALS' },
@@ -69,11 +78,73 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [triageFilter, setTriageFilter] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'dispatches' | 'units' | 'hospitals' | 'map'>('dispatches');
-  
+
+  // Dynamic Fleet & Hospital State with LocalStorage persistence
+  const [units, setUnits] = useState<EMSUnit[]>(() => {
+    try {
+      const saved = localStorage.getItem('ems_fleet_units');
+      return saved ? JSON.parse(saved) : DEFAULT_UNITS;
+    } catch {
+      return DEFAULT_UNITS;
+    }
+  });
+
+  const [hospitals, setHospitals] = useState<HospitalFacility[]>(() => {
+    try {
+      const saved = localStorage.getItem('ems_hospital_facilities');
+      return saved ? JSON.parse(saved) : DEFAULT_HOSPITALS;
+    } catch {
+      return DEFAULT_HOSPITALS;
+    }
+  });
+
+  // Persist fleet & hospitals
+  useEffect(() => {
+    localStorage.setItem('ems_fleet_units', JSON.stringify(units));
+  }, [units]);
+
+  useEffect(() => {
+    localStorage.setItem('ems_hospital_facilities', JSON.stringify(hospitals));
+  }, [hospitals]);
+
   // Modals
   const [isNewCallModalOpen, setIsNewCallModalOpen] = useState(false);
   const [selectedPcrReport, setSelectedPcrReport] = useState<Report | null>(null);
   const [selectedDispatchForMap, setSelectedDispatchForMap] = useState<EmsDispatch | null>(null);
+
+  // Fleet Unit Modal State
+  const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
+  const [editingUnit, setEditingUnit] = useState<EMSUnit | null>(null);
+  const [unitForm, setUnitForm] = useState<{
+    name: string;
+    type: string;
+    callSign: string;
+    cert: string;
+    status: ResponderStatus;
+  }>({
+    name: '',
+    type: 'Advanced Life Support',
+    callSign: '',
+    cert: 'ALS',
+    status: ResponderStatus.AVAILABLE,
+  });
+
+  // Hospital Facility Modal State
+  const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
+  const [editingHospital, setEditingHospital] = useState<HospitalFacility | null>(null);
+  const [hospitalForm, setHospitalForm] = useState<{
+    name: string;
+    level: string;
+    status: 'Open' | 'Busy' | 'Diversion' | 'Full';
+    distanceEta: string;
+    contact: string;
+  }>({
+    name: '',
+    level: 'Level 1 Trauma Center',
+    status: 'Open',
+    distanceEta: '',
+    contact: '',
+  });
 
   // New Call Form State
   const [newCallForm, setNewCallForm] = useState({
@@ -343,6 +414,112 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
     }
   };
 
+  // Fleet Unit CRUD Handlers
+  const handleOpenAddUnit = () => {
+    setEditingUnit(null);
+    setUnitForm({
+      name: '',
+      type: 'Advanced Life Support',
+      callSign: '',
+      cert: 'ALS',
+      status: ResponderStatus.AVAILABLE,
+    });
+    setIsUnitModalOpen(true);
+  };
+
+  const handleOpenEditUnit = (unit: EMSUnit) => {
+    setEditingUnit(unit);
+    setUnitForm({
+      name: unit.name,
+      type: unit.type,
+      callSign: unit.callSign,
+      cert: unit.cert,
+      status: unit.status,
+    });
+    setIsUnitModalOpen(true);
+  };
+
+  const handleSaveUnit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!unitForm.name || !unitForm.callSign) {
+      addToast('Unit name and call sign are required.', 'error');
+      return;
+    }
+
+    if (editingUnit) {
+      setUnits(prev => prev.map(u => u.id === editingUnit.id ? { ...u, ...unitForm } : u));
+      addToast(`Updated unit: ${unitForm.name}`, 'success');
+    } else {
+      const newUnit: EMSUnit = {
+        id: `u-${Date.now()}`,
+        ...unitForm,
+      };
+      setUnits(prev => [...prev, newUnit]);
+      addToast(`Added unit: ${unitForm.name}`, 'success');
+    }
+    setIsUnitModalOpen(false);
+  };
+
+  const handleDeleteUnit = (id: string, name: string) => {
+    if (confirm(`Are you sure you want to delete ambulance unit "${name}"?`)) {
+      setUnits(prev => prev.filter(u => u.id !== id));
+      addToast(`Deleted unit: ${name}`, 'info');
+    }
+  };
+
+  // Hospital Facility CRUD Handlers
+  const handleOpenAddHospital = () => {
+    setEditingHospital(null);
+    setHospitalForm({
+      name: '',
+      level: 'Level 1 Trauma Center',
+      status: 'Open',
+      distanceEta: '',
+      contact: '',
+    });
+    setIsHospitalModalOpen(true);
+  };
+
+  const handleOpenEditHospital = (hospital: HospitalFacility) => {
+    setEditingHospital(hospital);
+    setHospitalForm({
+      name: hospital.name,
+      level: hospital.level,
+      status: hospital.status,
+      distanceEta: hospital.distanceEta,
+      contact: hospital.contact,
+    });
+    setIsHospitalModalOpen(true);
+  };
+
+  const handleSaveHospital = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hospitalForm.name) {
+      addToast('Hospital name is required.', 'error');
+      return;
+    }
+
+    if (editingHospital) {
+      setHospitals(prev => prev.map(h => h.id === editingHospital.id ? { ...h, ...hospitalForm } : h));
+      addToast(`Updated facility: ${hospitalForm.name}`, 'success');
+    } else {
+      const newHospital: HospitalFacility = {
+        id: `h-${Date.now()}`,
+        ...hospitalForm,
+      };
+      setHospitals(prev => [...prev, newHospital]);
+      addToast(`Added facility: ${hospitalForm.name}`, 'success');
+    }
+    setIsHospitalModalOpen(false);
+  };
+
+  const handleDeleteHospital = (id: string, name: string) => {
+    if (confirm(`Are you sure you want to delete receiving facility "${name}"?`)) {
+      setHospitals(prev => prev.filter(h => h.id !== id));
+      addToast(`Deleted facility: ${name}`, 'info');
+    }
+  };
+
   // Helper for Triage Badges
   const renderTriageBadge = (level: EmsTriageLevel) => {
     switch (level) {
@@ -499,7 +676,7 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
             }`}
           >
-            <CarIcon className="w-4 h-4" /> EMS Fleet & Responders ({DEFAULT_UNITS.length})
+            <CarIcon className="w-4 h-4" /> EMS Fleet & Responders ({units.length})
           </button>
 
           <button
@@ -510,7 +687,7 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
             }`}
           >
-            <BuildingIcon className="w-4 h-4" /> Receiving Hospitals ({DEFAULT_HOSPITALS.length})
+            <BuildingIcon className="w-4 h-4" /> Receiving Hospitals ({hospitals.length})
           </button>
 
           <button
@@ -654,7 +831,7 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                         className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
                       >
                         <option value="">-- Select Ambulance / Unit --</option>
-                        {DEFAULT_UNITS.map(u => (
+                        {units.map(u => (
                           <option key={u.id} value={u.name}>
                             {u.name} [{u.cert}]
                           </option>
@@ -673,7 +850,7 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                         className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
                       >
                         <option value="">-- Select Receiving Hospital --</option>
-                        {DEFAULT_HOSPITALS.map(h => (
+                        {hospitals.map(h => (
                           <option key={h.id} value={h.name}>
                             {h.name} ({h.level})
                           </option>
@@ -800,61 +977,152 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
       {/* UNITS TAB */}
       {activeTab === 'units' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {DEFAULT_UNITS.map(unit => (
-            <div key={unit.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-xs">
-              <div className="flex items-center justify-between mb-3">
-                <span className="px-2.5 py-1 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 font-black text-xs rounded-lg">
-                  {unit.callSign}
-                </span>
-                <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold text-xs rounded-md">
-                  {unit.status}
-                </span>
-              </div>
-
-              <h3 className="text-base font-black text-gray-900 dark:text-white mb-1">{unit.name}</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{unit.type} • Certification: {unit.cert}</p>
-
-              <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800 text-xs">
-                <span className="text-gray-400 font-semibold">Radio Channel: EMS-TAC-1</span>
-                <button
-                  onClick={() => addToast(`Contacting unit ${unit.callSign}...`, 'info')}
-                  className="px-3 py-1 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition"
-                >
-                  Call Unit
-                </button>
-              </div>
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 rounded-2xl shadow-xs">
+            <div>
+              <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+                <Truck className="w-5 h-5 text-red-500" />
+                EMS FLEET & AMBULANCE UNITS
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Manage response vehicles, paramedic certifications, and status allocations
+              </p>
             </div>
-          ))}
+            <button
+              onClick={handleOpenAddUnit}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 active:scale-95"
+            >
+              <Plus className="w-4 h-4" /> Add Ambulance Unit
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {units.length === 0 ? (
+              <div className="col-span-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center text-gray-500">
+                No units configured. Click "+ Add Ambulance Unit" to add one.
+              </div>
+            ) : (
+              units.map(unit => (
+                <div key={unit.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="px-2.5 py-1 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 font-black text-xs rounded-lg">
+                        {unit.callSign}
+                      </span>
+                      <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold text-xs rounded-md">
+                        {unit.status}
+                      </span>
+                    </div>
+
+                    <h3 className="text-base font-black text-gray-900 dark:text-white mb-1">{unit.name}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{unit.type} • Certification: <span className="font-bold text-red-600 dark:text-red-400">{unit.cert}</span></p>
+                  </div>
+
+                  <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs gap-2">
+                    <button
+                      onClick={() => addToast(`Contacting unit ${unit.callSign}...`, 'info')}
+                      className="px-3 py-1.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition flex items-center gap-1"
+                    >
+                      <Phone className="w-3.5 h-3.5" /> Call Unit
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEditUnit(unit)}
+                        className="p-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition"
+                        title="Edit Unit"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUnit(unit.id, unit.name)}
+                        className="p-1.5 bg-red-100 dark:bg-red-950/50 hover:bg-red-200 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 rounded-lg transition"
+                        title="Delete Unit"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
       {/* HOSPITALS TAB */}
       {activeTab === 'hospitals' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {DEFAULT_HOSPITALS.map(hospital => (
-            <div key={hospital.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-xs">
-              <div className="flex items-center justify-between mb-3">
-                <BuildingIcon className="w-6 h-6 text-red-500" />
-                <span className={`px-2.5 py-0.5 font-bold text-xs rounded-md ${
-                  hospital.status === 'Open' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                }`}>
-                  ER Status: {hospital.status}
-                </span>
-              </div>
-
-              <h3 className="text-base font-black text-gray-900 dark:text-white mb-1">{hospital.name}</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{hospital.level}</p>
-              <p className="text-xs text-gray-400 mb-4">{hospital.distanceEta} • {hospital.contact}</p>
-
-              <button
-                onClick={() => addToast(`ER Dept notified for ${hospital.name}`, 'success')}
-                className="w-full py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-gray-800 dark:text-gray-200 font-bold text-xs rounded-xl transition"
-              >
-                Notify ER Trauma Bay
-              </button>
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 rounded-2xl shadow-xs">
+            <div>
+              <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-red-500" />
+                RECEIVING HOSPITALS & ER TRAUMA CENTERS
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Monitor ER capacity, trauma bay diversion status, and emergency room contacts
+              </p>
             </div>
-          ))}
+            <button
+              onClick={handleOpenAddHospital}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 active:scale-95"
+            >
+              <Plus className="w-4 h-4" /> Add Hospital Facility
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {hospitals.length === 0 ? (
+              <div className="col-span-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center text-gray-500">
+                No receiving hospital facilities configured. Click "+ Add Hospital Facility" to add one.
+              </div>
+            ) : (
+              hospitals.map(hospital => (
+                <div key={hospital.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <BuildingIcon className="w-6 h-6 text-red-500" />
+                      <span className={`px-2.5 py-0.5 font-bold text-xs rounded-md ${
+                        hospital.status === 'Open' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' :
+                        hospital.status === 'Busy' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' :
+                        'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                      }`}>
+                        ER Status: {hospital.status}
+                      </span>
+                    </div>
+
+                    <h3 className="text-base font-black text-gray-900 dark:text-white mb-1">{hospital.name}</h3>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">{hospital.level}</p>
+                    <p className="text-xs text-gray-400 mb-4">{hospital.distanceEta} • {hospital.contact}</p>
+                  </div>
+
+                  <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => addToast(`ER Dept notified for ${hospital.name}`, 'success')}
+                      className="flex-1 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-xs rounded-xl transition"
+                    >
+                      Notify ER Trauma Bay
+                    </button>
+
+                    <button
+                      onClick={() => handleOpenEditHospital(hospital)}
+                      className="p-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl transition"
+                      title="Edit Hospital"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteHospital(hospital.id, hospital.name)}
+                      className="p-2 bg-red-100 dark:bg-red-950/50 hover:bg-red-200 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 rounded-xl transition"
+                      title="Delete Hospital"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
@@ -974,7 +1242,7 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                     className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium"
                   >
                     <option value="">-- Unassigned --</option>
-                    {DEFAULT_UNITS.map(u => (
+                    {units.map(u => (
                       <option key={u.id} value={u.name}>{u.name}</option>
                     ))}
                   </select>
@@ -988,7 +1256,7 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                     className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium"
                   >
                     <option value="">-- Unassigned --</option>
-                    {DEFAULT_HOSPITALS.map(h => (
+                    {hospitals.map(h => (
                       <option key={h.id} value={h.name}>{h.name}</option>
                     ))}
                   </select>
@@ -1019,6 +1287,210 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                   className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md"
                 >
                   Dispatch & Log Call
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADD / EDIT FLEET UNIT MODAL */}
+      {isUnitModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800 mb-4">
+              <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-black text-base">
+                <Truck className="w-5 h-5" />
+                {editingUnit ? 'EDIT AMBULANCE UNIT' : 'ADD NEW AMBULANCE UNIT'}
+              </div>
+              <button
+                onClick={() => setIsUnitModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUnit} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Unit Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Medic Echo-5 (ALS)"
+                  value={unitForm.name}
+                  onChange={e => setUnitForm({ ...unitForm, name: e.target.value })}
+                  className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Radio Call Sign</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. E-5"
+                    value={unitForm.callSign}
+                    onChange={e => setUnitForm({ ...unitForm, callSign: e.target.value })}
+                    className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Certification Level</label>
+                  <select
+                    value={unitForm.cert}
+                    onChange={e => setUnitForm({ ...unitForm, cert: e.target.value })}
+                    className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold"
+                  >
+                    <option value="ALS">ALS (Advanced)</option>
+                    <option value="ILS">ILS (Intermediate)</option>
+                    <option value="BLS">BLS (Basic)</option>
+                    <option value="RESCUE">RESCUE / Extrication</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Vehicle Description / Type</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Advanced Life Support Ambulance"
+                  value={unitForm.type}
+                  onChange={e => setUnitForm({ ...unitForm, type: e.target.value })}
+                  className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Status</label>
+                <select
+                  value={unitForm.status}
+                  onChange={e => setUnitForm({ ...unitForm, status: e.target.value as ResponderStatus })}
+                  className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold"
+                >
+                  <option value={ResponderStatus.AVAILABLE}>Available</option>
+                  <option value={ResponderStatus.EN_ROUTE}>En Route</option>
+                  <option value={ResponderStatus.ON_SCENE}>On Scene</option>
+                  <option value={ResponderStatus.OFF_DUTY}>Off Duty / Offline</option>
+                </select>
+              </div>
+
+              <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsUnitModalOpen(false)}
+                  className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md"
+                >
+                  {editingUnit ? 'Save Changes' : 'Create Unit'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADD / EDIT HOSPITAL FACILITY MODAL */}
+      {isHospitalModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800 mb-4">
+              <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-black text-base">
+                <Building2 className="w-5 h-5" />
+                {editingHospital ? 'EDIT RECEIVING HOSPITAL' : 'ADD RECEIVING HOSPITAL'}
+              </div>
+              <button
+                onClick={() => setIsHospitalModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveHospital} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Facility Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Johannesburg General Hospital"
+                  value={hospitalForm.name}
+                  onChange={e => setHospitalForm({ ...hospitalForm, name: e.target.value })}
+                  className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Trauma Rating / Department Level</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Level 1 Trauma Center, Private ER"
+                  value={hospitalForm.level}
+                  onChange={e => setHospitalForm({ ...hospitalForm, level: e.target.value })}
+                  className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">ER Status</label>
+                  <select
+                    value={hospitalForm.status}
+                    onChange={e => setHospitalForm({ ...hospitalForm, status: e.target.value as any })}
+                    className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold"
+                  >
+                    <option value="Open">Open</option>
+                    <option value="Busy">Busy</option>
+                    <option value="Diversion">Diversion</option>
+                    <option value="Full">Full</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Emergency Contact</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 011 488 4911"
+                    value={hospitalForm.contact}
+                    onChange={e => setHospitalForm({ ...hospitalForm, contact: e.target.value })}
+                    className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Distance & Estimated Travel Time</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 10.5 km (15 mins)"
+                  value={hospitalForm.distanceEta}
+                  onChange={e => setHospitalForm({ ...hospitalForm, distanceEta: e.target.value })}
+                  className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsHospitalModalOpen(false)}
+                  className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md"
+                >
+                  {editingHospital ? 'Save Changes' : 'Create Facility'}
                 </button>
               </div>
             </form>
