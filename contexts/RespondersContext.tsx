@@ -23,7 +23,7 @@ export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 const { data, error } = await supabase
                     .from('profiles')
                     .select('*')
-                    .eq('role', UserRole.RESPONDER);
+                    .in('role', [UserRole.RESPONDER, UserRole.RAS_DRIVER, 'roadside_driver', 'driver']);
 
                 if (error) {
                     console.error('Error fetching responders:', error);
@@ -49,7 +49,7 @@ export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (!supabase) return;
 
         const channel = supabase.channel('public:profiles-responders')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: 'role=eq.responder' }, (payload: any) => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: 'role=in.(responder,ras_driver,roadside_driver,driver)' }, (payload: any) => {
                 // Save database quota by updating local state directly from the realtime payload instead of executing fetch queries
                 if (payload.eventType === 'INSERT') {
                     const p = payload.new as Profile;

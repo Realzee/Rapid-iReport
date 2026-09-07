@@ -566,7 +566,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         setReportToDelete(null);
     }, [reportToDelete, addToast, selectedReportId, profile.id]);
     
-    const handleStatusUpdate = useCallback(async (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime' | 'emergency') => {
+    const handleStatusUpdate = useCallback(async (reportId: string, newStatus: ReportStatus, reportType: 'vehicle' | 'crime' | 'emergency' | 'roadside') => {
         const tableName = reportType === 'vehicle' ? 'vehicle_reports' : (reportType === 'emergency' || reportType === 'roadside' ? 'emergency_reports' : 'crime_reports');
         const reportToUpdate = reports.find(r => r.id === reportId);
         if (!reportToUpdate) return;

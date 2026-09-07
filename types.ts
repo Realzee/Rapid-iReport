@@ -708,7 +708,7 @@ export interface TechChatMessage {
 export interface ReportShare {
   id: string;
   report_id: string;
-  report_type: 'crime' | 'vehicle' | 'emergency';
+  report_type: 'crime' | 'vehicle' | 'emergency' | 'roadside';
   source_company_id?: string;
   target_company_id: string;
   status: 'pending' | 'approved' | 'rejected';

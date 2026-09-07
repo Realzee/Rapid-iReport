@@ -284,7 +284,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         const combinedReports = [
             ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
             ...(crimeData || []).map(r => ({ ...r, type: 'crime' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
-            ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
+            ...(emergencyData || []).map(r => ({ ...r, type: (r.emergency_type === 'Roadside Assistance' || r.type === 'roadside' ? 'roadside' : 'emergency') as any, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined }))
         ];
 
         // Ensure we have profiles for all reporters
