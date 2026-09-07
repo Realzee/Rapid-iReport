@@ -13,10 +13,10 @@ const ReportingPanel: React.FC<ReportingPanelProps> = ({ data }) => {
     const checkpoints = data.checkpoints || [];
 
     const getGuardName = (id: string) => {
-        const g = guards.find((g: any) => g.id === id);
+        const g = (guards || []).find((g: any) => g.id === id);
         return g ? (g.name || g.first_name || 'Unknown Guard') : 'Unknown';
     };
-    const getCheckpointName = (id: string) => checkpoints.find((c: any) => c.id === id)?.name || 'Unknown';
+    const getCheckpointName = (id: string) => (checkpoints || []).find((c: any) => c.id === id)?.name || 'Unknown';
 
     return (
         <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow space-y-6">

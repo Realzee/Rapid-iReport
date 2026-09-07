@@ -13,6 +13,7 @@ import { BulkShareModal } from '../components/BulkShareModal';
 import { safeFormat } from '../utils/dateUtils';
 import IncidentReportPreviewModal from '../components/IncidentReportPreviewModal';
 import { FileText, Printer } from 'lucide-react';
+import { safeSetStorage } from '../utils/storage';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
@@ -97,45 +98,29 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
 
     useEffect(() => {
         if (!profile?.id) return;
-        try {
-            if (reports.length > 0) {
-                localStorage.setItem(`reports_page_reports_${profile.id}`, JSON.stringify(reports));
-            }
-        } catch (e) {
-            console.warn("Error caching reports page reports:", e);
+        if (reports.length > 0) {
+            safeSetStorage(`reports_page_reports_${profile.id}`, reports);
         }
     }, [reports, profile?.id]);
 
     useEffect(() => {
         if (!profile?.id) return;
-        try {
-            if (users.length > 0) {
-                localStorage.setItem(`reports_page_users_${profile.id}`, JSON.stringify(users));
-            }
-        } catch (e) {
-            console.warn("Error caching reports page users:", e);
+        if (users.length > 0) {
+            safeSetStorage(`reports_page_users_${profile.id}`, users);
         }
     }, [users, profile?.id]);
 
     useEffect(() => {
         if (!profile?.id) return;
-        try {
-            if (companies.length > 0) {
-                localStorage.setItem(`reports_page_companies_${profile.id}`, JSON.stringify(companies));
-            }
-        } catch (e) {
-            console.warn("Error caching reports page companies:", e);
+        if (companies.length > 0) {
+            safeSetStorage(`reports_page_companies_${profile.id}`, companies);
         }
     }, [companies, profile?.id]);
 
     useEffect(() => {
         if (!profile?.id) return;
-        try {
-            if (responders.length > 0) {
-                localStorage.setItem(`reports_page_responders_${profile.id}`, JSON.stringify(responders));
-            }
-        } catch (e) {
-            console.warn("Error caching reports page responders:", e);
+        if (responders.length > 0) {
+            safeSetStorage(`reports_page_responders_${profile.id}`, responders);
         }
     }, [responders, profile?.id]);
     

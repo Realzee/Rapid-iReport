@@ -606,7 +606,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                     <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                                         <td className="px-6 py-4">
                                             <div className="font-medium text-gray-900 dark:text-white">
-                                                {item.name || (item.first_name ? `${item.first_name} ${item.surname || ''}` : '') || (item.profile_id ? users.find(u => u.id === item.profile_id)?.email : 'Unnamed Item')}
+                                                {item.name || (item.first_name ? `${item.first_name} ${item.surname || ''}` : '') || (item.profile_id ? (users || []).find(u => u.id === item.profile_id)?.email : 'Unnamed Item')}
                                             </div>
                                             {item.id && <div className="text-xs text-gray-400 font-mono mt-0.5">{item.id.slice(0, 8)}...</div>}
                                         </td>
@@ -633,13 +633,13 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                                 {item.profile_id && (
                                                     <div className="flex items-center gap-1.5 text-blue-500">
                                                         <span className="text-[10px] uppercase font-bold opacity-70 w-12">Email:</span>
-                                                        <span className="text-xs truncate max-w-[120px]">{users.find(u => u.id === item.profile_id)?.email || 'Account Linked'}</span>
+                                                        <span className="text-xs truncate max-w-[120px]">{(users || []).find(u => u.id === item.profile_id)?.email || 'Account Linked'}</span>
                                                     </div>
                                                 )}
                                                 {item.company_id && (
                                                     <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
                                                         <span className="text-[10px] uppercase font-bold opacity-70 w-12">Company:</span>
-                                                        <span className="text-xs truncate max-w-[120px]">{companies.find(c => c.id === item.company_id)?.name || 'Unknown Company'}</span>
+                                                        <span className="text-xs truncate max-w-[120px]">{(companies || []).find(c => c.id === item.company_id)?.name || 'Unknown Company'}</span>
                                                     </div>
                                                 )}
                                                 {(item.site_id || (item.site_ids && item.site_ids.length > 0)) && (
@@ -649,12 +649,12 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({ sites, profile 
                                                             {(item.site_ids && item.site_ids.length > 0) ? (
                                                                 item.site_ids.map((sid: string) => (
                                                                     <span key={sid} className="text-[10px] bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 px-2 py-0.5 rounded border border-indigo-100 dark:border-indigo-800">
-                                                                        {sites.find(s => s.id === sid)?.name || sid.slice(0, 5)}
+                                                                        {(sites || []).find(s => s.id === sid)?.name || sid.slice(0, 5)}
                                                                     </span>
                                                                 ))
                                                             ) : item.site_id ? (
                                                                 <span className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-800">
-                                                                    {sites.find(s => s.id === item.site_id)?.name || 'Assigned'}
+                                                                    {(sites || []).find(s => s.id === item.site_id)?.name || 'Assigned'}
                                                                 </span>
                                                             ) : null}
                                                         </div>

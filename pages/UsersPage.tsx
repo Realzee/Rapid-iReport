@@ -274,7 +274,7 @@ const UsersPage: React.FC = () => {
                 u.email,
                 u.role,
                 u.status,
-                `"${companies.find(c => c.id === u.company_id)?.name || 'N/A'}"`,
+                `"${(companies || []).find(c => c.id === u.company_id)?.name || 'N/A'}"`,
                 `"${u.cell || ''}"`,
                 `"${u.last_seen_at || ''}"`
             ].join(','))
@@ -310,7 +310,7 @@ const UsersPage: React.FC = () => {
     }, []);
     
     const handleRoleChange = useCallback((userId: string, newRole: UserRole) => {
-        const userObj = users.find(u => u.id === userId);
+        const userObj = (users || []).find(u => u.id === userId);
         const nameText = userObj ? `${userObj.first_name || ''} ${userObj.surname || ''}`.trim() || userObj.email : userId;
         
         setConfirmAction({
@@ -352,7 +352,7 @@ const UsersPage: React.FC = () => {
     }, [addToast, currentUserProfile, users]);
     
     const handleStatusChange = useCallback((userId: string, newStatus: UserStatus) => {
-        const userObj = users.find(u => u.id === userId);
+        const userObj = (users || []).find(u => u.id === userId);
         const nameText = userObj ? `${userObj.first_name || ''} ${userObj.surname || ''}`.trim() || userObj.email : userId;
         const statusMap: Record<UserStatus, string> = {
             [UserStatus.ACTIVE]: 'approve',
@@ -400,9 +400,9 @@ const UsersPage: React.FC = () => {
     }, [addToast, currentUserProfile, users]);
 
     const handleCompanyChange = useCallback((userId: string, newCompanyId: string | null) => {
-        const userObj = users.find(u => u.id === userId);
+        const userObj = (users || []).find(u => u.id === userId);
         const nameText = userObj ? `${userObj.first_name || ''} ${userObj.surname || ''}`.trim() || userObj.email : userId;
-        const companyName = companies.find(c => c.id === newCompanyId)?.name || 'None';
+        const companyName = (companies || []).find(c => c.id === newCompanyId)?.name || 'None';
 
         setConfirmAction({
             title: 'Change User Company',
@@ -826,7 +826,7 @@ const UsersPage: React.FC = () => {
                 isOpen={!!viewUser}
                 onClose={() => setViewUser(null)}
                 user={viewUser}
-                companyName={companies.find(c => c.id === viewUser?.company_id)?.name}
+                companyName={(companies || []).find(c => c.id === viewUser?.company_id)?.name}
             />
         </div>
     );

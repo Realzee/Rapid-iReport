@@ -758,8 +758,8 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
         });
     };
 
-    const selectedReport = reports.find(r => r.id === selectedReportId);
-    const selectedResponder = responders.find(r => r.id === selectedResponderId);
+    const selectedReport = (reports || []).find(r => r.id === selectedReportId);
+    const selectedResponder = (responders || []).find(r => r.id === selectedResponderId);
 
     const streetTile = {
         url: getCartoTileUrl('voyager'),

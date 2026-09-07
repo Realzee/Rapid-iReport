@@ -133,7 +133,7 @@ const TechJobDetail: React.FC<TechJobDetailProps> = ({
                 .from('tech_chat_messages')
                 .insert({
                     job_id: job.id,
-                    sender_id: allUsers.find(u => u.role === UserRole.ADMIN || u.role === UserRole.CONTROLLER)?.id || job.reported_by,
+                    sender_id: (allUsers || []).find(u => u.role === UserRole.ADMIN || u.role === UserRole.CONTROLLER)?.id || job.reported_by,
                     content: newMsgText.trim()
                 });
 
@@ -148,7 +148,7 @@ const TechJobDetail: React.FC<TechJobDetailProps> = ({
         }
     };
 
-    const assignedProfile = allUsers.find(u => u.id === job.assigned_to);
+    const assignedProfile = (allUsers || []).find(u => u.id === job.assigned_to);
 
     return (
         <div className="bg-white/80 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xl p-6 backdrop-blur-lg flex flex-col h-full text-left">

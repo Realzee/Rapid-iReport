@@ -57,7 +57,7 @@ const isOnline = (lastSeen?: string): boolean => {
 
 const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, companies, onEdit, onDelete, onView, currentUserProfile, onRoleChange, updatingRoleId, onCompanyChange, updatingCompanyId, onStatusChange, updatingStatusId, userReportCounts = {} }) => {
     const getCompanyName = (companyId?: string) => {
-        return companies.find(c => c.id === companyId)?.name || 'N/A';
+        return (companies || []).find(c => c.id === companyId)?.name || 'N/A';
     };
 
     const renderLastSeen = (lastSeen?: string) => {

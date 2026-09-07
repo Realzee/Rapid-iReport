@@ -92,7 +92,7 @@ const TechStack: React.FC<TechStackProps> = ({
                 ) : (
                     filteredJobs.map(job => {
                         const isSelected = selectedJobId === job.id;
-                        const assignee = allUsers.find(u => u.id === job.assigned_to);
+                        const assignee = (allUsers || []).find(u => u.id === job.assigned_to);
 
                         return (
                             <div

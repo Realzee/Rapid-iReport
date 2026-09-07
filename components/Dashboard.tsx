@@ -17,6 +17,7 @@ import { useChat } from '../contexts/ChatContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
 import { isSameDay, parseISO } from 'date-fns';
 import { CorporateSharingModal } from './CorporateSharingModal';
+import { safeSetStorage } from '../utils/storage';
 
 interface DashboardProps {
     profile: Profile;
@@ -196,44 +197,28 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
     // Stale-While-Revalidate Cache persistence effect
     useEffect(() => {
         if (!profile?.id) return;
-        try {
-            if (reports.length > 0) {
-                localStorage.setItem(`dashboard_reports_${profile.id}`, JSON.stringify(reports));
-            }
-        } catch (e) {
-            console.warn("Error caching dashboard reports:", e);
+        if (reports.length > 0) {
+            safeSetStorage(`dashboard_reports_${profile.id}`, reports);
         }
     }, [reports, profile?.id]);
 
     useEffect(() => {
         if (!profile?.id) return;
-        try {
-            if (allUsers.length > 0) {
-                localStorage.setItem(`dashboard_users_${profile.id}`, JSON.stringify(allUsers));
-            }
-        } catch (e) {
-            console.warn("Error caching dashboard users:", e);
+        if (allUsers.length > 0) {
+            safeSetStorage(`dashboard_users_${profile.id}`, allUsers);
         }
     }, [allUsers, profile?.id]);
 
     useEffect(() => {
         if (!profile?.id) return;
-        try {
-            if (companies.length > 0) {
-                localStorage.setItem(`dashboard_companies_${profile.id}`, JSON.stringify(companies));
-            }
-        } catch (e) {
-            console.warn("Error caching dashboard companies:", e);
+        if (companies.length > 0) {
+            safeSetStorage(`dashboard_companies_${profile.id}`, companies);
         }
     }, [companies, profile?.id]);
 
     useEffect(() => {
         if (!profile?.id) return;
-        try {
-            localStorage.setItem(`dashboard_report_counts_${profile.id}`, JSON.stringify(reportCounts));
-        } catch (e) {
-            console.warn("Error caching dashboard report counts:", e);
-        }
+        safeSetStorage(`dashboard_report_counts_${profile.id}`, reportCounts);
     }, [reportCounts, profile?.id]);
 
     const fetchData = useCallback(async () => {

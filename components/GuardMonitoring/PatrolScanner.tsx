@@ -42,7 +42,7 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
         setIsScanning(false);
         
         // Find checkpoint by QR code or ID
-        const cp = checkpoints.find(c => c.qr_code === decodedText || c.id === decodedText);
+        const cp = (checkpoints || []).find(c => c.qr_code === decodedText || c.id === decodedText);
         if (!cp) {
             alert(`Unrecognized QR code or checkpoint ID: ${decodedText}`);
             return;
@@ -118,10 +118,10 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
         setLoading(true);
 
         try {
-            const cp = checkpoints.find(c => c.id === checkpointId);
+            const cp = (checkpoints || []).find(c => c.id === checkpointId);
             if (!cp) throw new Error('Checkpoint not found');
             
-            const guard = guards.find(g => g.id === selectedGuard);
+            const guard = (guards || []).find(g => g.id === selectedGuard);
             if (!guard) throw new Error('Guard not found');
 
             let verification_status: 'valid' | 'invalid' = 'invalid';

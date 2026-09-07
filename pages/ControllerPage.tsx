@@ -18,6 +18,7 @@ import { CorporateSharingModal } from '../components/CorporateSharingModal';
 import TechStack from '../components/TechStack';
 import TechJobDetail from '../components/TechJobDetail';
 import TechDispatchModal from '../components/TechDispatchModal';
+import { safeSetStorage } from '../utils/storage';
 
 interface ControllerPageProps {
     profile: Profile;
@@ -105,12 +106,8 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
 
     useEffect(() => {
         if (!profile?.id) return;
-        try {
-            if (reports.length > 0) {
-                localStorage.setItem(`controller_reports_${profile.id}`, JSON.stringify(reports));
-            }
-        } catch (e) {
-            console.warn("Error caching controller reports:", e);
+        if (reports.length > 0) {
+            safeSetStorage(`controller_reports_${profile.id}`, reports);
         }
     }, [reports, profile?.id]);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);

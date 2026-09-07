@@ -133,7 +133,7 @@ const GuardMonitoringPage: React.FC<GuardMonitoringPageProps> = ({ profile }) =>
                                     {item.company_id && (
                                          <div className="flex items-center gap-1 mt-1 text-xs text-blue-500">
                                             <BuildingIcon className="w-3 h-3" />
-                                            <span className="truncate">{companies.find(c => c.id === item.company_id)?.name || 'Unknown Company'}</span>
+                                            <span className="truncate">{(companies || []).find(c => c.id === item.company_id)?.name || 'Unknown Company'}</span>
                                         </div>
                                     )}
                                 </li>

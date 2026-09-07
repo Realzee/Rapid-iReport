@@ -17,6 +17,7 @@ import { useWakeLock } from '../hooks/useWakeLock';
 import ReportModal from '../components/ReportModal';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 import { EMSReportGenerator } from './EMSReportGenerator';
+import { safeSetStorage } from '../utils/storage';
 
 interface ResponderPageProps {
     profile: Profile;
@@ -78,34 +79,22 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
 
     useEffect(() => {
         if (!profile?.id) return;
-        try {
-            if (assignedReports.length > 0) {
-                localStorage.setItem(`responder_assigned_reports_${profile.id}`, JSON.stringify(assignedReports));
-            }
-        } catch (e) {
-            console.warn("Error caching responder assigned reports:", e);
+        if (assignedReports.length > 0) {
+            safeSetStorage(`responder_assigned_reports_${profile.id}`, assignedReports);
         }
     }, [assignedReports, profile?.id]);
 
     useEffect(() => {
         if (!profile?.id) return;
-        try {
-            if (circulationReports.length > 0) {
-                localStorage.setItem(`responder_circulation_reports_${profile.id}`, JSON.stringify(circulationReports));
-            }
-        } catch (e) {
-            console.warn("Error caching responder circulation reports:", e);
+        if (circulationReports.length > 0) {
+            safeSetStorage(`responder_circulation_reports_${profile.id}`, circulationReports);
         }
     }, [circulationReports, profile?.id]);
 
     useEffect(() => {
         if (!profile?.id) return;
-        try {
-            if (allUsers.length > 0) {
-                localStorage.setItem(`responder_users_${profile.id}`, JSON.stringify(allUsers));
-            }
-        } catch (e) {
-            console.warn("Error caching responder users:", e);
+        if (allUsers.length > 0) {
+            safeSetStorage(`responder_users_${profile.id}`, allUsers);
         }
     }, [allUsers, profile?.id]);
 
