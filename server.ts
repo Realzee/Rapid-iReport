@@ -68,6 +68,12 @@ async function runMigrations() {
     console.log('Running system migrations for Tech Ops module...');
     const queries = [
         "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'technician';",
+        "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'ras_driver';",
+        "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'roadside_driver';",
+        "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'driver';",
+        "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'fleet_management';",
+        "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'supervisor';",
+        "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'guard';",
         `CREATE TABLE IF NOT EXISTS public.tech_jobs (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
             company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL,

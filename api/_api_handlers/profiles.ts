@@ -153,7 +153,21 @@ export default async function handler(req: any, res: any) {
 
             if (updateError) {
                 console.error('Supabase update error:', updateError);
-                throw updateError;
+                if (updateError.message && updateError.message.includes('user_role') && cleanedPayload.role) {
+                    try {
+                        console.log(`Attempting on-demand ALTER TYPE for enum user_role value: '${cleanedPayload.role}'`);
+                        await supabaseAdmin.rpc('eval', { query: `ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS '${cleanedPayload.role}';` });
+                        const { error: retryError } = await supabaseAdmin
+                            .from('profiles')
+                            .update(cleanedPayload)
+                            .eq('id', userId);
+                        if (retryError) throw retryError;
+                    } catch (retryErr: any) {
+                        throw updateError;
+                    }
+                } else {
+                    throw updateError;
+                }
             }
 
             const { data, error } = await supabaseAdmin
