@@ -69,24 +69,16 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
     return report.status === ReportStatus.RECOVERED || report.status === ReportStatus.DELETED || report.status === ReportStatus.RESOLVED || report.status === 'recovered' || report.status === 'deleted' || report.status === 'resolved';
   }, [report.status]);
 
-  const isUnallocated = !report.assigned_to && !isTerminalStatus && !isRecoveredOrDeleted;
-  const isOpened = isSelected || hasBeenOpened;
-  const shouldFlash = !isOpened && isUnallocated;
-
   const borderColor = isSelected 
     ? 'border-blue-500' 
     : (isRecoveredOrDeleted 
       ? 'border-gray-300 dark:border-gray-700' 
-      : (shouldFlash 
-        ? 'border-red-500 ring-2 ring-red-500/80' 
-        : (isTerminalStatus ? 'border-gray-300 dark:border-gray-700' : severityBorderColors[report.severity])));
+      : (isTerminalStatus ? 'border-gray-300 dark:border-gray-700' : severityBorderColors[report.severity]));
   const bgColor = isSelected 
     ? 'bg-blue-500/10 dark:bg-blue-500/30' 
     : (isRecoveredOrDeleted 
       ? 'bg-gray-150/50 dark:bg-gray-900/10' 
-      : (shouldFlash 
-        ? 'bg-red-500/10 dark:bg-red-950/20 animate-pulse' 
-        : (isTerminalStatus ? 'bg-gray-200/50 dark:bg-gray-900/50' : 'bg-gray-50/50 dark:bg-gray-800/60')));
+      : (isTerminalStatus ? 'bg-gray-200/50 dark:bg-gray-900/50' : 'bg-gray-50/50 dark:bg-gray-800/60'));
   const textColor = (isTerminalStatus || isRecoveredOrDeleted) ? 'text-gray-500 dark:text-gray-500' : 'text-gray-800 dark:text-white';
   const hasImage = report.evidence_images && report.evidence_images.length > 0;
 
@@ -165,12 +157,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                                         Shared
                                     </span>
                                 )}
-                                {isUnallocated && (
-                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-600 text-white uppercase tracking-wider shadow-sm flex-shrink-0 ${shouldFlash ? 'animate-pulse' : ''}`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full bg-white ${shouldFlash ? 'animate-ping' : ''}`} />
-                                        UNALLOCATED
-                                    </span>
-                                )}
+
                             </div>
                         </div>
                         <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate mt-0.5" title={report.type === 'roadside' ? `CAR: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}>

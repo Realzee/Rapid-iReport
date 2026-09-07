@@ -133,7 +133,7 @@ const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onRe
             {showUnreadIndicator && (
                 <button 
                     onClick={scrollToTop}
-                    className="absolute top-0 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-blue-600 text-white font-semibold rounded-full shadow-lg text-sm flex items-center gap-1 animate-bounce"
+                    className="absolute top-0 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-blue-600 text-white font-semibold rounded-full shadow-lg text-sm flex items-center gap-1"
                 >
                     <ChevronUpIcon className="w-4 h-4" />
                     New Reports

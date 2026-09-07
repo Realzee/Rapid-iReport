@@ -46,16 +46,12 @@ const LiveEventItem: React.FC<{
     const title = report.type === 'vehicle' ? (report as any).license_plate : report.title;
     
     const isRecoveredOrDeleted = report.status === 'recovered' || report.status === 'deleted' || report.status === 'resolved' || report.status === 'closed' || report.status === 'rejected';
-    const isUnallocated = !report.assigned_to && !isRecoveredOrDeleted;
 
     // Report is considered opened if it is currently selected or has been viewed/opened
     const isOpened = isSelected || !isUnviewed;
 
-    // Only flash reports when the report is NOT opened
-    const shouldFlash = !isOpened && (isPanic || isUnallocated || isUnviewed);
-
     // Age-based coloring
-    const ageBorderClass = isRecoveredOrDeleted ? 'border-l-gray-400 dark:border-l-gray-600' : (shouldFlash && isUnallocated ? 'border-l-red-600 dark:border-l-red-500' : getAgeColorClass(report.reported_at));
+    const ageBorderClass = isRecoveredOrDeleted ? 'border-l-gray-400 dark:border-l-gray-600' : getAgeColorClass(report.reported_at);
     const ageTextClass = isRecoveredOrDeleted ? 'text-gray-450' : getAgeTextClass(report.reported_at);
 
     const isSharedFromOtherCompany = profile.company_id && report.company_id && report.company_id !== profile.company_id;
@@ -65,16 +61,13 @@ const LiveEventItem: React.FC<{
         ? 'border-blue-500 ring-2 ring-blue-500/50' 
         : (isRecoveredOrDeleted 
             ? 'border-gray-200 dark:border-gray-700/50'
-            : (shouldFlash ? 'border-red-500 ring-2 ring-red-500/60' : 'border-gray-200 dark:border-gray-700/50'));
+            : 'border-gray-200 dark:border-gray-700/50');
         
     const bgClass = isSelected 
         ? 'bg-blue-500/10 dark:bg-gray-900/60' 
         : (isRecoveredOrDeleted
             ? 'bg-gray-150/50 dark:bg-gray-900/10 hover:bg-gray-200/50 dark:hover:bg-gray-900/20'
-            : (shouldFlash ? 'bg-red-500/10 dark:bg-red-950/20' : 'bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60'));
-        
-    // Flash animation ONLY when report is NOT opened
-    const pulseClass = shouldFlash ? 'animate-pulse ring-2 ring-red-500/80' : '';
+            : 'bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60');
 
     const hasImages = report.evidence_images && report.evidence_images.length > 0;
     const assignedResponderName = report.assigned_to ? responderMap.get(report.assigned_to) : null;
@@ -84,7 +77,7 @@ const LiveEventItem: React.FC<{
     return (
         <div
             onClick={onSelect}
-            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm border-l-4 relative overflow-hidden ${ageBorderClass} ${isSelected ? 'border-blue-500' : ''} ${bgClass} ${pulseClass}`}
+            className={`p-2 rounded-lg cursor-pointer transition-all duration-200 border shadow-sm border-l-4 relative overflow-hidden ${ageBorderClass} ${isSelected ? 'border-blue-500' : ''} ${bgClass}`}
         >
             {isRecoveredOrDeleted && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 select-none bg-black/5 dark:bg-black/10">
@@ -132,14 +125,8 @@ const LiveEventItem: React.FC<{
                                             </span>
                                         )}
                                         {!isOpened && isUnviewed && (
-                                            <span className="px-1.5 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded-full animate-bounce flex-shrink-0">
+                                            <span className="px-1.5 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded-full flex-shrink-0">
                                                 NEW
-                                            </span>
-                                        )}
-                                        {isUnallocated && (
-                                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-600 text-white uppercase tracking-wider shadow-sm flex-shrink-0 ${shouldFlash ? 'animate-pulse' : ''}`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full bg-white ${shouldFlash ? 'animate-ping' : ''}`} />
-                                                UNALLOCATED
                                             </span>
                                         )}
                                     </div>
@@ -272,7 +259,7 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, al
                 {showUnreadIndicator && (
                     <button 
                         onClick={scrollToTop}
-                        className="absolute top-2 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-blue-600 text-white font-semibold rounded-full shadow-lg text-sm flex items-center gap-1 animate-bounce"
+                        className="absolute top-2 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-blue-600 text-white font-semibold rounded-full shadow-lg text-sm flex items-center gap-1"
                     >
                         <ChevronUpIcon className="w-4 h-4" />
                         New Events

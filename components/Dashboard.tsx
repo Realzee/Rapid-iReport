@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Report, UserRole, Profile, Responder, ResponderStatus, VehicleReport, ReportStatus, Company, ReportShare, ACTIVE_REPORT_STATUSES, TERMINAL_REPORT_STATUSES } from '../types';
 import StatCard from './StatCard';
 import ReportList from './ReportList';
+import LiveEventStack from './LiveEventStack';
 import MapView from './MapView';
 import ReportModal from './ReportModal';
 import ArchiveReportModal from './ArchiveReportModal';
@@ -872,7 +873,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                         {selectedReport ? (
                             <ReportDetailCard report={selectedReport} onClose={() => setSelectedReportId(null)} profile={profile} onEdit={handleOpenEditReportModal} onDelete={handleOpenDeleteReportModal} onViewOnMap={() => { if (isMobile) { setMobileTab('map'); } else { setIsMapModalOpen(true); } }} allUsers={allUsers} />
                         ) : (
-                            <ReportList reports={displayReports} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} onStatusUpdate={handleStatusUpdate} companies={companies} />
+                            <LiveEventStack reports={displayReports} responders={responders} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} />
                         )}
                     </div>
                 )}
