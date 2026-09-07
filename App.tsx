@@ -29,6 +29,7 @@ const GlobalSearchPage = lazy(() => import('./pages/GlobalSearchPage'));
 const TechnicianDashboardPage = lazy(() => import('./pages/TechnicianDashboardPage'));
 const TechOpsPage = lazy(() => import('./pages/TechOpsPage'));
 const FleetManagement = lazy(() => import('./components/FleetManagement'));
+const EMSDispatchPage = lazy(() => import('./pages/EMSDispatchPage'));
 
 import AnnouncementsBanner from './components/AnnouncementsBanner';
 import { supabase } from './utils/supabase';
@@ -47,7 +48,7 @@ import { useToast } from './contexts/ToastContext';
 import { useTheme } from './contexts/ThemeContext';
 import MatrixRain from './components/MatrixRain';
 
-type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'fleet_management' | 'roadside_driver';
+type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'fleet_management' | 'roadside_driver' | 'ems_dispatch';
 
 const isProfileComplete = (profile: Profile) => {
     if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
@@ -595,12 +596,17 @@ const App: React.FC = () => {
                     : <TechnicianDashboardPage profile={profile} />;
             }
             
+            if (profile.role === UserRole.EMS_CONTROLLER || (profile.role as string) === 'ems_controller') {
+              return <EMSDispatchPage profile={profile} />;
+            }
+
             if (profile.role === UserRole.CONTROLLER) {
               if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
               if (view === 'attendance') return <AttendancePage />;
               if (view === 'tech_ops') return <TechOpsPage />;
               if (view === 'fleet_management') return <FleetManagement profile={profile} />;
               if (view === 'roadside_driver') return <RoadsideDriverPage profile={profile} setProfile={setProfile} />;
+              if (view === 'ems_dispatch') return <EMSDispatchPage profile={profile} />;
               return view === 'profile'
                   ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
                   : <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
@@ -611,6 +617,7 @@ const App: React.FC = () => {
             switch(view) {
               case 'dashboard': return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} setView={handleSetView} />;
               case 'controller': return <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
+              case 'ems_dispatch': return <EMSDispatchPage profile={profile} />;
               case 'tech_ops': return <TechOpsPage />;
               case 'fleet_management': return <FleetManagement profile={profile} />;
               case 'archives': return <ReportsPage profile={profile} />;

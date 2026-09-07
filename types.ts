@@ -3,6 +3,8 @@ export enum UserRole {
   ADMIN = 'admin',
   MODERATOR = 'moderator',
   CONTROLLER = 'controller',
+  EMS_CONTROLLER = 'ems_controller',
+  EMS_RESPONDER = 'ems_responder',
   RESPONDER = 'responder',
   GUARD = 'guard',
   SUPERVISOR = 'supervisor',
@@ -724,4 +726,44 @@ export interface ReportShare {
     name: string;
     logo_url?: string;
   };
+}
+
+export type EmsTriageLevel = 'P1' | 'P2' | 'P3' | 'P4';
+
+export enum EmsDispatchStatus {
+  PENDING = 'pending',
+  DISPATCHED = 'dispatched',
+  EN_ROUTE = 'en_route',
+  ON_SCENE = 'on_scene',
+  TRANSPORTING = 'transporting',
+  AT_HOSPITAL = 'at_hospital',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+}
+
+export interface EmsDispatch {
+  id: string;
+  company_id?: string;
+  report_id?: string;
+  ob_number?: string;
+  caller_name?: string;
+  caller_phone?: string;
+  location: string;
+  location_coords?: LocationCoords;
+  chief_complaint: string;
+  triage_level: EmsTriageLevel; // P1 (Critical - Red), P2 (Urgent - Yellow), P3 (Non-Urgent - Green), P4 (Deceased - Blue)
+  patient_count: number;
+  assigned_unit?: string; // e.g. "Medic 1 (ALS)", "Ambulance Bravo-2"
+  assigned_responder_id?: string;
+  receiving_facility?: string;
+  status: EmsDispatchStatus;
+  dispatch_notes?: string;
+  special_hazards?: string;
+  dispatched_at?: string;
+  arrived_on_scene_at?: string;
+  transport_started_at?: string;
+  arrived_hospital_at?: string;
+  completed_at?: string;
+  created_at: string;
+  updated_at?: string;
 }

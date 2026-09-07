@@ -13,7 +13,7 @@ import { CorporateSharingModal } from './CorporateSharingModal';
 
 interface HeaderProps {
     currentView: string;
-    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'fleet_management' | 'roadside_driver') => void;
+    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'fleet_management' | 'roadside_driver' | 'ems_dispatch') => void;
     profile: Profile;
     onNotificationClick: (notification: Notification) => void;
 }
@@ -187,7 +187,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     setMobileMenuOpen(false);
   };
 
-  const handleMobileLinkClick = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'attendance' | 'technician_dashboard' | 'tech_ops' | 'about' | 'fleet_management' | 'roadside_driver') => {
+  const handleMobileLinkClick = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'attendance' | 'technician_dashboard' | 'tech_ops' | 'about' | 'fleet_management' | 'roadside_driver' | 'ems_dispatch') => {
       setView(view);
       setMobileMenuOpen(false);
   }
@@ -283,6 +283,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
               <RadioTowerIcon className="w-4 h-4 mr-2" /> Controller
             </button>
           )}
+          {isModuleAllowed('ems_dispatch') && (
+            <button onClick={() => clickHandler('ems_dispatch')} className={classGetter('ems_dispatch')}>
+              <span className="w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse" /> EMS Dispatch
+            </button>
+          )}
           {isModuleAllowed('roadside_driver') && (
             <button onClick={() => clickHandler('roadside_driver')} className={classGetter('roadside_driver')}>
               <WrenchIcon className="w-4 h-4 mr-2 text-amber-500 dark:text-amber-400" /> Roadside Driver
@@ -348,6 +353,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         {isModuleAllowed('controller') && (
           <button onClick={() => clickHandler('controller')} className={classGetter('controller')}>
             <RadioTowerIcon className="w-4 h-4 mr-2" /> Controller
+          </button>
+        )}
+        {isModuleAllowed('ems_dispatch') && (
+          <button onClick={() => clickHandler('ems_dispatch')} className={classGetter('ems_dispatch')}>
+            <span className="w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse" /> EMS Dispatch
           </button>
         )}
         {isModuleAllowed('roadside_driver') && (
