@@ -256,7 +256,10 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             setLoading(true);
         }
 
-        const usersQuery = supabase.from('profiles').select('*');
+        const usersQuery = supabase
+            .from('profiles')
+            .select('id, first_name, surname, username, email, phone, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
+            .limit(200);
         if (!isGlobalAdmin && profile.company_id) {
             usersQuery.eq('company_id', profile.company_id);
         }
@@ -279,11 +282,11 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             { data: usersData, error: uError },
             { data: companiesData, error: compError }
         ] = await Promise.all([
-            vehicleQuery.order('reported_at', { ascending: false }).limit(500),
-            crimeQuery.order('reported_at', { ascending: false }).limit(500),
-            emergencyQuery.order('reported_at', { ascending: false }).limit(500),
+            vehicleQuery.order('reported_at', { ascending: false }).limit(100),
+            crimeQuery.order('reported_at', { ascending: false }).limit(100),
+            emergencyQuery.order('reported_at', { ascending: false }).limit(100),
             usersQuery,
-            supabase.from('companies').select('*')
+            supabase.from('companies').select('id, name, logo_url, alias').limit(100)
         ]);
 
         if (vError) console.error('Error fetching vehicle reports:', vError);
@@ -309,7 +312,10 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         
         let additionalProfiles: Profile[] = [];
         if (missingReporterIds.length > 0) {
-             const { data: missingProfiles } = await supabase.from('profiles').select('*').in('id', missingReporterIds);
+             const { data: missingProfiles } = await supabase
+                .from('profiles')
+                .select('id, first_name, surname, username, email, phone, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
+                .in('id', missingReporterIds);
              if (missingProfiles) additionalProfiles = missingProfiles.map(u => ({
                 ...u,
                 company: u.company_id ? companiesMap.get(u.company_id) : undefined
@@ -448,7 +454,10 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
              const missingReporterIds = Array.from(reporterIds).filter(id => !loadedUserIds.has(id));
              
              if (missingReporterIds.length > 0) {
-                 const { data: missingProfiles } = await supabase.from('profiles').select('*').in('id', missingReporterIds);
+                 const { data: missingProfiles } = await supabase
+                .from('profiles')
+                .select('id, first_name, surname, username, email, phone, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
+                .in('id', missingReporterIds);
                  if (missingProfiles && missingProfiles.length > 0) {
                      setAllUsers(prev => {
                          const existingIds = new Set(prev.map(u => u.id));

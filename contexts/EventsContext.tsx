@@ -30,7 +30,7 @@ export const EventsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // Fetch reports, panic alerts, shifts
             try {
                 const [reports, panics, shifts] = await Promise.all([
-                    supabase.from('vehicle_reports').select('id, reported_at, vehicle_type, status, location, reported_by').order('reported_at', { ascending: false }).limit(50),
+                    supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(50),
                     supabase.from('panic_alerts').select('*').order('created_at', { ascending: false }).limit(50),
                     supabase.from('shifts').select('*').order('created_at', { ascending: false }).limit(50)
                 ]);

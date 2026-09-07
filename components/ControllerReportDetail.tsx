@@ -111,11 +111,11 @@ const ControllerReportDetail: React.FC<{
                 { data: companiesData, error: companiesError },
                 { data: sharesData, error: sharesError }
             ] = await Promise.all([
-                supabase.from('report_updates').select('*, profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at', { ascending: true }),
-                supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(first_name, surname), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(first_name, surname), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(first_name, surname)`).eq('report_id', report.id).order('created_at', { ascending: false }),
+                supabase.from('report_updates').select('*, profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at', { ascending: true }).limit(100),
+                supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(first_name, surname), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(first_name, surname), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(first_name, surname)`).eq('report_id', report.id).order('created_at', { ascending: false }).limit(100),
                 supabase.from('profiles').select('first_name, surname').eq('id', report.reported_by).maybeSingle(),
-                supabase.from('companies').select('*').order('name'),
-                supabase.from('report_shares').select('*, target_company:companies!report_shares_target_company_id_fkey(id, name, logo_url)').eq('report_id', report.id)
+                supabase.from('companies').select('id, name, logo_url, alias').order('name').limit(100),
+                supabase.from('report_shares').select('*, target_company:companies!report_shares_target_company_id_fkey(id, name, logo_url)').eq('report_id', report.id).limit(50)
             ]);
 
             if (sharesError) console.error("Error fetching report shares:", sharesError);

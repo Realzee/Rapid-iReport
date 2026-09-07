@@ -46,9 +46,9 @@ const HighlightsBanner: React.FC<HighlightsBannerProps> = ({ onSelectReport, top
                 { data: crimeData, error: cError },
                 { data: emergencyData, error: aError },
             ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo),
-                supabase.from('crime_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo),
-                supabase.from('emergency_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo)
+                supabase.from('vehicle_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo).order('reported_at', { ascending: false }).limit(15),
+                supabase.from('crime_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo).order('reported_at', { ascending: false }).limit(15),
+                supabase.from('emergency_reports').select('*').in('severity', [Severity.CRITICAL, Severity.HIGH]).gte('reported_at', sevenDaysAgo).order('reported_at', { ascending: false }).limit(15)
             ]);
 
             if (vError) console.error("Error fetching vehicle highlights:", vError);

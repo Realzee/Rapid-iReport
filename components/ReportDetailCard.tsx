@@ -56,8 +56,8 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
             }
             try {
                 const [sharesRes, companiesRes] = await Promise.all([
-                    supabase.from('report_shares').select('*, target_company:companies!report_shares_target_company_id_fkey(id, name, logo_url)').eq('report_id', localReport.id),
-                    supabase.from('companies').select('*').order('name')
+                    supabase.from('report_shares').select('*, target_company:companies!report_shares_target_company_id_fkey(id, name, logo_url)').eq('report_id', localReport.id).limit(50),
+                    supabase.from('companies').select('id, name, logo_url, alias').order('name').limit(100)
                 ]);
 
                 if (sharesRes.data) {

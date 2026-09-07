@@ -149,12 +149,12 @@ const UsersPage: React.FC = () => {
         const fetchData = async () => {
             setLoading(true);
 
-            const usersQuery = supabase.from('profiles').select('*');
+            const usersQuery = supabase.from('profiles').select('*').order('first_name', { ascending: true }).limit(200);
             if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
                 usersQuery.eq('company_id', currentUserProfile.company_id);
             }
 
-            const companiesQuery = supabase.from('companies').select('*');
+            const companiesQuery = supabase.from('companies').select('id, name, logo_url, alias').order('name', { ascending: true }).limit(100);
             if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
                 companiesQuery.eq('id', currentUserProfile.company_id);
             }

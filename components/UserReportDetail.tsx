@@ -71,8 +71,8 @@ const UserReportDetail: React.FC<{
                 { data: updatesData, error: updatesError },
                 { data: historyData, error: historyError }
             ] = await Promise.all([
-                supabase.from('report_updates').select('*, profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at', { ascending: true }),
-                supabase.from('assignment_logs').select('*, assigned_by_profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at', { ascending: true })
+                supabase.from('report_updates').select('*, profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at', { ascending: true }).limit(100),
+                supabase.from('assignment_logs').select('*, assigned_by_profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at', { ascending: true }).limit(100)
             ]);
                 
             if (updatesError) console.error("Error fetching updates:", updatesError);

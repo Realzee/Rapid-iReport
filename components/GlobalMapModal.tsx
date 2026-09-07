@@ -24,7 +24,10 @@ const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profil
         setLoading(true);
 
         const fetchData = async () => {
-            const usersQuery = supabase.from('profiles').select('*');
+            const usersQuery = supabase
+                .from('profiles')
+                .select('id, first_name, surname, username, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
+                .limit(150);
             if (profile.role !== UserRole.ADMIN && profile.company_id) {
                 usersQuery.eq('company_id', profile.company_id);
             }
@@ -45,9 +48,9 @@ const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profil
                 { data: emergencyData, error: eError },
                 { data: usersData, error: uError }
             ] = await Promise.all([
-                vehicleQuery,
-                crimeQuery,
-                emergencyQuery,
+                vehicleQuery.order('reported_at', { ascending: false }).limit(100),
+                crimeQuery.order('reported_at', { ascending: false }).limit(100),
+                emergencyQuery.order('reported_at', { ascending: false }).limit(100),
                 usersQuery
             ]);
 

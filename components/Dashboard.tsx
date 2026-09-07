@@ -243,7 +243,10 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             allowedReporterIds = [profile.id];
         }
 
-        const profilesQuery = supabase.from('profiles').select('*');
+        const profilesQuery = supabase
+            .from('profiles')
+            .select('id, first_name, surname, username, email, role, status, avatar_url, company_id, responder_status')
+            .limit(150);
         if (!isGlobalAdmin && profile.company_id) {
             profilesQuery.eq('company_id', profile.company_id);
         }
@@ -285,11 +288,11 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             { count: cCount },
             { count: aCount }
         ] = await Promise.all([
-            vehicleQuery.order('reported_at', { ascending: false }).limit(100),
-            crimeQuery.order('reported_at', { ascending: false }).limit(100),
-            emergencyQuery.order('reported_at', { ascending: false }).limit(100),
+            vehicleQuery.order('reported_at', { ascending: false }).limit(50),
+            crimeQuery.order('reported_at', { ascending: false }).limit(50),
+            emergencyQuery.order('reported_at', { ascending: false }).limit(50),
             profilesQuery,
-            supabase.from('companies').select('*'),
+            supabase.from('companies').select('id, name, logo_url, alias').limit(100),
             vehicleCountQuery,
             crimeCountQuery,
             emergencyCountQuery
