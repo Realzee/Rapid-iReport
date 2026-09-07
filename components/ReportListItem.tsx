@@ -57,16 +57,22 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
     return report.status === ReportStatus.RECOVERED || report.status === ReportStatus.DELETED || report.status === ReportStatus.RESOLVED || report.status === 'recovered' || report.status === 'deleted' || report.status === 'resolved';
   }, [report.status]);
 
+  const isUnallocated = !report.assigned_to && !isTerminalStatus && !isRecoveredOrDeleted;
+
   const borderColor = isSelected 
     ? 'border-blue-500' 
     : (isRecoveredOrDeleted 
       ? 'border-gray-300 dark:border-gray-700' 
-      : (isTerminalStatus ? 'border-gray-300 dark:border-gray-700' : severityBorderColors[report.severity]));
+      : (isUnallocated 
+        ? 'border-red-500 ring-2 ring-red-500/80' 
+        : (isTerminalStatus ? 'border-gray-300 dark:border-gray-700' : severityBorderColors[report.severity])));
   const bgColor = isSelected 
     ? 'bg-blue-500/10 dark:bg-blue-500/30' 
     : (isRecoveredOrDeleted 
       ? 'bg-gray-150/50 dark:bg-gray-900/10' 
-      : (isTerminalStatus ? 'bg-gray-200/50 dark:bg-gray-900/50' : 'bg-gray-50/50 dark:bg-gray-800/60'));
+      : (isUnallocated 
+        ? 'bg-red-500/10 dark:bg-red-950/20 animate-pulse' 
+        : (isTerminalStatus ? 'bg-gray-200/50 dark:bg-gray-900/50' : 'bg-gray-50/50 dark:bg-gray-800/60')));
   const textColor = (isTerminalStatus || isRecoveredOrDeleted) ? 'text-gray-500 dark:text-gray-500' : 'text-gray-800 dark:text-white';
   const hasImage = report.evidence_images && report.evidence_images.length > 0;
 
@@ -142,6 +148,12 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                             {isSharedFromOtherCompany && (
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 border border-blue-200 dark:border-blue-800 leading-none flex-shrink-0" title={`Shared by ${sharingCompanyName || 'Partner Company'}`}>
                                     Shared
+                                </span>
+                            )}
+                            {isUnallocated && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-600 text-white uppercase tracking-wider animate-pulse shadow-sm flex-shrink-0">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                    UNALLOCATED
                                 </span>
                             )}
                         </div>

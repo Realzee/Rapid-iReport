@@ -9,6 +9,12 @@ interface RespondersContextType {
 
 const RespondersContext = createContext<RespondersContextType>({ responders: [], loading: true });
 
+const isResponderRole = (role?: string) => {
+    if (!role) return false;
+    const r = String(role).toLowerCase();
+    return r === 'responder' || r === 'ras_driver' || r === 'roadside_driver' || r === 'driver' || r === 'supervisor' || r === 'guard';
+};
+
 export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [responders, setResponders] = useState<Responder[]>([]);
     const [loading, setLoading] = useState(true);
@@ -22,13 +28,13 @@ export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             try {
                 const { data, error } = await supabase
                     .from('profiles')
-                    .select('*')
-                    .in('role', [UserRole.RESPONDER, UserRole.RAS_DRIVER, 'roadside_driver', 'driver']);
+                    .select('*');
 
                 if (error) {
                     console.error('Error fetching responders:', error);
                 } else if (data) {
-                    const mappedResponders: Responder[] = data.map((p: Profile) => ({
+                    const responderProfiles = data.filter((p: Profile) => isResponderRole(p.role));
+                    const mappedResponders: Responder[] = responderProfiles.map((p: Profile) => ({
                         id: p.id,
                         first_name: p.first_name,
                         surname: p.surname,
@@ -49,7 +55,10 @@ export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (!supabase) return;
 
         const channel = supabase.channel('public:profiles-responders')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: 'role=in.(responder,ras_driver,roadside_driver,driver)' }, (payload: any) => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload: any) => {
+                const p = (payload.new || payload.old) as Profile;
+                if (p && !isResponderRole(p.role)) return;
+
                 // Save database quota by updating local state directly from the realtime payload instead of executing fetch queries
                 if (payload.eventType === 'INSERT') {
                     const p = payload.new as Profile;

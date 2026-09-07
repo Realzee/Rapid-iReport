@@ -1,25 +1,57 @@
 
-export const playNotificationSound = () => {
+export const playNotificationSound = (type: 'default' | 'urgent' = 'urgent') => {
   try {
     const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContext) return;
 
     const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    if (type === 'urgent') {
+      // Loud multi-tone emergency alarm for incoming reports
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15);
+      osc.type = 'sawtooth';
+      gain.connect(ctx.destination);
+      osc.connect(gain);
 
-    gain.gain.setValueAtTime(0.1, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      // Volume: 0.75 (loud and clear)
+      gain.gain.setValueAtTime(0.75, now);
 
-    osc.start();
-    osc.stop(ctx.currentTime + 0.15);
+      // Rapid alternating siren frequencies (1400Hz and 900Hz)
+      osc.frequency.setValueAtTime(1400, now);
+      osc.frequency.setValueAtTime(900, now + 0.15);
+      osc.frequency.setValueAtTime(1400, now + 0.30);
+      osc.frequency.setValueAtTime(900, now + 0.45);
+      osc.frequency.setValueAtTime(1400, now + 0.60);
+
+      gain.gain.setValueAtTime(0.75, now + 0.75);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+
+      osc.start(now);
+      osc.stop(now + 0.85);
+    } else {
+      // Standard chime
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(440, now + 0.2);
+
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+      osc.start(now);
+      osc.stop(now + 0.2);
+    }
   } catch (e) {
     console.error("Audio play failed", e);
   }

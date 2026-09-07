@@ -203,21 +203,37 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     }, []);
 
     const playAlertSound = () => {
-        const context = audioContextRef.current;
-        if (!context) return;
-        if (context.state === 'suspended') {
-            context.resume();
-        }
+        try {
+            const context = audioContextRef.current || new (window.AudioContext || (window as any).webkitAudioContext)();
+            audioContextRef.current = context;
+            if (context.state === 'suspended') {
+                context.resume();
+            }
 
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, context.currentTime);
-        gainNode.gain.setValueAtTime(0.5, context.currentTime);
-        oscillator.start(context.currentTime);
-        oscillator.stop(context.currentTime + 0.2);
+            const now = context.currentTime;
+            const oscillator = context.createOscillator();
+            const gainNode = context.createGain();
+
+            oscillator.type = 'sawtooth';
+            oscillator.connect(gainNode);
+            gainNode.connect(context.destination);
+
+            gainNode.gain.setValueAtTime(0.8, now);
+
+            oscillator.frequency.setValueAtTime(1400, now);
+            oscillator.frequency.setValueAtTime(900, now + 0.15);
+            oscillator.frequency.setValueAtTime(1400, now + 0.30);
+            oscillator.frequency.setValueAtTime(900, now + 0.45);
+            oscillator.frequency.setValueAtTime(1400, now + 0.60);
+
+            gainNode.gain.setValueAtTime(0.8, now + 0.75);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+
+            oscillator.start(now);
+            oscillator.stop(now + 0.85);
+        } catch (e) {
+            console.error('Alert sound failed:', e);
+        }
     };
 
     const startAlertLoop = () => {
@@ -349,7 +365,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                 if (crimeReport.crime_type === 'PUBLIC_PANIC_ASSIST') {
                     setNewPanicReportId(crimeReport.id);
                     startAlertLoop();
-                } else if (newReport.severity === Severity.CRITICAL || newReport.severity === Severity.HIGH) {
+                } else {
                     playAlertSound();
                 }
                 

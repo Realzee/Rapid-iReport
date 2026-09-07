@@ -45,10 +45,11 @@ const LiveEventItem: React.FC<{
 }> = ({ report, isSelected, isPanic, isUnviewed, onSelect, responderMap, reporterName, profile }) => {
     const title = report.type === 'vehicle' ? (report as any).license_plate : report.title;
     
-    const isRecoveredOrDeleted = report.status === 'recovered' || report.status === 'deleted' || report.status === 'resolved';
+    const isRecoveredOrDeleted = report.status === 'recovered' || report.status === 'deleted' || report.status === 'resolved' || report.status === 'closed' || report.status === 'rejected';
+    const isUnallocated = !report.assigned_to && !isRecoveredOrDeleted;
 
     // Age-based coloring
-    const ageBorderClass = isRecoveredOrDeleted ? 'border-l-gray-400 dark:border-l-gray-600' : getAgeColorClass(report.reported_at);
+    const ageBorderClass = isRecoveredOrDeleted ? 'border-l-gray-400 dark:border-l-gray-600' : (isUnallocated ? 'border-l-red-600 dark:border-l-red-500' : getAgeColorClass(report.reported_at));
     const ageTextClass = isRecoveredOrDeleted ? 'text-gray-450' : getAgeTextClass(report.reported_at);
 
     const isSharedFromOtherCompany = profile.company_id && report.company_id && report.company_id !== profile.company_id;
@@ -58,16 +59,16 @@ const LiveEventItem: React.FC<{
         ? 'border-blue-500 ring-2 ring-blue-500/50' 
         : (isRecoveredOrDeleted 
             ? 'border-gray-200 dark:border-gray-700/50'
-            : (isPanic ? 'border-red-500' : 'border-gray-200 dark:border-gray-700/50'));
+            : (isPanic || isUnallocated ? 'border-red-500 ring-2 ring-red-500/60' : 'border-gray-200 dark:border-gray-700/50'));
         
     const bgClass = isSelected 
         ? 'bg-blue-500/10 dark:bg-gray-900/60' 
         : (isRecoveredOrDeleted
             ? 'bg-gray-150/50 dark:bg-gray-900/10 hover:bg-gray-200/50 dark:hover:bg-gray-900/20'
-            : (isPanic ? 'bg-red-500/10' : 'bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60'));
+            : (isPanic || isUnallocated ? 'bg-red-500/10 dark:bg-red-950/20' : 'bg-white/50 dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-800/60'));
         
-    // Flash animation for unviewed reports
-    const pulseClass = isPanic ? 'animate-pulse' : (isUnviewed ? 'animate-pulse ring-2 ring-yellow-400/50' : '');
+    // Flash animation for unallocated, panic, or unviewed reports (keeps flashing until attended to)
+    const pulseClass = (isPanic || isUnallocated) ? 'animate-pulse ring-2 ring-red-500/80' : (isUnviewed ? 'animate-pulse ring-2 ring-yellow-400/50' : '');
 
     const hasImages = report.evidence_images && report.evidence_images.length > 0;
     const assignedResponderName = report.assigned_to ? responderMap.get(report.assigned_to) : null;
@@ -126,6 +127,12 @@ const LiveEventItem: React.FC<{
                                     {isUnviewed && (
                                         <span className="px-1.5 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded-full animate-bounce">
                                             NEW
+                                        </span>
+                                    )}
+                                    {isUnallocated && (
+                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-600 text-white uppercase tracking-wider animate-pulse shadow-sm flex-shrink-0">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                            UNALLOCATED
                                         </span>
                                     )}
                                 </div>
