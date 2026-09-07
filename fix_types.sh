@@ -1,0 +1,1 @@
+sed -i 's/export interface EmergencyReport extends BaseReport {/export interface EmergencyReport extends BaseReport {\n  vehicles_involved?: number;\n  injuries_reported?: boolean;\n  fatalities_reported?: boolean;/g' types.ts

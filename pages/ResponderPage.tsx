@@ -16,6 +16,7 @@ import { CONTROLLER_CHANNEL_REPORT } from '../constants';
 import { useWakeLock } from '../hooks/useWakeLock';
 import ReportModal from '../components/ReportModal';
 import ImagePreviewModal from '../components/ImagePreviewModal';
+import { EMSReportGenerator } from './EMSReportGenerator';
 
 interface ResponderPageProps {
     profile: Profile;
@@ -109,6 +110,18 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     }, [allUsers, profile?.id]);
 
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+    const [emsReportToGenerate, setEmsReportToGenerate] = useState<Report | null>(null);
+
+    useEffect(() => {
+        const handleOpenEmsModal = (e: any) => {
+            if (e.detail) {
+                setEmsReportToGenerate(e.detail);
+            }
+        };
+        document.addEventListener('open-ems-modal', handleOpenEmsModal);
+        return () => document.removeEventListener('open-ems-modal', handleOpenEmsModal);
+    }, []);
+
     const [isReportModalOpen, setIsReportModalOpen] = useState(() => {
         const hasDraft = !!localStorage.getItem('new-report');
         const wasOpen = localStorage.getItem('responder_report_modal_open') === 'true';
@@ -540,6 +553,10 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             }
         });
     };
+
+    if (emsReportToGenerate) {
+        return <EMSReportGenerator report={emsReportToGenerate} profile={profile} onBack={() => setEmsReportToGenerate(null)} />;
+    }
 
     return (
         <>
@@ -1002,6 +1019,15 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                                 className="py-3 px-4 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/40 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2"
                             >
                                 {isActionLoading === ReportStatus.RECOVERED ? <Spinner /> : 'Recovered'}
+                            </button>
+                        )}
+                        
+                        {isEmergencyReport(report) && report.emergency_type === 'Medical' && (
+                             <button
+                                onClick={() => document.dispatchEvent(new CustomEvent('open-ems-modal', { detail: report }))}
+                                className="col-span-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-all shadow-md flex items-center justify-center gap-2 mt-2"
+                            >
+                                Patient Care Report
                             </button>
                         )}
                     </div>
