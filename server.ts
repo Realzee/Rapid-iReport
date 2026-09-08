@@ -242,12 +242,18 @@ async function runMigrations() {
         try {
             const { error } = await supabaseAdmin.rpc('eval', { query: q });
             if (error) {
-                console.log(`[Tech Ops Migrations] Error executing: "${q.substring(0, 45)}..." ->`, error.message);
+                const errMsg = error.message || '';
+                if (errMsg.includes('exceed_egress_quota') || errMsg.includes('restricted') || errMsg.includes('quota') || errMsg.includes('does not exist')) {
+                    console.warn(`[Tech Ops Migrations] Pausing automatic schema sync: Supabase project is restricted or RPC 'eval' is unavailable (${errMsg.substring(0, 100)}).`);
+                    break;
+                }
+                console.log(`[Tech Ops Migrations] Notice executing: "${q.substring(0, 45)}..." ->`, errMsg);
             } else {
                 console.log(`[Tech Ops Migrations] Executed: "${q.substring(0, 45)}..."`);
             }
         } catch (e: any) {
-            console.error('[Tech Ops Migrations] Error:', e.message);
+            console.warn('[Tech Ops Migrations] Notice:', e?.message || e);
+            break;
         }
     }
 }

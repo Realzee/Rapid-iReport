@@ -19,11 +19,15 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewAbout }) => {
     useEffect(() => {
         const fetchCompanies = async () => {
             if (!supabase) return;
-            const { data, error } = await supabase.from('companies').select('*').order('name');
-            if (error) {
-                console.error('Error fetching companies:', error);
-            } else {
-                setCompanies(data || []);
+            try {
+                const { data, error } = await supabase.from('companies').select('id, name, logo_url, alias').order('name').limit(100);
+                if (error) {
+                    console.warn('Could not fetch companies (backend quota or network):', error.message);
+                } else {
+                    setCompanies(data || []);
+                }
+            } catch (err: any) {
+                console.warn('Error fetching companies:', err?.message || err);
             }
         };
         fetchCompanies();

@@ -17,10 +17,18 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [mainLogoUrl, setMainLogoUrl] = useState<string>(() => {
-    return localStorage.getItem('app_main_logo_url') || defaultLogoUrl;
+    const cached = localStorage.getItem('app_main_logo_url');
+    if (!cached || cached.includes('yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/')) {
+      return defaultLogoUrl;
+    }
+    return cached;
   });
   const [faviconUrl, setFaviconUrl] = useState<string>(() => {
-    return localStorage.getItem('app_favicon_url') || defaultFaviconUrl;
+    const cached = localStorage.getItem('app_favicon_url');
+    if (!cached || cached.includes('yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/')) {
+      return defaultFaviconUrl;
+    }
+    return cached;
   });
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +59,6 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             console.warn('Could not fetch app settings, using defaults. Error:', error.message);
         } else if (data) {
           const settingsMap = new Map(data.map(s => [s.key, s.value]));
-          // FIX: The value from Supabase can be 'unknown'. Ensure it's a string before setting state.
           let dbLogoUrl = settingsMap.get('main_logo_url');
           if (typeof dbLogoUrl === 'string') {
               if (dbLogoUrl.includes('/storage/v1/object/') && !dbLogoUrl.includes('/object/public/')) {
@@ -60,9 +67,12 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
               if (dbLogoUrl.startsWith('yglwdwhwpbqawunbkzyy.supabase.co')) {
                   dbLogoUrl = 'https://' + dbLogoUrl;
               }
+              if (dbLogoUrl.includes('yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png')) {
+                  dbLogoUrl = defaultLogoUrl;
+              }
           }
           setMainLogoUrl(typeof dbLogoUrl === 'string' && dbLogoUrl ? dbLogoUrl : defaultLogoUrl);
-          // FIX: The value from Supabase can be 'unknown'. Ensure it's a string before setting state.
+
           let dbFaviconUrl = settingsMap.get('favicon_url');
           if (typeof dbFaviconUrl === 'string') {
               if (dbFaviconUrl.includes('/storage/v1/object/') && !dbFaviconUrl.includes('/object/public/')) {
@@ -70,6 +80,9 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
               }
               if (dbFaviconUrl.startsWith('yglwdwhwpbqawunbkzyy.supabase.co')) {
                   dbFaviconUrl = 'https://' + dbFaviconUrl;
+              }
+              if (dbFaviconUrl.includes('yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/favicon.png')) {
+                  dbFaviconUrl = defaultFaviconUrl;
               }
           }
           setFaviconUrl(typeof dbFaviconUrl === 'string' && dbFaviconUrl ? dbFaviconUrl : defaultFaviconUrl);

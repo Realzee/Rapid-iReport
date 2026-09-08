@@ -289,11 +289,11 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             supabase.from('companies').select('id, name, logo_url, alias').limit(100)
         ]);
 
-        if (vError) console.error('Error fetching vehicle reports:', vError);
-        if (cError) console.error('Error fetching crime reports:', cError);
-        if (aError) console.error('Error fetching emergency reports:', aError);
-        if (uError) console.error('Error fetching users:', uError);
-        if (compError) console.error('Error fetching companies:', compError);
+        if (vError && !vError.message?.includes('exceed_egress_quota')) console.error('Error fetching vehicle reports:', vError);
+        if (cError && !cError.message?.includes('exceed_egress_quota')) console.error('Error fetching crime reports:', cError);
+        if (aError && !aError.message?.includes('exceed_egress_quota')) console.error('Error fetching emergency reports:', aError);
+        if (uError && !uError.message?.includes('exceed_egress_quota')) console.error('Error fetching users:', uError);
+        if (compError && !compError.message?.includes('exceed_egress_quota')) console.error('Error fetching companies:', compError);
 
         const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
 

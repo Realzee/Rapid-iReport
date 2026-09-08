@@ -113,17 +113,17 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
 
             const canManageAll = [UserRole.ADMIN].includes(currentUserProfile.role);
 
-            const companiesQuery = supabase.from('companies').select('*');
+            const companiesQuery = supabase.from('companies').select('*').order('name').limit(100);
             if (!canManageAll && currentUserProfile.company_id) {
                 companiesQuery.eq('id', currentUserProfile.company_id);
             }
 
-            const usersQuery = supabase.from('profiles').select('*');
+            const usersQuery = supabase.from('profiles').select('id, first_name, surname, username, email, role, status, avatar_url, company_id').order('first_name').limit(200);
             if (!canManageAll && currentUserProfile.company_id) {
                 usersQuery.eq('company_id', currentUserProfile.company_id);
             }
             
-            const announcementsQuery = supabase.from('announcements').select('*').order('created_at', { ascending: false });
+            const announcementsQuery = supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(20);
 
             const [
                 { data: companiesData, error: cError },
@@ -131,14 +131,31 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                 { data: announcementsData, error: aError }
             ] = await Promise.all([companiesQuery, usersQuery, announcementsQuery]);
             
-            if (cError) console.error('Error fetching companies:', cError);
-            else setCompanies(companiesData || []);
+            if (cError) {
+                if (cError.message?.includes('exceed_egress_quota')) {
+                    console.warn('Supabase egress quota limit reached on companies query.');
+                } else {
+                    console.error('Error fetching companies:', cError);
+                }
+            } else {
+                setCompanies(companiesData || []);
+            }
             
-            if (uError) console.error('Error fetching users:', uError);
-            else setUsers(usersData || []);
+            if (uError) {
+                if (!uError.message?.includes('exceed_egress_quota')) {
+                    console.error('Error fetching users:', uError);
+                }
+            } else {
+                setUsers(usersData || []);
+            }
             
-            if (aError) console.error("Error fetching announcements:", aError);
-            else setAnnouncements(announcementsData || []);
+            if (aError) {
+                if (!aError.message?.includes('exceed_egress_quota')) {
+                    console.error("Error fetching announcements:", aError);
+                }
+            } else {
+                setAnnouncements(announcementsData || []);
+            }
 
             setLoading(false);
         };
@@ -624,7 +641,13 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
             {currentUserProfile?.role === UserRole.ADMIN && (
                 <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 backdrop-blur-lg shadow-lg">
                     <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-                        <DatabaseIcon className="w-7 h-7 text-blue-600" /> Global Branding
+                        <img 
+                            src={mainLogoUrl || defaultLogoUrl} 
+                            alt="Main Logo" 
+                            className="w-8 h-8 object-contain rounded-md bg-gray-950 p-1 border border-gray-700/50 shadow-sm flex-shrink-0" 
+                            onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} 
+                        /> 
+                        <span>Global Settings & Branding</span>
                     </h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-12">
                         {/* Logo Section */}
@@ -633,8 +656,8 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                             <div className="flex items-start gap-6">
                                 <div className="flex-shrink-0">
                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Logo Preview</p>
-                                    <div className="w-64 h-32 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center border border-gray-300 dark:border-gray-700">
-                                        <img src={logoPreview} alt="Main Logo Preview" className="max-w-full max-h-full object-contain p-2" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
+                                    <div className="w-64 h-32 bg-gray-950/80 rounded-lg flex items-center justify-center border border-gray-300 dark:border-gray-700 shadow-inner overflow-hidden p-2">
+                                        <img src={logoPreview || mainLogoUrl || defaultLogoUrl} alt="Main Logo Preview" className="max-w-full max-h-full object-contain p-2" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
                                     </div>
                                 </div>
                                 <div className="flex-grow">
@@ -665,8 +688,8 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                              <div className="flex items-start gap-6">
                                 <div className="flex-shrink-0">
                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Icon Preview</p>
-                                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center border border-gray-300 dark:border-gray-700">
-                                        <img src={faviconPreview} alt="Favicon Preview" className="w-12 h-12 object-contain" onError={(e) => { e.currentTarget.src = defaultFaviconUrl; }} />
+                                    <div className="w-16 h-16 bg-gray-950/80 rounded-lg flex items-center justify-center border border-gray-300 dark:border-gray-700 shadow-inner overflow-hidden p-1.5">
+                                        <img src={faviconPreview || faviconUrl || defaultFaviconUrl} alt="Favicon Preview" className="w-12 h-12 object-contain" onError={(e) => { e.currentTarget.src = defaultFaviconUrl; }} />
                                     </div>
                                 </div>
                                 <div className="flex-grow">

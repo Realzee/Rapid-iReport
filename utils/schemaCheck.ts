@@ -53,6 +53,12 @@ export const checkDatabaseSchema = async (): Promise<SchemaCheckResult> => {
                 console.warn("Database schema check encountered a network error. Skipping check.", profileError);
                 return { status: 'valid' };
             }
+            if (profileError.message?.includes('exceed_egress_quota') || profileError.message?.includes('restricted due to the following violations')) {
+                return {
+                    status: 'invalid',
+                    error: "Supabase Project Quota Notice: Your Supabase database is temporarily restricted by Supabase because the monthly egress quota was reached. To restore instant database access, go to your Supabase Dashboard (https://supabase.com/dashboard) and remove the spend cap or upgrade your plan."
+                };
+            }
             console.error("Database schema check failed on 'profiles' table:", profileError);
             return {
                 status: 'invalid',
