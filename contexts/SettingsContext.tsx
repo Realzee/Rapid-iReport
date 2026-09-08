@@ -17,18 +17,10 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [mainLogoUrl, setMainLogoUrl] = useState<string>(() => {
-    const cached = localStorage.getItem('app_main_logo_url');
-    if (!cached || cached.includes('yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/')) {
-      return defaultLogoUrl;
-    }
-    return cached;
+    return localStorage.getItem('app_main_logo_url') || defaultLogoUrl;
   });
   const [faviconUrl, setFaviconUrl] = useState<string>(() => {
-    const cached = localStorage.getItem('app_favicon_url');
-    if (!cached || cached.includes('yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/')) {
-      return defaultFaviconUrl;
-    }
-    return cached;
+    return localStorage.getItem('app_favicon_url') || defaultFaviconUrl;
   });
   const [loading, setLoading] = useState(true);
 
@@ -67,9 +59,6 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
               if (dbLogoUrl.startsWith('yglwdwhwpbqawunbkzyy.supabase.co')) {
                   dbLogoUrl = 'https://' + dbLogoUrl;
               }
-              if (dbLogoUrl.includes('yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png')) {
-                  dbLogoUrl = defaultLogoUrl;
-              }
           }
           setMainLogoUrl(typeof dbLogoUrl === 'string' && dbLogoUrl ? dbLogoUrl : defaultLogoUrl);
 
@@ -80,9 +69,6 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
               }
               if (dbFaviconUrl.startsWith('yglwdwhwpbqawunbkzyy.supabase.co')) {
                   dbFaviconUrl = 'https://' + dbFaviconUrl;
-              }
-              if (dbFaviconUrl.includes('yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/favicon.png')) {
-                  dbFaviconUrl = defaultFaviconUrl;
               }
           }
           setFaviconUrl(typeof dbFaviconUrl === 'string' && dbFaviconUrl ? dbFaviconUrl : defaultFaviconUrl);

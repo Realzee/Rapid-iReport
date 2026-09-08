@@ -83,8 +83,8 @@ export const svgSquareIcon = `
   </g>
 </svg>`;
 
-// Standalone vector data URIs (100% reliable, zero network dependency, never fails on quota restrictions)
-export const logoUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svgLogo.trim())}`;
-export const squareAppIconUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svgSquareIcon.trim())}`;
+// Primary official application saved logo URL
+export const logoUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952';
+export const squareAppIconUrl = 'https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952';
 
 
