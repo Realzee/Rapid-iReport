@@ -32,6 +32,7 @@ const FleetManagement = lazy(() => import('./components/FleetManagement'));
 const EMSDispatchPage = lazy(() => import('./pages/EMSDispatchPage'));
 
 import AnnouncementsBanner from './components/AnnouncementsBanner';
+import MaintenanceLandingPage from './components/MaintenanceLandingPage';
 import { supabase } from './utils/supabase';
 import type { AuthSession as Session } from '@supabase/supabase-js';
 import { Profile, UserRole, Notification, UserStatus } from './types';
@@ -118,6 +119,15 @@ const App: React.FC = () => {
   const { mainLogoUrl, faviconUrl, defaultLogoUrl } = useSettings();
   const [isGlobalMapModalOpen, setIsGlobalMapModalOpen] = useState(false);
   const [isAnnouncementVisible, setIsAnnouncementVisible] = useState(false);
+  const [isMaintenanceActive, setIsMaintenanceActive] = useState<boolean>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('maintenance') === 'false') return false;
+      return localStorage.getItem('maintenance_bypassed') !== 'true';
+    } catch {
+      return true;
+    }
+  });
   const { addToast } = useToast();
   const { theme } = useTheme();
 
@@ -639,6 +649,21 @@ const App: React.FC = () => {
     );
   }
 
+  if (isMaintenanceActive) {
+    return (
+      <MaintenanceLandingPage 
+        targetDate={new Date('2026-09-13T00:00:00')}
+        onBypass={() => {
+          try {
+            localStorage.setItem('maintenance_bypassed', 'true');
+          } catch {}
+          setIsMaintenanceActive(false);
+          addToast("Maintenance bypassed for staff access.", "info");
+        }} 
+      />
+    );
+  }
+
   if (schemaError) {
     return <GlobalSchemaErrorModal checkError={schemaError} />;
   }
@@ -804,6 +829,23 @@ const App: React.FC = () => {
               <GlobalMapModal isOpen={isGlobalMapModalOpen} onClose={() => setIsGlobalMapModalOpen(false)} profile={profile} />
           </Suspense>
       )}
+      <button
+        onClick={() => {
+          try {
+            localStorage.removeItem('maintenance_bypassed');
+          } catch {}
+          setIsMaintenanceActive(true);
+        }}
+        className="fixed bottom-3 right-3 z-50 bg-slate-950/90 hover:bg-slate-900 text-rose-400 hover:text-rose-300 border border-rose-500/40 text-xs px-3 py-1.5 rounded-full shadow-xl backdrop-blur-md flex items-center gap-2 font-medium transition duration-200"
+        title="Click to view App Under Maintenance landing page"
+      >
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+        </span>
+        <span className="hidden sm:inline">Maintenance Mode Active •</span>
+        <span>View Landing Page</span>
+      </button>
     </div>
   );
 };
