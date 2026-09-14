@@ -24,9 +24,15 @@
   <link rel="icon" type="image/png" href="https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952" />
   <link rel="apple-touch-icon" href="https://yglwdwhwpbqawunbkzyy.supabase.co/storage/v1/object/public/app-assets/main-logo.png?t=1781074810952" />
   <script>
-    // This script runs before the page is rendered to prevent a flash of the wrong theme.
-    // It applies the theme based on localStorage, defaulting to dark mode.
+    // Early icon and theme synchronization from localStorage
     (function() {
+      try {
+        var savedIcon = localStorage.getItem('app_favicon_url') || localStorage.getItem('app_main_logo_url');
+        if (savedIcon) {
+          var icons = document.querySelectorAll("link[rel*='icon']");
+          icons.forEach(function(el) { el.href = savedIcon; });
+        }
+      } catch (_) {}
       try {
         var theme = localStorage.getItem('theme');
         var root = document.documentElement;

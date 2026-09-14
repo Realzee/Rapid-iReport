@@ -52,26 +52,32 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         } else if (data) {
           const settingsMap = new Map(data.map(s => [s.key, s.value]));
           let dbLogoUrl = settingsMap.get('main_logo_url');
-          if (typeof dbLogoUrl === 'string') {
+          if (typeof dbLogoUrl === 'string' && dbLogoUrl.trim()) {
               if (dbLogoUrl.includes('/storage/v1/object/') && !dbLogoUrl.includes('/object/public/')) {
                   dbLogoUrl = dbLogoUrl.replace('/storage/v1/object/', '/storage/v1/object/public/');
               }
               if (dbLogoUrl.startsWith('yglwdwhwpbqawunbkzyy.supabase.co')) {
                   dbLogoUrl = 'https://' + dbLogoUrl;
               }
+              setMainLogoUrl(dbLogoUrl);
+              try {
+                localStorage.setItem('app_main_logo_url', dbLogoUrl);
+              } catch {}
           }
-          setMainLogoUrl(typeof dbLogoUrl === 'string' && dbLogoUrl ? dbLogoUrl : defaultLogoUrl);
 
           let dbFaviconUrl = settingsMap.get('favicon_url');
-          if (typeof dbFaviconUrl === 'string') {
+          if (typeof dbFaviconUrl === 'string' && dbFaviconUrl.trim()) {
               if (dbFaviconUrl.includes('/storage/v1/object/') && !dbFaviconUrl.includes('/object/public/')) {
                   dbFaviconUrl = dbFaviconUrl.replace('/storage/v1/object/', '/storage/v1/object/public/');
               }
               if (dbFaviconUrl.startsWith('yglwdwhwpbqawunbkzyy.supabase.co')) {
                   dbFaviconUrl = 'https://' + dbFaviconUrl;
               }
+              setFaviconUrl(dbFaviconUrl);
+              try {
+                localStorage.setItem('app_favicon_url', dbFaviconUrl);
+              } catch {}
           }
-          setFaviconUrl(typeof dbFaviconUrl === 'string' && dbFaviconUrl ? dbFaviconUrl : defaultFaviconUrl);
         }
       } catch(e) {
           console.error("Error in fetchSettings:", e);

@@ -28,11 +28,9 @@ const UserActivityPage = lazy(() => import('./pages/UserActivityPage'));
 const GlobalSearchPage = lazy(() => import('./pages/GlobalSearchPage'));
 const TechnicianDashboardPage = lazy(() => import('./pages/TechnicianDashboardPage'));
 const TechOpsPage = lazy(() => import('./pages/TechOpsPage'));
-const FleetManagement = lazy(() => import('./components/FleetManagement'));
 const EMSDispatchPage = lazy(() => import('./pages/EMSDispatchPage'));
 
 import AnnouncementsBanner from './components/AnnouncementsBanner';
-import MaintenanceLandingPage from './components/MaintenanceLandingPage';
 import { supabase } from './utils/supabase';
 import type { AuthSession as Session } from '@supabase/supabase-js';
 import { Profile, UserRole, Notification, UserStatus } from './types';
@@ -49,7 +47,7 @@ import { useToast } from './contexts/ToastContext';
 import { useTheme } from './contexts/ThemeContext';
 import MatrixRain from './components/MatrixRain';
 
-type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'fleet_management' | 'roadside_driver' | 'ems_dispatch';
+type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'roadside_driver' | 'ems_dispatch';
 
 const isProfileComplete = (profile: Profile) => {
     if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
@@ -119,15 +117,6 @@ const App: React.FC = () => {
   const { mainLogoUrl, faviconUrl, defaultLogoUrl } = useSettings();
   const [isGlobalMapModalOpen, setIsGlobalMapModalOpen] = useState(false);
   const [isAnnouncementVisible, setIsAnnouncementVisible] = useState(false);
-  const [isMaintenanceActive, setIsMaintenanceActive] = useState<boolean>(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('maintenance') === 'false') return false;
-      return localStorage.getItem('maintenance_bypassed') !== 'true';
-    } catch {
-      return true;
-    }
-  });
   const { addToast } = useToast();
   const { theme } = useTheme();
 
@@ -421,7 +410,7 @@ const App: React.FC = () => {
       };
 
       if (profile.role === UserRole.CONTROLLER) {
-        const fallbackViews: View[] = ['controller', 'tech_ops', 'fleet_management', 'guard_monitoring', 'attendance', 'global_search', 'profile'];
+        const fallbackViews: View[] = ['controller', 'tech_ops', 'guard_monitoring', 'attendance', 'global_search', 'profile'];
         const allowedViews = fallbackViews.filter(v => {
           if (v === 'profile' || v === 'global_search') return true;
           if (v === 'guard_monitoring') return isModuleAllowed('guard_monitoring');
@@ -465,10 +454,6 @@ const App: React.FC = () => {
           setView('dashboard');
           return;
         }
-        if (view === 'fleet_management' && !isModuleAllowed('fleet_management')) {
-          setView('dashboard');
-          return;
-        }
         if (view === 'guard_monitoring' && !isModuleAllowed('guard_monitoring')) {
           setView('dashboard');
           return;
@@ -495,19 +480,16 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const activeIcon = faviconUrl || mainLogoUrl || defaultLogoUrl;
-    const iconLink = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
-    if (iconLink) {
-      iconLink.href = activeIcon;
+    const iconLinks = document.querySelectorAll<HTMLLinkElement>("link[rel~='icon'], link[rel='apple-touch-icon'], link[rel='shortcut icon']");
+    if (iconLinks.length > 0) {
+      iconLinks.forEach(link => {
+        link.href = activeIcon;
+      });
     } else {
       const newLink = document.createElement('link');
       newLink.rel = 'icon';
       newLink.href = activeIcon;
       document.head.appendChild(newLink);
-    }
-
-    const appleLink = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
-    if (appleLink) {
-      appleLink.href = activeIcon;
     }
   }, [faviconUrl, mainLogoUrl, defaultLogoUrl]);
 
@@ -614,7 +596,6 @@ const App: React.FC = () => {
               if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
               if (view === 'attendance') return <AttendancePage />;
               if (view === 'tech_ops') return <TechOpsPage />;
-              if (view === 'fleet_management') return <FleetManagement profile={profile} />;
               if (view === 'roadside_driver') return <RoadsideDriverPage profile={profile} setProfile={setProfile} />;
               if (view === 'ems_dispatch') return <EMSDispatchPage profile={profile} />;
               return view === 'profile'
@@ -629,7 +610,6 @@ const App: React.FC = () => {
               case 'controller': return <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
               case 'ems_dispatch': return <EMSDispatchPage profile={profile} />;
               case 'tech_ops': return <TechOpsPage />;
-              case 'fleet_management': return <FleetManagement profile={profile} />;
               case 'archives': return <ReportsPage profile={profile} />;
               case 'attendance': return <AttendancePage />;
               case 'global_search': return <GlobalSearchPage profile={profile} isGlobalAdmin={isGlobalAdmin} />;
@@ -646,21 +626,6 @@ const App: React.FC = () => {
             }
           })()}
       </Suspense>
-    );
-  }
-
-  if (isMaintenanceActive) {
-    return (
-      <MaintenanceLandingPage 
-        targetDate={new Date('2026-09-13T00:00:00')}
-        onBypass={() => {
-          try {
-            localStorage.setItem('maintenance_bypassed', 'true');
-          } catch {}
-          setIsMaintenanceActive(false);
-          addToast("Maintenance bypassed for staff access.", "info");
-        }} 
-      />
     );
   }
 
@@ -775,7 +740,7 @@ const App: React.FC = () => {
     );
   }
 
-  const isFullWidthView = view === 'controller' || view === 'fleet_management' || profile?.role === UserRole.RESPONDER;
+  const isFullWidthView = view === 'controller' || profile?.role === UserRole.RESPONDER;
   const isUserView = profile?.role === UserRole.USER;
   
   const mainPaddingTopClass = isAnnouncementVisible ? 'pt-[90px] sm:pt-[120px]' : 'pt-[60px] sm:pt-[80px]';
@@ -810,7 +775,7 @@ const App: React.FC = () => {
                     {renderView()}
                   </main>
                   <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">
-                      <img src={mainLogoUrl} alt="Rapid911 Mini Logo" className="w-auto min-w-[32px] h-4 opacity-0 transition-opacity duration-300" onLoad={(e) => { e.currentTarget.style.opacity = '1'; }} onError={(e) => { 
+                      <img src={mainLogoUrl || defaultLogoUrl} alt="Rapid911 Mini Logo" className="w-auto min-w-[32px] h-4 opacity-0 transition-opacity duration-300" onLoad={(e) => { e.currentTarget.style.opacity = '1'; }} onError={(e) => { 
                           e.currentTarget.style.opacity = '1';
                           if (e.currentTarget.src !== defaultLogoUrl) {
                               e.currentTarget.src = defaultLogoUrl;
@@ -829,23 +794,6 @@ const App: React.FC = () => {
               <GlobalMapModal isOpen={isGlobalMapModalOpen} onClose={() => setIsGlobalMapModalOpen(false)} profile={profile} />
           </Suspense>
       )}
-      <button
-        onClick={() => {
-          try {
-            localStorage.removeItem('maintenance_bypassed');
-          } catch {}
-          setIsMaintenanceActive(true);
-        }}
-        className="fixed bottom-3 right-3 z-50 bg-slate-950/90 hover:bg-slate-900 text-rose-400 hover:text-rose-300 border border-rose-500/40 text-xs px-3 py-1.5 rounded-full shadow-xl backdrop-blur-md flex items-center gap-2 font-medium transition duration-200"
-        title="Click to view App Under Maintenance landing page"
-      >
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-        </span>
-        <span className="hidden sm:inline">Maintenance Mode Active •</span>
-        <span>View Landing Page</span>
-      </button>
     </div>
   );
 };
