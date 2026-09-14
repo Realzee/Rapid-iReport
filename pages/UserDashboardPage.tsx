@@ -105,7 +105,7 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
         ];
 
         const usersPromise = profile.company_id 
-            ? supabase.from('profiles').select('id, first_name, surname, username, email, role, status, avatar_url, company_id').eq('company_id', profile.company_id).limit(100)
+            ? supabase.from('profiles').select('id, first_name, surname, email, role, status, avatar_url, company_id').eq('company_id', profile.company_id).limit(100)
             : Promise.resolve({ data: [profile], error: null });
         
         const [

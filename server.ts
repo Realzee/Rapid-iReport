@@ -75,6 +75,7 @@ async function runMigrations() {
         "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'guard';",
         "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'ems_controller';",
         "ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'ems_responder';",
+        "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username text;",
         `CREATE TABLE IF NOT EXISTS public.ems_dispatches (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
             company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL,

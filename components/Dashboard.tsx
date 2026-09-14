@@ -245,7 +245,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
 
         const profilesQuery = supabase
             .from('profiles')
-            .select('id, first_name, surname, username, email, role, status, avatar_url, company_id, responder_status')
+            .select('id, first_name, surname, email, role, status, avatar_url, company_id, responder_status')
             .limit(150);
         if (!isGlobalAdmin && profile.company_id) {
             profilesQuery.eq('company_id', profile.company_id);

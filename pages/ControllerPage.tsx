@@ -258,7 +258,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
 
         const usersQuery = supabase
             .from('profiles')
-            .select('id, first_name, surname, username, email, phone, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
+            .select('id, first_name, surname, email, phone, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
             .limit(200);
         if (!isGlobalAdmin && profile.company_id) {
             usersQuery.eq('company_id', profile.company_id);
@@ -314,7 +314,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         if (missingReporterIds.length > 0) {
              const { data: missingProfiles } = await supabase
                 .from('profiles')
-                .select('id, first_name, surname, username, email, phone, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
+                .select('id, first_name, surname, email, phone, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
                 .in('id', missingReporterIds);
              if (missingProfiles) additionalProfiles = missingProfiles.map(u => ({
                 ...u,
@@ -456,7 +456,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
              if (missingReporterIds.length > 0) {
                  const { data: missingProfiles } = await supabase
                 .from('profiles')
-                .select('id, first_name, surname, username, email, phone, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
+                .select('id, first_name, surname, email, phone, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
                 .in('id', missingReporterIds);
                  if (missingProfiles && missingProfiles.length > 0) {
                      setAllUsers(prev => {

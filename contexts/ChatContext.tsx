@@ -37,7 +37,7 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
             if (!supabase) return;
             const usersQuery = supabase
                 .from('profiles')
-                .select('id, first_name, surname, username, avatar_url, role, company_id')
+                .select('id, first_name, surname, avatar_url, role, company_id')
                 .limit(150);
             if (profile.role !== UserRole.ADMIN && profile.company_id) {
                 usersQuery.eq('company_id', profile.company_id);

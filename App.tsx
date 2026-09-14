@@ -47,7 +47,7 @@ import { useToast } from './contexts/ToastContext';
 import { useTheme } from './contexts/ThemeContext';
 import MatrixRain from './components/MatrixRain';
 
-type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'roadside_driver' | 'ems_dispatch';
+type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'roadside_driver' | 'ems_dispatch' | 'ems_responder';
 
 const isProfileComplete = (profile: Profile) => {
     if (profile.role !== UserRole.CONTROLLER && profile.role !== UserRole.RESPONDER) return true;
@@ -410,10 +410,11 @@ const App: React.FC = () => {
       };
 
       if (profile.role === UserRole.CONTROLLER) {
-        const fallbackViews: View[] = ['controller', 'tech_ops', 'guard_monitoring', 'attendance', 'global_search', 'profile'];
+        const fallbackViews: View[] = ['controller', 'ems_dispatch', 'ems_responder', 'tech_ops', 'guard_monitoring', 'attendance', 'global_search', 'profile'];
         const allowedViews = fallbackViews.filter(v => {
           if (v === 'profile' || v === 'global_search') return true;
           if (v === 'guard_monitoring') return isModuleAllowed('guard_monitoring');
+          if (v === 'ems_responder') return isModuleAllowed('ems_dispatch');
           return isModuleAllowed(v);
         });
 
@@ -555,7 +556,7 @@ const App: React.FC = () => {
     return (
       <Suspense fallback={renderLoadingFallback()}>
           {(() => {
-            if (profile.role === UserRole.RESPONDER) {
+            if (profile.role === UserRole.RESPONDER || profile.role === UserRole.EMS_RESPONDER || (profile.role as string) === 'ems_responder') {
                 return view === 'profile' 
                     ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
                     : <ResponderPage profile={profile} setProfile={setProfile} />;
@@ -598,6 +599,7 @@ const App: React.FC = () => {
               if (view === 'tech_ops') return <TechOpsPage />;
               if (view === 'roadside_driver') return <RoadsideDriverPage profile={profile} setProfile={setProfile} />;
               if (view === 'ems_dispatch') return <EMSDispatchPage profile={profile} />;
+              if (view === 'ems_responder') return <ResponderPage profile={profile} setProfile={setProfile} />;
               return view === 'profile'
                   ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
                   : <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
@@ -609,6 +611,7 @@ const App: React.FC = () => {
               case 'dashboard': return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} setView={handleSetView} />;
               case 'controller': return <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
               case 'ems_dispatch': return <EMSDispatchPage profile={profile} />;
+              case 'ems_responder': return <ResponderPage profile={profile} setProfile={setProfile} />;
               case 'tech_ops': return <TechOpsPage />;
               case 'archives': return <ReportsPage profile={profile} />;
               case 'attendance': return <AttendancePage />;
@@ -740,7 +743,7 @@ const App: React.FC = () => {
     );
   }
 
-  const isFullWidthView = view === 'controller' || profile?.role === UserRole.RESPONDER;
+  const isFullWidthView = view === 'controller' || view === 'ems_responder' || profile?.role === UserRole.RESPONDER || profile?.role === UserRole.EMS_RESPONDER;
   const isUserView = profile?.role === UserRole.USER;
   
   const mainPaddingTopClass = isAnnouncementVisible ? 'pt-[90px] sm:pt-[120px]' : 'pt-[60px] sm:pt-[80px]';

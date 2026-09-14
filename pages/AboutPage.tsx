@@ -21,8 +21,10 @@ import {
     UploadCloudIcon,
     BellIcon,
     ShieldAlertIcon,
-    MapIcon
+    MapIcon,
+    HistoryIcon
 } from 'lucide-react';
+import ChangeLogModal from '../components/ChangeLogModal';
 
 interface AboutPageProps {
     onBackToLogin: () => void;
@@ -34,6 +36,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLogin }) => {
     const { mainLogoUrl, defaultLogoUrl } = useSettings();
     const [activeTab, setActiveTab] = useState<TabId>('intro');
     const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
+    const [isChangeLogOpen, setIsChangeLogOpen] = useState(false);
 
     // Dynamic banner image URL generated in the assets directory
     const heroBannerUrl = "/src/assets/images/safety_hero_banner_1782813489559.jpg";
@@ -61,7 +64,14 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLogin }) => {
                         Help & User Manual
                     </span>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setIsChangeLogOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors"
+                    >
+                        <HistoryIcon className="w-4 h-4" />
+                        <span>Release Notes & Change Log</span>
+                    </button>
                     <ThemeToggle />
                     <button 
                         onClick={onBackToLogin}
@@ -890,6 +900,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLogin }) => {
 
                 </div>
             </main>
+            <ChangeLogModal isOpen={isChangeLogOpen} onClose={() => setIsChangeLogOpen(false)} />
         </div>
     );
 };

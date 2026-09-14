@@ -272,9 +272,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             // @ts-ignore
             supabase.auth.getUser().then(({ data: { user } }: any) => {
                 if (user) {
-                    supabase.from('profiles').select('first_name, surname, username, email').eq('id', user.id).maybeSingle().then(({ data: prof }: any) => {
+                    supabase.from('profiles').select('first_name, surname, email').eq('id', user.id).maybeSingle().then(({ data: prof }: any) => {
                         if (prof) {
-                            const fullName = `${prof.first_name || ''} ${prof.surname || ''}`.trim() || prof.username || prof.email || '';
+                            const fullName = `${prof.first_name || ''} ${prof.surname || ''}`.trim() || prof.email || '';
                             setFormData((prev: any) => {
                                 if (!prev.driver_name && !(reportToEdit as any)?.driver_name) {
                                     return { ...prev, driver_name: fullName };
@@ -758,7 +758,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             } else if (reportType === 'roadside') {
                 const { location_boundary, location_boundingbox, ...roadsideCommonData } = commonData;
                 const assistanceType = formData.assistance_type || formData.emergency_type || 'General Assistance';
-                const driverName = formData.driver_name || `${profileData?.first_name || ''} ${profileData?.surname || ''}`.trim() || profileData?.username || user.email || 'Automated Driver';
+                const driverName = formData.driver_name || `${profileData?.first_name || ''} ${profileData?.surname || ''}`.trim() || user.email || 'Automated Driver';
                 reportData = {
                     ...roadsideCommonData,
                     title: formData.title || `Roadside Assistance: ${assistanceType}`,

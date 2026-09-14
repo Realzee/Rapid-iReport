@@ -26,7 +26,7 @@ const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profil
         const fetchData = async () => {
             const usersQuery = supabase
                 .from('profiles')
-                .select('id, first_name, surname, username, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
+                .select('id, first_name, surname, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
                 .limit(150);
             if (profile.role !== UserRole.ADMIN && profile.company_id) {
                 usersQuery.eq('company_id', profile.company_id);

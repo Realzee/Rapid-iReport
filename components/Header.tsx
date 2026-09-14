@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, memo } from 'react';
-import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, GlobeIcon, RadioTowerIcon, BuildingIcon, HistoryIcon, SearchIcon, ChartBarIcon, MapIcon, UsersIcon, ClipboardCheckIcon, ScanIcon, WrenchIcon, ShareIcon, CarIcon, AmbulanceIcon } from './icons';
+import { BellIcon, ChevronDownIcon, MenuIcon, XIcon, GlobeIcon, RadioTowerIcon, BuildingIcon, HistoryIcon, SearchIcon, ChartBarIcon, MapIcon, UsersIcon, ClipboardCheckIcon, ScanIcon, WrenchIcon, ShareIcon, CarIcon, AmbulanceIcon, HeartPulseIcon } from './icons';
 import { Profile, UserRole, Notification } from '../types';
 import { supabase } from '../utils/supabase';
 import { useSettings } from '../contexts/SettingsContext';
@@ -10,10 +10,11 @@ import LedClock from './LedClock';
 import { updateFaviconBadge, updateDocumentTitle, playNotificationSound } from '../utils/notificationUtils';
 import { logUserAction } from '../utils/logger';
 import { CorporateSharingModal } from './CorporateSharingModal';
+import ChangeLogModal from './ChangeLogModal';
 
 interface HeaderProps {
     currentView: string;
-    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'roadside_driver' | 'ems_dispatch') => void;
+    setView: (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'roadside_driver' | 'ems_dispatch' | 'ems_responder') => void;
     profile: Profile;
     onNotificationClick: (notification: Notification) => void;
 }
@@ -26,6 +27,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   const [isPTTModalOpen, setIsPTTModalOpen] = useState(false);
   const [pendingSharesCount, setPendingSharesCount] = useState(0);
   const [isSharingModalOpen, setIsSharingModalOpen] = useState(false);
+  const [isChangeLogOpen, setIsChangeLogOpen] = useState(false);
   const { mainLogoUrl, faviconUrl, defaultLogoUrl } = useSettings();
 
   const notificationsRef = useRef<HTMLDivElement>(null);
@@ -187,7 +189,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     setMobileMenuOpen(false);
   };
 
-  const handleMobileLinkClick = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'attendance' | 'technician_dashboard' | 'tech_ops' | 'about' | 'roadside_driver' | 'ems_dispatch') => {
+  const handleMobileLinkClick = (view: 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'gate_access' | 'global_search' | 'patrol_scanner' | 'attendance' | 'technician_dashboard' | 'tech_ops' | 'about' | 'roadside_driver' | 'ems_dispatch' | 'ems_responder') => {
       setView(view);
       setMobileMenuOpen(false);
   }
@@ -288,6 +290,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
               <AmbulanceIcon className="w-4 h-4 mr-2 text-red-500 dark:text-red-400" /> EMS Dispatch
             </button>
           )}
+          {isModuleAllowed('ems_dispatch') && (
+            <button onClick={() => clickHandler('ems_responder')} className={classGetter('ems_responder')}>
+              <HeartPulseIcon className="w-4 h-4 mr-2 text-rose-500 dark:text-rose-400" /> EMS Responder
+            </button>
+          )}
           {isModuleAllowed('roadside_driver') && (
             <button onClick={() => clickHandler('roadside_driver')} className={classGetter('roadside_driver')}>
               <WrenchIcon className="w-4 h-4 mr-2 text-amber-500 dark:text-amber-400" /> Roadside Driver
@@ -363,6 +370,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         {isModuleAllowed('ems_dispatch') && (
           <button onClick={() => clickHandler('ems_dispatch')} className={classGetter('ems_dispatch')}>
             <AmbulanceIcon className="w-4 h-4 mr-2 text-red-500 dark:text-red-400" /> EMS Dispatch
+          </button>
+        )}
+        {isModuleAllowed('ems_dispatch') && (
+          <button onClick={() => clickHandler('ems_responder')} className={classGetter('ems_responder')}>
+            <HeartPulseIcon className="w-4 h-4 mr-2 text-rose-500 dark:text-rose-400" /> EMS Responder
           </button>
         )}
         {isModuleAllowed('roadside_driver') && (
@@ -506,6 +518,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
               {dropdownOpen && (
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white/90 dark:bg-gray-800/80 backdrop-blur-lg rounded-xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 py-1">
                   <button onClick={() => { setView('profile'); setDropdownOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-black dark:hover:text-white">Profile</button>
+                  <button onClick={() => { setIsChangeLogOpen(true); setDropdownOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/30 flex items-center justify-between">
+                    <span>System Change Log</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">v3.4.0</span>
+                  </button>
                   <button onClick={() => { setView('about'); setDropdownOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-black dark:hover:text-white">User Manual</button>
                   <a href="#" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-black dark:hover:text-white">Settings</a>
                   <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
@@ -528,6 +544,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
             <NavLinks mobile={true} />
             <div className="border-t border-gray-200 dark:border-gray-700 my-2 pt-2 space-y-2">
                  <button onClick={() => handleMobileLinkClick('profile')} className={mobileNavLinkClasses('profile')}>Profile</button>
+                 <button onClick={() => { setIsChangeLogOpen(true); setMobileMenuOpen(false); }} className="block w-full text-left px-4 py-3 text-lg font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md">System Change Log (v3.4.0)</button>
                  <button onClick={() => handleMobileLinkClick('about')} className={mobileNavLinkClasses('about' as any)}>User Manual</button>
                  <button onClick={handleLogout} className="block w-full text-left px-4 py-3 text-lg text-red-500 dark:text-red-400 hover:bg-red-500/10 rounded-md">Logout</button>
             </div>
@@ -536,6 +553,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     </header>
     <PTTModal isOpen={isPTTModalOpen} onClose={() => setIsPTTModalOpen(false)} profile={profile} />
     <CorporateSharingModal isOpen={isSharingModalOpen} onClose={() => setIsSharingModalOpen(false)} profile={profile} />
+    <ChangeLogModal isOpen={isChangeLogOpen} onClose={() => setIsChangeLogOpen(false)} />
     </>
   );
 };

@@ -4,7 +4,7 @@ import { Report, ReportStatus, Profile, ResponderStatus, VehicleReport, Emergenc
 import { supabase } from '../utils/supabase';
 import { safeFormatDistanceToNow } from '../utils/dateUtils';
 import StatusBadge from '../components/StatusBadge';
-import { NavigationIcon, CameraIcon, ScanIcon, XIcon, ChatAlt2Icon, PlusIcon, AlertTriangleIcon } from '../components/icons';
+import { NavigationIcon, CameraIcon, ScanIcon, XIcon, ChatAlt2Icon, PlusIcon, AlertTriangleIcon, HeartPulseIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import ResponderMapView from '../components/ResponderMapView';
@@ -25,7 +25,7 @@ interface ResponderPageProps {
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
-const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
+const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report || (report as any).type === 'emergency' || 'caller_name' in report || 'patient_name' in report;
 
 const ResponderStatusBadge: React.FC<{ status: ResponderStatus }> = ({ status }) => {
     const styles: Record<ResponderStatus, string> = {
@@ -174,45 +174,88 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         oscillator.stop(context.currentTime + 0.15); // Short and sharp
     };
 
+    const isEmsResponder = profile.role === UserRole.EMS_RESPONDER || (profile.role as string) === 'ems_responder';
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
+        const isAdminOrController = [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role);
 
-        // Fetch assigned reports OR reported by me
-        const { data: vData, error: vError } = await supabase.from('vehicle_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`).order('reported_at', { ascending: false }).limit(50);
-        const { data: cData, error: cError } = await supabase.from('crime_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`).order('reported_at', { ascending: false }).limit(50);
-        const { data: aData, error: aError } = await supabase.from('emergency_reports').select('*').or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`).order('reported_at', { ascending: false }).limit(50);
+        let vData: any[] = [];
+        let cData: any[] = [];
+
+        // EMS Responders MUST ONLY see EMS dispatched reports (emergency_reports).
+        // Vehicle & crime reports are skipped entirely for EMS Responders.
+        if (!isEmsResponder) {
+            let vQuery = supabase.from('vehicle_reports').select('*');
+            let cQuery = supabase.from('crime_reports').select('*');
+
+            if (isAdminOrController) {
+                if (!isGlobalAdmin && profile.company_id) {
+                    vQuery = vQuery.or(`company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`);
+                    cQuery = cQuery.or(`company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`);
+                }
+            } else {
+                vQuery = vQuery.or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
+                cQuery = cQuery.or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
+            }
+
+            const { data: vRes, error: vError } = await vQuery.order('reported_at', { ascending: false }).limit(50);
+            const { data: cRes, error: cError } = await cQuery.order('reported_at', { ascending: false }).limit(50);
+            if (vError || cError) console.error("Error fetching vehicle/crime reports:", vError || cError);
+            vData = vRes || [];
+            cData = cRes || [];
+        }
+
+        let aQuery = supabase.from('emergency_reports').select('*');
+        if (isAdminOrController) {
+            if (!isGlobalAdmin && profile.company_id) {
+                aQuery = aQuery.or(`company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`);
+            }
+        } else {
+            aQuery = aQuery.or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
+        }
+
+        const { data: aData, error: aError } = await aQuery.order('reported_at', { ascending: false }).limit(50);
         const { data: usersData, error: usersError } = await supabase
             .from('profiles')
-            .select('id, first_name, surname, username, email, phone, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
+            .select('id, first_name, surname, email, phone, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
             .eq('company_id', profile.company_id)
             .limit(100);
 
-        // Fetch Circulation List (Active Vehicle Reports)
-        const activeStatuses = ACTIVE_REPORT_STATUSES;
-        let circQuery = supabase.from('vehicle_reports').select('*').in('status', activeStatuses);
-        
-        if (!isGlobalAdmin && profile.company_id) {
-            circQuery = circQuery.or(`is_global.eq.true,company_id.eq.${profile.company_id},shared_with_company_ids.cs.{"${profile.company_id}"},assigned_to.eq.${profile.id}`);
+        // Fetch Circulation List (Active Vehicle Reports) - Skip for EMS Responders
+        let circData: VehicleReport[] = [];
+        if (!isEmsResponder) {
+            const activeStatuses = ACTIVE_REPORT_STATUSES;
+            let circQuery = supabase.from('vehicle_reports').select('*').in('status', activeStatuses);
+            
+            if (!isGlobalAdmin && profile.company_id) {
+                circQuery = circQuery.or(`is_global.eq.true,company_id.eq.${profile.company_id},shared_with_company_ids.cs.{"${profile.company_id}"},assigned_to.eq.${profile.id}`);
+            }
+            const { data: cDataRes, error: circError } = await circQuery.order('reported_at', { ascending: false }).limit(50);
+            if (circError) console.error("Error fetching circulation list:", circError);
+            else circData = cDataRes || [];
         }
-        const { data: circData, error: circError } = await circQuery.order('reported_at', { ascending: false }).limit(50);
 
-        if (vError || cError || aError) console.error("Error fetching reports:", vError || cError || aError);
+        if (aError) console.error("Error fetching emergency reports:", aError);
         else {
-            const combined = [...(vData || []), ...(cData || []), ...(aData || [])].sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+            let combined = [...vData, ...cData, ...(aData || [])];
+            if (isEmsResponder) {
+                combined = combined.filter(r => isEmergencyReport(r) || (r as any).type === 'emergency');
+            }
+            combined.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
             setAssignedReports(combined);
             if (combined.length > 0) setSelectedReportId(currentId => currentId || combined[0].id);
         }
         
-        if (circError) console.error("Error fetching circulation list:", circError);
-        else setCirculationReports(circData || []);
+        setCirculationReports(circData);
 
-        if(usersError) console.error("Error fetching company users:", usersError);
+        if (usersError) console.error("Error fetching company users:", usersError);
         else setAllUsers(usersData || []);
 
         setLoading(false);
         isInitialLoad.current = false;
-    }, [profile.id, profile.company_id, profile.role, profile.company?.name]);
+    }, [profile.id, profile.company_id, profile.role, profile.company?.name, isEmsResponder]);
 
     useEffect(() => {
         fetchData();
@@ -221,6 +264,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     useEffect(() => {
         const handleUpsert = (payload: any) => {
             const newReport = payload.new as Report;
+            if (isEmsResponder && !isEmergencyReport(newReport) && (newReport as any).type !== 'emergency') return;
             // Check if relevant to us (assigned OR reported by)
             if (newReport.assigned_to !== profile.id && newReport.reported_by !== profile.id) return;
 
@@ -245,15 +289,6 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             const oldReport = payload.old as Report;
             const newReport = payload.new as Report | undefined;
             
-            // If it was assigned to us or reported by us, we might need to remove it
-            // But wait, if we reported it, we should still see it even if unassigned.
-            // So we only remove if:
-            // 1. It was deleted.
-            // 2. It was unassigned AND we didn't report it.
-            
-            // However, payload.old doesn't always have all fields in some Supabase configs (though usually it does for RLS).
-            // But let's assume we check the new state.
-            
             if (payload.eventType === 'DELETE') {
                  setAssignedReports(prev => prev.filter(r => r.id !== oldReport.id));
                  setSelectedReportId(currentId => currentId === oldReport.id ? null : currentId);
@@ -270,6 +305,8 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         };
 
         const handleCirculationUpdate = (payload: any) => {
+            if (isEmsResponder) return;
+
             const newReport = payload.new as VehicleReport;
             const oldReport = payload.old as VehicleReport;
             const eventType = payload.eventType;
@@ -475,13 +512,21 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
     
     const activeAssignments = useMemo(() => {
         const activeStatuses = ACTIVE_REPORT_STATUSES;
-        return assignedReports.filter(r => activeStatuses.includes(r.status));
-    }, [assignedReports]);
+        return assignedReports.filter(r => {
+            if (!activeStatuses.includes(r.status)) return false;
+            if (isEmsResponder) return isEmergencyReport(r) || (r as any).type === 'emergency';
+            return true;
+        });
+    }, [assignedReports, isEmsResponder]);
 
-    const selectedReport = useMemo(() => 
-        assignedReports.find(r => r.id === selectedReportId) || 
-        circulationReports.find(r => r.id === selectedReportId), 
-    [assignedReports, circulationReports, selectedReportId]);
+    const selectedReport = useMemo(() => {
+        let report = assignedReports.find(r => r.id === selectedReportId) || 
+                     circulationReports.find(r => r.id === selectedReportId);
+        if (report && isEmsResponder && !isEmergencyReport(report) && (report as any).type !== 'emergency') {
+            return undefined;
+        }
+        return report;
+    }, [assignedReports, circulationReports, selectedReportId, isEmsResponder]);
 
     const handleAnprHit = async (reportId: string) => {
         const { data, error } = await supabase
@@ -557,13 +602,28 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
             {/* Left Column: Duty Status & Assignments */}
             <div className="lg:col-span-4 space-y-6">
                  {/* Duty Status Card */}
-                 <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm sticky top-24 z-10">
-                    <div className="flex items-center justify-between mb-4">
+                 <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm sticky top-24 z-10 space-y-4">
+                    {isEmsResponder && (
+                        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl p-3 flex items-center justify-between shadow-xs mb-2">
+                            <div className="flex items-center gap-2.5">
+                                <HeartPulseIcon className="w-5 h-5 text-rose-600 dark:text-rose-400 animate-pulse shrink-0" />
+                                <div>
+                                    <h4 className="text-xs font-bold text-rose-900 dark:text-rose-200 uppercase tracking-wider">EMS Medical Response</h4>
+                                    <p className="text-[11px] text-rose-700 dark:text-rose-300">EMS Dispatched Calls Only</p>
+                                </div>
+                            </div>
+                            <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-600 text-white rounded-full">
+                                EMS ONLY
+                            </span>
+                        </div>
+                    )}
+
+                    <div className="flex items-center justify-between">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white">Duty Status</h3>
                         {profile.responder_status && <ResponderStatusBadge status={profile.responder_status} />}
                     </div>
                     
-                    <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 mb-4">
+                    <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
                         <span className="font-medium text-gray-700 dark:text-gray-300">Active Duty</span>
                         <label className="relative inline-flex items-center cursor-pointer" title={isEngaged ? "You must resolve active incidents to go off-duty." : "Toggle duty status"}>
                             <input type="checkbox" checked={isOnDuty} onChange={handleDutyToggle} className="sr-only peer" disabled={isEngaged} />
@@ -572,7 +632,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                     </div>
 
                     {isEngaged && (
-                        <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                        <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                             <p className="text-xs text-yellow-700 dark:text-yellow-400">
                                 ⚠️ Resolve active assignments before going off-duty.
                             </p>
@@ -613,26 +673,30 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
                             <ChatAlt2Icon className="w-6 h-6" />
                             <span className="text-xs">Staff Chat</span>
                         </button>
-                        <button onClick={() => setIsReportModalOpen(true)} className="flex flex-col items-center justify-center gap-2 p-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-sm">
+                        <button onClick={() => setIsReportModalOpen(true)} className="flex flex-col items-center justify-center gap-2 p-4 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl transition-colors shadow-sm">
                             <PlusIcon className="w-6 h-6" />
                             <span className="text-xs">New Report</span>
                         </button>
                     </div>
                 )}
                 
-                {isOnDuty && <LookoutScanner profile={profile} onReportHit={handleAnprHit} />}
+                {isOnDuty && !isEmsResponder && <LookoutScanner profile={profile} onReportHit={handleAnprHit} />}
 
                 <div className="space-y-3">
-                    <CirculationListManager 
-                        profile={profile} 
-                        reports={circulationReports} 
-                        loading={loading}
-                        onSelectReport={setSelectedReportId}
-                    />
+                    {!isEmsResponder && (
+                        <CirculationListManager 
+                            profile={profile} 
+                            reports={circulationReports} 
+                            loading={loading}
+                            onSelectReport={setSelectedReportId}
+                        />
+                    )}
                     
                     <div className="flex items-center justify-between px-1">
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">Dispatch Queue</h2>
-                        <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold px-2 py-1 rounded-full">{activeAssignments.length}</span>
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                            {isEmsResponder ? 'EMS Dispatch Queue' : 'Dispatch Queue'}
+                        </h2>
+                        <span className="bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-bold px-2.5 py-1 rounded-full">{activeAssignments.length}</span>
                     </div>
                     
                     <div className="space-y-3 lg:h-[calc(100vh-32rem)] lg:overflow-y-auto pr-1 custom-scrollbar">

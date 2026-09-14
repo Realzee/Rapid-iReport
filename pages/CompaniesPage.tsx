@@ -118,7 +118,7 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                 companiesQuery.eq('id', currentUserProfile.company_id);
             }
 
-            const usersQuery = supabase.from('profiles').select('id, first_name, surname, username, email, role, status, avatar_url, company_id').order('first_name').limit(200);
+            const usersQuery = supabase.from('profiles').select('id, first_name, surname, email, role, status, avatar_url, company_id').order('first_name').limit(200);
             if (!canManageAll && currentUserProfile.company_id) {
                 usersQuery.eq('company_id', currentUserProfile.company_id);
             }
