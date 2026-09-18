@@ -663,19 +663,17 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         const idle: Report[] = [];
         
         sortedReports.forEach((report) => {
-            if (report.status === ReportStatus.DELETED) {
+            if (report.status === ReportStatus.DELETED || report.status === 'deleted' || !ACTIVE_REPORT_STATUSES.includes(report.status)) {
                 idle.push(report);
-            } else if (live.length < 20) {
-                live.push(report);
             } else {
-                idle.push(report);
+                live.push(report);
             }
         });
         
         return { liveReports: live, idleReports: idle };
     }, [sortedReports]);
 
-    const displayReports = showIdleReports ? sortedReports : liveReports;
+    const displayReports = showIdleReports ? idleReports : liveReports;
 
     if (loading) return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
@@ -849,7 +847,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                     <div className={`lg:flex-shrink-0 flex flex-col transition-all duration-300 ${selectedReport ? 'lg:w-[500px] lg:h-fit lg:min-h-[calc(100vh-8.5rem-4.5rem-1.5rem)]' : 'lg:w-[400px] lg:h-[calc(100vh-8.5rem-4.5rem-1.5rem)]'}`}>
                         <div className="flex justify-between items-center mb-2 px-1">
                             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                {showIdleReports ? 'Showing archives' : 'Showing live stack (top 20)'}
+                                {showIdleReports ? 'Showing archives' : 'Showing live stack'}
                             </span>
                             <button
                                 onClick={() => setShowIdleReports(!showIdleReports)}
@@ -861,7 +859,7 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
                         {selectedReport ? (
                             <ReportDetailCard report={selectedReport} onClose={() => setSelectedReportId(null)} profile={profile} onEdit={handleOpenEditReportModal} onDelete={handleOpenDeleteReportModal} onViewOnMap={() => { if (isMobile) { setMobileTab('map'); } else { setIsMapModalOpen(true); } }} allUsers={allUsers} />
                         ) : (
-                            <LiveEventStack reports={displayReports} responders={responders} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} />
+                            <LiveEventStack reports={displayReports} responders={responders} onReportSelect={handleReportSelect} selectedReportId={selectedReportId} profile={profile} allUsers={allUsers} showIdleReports={showIdleReports} />
                         )}
                     </div>
                 )}

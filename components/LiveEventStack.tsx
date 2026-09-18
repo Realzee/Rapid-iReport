@@ -1,10 +1,10 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { Report, VehicleReport, Severity, Responder, Profile, CrimeReport, ReportStatus } from '../types';
+import { Report, VehicleReport, Severity, Responder, Profile, CrimeReport, ReportStatus, ACTIVE_REPORT_STATUSES } from '../types';
 import { differenceInMinutes } from 'date-fns';
 import { safeFormat, safeGetDate } from '../utils/dateUtils';
 import StatusBadge from './StatusBadge';
 import ReportTypeBadge from './ReportTypeBadge';
-import { CameraIcon, UserIcon, ClockIcon, NavigationIcon, ChevronUpIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon, UsersIcon } from './icons';
+import { CameraIcon, UserIcon, ClockIcon, NavigationIcon, ChevronUpIcon, CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon, UsersIcon, ZapIcon, WrenchIcon } from './icons';
 
 const severityTagStyles: Record<Severity, string> = {
     [Severity.CRITICAL]: 'bg-red-500/10 text-red-600 dark:text-red-400',
@@ -192,12 +192,24 @@ interface LiveEventStackProps {
     newPanicReportId?: string | null;
     unviewedReportIds?: Set<string>;
     profile: Profile;
+    showIdleReports?: boolean;
 }
 
-const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, allUsers, onReportSelect, selectedReportId, newPanicReportId, unviewedReportIds, profile }) => {
-    
+const LiveEventStack: React.FC<LiveEventStackProps> = ({ 
+    reports, 
+    responders, 
+    allUsers, 
+    onReportSelect, 
+    selectedReportId, 
+    newPanicReportId, 
+    unviewedReportIds, 
+    profile,
+    showIdleReports = false
+}) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [showUnreadIndicator, setShowUnreadIndicator] = useState(false);
+    const [selectedType, setSelectedType] = useState<'all' | 'vehicle' | 'crime' | 'emergency' | 'roadside'>('all');
+    const [visibleCount, setVisibleCount] = useState<number>(10);
     const prevReportsLengthRef = useRef(reports.length);
 
     // Force re-render every minute to update age colors
@@ -207,11 +219,53 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, al
         return () => clearInterval(timer);
     }, []);
 
+    // Filter reports according to showIdleReports mode and selectedType
+    const filteredReports = useMemo(() => {
+        return reports.filter(r => {
+            // When in Live mode (!showIdleReports), strictly exclude deleted reports and non-active statuses
+            if (!showIdleReports) {
+                if (r.status === ReportStatus.DELETED || r.status === 'deleted' || !ACTIVE_REPORT_STATUSES.includes(r.status)) {
+                    return false;
+                }
+            }
+            if (selectedType === 'all') return true;
+            return r.type === selectedType;
+        });
+    }, [reports, selectedType, showIdleReports]);
+
+    // Calculate count badges for each report type
+    const typeCounts = useMemo(() => {
+        const eligible = reports.filter(r => {
+            if (!showIdleReports) {
+                if (r.status === ReportStatus.DELETED || r.status === 'deleted' || !ACTIVE_REPORT_STATUSES.includes(r.status)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+        return {
+            all: eligible.length,
+            vehicle: eligible.filter(r => r.type === 'vehicle').length,
+            crime: eligible.filter(r => r.type === 'crime').length,
+            emergency: eligible.filter(r => r.type === 'emergency').length,
+            roadside: eligible.filter(r => r.type === 'roadside').length,
+        };
+    }, [reports, showIdleReports]);
+
+    // Reset pagination to 10 when filter changes or mode switches
+    useEffect(() => {
+        setVisibleCount(10);
+    }, [selectedType, showIdleReports]);
+
+    const displayedReports = useMemo(() => {
+        return filteredReports.slice(0, visibleCount);
+    }, [filteredReports, visibleCount]);
+
     useEffect(() => {
         const container = scrollContainerRef.current;
         if (!container) return;
 
-        const isNewReportAdded = reports.length > prevReportsLengthRef.current;
+        const isNewReportAdded = filteredReports.length > prevReportsLengthRef.current;
 
         if (isNewReportAdded) {
             if (container.scrollTop > 50) {
@@ -221,8 +275,8 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, al
             }
         }
         
-        prevReportsLengthRef.current = reports.length;
-    }, [reports]);
+        prevReportsLengthRef.current = filteredReports.length;
+    }, [filteredReports]);
 
     const handleScroll = () => {
         if (scrollContainerRef.current && scrollContainerRef.current.scrollTop < 50) {
@@ -247,11 +301,54 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, al
 
     return (
         <div className="flex flex-col flex-grow min-h-0">
-            <div className="flex-shrink-0 mb-4 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Live Event Stack</h2>
+            <div className="flex-shrink-0 mb-3 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    {showIdleReports ? 'Archived Events' : 'Live Event Stack'}
+                </h2>
                 <div className="text-right">
-                    <p className="text-sm text-gray-700 dark:text-gray-200">{reports.length} events</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Real-time updates</p>
+                    <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                        {filteredReports.length} {filteredReports.length === 1 ? 'event' : 'events'}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {showIdleReports ? 'Archives & Deleted' : 'Real-time active'}
+                    </p>
+                </div>
+            </div>
+
+            {/* Type Filter Buttons */}
+            <div className="flex-shrink-0 mb-3 overflow-x-auto pb-1 no-scrollbar">
+                <div className="flex items-center gap-1.5">
+                    {[
+                        { id: 'all', label: 'All', icon: ZapIcon, count: typeCounts.all },
+                        { id: 'vehicle', label: 'Vehicle', icon: CarIcon, count: typeCounts.vehicle },
+                        { id: 'crime', label: 'Crime', icon: CrimeIcon, count: typeCounts.crime },
+                        { id: 'emergency', label: 'Emergency', icon: AlertTriangleIcon, count: typeCounts.emergency },
+                        { id: 'roadside', label: 'Roadside', icon: WrenchIcon, count: typeCounts.roadside },
+                    ].map(filter => {
+                        const Icon = filter.icon;
+                        const isActive = selectedType === filter.id;
+                        return (
+                            <button
+                                key={filter.id}
+                                onClick={() => setSelectedType(filter.id as any)}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 border ${
+                                    isActive
+                                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                        : 'bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                }`}
+                            >
+                                <Icon className="w-3.5 h-3.5" />
+                                <span>{filter.label}</span>
+                                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                                    isActive 
+                                        ? 'bg-white/25 text-white' 
+                                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                }`}>
+                                    {filter.count}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -266,19 +363,47 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({ reports, responders, al
                     </button>
                 )}
                 <div ref={scrollContainerRef} onScroll={handleScroll} className="space-y-2 overflow-y-auto h-full pr-2 -mr-2">
-                    {reports.map(report => (
-                        <LiveEventItem
-                            key={report.id}
-                            report={report}
-                            isSelected={report.id === selectedReportId}
-                            isPanic={report.id === newPanicReportId || (report as CrimeReport).crime_type === 'PUBLIC_PANIC_ASSIST'}
-                            isUnviewed={unviewedReportIds?.has(report.id) || false}
-                            onSelect={() => onReportSelect(report.id)}
-                            responderMap={responderMap}
-                            reporterName={userMap.get(report.reported_by) || 'Unknown User'}
-                            profile={profile}
-                        />
-                    ))}
+                    {displayedReports.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                            <p className="text-sm font-semibold">
+                                No {selectedType === 'all' ? '' : selectedType} {showIdleReports ? 'archived' : 'live'} incidents found
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                                {showIdleReports ? 'Deleted and resolved reports will appear here.' : 'New active reports will appear here in real-time.'}
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {displayedReports.map(report => (
+                                <LiveEventItem
+                                    key={report.id}
+                                    report={report}
+                                    isSelected={report.id === selectedReportId}
+                                    isPanic={report.id === newPanicReportId || (report as CrimeReport).crime_type === 'PUBLIC_PANIC_ASSIST'}
+                                    isUnviewed={unviewedReportIds?.has(report.id) || false}
+                                    onSelect={() => onReportSelect(report.id)}
+                                    responderMap={responderMap}
+                                    reporterName={userMap.get(report.reported_by) || 'Unknown User'}
+                                    profile={profile}
+                                />
+                            ))}
+
+                            {/* Load More Button when there are more than 10 reports */}
+                            {visibleCount < filteredReports.length && (
+                                <div className="pt-3 pb-2 text-center">
+                                    <button
+                                        onClick={() => setVisibleCount(prev => prev + 10)}
+                                        className="w-full py-2.5 px-4 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 border border-blue-200 dark:border-blue-800 shadow-sm"
+                                    >
+                                        <span>Load More Incidents</span>
+                                        <span className="text-[10px] bg-blue-200 dark:bg-blue-900 px-2 py-0.5 rounded-full font-mono font-extrabold">
+                                            ({displayedReports.length} of {filteredReports.length})
+                                        </span>
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
             </div>
         </div>

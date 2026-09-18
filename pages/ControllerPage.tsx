@@ -621,19 +621,17 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         const idle: Report[] = [];
         
         sortedReports.forEach((report) => {
-            if (!ACTIVE_STATUSES.includes(report.status)) {
+            if (report.status === ReportStatus.DELETED || report.status === 'deleted' || !ACTIVE_STATUSES.includes(report.status)) {
                 idle.push(report);
-            } else if (live.length < 20) {
-                live.push(report);
             } else {
-                idle.push(report);
+                live.push(report);
             }
         });
         
         return { liveReports: live, idleReports: idle };
     }, [sortedReports]);
 
-    const displayReports = showIdleReports ? sortedReports : liveReports;
+    const displayReports = showIdleReports ? idleReports : liveReports;
 
     if (loading) {
         return (
@@ -776,7 +774,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                 <>
                                     <div className="flex justify-between items-center mb-2 px-1">
                                         <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                            {showIdleReports ? 'Showing archives' : 'Showing live stack (top 20)'}
+                                            {showIdleReports ? 'Showing archives' : 'Showing live stack'}
                                         </span>
                                         <button
                                             onClick={() => setShowIdleReports(!showIdleReports)}
@@ -801,6 +799,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                                         newPanicReportId={newPanicReportId}
                                         unviewedReportIds={unviewedReportIds}
                                         profile={profile}
+                                        showIdleReports={showIdleReports}
                                     />
                                 </>
                             ) : activeTab === 'responders' ? (
