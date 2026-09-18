@@ -13,6 +13,7 @@ import {
 import { supabase } from '../utils/supabase';
 import { EMSReportGenerator } from './EMSReportGenerator';
 import MapView from '../components/MapView';
+import { LocationPicker } from '../components/LocationPicker';
 import { HeartPulse, FileText, Edit2, Trash2, Plus, Building2, Truck, Phone, AlertCircle, X } from 'lucide-react';
 import { 
   PlusIcon, 
@@ -151,6 +152,7 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
     caller_name: '',
     caller_phone: '',
     location: '',
+    location_coords: { lat: -26.2041, lng: 28.0473 } as LocationCoords,
     chief_complaint: '',
     triage_level: 'P2' as EmsTriageLevel,
     patient_count: 1,
@@ -302,7 +304,7 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
       caller_name: newCallForm.caller_name || 'Anonymous Caller',
       caller_phone: newCallForm.caller_phone || 'N/A',
       location: newCallForm.location,
-      location_coords: { lat: -26.2041 + (Math.random() - 0.5) * 0.1, lng: 28.0473 + (Math.random() - 0.5) * 0.1 },
+      location_coords: newCallForm.location_coords || { lat: -26.2041, lng: 28.0473 },
       chief_complaint: newCallForm.chief_complaint,
       triage_level: newCallForm.triage_level,
       patient_count: Number(newCallForm.patient_count) || 1,
@@ -329,6 +331,7 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
         caller_name: '',
         caller_phone: '',
         location: '',
+        location_coords: { lat: -26.2041, lng: 28.0473 },
         chief_complaint: '',
         triage_level: 'P2',
         patient_count: 1,
@@ -818,6 +821,21 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                     )}
                   </div>
 
+                  {/* Ambulance Assigned Banner */}
+                  <div className="mb-3">
+                    {dispatch.assigned_unit ? (
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold shadow-2xs">
+                        <Truck className="w-4 h-4 text-red-600 dark:text-red-400" />
+                        <span>AMBULANCE ASSIGNED: <strong className="underline decoration-red-500">{dispatch.assigned_unit}</strong></span>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-bold shadow-2xs">
+                        <AlertTriangleIcon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        <span>AMBULANCE UNASSIGNED - REQUIRES UNIT</span>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Dispatch Unit & Facility Selectors */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     {/* Unit Selector */}
@@ -1183,15 +1201,34 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Incident Location</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Exact address or GPS landmark"
-                  value={newCallForm.location}
-                  onChange={e => setNewCallForm({ ...newCallForm, location: e.target.value })}
-                  className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                    Incident Location & GPS PinDrop
+                  </label>
+                  <span className="text-[10px] text-red-600 dark:text-red-400 font-bold">
+                    Type street name to Auto Pindrop
+                  </span>
+                </div>
+                <div className="mb-2">
+                  <LocationPicker
+                    initialCoords={newCallForm.location_coords}
+                    height="200px"
+                    autoPindrop={true}
+                    placeholder="Type street name or address (e.g. 10 Oxford Rd, Rosebank)..."
+                    onLocationChange={(coords, address) => {
+                      setNewCallForm(prev => ({
+                        ...prev,
+                        location: address || prev.location,
+                        location_coords: coords
+                      }));
+                    }}
+                  />
+                </div>
+                {newCallForm.location && (
+                  <p className="text-[11px] text-gray-600 dark:text-gray-300 font-medium bg-gray-50 dark:bg-gray-800 p-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <span className="font-bold text-red-600 dark:text-red-400">Selected Location:</span> {newCallForm.location}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1239,11 +1276,11 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                   <select
                     value={newCallForm.assigned_unit}
                     onChange={e => setNewCallForm({ ...newCallForm, assigned_unit: e.target.value })}
-                    className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium"
+                    className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
                   >
                     <option value="">-- Unassigned --</option>
                     {units.map(u => (
-                      <option key={u.id} value={u.name}>{u.name}</option>
+                      <option key={u.id} value={u.name}>{u.name} [{u.cert}] - {u.status}</option>
                     ))}
                   </select>
                 </div>

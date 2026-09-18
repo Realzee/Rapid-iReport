@@ -181,9 +181,17 @@ export interface LocationPickerProps {
     onLocationSelect?: (coords: LocationCoords) => void;
     placeholder?: string;
     height?: string;
+    autoPindrop?: boolean;
 }
 
-export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, onLocationChange, onLocationSelect, placeholder, height = '256px' }) => {
+export const LocationPicker: React.FC<LocationPickerProps> = ({ 
+    initialCoords, 
+    onLocationChange, 
+    onLocationSelect, 
+    placeholder, 
+    height = '256px',
+    autoPindrop = true 
+}) => {
     const { addToast } = useToast();
     const [isLocating, setIsLocating] = useState(false);
     const [mapStyle, setMapStyle] = useState<'street' | 'satellite'>('street');
@@ -216,7 +224,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
         }
     }, [initialCoords]);
 
-    // Handle suggestions lookup as user types
+    // Handle suggestions lookup & auto-pindrop as user types
     useEffect(() => {
         const trimmedQuery = searchQuery.trim();
         if (!trimmedQuery || trimmedQuery.length < 3) {
@@ -284,7 +292,24 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
             try {
                 const response = await fetch(`/api/geocode?q=${encodeURIComponent(searchQuery)}&limit=5`);
                 if (response.ok) {
-                    setSuggestions(await response.json());
+                    const results = await response.json();
+                    setSuggestions(results);
+
+                    // Auto-pindrop to the top match if autoPindrop is enabled
+                    if (autoPindrop && Array.isArray(results) && results.length > 0) {
+                        const top = results[0];
+                        const lat = parseFloat(top.lat);
+                        const lng = parseFloat(top.lon);
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            const coords = { lat, lng };
+                            if (onLocationChange) {
+                                onLocationChange(coords, top.display_name);
+                            }
+                            if (onLocationSelect) {
+                                onLocationSelect(coords);
+                            }
+                        }
+                    }
                 } else {
                     setSuggestions([]);
                 }
@@ -294,7 +319,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
             } finally {
                 setIsSearching(false);
             }
-        }, 400);
+        }, 450);
 
         return () => {
             if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
@@ -329,6 +354,28 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
             const coords = { lat, lng };
             handleCoordsAndAddressSelected(coords, suggestion.display_name);
             setIsOpen(false);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (suggestions.length > 0) {
+                handleSuggestionClick(suggestions[0]);
+            } else if (searchQuery.trim().length >= 3) {
+                setIsSearching(true);
+                fetch(`/api/geocode?q=${encodeURIComponent(searchQuery)}&limit=1`)
+                    .then(res => res.json())
+                    .then(results => {
+                        if (Array.isArray(results) && results.length > 0) {
+                            handleSuggestionClick(results[0]);
+                        } else {
+                            addToast("Location not found. Try adding city or street name.", "info");
+                        }
+                    })
+                    .catch(err => console.error(err))
+                    .finally(() => setIsSearching(false));
+            }
         }
     };
 
@@ -392,6 +439,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ initialCoords, o
                             setSearchQuery(e.target.value);
                             setIsOpen(true);
                         }}
+                        onKeyDown={handleKeyDown}
                         onFocus={() => setIsOpen(true)}
                         placeholder={placeholder || "Search address..."}
                         className="w-full text-[11px] py-1.5 px-3 pr-8 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 font-sans leading-tight"
