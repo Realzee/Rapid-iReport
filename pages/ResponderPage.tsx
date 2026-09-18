@@ -21,7 +21,8 @@ import { safeSetStorage } from '../utils/storage';
 
 interface ResponderPageProps {
     profile: Profile;
-    setProfile: (profile: Profile) => void;
+    setProfile?: (profile: Profile) => void;
+    isEmsMode?: boolean;
 }
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
@@ -42,7 +43,7 @@ const ResponderStatusBadge: React.FC<{ status: ResponderStatus }> = ({ status })
 };
 
 // Main page component
-const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) => {
+const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEmsMode = false }) => {
     const { requestWakeLock, releaseWakeLock } = useWakeLock();
     const [assignedReports, setAssignedReports] = useState<Report[]>(() => {
         try {
@@ -174,7 +175,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile }) =>
         oscillator.stop(context.currentTime + 0.15); // Short and sharp
     };
 
-    const isEmsResponder = profile.role === UserRole.EMS_RESPONDER || (profile.role as string) === 'ems_responder';
+    const isEmsResponder = Boolean(isEmsMode || profile.role === UserRole.EMS_RESPONDER || (profile.role as string) === 'ems_responder');
 
     const fetchData = useCallback(async () => {
         setLoading(true);

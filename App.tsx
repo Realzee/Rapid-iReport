@@ -557,9 +557,10 @@ const App: React.FC = () => {
       <Suspense fallback={renderLoadingFallback()}>
           {(() => {
             if (profile.role === UserRole.RESPONDER || profile.role === UserRole.EMS_RESPONDER || (profile.role as string) === 'ems_responder') {
+                const isEms = profile.role === UserRole.EMS_RESPONDER || (profile.role as string) === 'ems_responder';
                 return view === 'profile' 
                     ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
-                    : <ResponderPage profile={profile} setProfile={setProfile} />;
+                    : <ResponderPage profile={profile} setProfile={setProfile} isEmsMode={isEms} />;
             }
 
             if (profile.role === UserRole.RAS_DRIVER || (profile.role as string) === 'roadside_driver' || (profile.role as string) === 'driver') {
@@ -599,7 +600,7 @@ const App: React.FC = () => {
               if (view === 'tech_ops') return <TechOpsPage />;
               if (view === 'roadside_driver') return <RoadsideDriverPage profile={profile} setProfile={setProfile} />;
               if (view === 'ems_dispatch') return <EMSDispatchPage profile={profile} />;
-              if (view === 'ems_responder') return <ResponderPage profile={profile} setProfile={setProfile} />;
+              if (view === 'ems_responder') return <ResponderPage profile={profile} setProfile={setProfile} isEmsMode={true} />;
               return view === 'profile'
                   ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
                   : <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
@@ -611,7 +612,7 @@ const App: React.FC = () => {
               case 'dashboard': return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} setView={handleSetView} />;
               case 'controller': return <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
               case 'ems_dispatch': return <EMSDispatchPage profile={profile} />;
-              case 'ems_responder': return <ResponderPage profile={profile} setProfile={setProfile} />;
+              case 'ems_responder': return <ResponderPage profile={profile} setProfile={setProfile} isEmsMode={true} />;
               case 'tech_ops': return <TechOpsPage />;
               case 'archives': return <ReportsPage profile={profile} />;
               case 'attendance': return <AttendancePage />;
