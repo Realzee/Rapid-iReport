@@ -1197,9 +1197,12 @@ const ControllerReportDetail: React.FC<{
                                     (report as any).triage_level === 'P3' ? 'bg-green-600 text-white' :
                                     (report as any).triage_level === 'P4' ? 'bg-blue-600 text-white' :
                                     (report as any).triage_level === 'P0' ? 'bg-black text-white' :
-                                    'bg-amber-500 text-white'
+                                    (report as any).triage_level === 'P2' ? 'bg-amber-500 text-white' :
+                                    'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
                                 }`}>
-                                    {(report as any).triage_level || 'P2'} - Urgent
+                                    {(report as any).triage_level && (report as any).triage_level !== 'Pending Assessment' 
+                                        ? `${(report as any).triage_level}` 
+                                        : 'Pending Medic On-Scene Assessment'}
                                 </span>
                             </DetailField>
                             <DetailField label="Patient Count">{(report as any).patient_count || 1}</DetailField>
@@ -1209,8 +1212,14 @@ const ControllerReportDetail: React.FC<{
                                 </span>
                             </DetailField>
                             <DetailField label="Receiving Hospital" className="col-span-2">
-                                <span className="font-semibold text-gray-900 dark:text-white">
-                                    {(report as any).receiving_facility || 'Unassigned'}
+                                <span className={`font-semibold text-xs px-2 py-0.5 rounded ${
+                                    (report as any).receiving_facility && (report as any).receiving_facility !== 'Unassigned'
+                                        ? 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 font-bold'
+                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 italic'
+                                }`}>
+                                    {(report as any).receiving_facility && (report as any).receiving_facility !== 'Unassigned'
+                                        ? (report as any).receiving_facility
+                                        : 'Pending Medic On-Scene Assessment'}
                                 </span>
                             </DetailField>
                             <DetailField label="Vehicle Involved">{(report as any).vehicle_involved ? 'Yes' : 'No'}</DetailField>
@@ -1231,6 +1240,14 @@ const ControllerReportDetail: React.FC<{
                                     </p>
                                 </DetailField>
                             )}
+                            <div className="col-span-2 pt-2">
+                                <button
+                                    onClick={() => document.dispatchEvent(new CustomEvent('open-ems-modal', { detail: report }))}
+                                    className="w-full py-2 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5"
+                                >
+                                    📋 Add Scene Report & Patient Assessment (Medic)
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

@@ -1243,16 +1243,20 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                 />
               </div>
 
+              <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-xl text-xs text-red-800 dark:text-red-300 leading-relaxed">
+                <span className="font-bold">🚑 Dispatch & Medic Workflow:</span> Triage level and receiving hospital are not assigned upon initial response dispatch. The responding Medic assesses patient condition, decides treatment required on scene, and assigns the hospital via the Scene Report.
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Triage Priority Level</label>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Initial Triage Estimate (Assigned by Medic on Scene)</label>
                   <select
                     value={newCallForm.triage_level}
                     onChange={e => setNewCallForm({ ...newCallForm, triage_level: e.target.value as EmsTriageLevel })}
                     className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white"
                   >
+                    <option value="P2">P2 - YELLOW (Urgent / Default Initial)</option>
                     <option value="P1">P1 - RED (Critical / Life Threat)</option>
-                    <option value="P2">P2 - YELLOW (Urgent / ILS)</option>
                     <option value="P3">P3 - GREEN (Stable / BLS)</option>
                     <option value="P4">P4 - BLUE (Deceased / Expectant)</option>
                   </select>
@@ -1286,13 +1290,13 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Receiving Hospital</label>
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block mb-1">Receiving Hospital (Assigned on Scene by Medic)</label>
                   <select
                     value={newCallForm.receiving_facility}
                     onChange={e => setNewCallForm({ ...newCallForm, receiving_facility: e.target.value })}
                     className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium"
                   >
-                    <option value="">-- Unassigned --</option>
+                    <option value="">-- Pending On-Scene Medic Assessment --</option>
                     {hospitals.map(h => (
                       <option key={h.id} value={h.name}>{h.name}</option>
                     ))}

@@ -1771,18 +1771,23 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     </span>
                                 </div>
 
+                                <div className="p-3 bg-red-950/40 border border-red-800/60 rounded-xl text-xs text-red-200 flex items-start gap-2">
+                                    <span className="font-bold">🚑 Medic Workflow Notice:</span> Triage level and receiving hospital are not assigned upon initial response dispatch. The responding Medic assesses patient condition, decides treatment required on scene, and assigns the hospital via the Scene Report.
+                                </div>
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label htmlFor="triage_level" className="text-xs font-bold text-gray-200 block mb-1">
-                                            Triage Priority Level
+                                            Initial Triage Estimate (Assigned by Medic on Scene)
                                         </label>
                                         <select
                                             name="triage_level"
                                             id="triage_level"
-                                            value={formData.triage_level || 'P2'}
+                                            value={formData.triage_level || 'Pending Assessment'}
                                             onChange={handleChange}
                                             className="w-full p-2.5 bg-gray-800 border border-gray-700 rounded-xl text-xs font-bold text-white focus:ring-2 focus:ring-red-500"
                                         >
+                                            <option value="Pending Assessment">-- Pending On-Scene Medic Assessment --</option>
                                             <option value="P1">P1 - RED (Critical / ALS)</option>
                                             <option value="P2">P2 - YELLOW (Urgent / ILS)</option>
                                             <option value="P3">P3 - GREEN (Non-Urgent / BLS)</option>
@@ -1831,7 +1836,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
 
                                     <div>
                                         <label htmlFor="receiving_facility" className="text-xs font-bold text-gray-200 block mb-1">
-                                            Receiving Hospital
+                                            Receiving Hospital (Assigned on Scene by Medic)
                                         </label>
                                         <select
                                             name="receiving_facility"
@@ -1840,7 +1845,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                             onChange={handleChange}
                                             className="w-full p-2.5 bg-gray-800 border border-gray-700 rounded-xl text-xs font-bold text-white focus:ring-2 focus:ring-red-500"
                                         >
-                                            <option value="">-- Unassigned --</option>
+                                            <option value="">-- Pending On-Scene Medic Assessment --</option>
                                             <option value="Netcare Milpark Hospital">Netcare Milpark Hospital</option>
                                             <option value="Charlotte Maxeke Academic Hospital">Charlotte Maxeke Academic Hospital</option>
                                             <option value="Sunnyside Mediclinic">Sunnyside Mediclinic</option>

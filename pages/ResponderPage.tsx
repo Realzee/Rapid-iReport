@@ -1149,12 +1149,12 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                             </button>
                         )}
                         
-                        {isEmergencyReport(report) && report.emergency_type === 'Medical' && (
+                        {isEmergencyReport(report) && (
                              <button
                                 onClick={() => document.dispatchEvent(new CustomEvent('open-ems-modal', { detail: report }))}
-                                className="col-span-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-all shadow-md flex items-center justify-center gap-2 mt-2"
+                                className="col-span-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-sm transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-2 mt-2"
                             >
-                                Patient Care Report
+                                📋 Add Scene Report & Patient Assessment (Medic)
                             </button>
                         )}
                     </div>

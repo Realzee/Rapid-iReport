@@ -1313,6 +1313,17 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 </div>
             )}
 
+            {(localReport.type === 'emergency' || localReport.type === 'roadside') && (
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
+                    <button
+                        onClick={() => document.dispatchEvent(new CustomEvent('open-ems-modal', { detail: localReport }))}
+                        className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2"
+                    >
+                        📋 Add Scene Report & Patient Assessment (Medic)
+                    </button>
+                </div>
+            )}
+
             {[ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(localReport.status) && (
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
                      <button onClick={() => openChat(localReport)} className="w-full btn-secondary text-primary-600 dark:text-primary-400">
