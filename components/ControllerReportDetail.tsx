@@ -1179,14 +1179,59 @@ const ControllerReportDetail: React.FC<{
                 )}
                 
                 {report.type === 'emergency' && (
-                    <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                        <DetailField label="Emergency Type">{(report as any).emergency_type}</DetailField>
-                        <DetailField label="Vehicle Involved">{(report as any).vehicle_involved ? 'Yes' : 'No'}</DetailField>
-                        {(report as any).vehicle_involved && (
-                            <DetailField label="Vehicles Involved">{(report as any).vehicles_involved}</DetailField>
-                        )}
-                        <DetailField label="Injuries">{(report as any).injuries_reported ? 'Yes' : 'No'}</DetailField>
-                        <DetailField label="Fatalities">{(report as any).fatalities_reported ? 'Yes' : 'No'}</DetailField>
+                    <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800/80 rounded-xl border border-red-200 dark:border-red-900/40">
+                        <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                EMS Incident Dispatch & Feedback Summary
+                            </h4>
+                            <span className="text-[10px] font-bold px-2 py-0.5 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 rounded">
+                                EMS DISPATCH
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <DetailField label="Emergency Type">{(report as any).emergency_type}</DetailField>
+                            <DetailField label="Triage Priority">
+                                <span className={`px-2.5 py-0.5 rounded text-xs font-bold ${
+                                    (report as any).triage_level === 'P1' ? 'bg-red-600 text-white' :
+                                    (report as any).triage_level === 'P3' ? 'bg-green-600 text-white' :
+                                    (report as any).triage_level === 'P4' ? 'bg-blue-600 text-white' :
+                                    (report as any).triage_level === 'P0' ? 'bg-black text-white' :
+                                    'bg-amber-500 text-white'
+                                }`}>
+                                    {(report as any).triage_level || 'P2'} - Urgent
+                                </span>
+                            </DetailField>
+                            <DetailField label="Patient Count">{(report as any).patient_count || 1}</DetailField>
+                            <DetailField label="Assigned Ambulance">
+                                <span className="font-bold text-red-600 dark:text-red-400">
+                                    {(report as any).assigned_unit || 'Unassigned'}
+                                </span>
+                            </DetailField>
+                            <DetailField label="Receiving Hospital" className="col-span-2">
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                    {(report as any).receiving_facility || 'Unassigned'}
+                                </span>
+                            </DetailField>
+                            <DetailField label="Vehicle Involved">{(report as any).vehicle_involved ? 'Yes' : 'No'}</DetailField>
+                            <DetailField label="Injuries / Fatalities">
+                                {(report as any).injuries_reported ? 'Injuries Reported' : 'No Injuries'} / {(report as any).fatalities_reported ? 'Fatalities Reported' : 'No Fatalities'}
+                            </DetailField>
+                            {(report as any).special_hazards && (
+                                <DetailField label="Special Hazards / Scene Notes" className="col-span-2">
+                                    <p className="text-xs text-amber-700 dark:text-amber-300 font-medium bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-200 dark:border-amber-800">
+                                        {(report as any).special_hazards}
+                                    </p>
+                                </DetailField>
+                            )}
+                            {(report as any).dispatch_notes && (
+                                <DetailField label="Dispatching Part & Response Feedback" className="col-span-2">
+                                    <p className="text-xs text-gray-800 dark:text-gray-200 font-medium bg-gray-100 dark:bg-gray-700/50 p-2 rounded-lg border border-gray-200 dark:border-gray-600">
+                                        {(report as any).dispatch_notes}
+                                    </p>
+                                </DetailField>
+                            )}
+                        </div>
                     </div>
                 )}
                 

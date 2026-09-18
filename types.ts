@@ -334,6 +334,12 @@ export interface EmergencyReport {
   pound_name?: string;
   has_arrests?: boolean;
   has_firearms?: boolean;
+  triage_level?: string;
+  patient_count?: number;
+  assigned_unit?: string;
+  receiving_facility?: string;
+  special_hazards?: string;
+  dispatch_notes?: string;
   company_id?: string;
   company_name?: string;
   is_global?: boolean;

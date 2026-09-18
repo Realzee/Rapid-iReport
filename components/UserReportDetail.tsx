@@ -260,22 +260,44 @@ const UserReportDetail: React.FC<{
                 )}
                 
                 {report.type === 'emergency' && (
-                    <div className="grid grid-cols-2 gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                        <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Emergency Type</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">{(report as any).emergency_type}</p>
+                    <div className="space-y-3 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl text-sm border border-red-200 dark:border-red-900/40">
+                        <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400">EMS Incident & Dispatch Feedback</h4>
+                            <span className="text-[10px] font-bold px-2 py-0.5 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 rounded">EMS DISPATCH</span>
                         </div>
-                        <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vehicles</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">{(report as any).vehicles_involved}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Injuries</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">{(report as any).injuries_reported ? 'Yes' : 'No'}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Fatalities</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">{(report as any).fatalities_reported ? 'Yes' : 'No'}</p>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Emergency Type</p>
+                                <p className="font-semibold text-gray-900 dark:text-white">{(report as any).emergency_type}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Triage Priority</p>
+                                <p className="font-bold text-red-600 dark:text-red-400">{(report as any).triage_level || 'P2'} Priority</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Patients</p>
+                                <p className="font-semibold text-gray-900 dark:text-white">{(report as any).patient_count || 1}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Assigned Ambulance</p>
+                                <p className="font-semibold text-red-600 dark:text-red-400">{(report as any).assigned_unit || 'Unassigned'}</p>
+                            </div>
+                            <div className="col-span-2">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Receiving Hospital</p>
+                                <p className="font-semibold text-gray-900 dark:text-white">{(report as any).receiving_facility || 'Unassigned'}</p>
+                            </div>
+                            {(report as any).special_hazards && (
+                                <div className="col-span-2">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Special Hazards / Scene Notes</p>
+                                    <p className="text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 p-2 rounded border border-amber-200 dark:border-amber-800">{(report as any).special_hazards}</p>
+                                </div>
+                            )}
+                            {(report as any).dispatch_notes && (
+                                <div className="col-span-2">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Dispatch & Response Feedback</p>
+                                    <p className="text-xs font-medium text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-700/50 p-2 rounded border border-gray-200 dark:border-gray-600">{(report as any).dispatch_notes}</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

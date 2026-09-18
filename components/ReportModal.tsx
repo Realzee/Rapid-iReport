@@ -204,6 +204,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 family_run: (reportToEdit as any).family_run ?? false,
                 car_number: (reportToEdit as any).car_number || (reportToEdit as any).card_number || (reportToEdit as any).ob_number || '',
                 tracker_company: (reportToEdit as any).tracker_company || '',
+                triage_level: (reportToEdit as any).triage_level || 'P2',
+                patient_count: (reportToEdit as any).patient_count || 1,
+                assigned_unit: (reportToEdit as any).assigned_unit || '',
+                receiving_facility: (reportToEdit as any).receiving_facility || '',
+                special_hazards: (reportToEdit as any).special_hazards || '',
+                dispatch_notes: (reportToEdit as any).dispatch_notes || '',
                 ...reportToEdit,
                 location,
                 vehicle_involved: (reportToEdit as any).vehicle_involved !== undefined ? String((reportToEdit as any).vehicle_involved) : 'false',
@@ -220,6 +226,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             vehicles_involved: '1',
             injuries_reported: 'false',
             fatalities_reported: 'false',
+            triage_level: 'P2',
+            patient_count: 1,
+            assigned_unit: '',
+            receiving_facility: '',
+            special_hazards: '',
+            dispatch_notes: '',
             crime_outcome: '',
             arrests: 0,
             guns_recovered: 0,
@@ -801,6 +813,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     vehicles_involved: (formData.vehicle_involved === 'true' || formData.emergency_type === 'Kidnapping (taken with vehicle)') ? parseInt(formData.vehicles_involved || '1') : 0,
                     injuries_reported: formData.injuries_reported === 'true',
                     fatalities_reported: formData.fatalities_reported === 'true',
+                    triage_level: formData.triage_level || 'P2',
+                    patient_count: parseInt(formData.patient_count || '1'),
+                    assigned_unit: formData.assigned_unit || null,
+                    receiving_facility: formData.receiving_facility || null,
+                    special_hazards: formData.special_hazards || null,
+                    dispatch_notes: formData.dispatch_notes || null,
                     license_plate: formData.license_plate,
                     vehicle_make: formData.vehicle_make,
                     vehicle_model: formData.vehicle_model,
@@ -1738,6 +1756,131 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                         <option value="false">No</option>
                                         <option value="true">Yes</option>
                                     </select>
+                                </div>
+                            </div>
+
+                            {/* EMS Triage & Ambulance Dispatching Section */}
+                            <div className="p-4 bg-gray-900/90 dark:bg-gray-900 text-white rounded-xl border border-red-500/30 space-y-4 shadow-sm">
+                                <div className="flex items-center justify-between border-b border-gray-800 pb-2">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-red-400 flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                        EMS Incident Dispatching & Response Feedback
+                                    </h4>
+                                    <span className="text-[10px] font-semibold px-2 py-0.5 bg-red-950 text-red-300 border border-red-800/80 rounded">
+                                        EMS DISPATCH
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="triage_level" className="text-xs font-bold text-gray-200 block mb-1">
+                                            Triage Priority Level
+                                        </label>
+                                        <select
+                                            name="triage_level"
+                                            id="triage_level"
+                                            value={formData.triage_level || 'P2'}
+                                            onChange={handleChange}
+                                            className="w-full p-2.5 bg-gray-800 border border-gray-700 rounded-xl text-xs font-bold text-white focus:ring-2 focus:ring-red-500"
+                                        >
+                                            <option value="P1">P1 - RED (Critical / ALS)</option>
+                                            <option value="P2">P2 - YELLOW (Urgent / ILS)</option>
+                                            <option value="P3">P3 - GREEN (Non-Urgent / BLS)</option>
+                                            <option value="P4">P4 - BLUE (Deceased)</option>
+                                            <option value="P0">P0 - BLACK (Fatal)</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="patient_count" className="text-xs font-bold text-gray-200 block mb-1">
+                                            Patient Count
+                                        </label>
+                                        <input
+                                            type="number"
+                                            name="patient_count"
+                                            id="patient_count"
+                                            min="1"
+                                            value={formData.patient_count || 1}
+                                            onChange={handleChange}
+                                            className="w-full p-2.5 bg-gray-800 border border-gray-700 rounded-xl text-xs font-bold text-white focus:ring-2 focus:ring-red-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="assigned_unit" className="text-xs font-bold text-gray-200 block mb-1">
+                                            Assign Ambulance Unit
+                                        </label>
+                                        <select
+                                            name="assigned_unit"
+                                            id="assigned_unit"
+                                            value={formData.assigned_unit || ''}
+                                            onChange={handleChange}
+                                            className="w-full p-2.5 bg-gray-800 border border-gray-700 rounded-xl text-xs font-bold text-white focus:ring-2 focus:ring-red-500"
+                                        >
+                                            <option value="">-- Unassigned --</option>
+                                            <option value="Alpha-1 (ALS Ambulance)">Alpha-1 (ALS Ambulance)</option>
+                                            <option value="Bravo-2 (ILS Ambulance)">Bravo-2 (ILS Ambulance)</option>
+                                            <option value="Charlie-3 (BLS Rescue)">Charlie-3 (BLS Rescue)</option>
+                                            <option value="Delta-4 (Rapid Response)">Delta-4 (Rapid Response)</option>
+                                            <option value="Echo-5 (Critical Care Transport)">Echo-5 (Critical Care Transport)</option>
+                                            <option value="Foxtrot-6 (Heavy Rescue)">Foxtrot-6 (Heavy Rescue)</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="receiving_facility" className="text-xs font-bold text-gray-200 block mb-1">
+                                            Receiving Hospital
+                                        </label>
+                                        <select
+                                            name="receiving_facility"
+                                            id="receiving_facility"
+                                            value={formData.receiving_facility || ''}
+                                            onChange={handleChange}
+                                            className="w-full p-2.5 bg-gray-800 border border-gray-700 rounded-xl text-xs font-bold text-white focus:ring-2 focus:ring-red-500"
+                                        >
+                                            <option value="">-- Unassigned --</option>
+                                            <option value="Netcare Milpark Hospital">Netcare Milpark Hospital</option>
+                                            <option value="Charlotte Maxeke Academic Hospital">Charlotte Maxeke Academic Hospital</option>
+                                            <option value="Sunnyside Mediclinic">Sunnyside Mediclinic</option>
+                                            <option value="Life Fourways Hospital">Life Fourways Hospital</option>
+                                            <option value="Chris Hani Baragwanath Academic Hospital">Chris Hani Baragwanath Academic Hospital</option>
+                                            <option value="Morningside Mediclinic">Morningside Mediclinic</option>
+                                            <option value="Helen Joseph Hospital">Helen Joseph Hospital</option>
+                                            <option value="Steve Biko Academic Hospital">Steve Biko Academic Hospital</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label htmlFor="special_hazards" className="text-xs font-bold text-gray-200 block mb-1">
+                                        Special Hazards / Scene Notes
+                                    </label>
+                                    <textarea
+                                        name="special_hazards"
+                                        id="special_hazards"
+                                        rows={2}
+                                        value={formData.special_hazards || ''}
+                                        onChange={handleChange}
+                                        placeholder="Hazmat, downed powerlines, aggressive animals, violent crowd..."
+                                        className="w-full p-2.5 bg-gray-800 border border-gray-700 rounded-xl text-xs text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 resize-none"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label htmlFor="dispatch_notes" className="text-xs font-bold text-gray-200 block mb-1">
+                                        Dispatching Part & Response Feedback Notes
+                                    </label>
+                                    <textarea
+                                        name="dispatch_notes"
+                                        id="dispatch_notes"
+                                        rows={2}
+                                        value={formData.dispatch_notes || ''}
+                                        onChange={handleChange}
+                                        placeholder="Enter dispatch notes, unit status, transit feedback or ETA updates..."
+                                        className="w-full p-2.5 bg-gray-800 border border-gray-700 rounded-xl text-xs text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 resize-none"
+                                    />
                                 </div>
                             </div>
                             
