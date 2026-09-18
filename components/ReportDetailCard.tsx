@@ -42,6 +42,71 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     const [isGlobal, setIsGlobal] = useState<boolean>(report.is_global || false);
     const [sharedWithCompanyIds, setSharedWithCompanyIds] = useState<string[]>(report.shared_with_company_ids || []);
     const [isSavingShares, setIsSavingShares] = useState(false);
+    const [isAssignmentLoading, setIsAssignmentLoading] = useState(false);
+
+    const handleSelfAssignCard = async () => {
+        if (localReport.assigned_to === profile.id) {
+            addToast('You are already assigned to this incident.', 'info');
+            return;
+        }
+        setIsAssignmentLoading(true);
+        const tableName = localReport.type === 'vehicle' ? 'vehicle_reports' : ((localReport.type === 'emergency' || localReport.type === 'roadside') ? 'emergency_reports' : 'crime_reports');
+        const { error } = await supabase
+            .from(tableName)
+            .update({ assigned_to: profile.id, status: ReportStatus.ASSIGNED })
+            .eq('id', localReport.id);
+
+        if (error) {
+            addToast('Failed to assign report: ' + error.message, 'error');
+        } else {
+            addToast('Incident successfully assigned to you.', 'success');
+            setLocalReport(prev => ({ ...prev, assigned_to: profile.id, status: ReportStatus.ASSIGNED }));
+            await supabase.from('assignment_logs').insert({
+                report_id: localReport.id,
+                assigned_from: localReport.assigned_to || null,
+                assigned_to: profile.id,
+                assigned_by: profile.id
+            });
+            await supabase.from('report_updates').insert({
+                report_id: localReport.id,
+                user_id: profile.id,
+                content: `Responder ${profile.first_name} ${profile.surname} self-assigned to this incident.`
+            });
+        }
+        setIsAssignmentLoading(false);
+    };
+
+    const handleUnassignSelfCard = async () => {
+        if (localReport.assigned_to !== profile.id) {
+            addToast('You are not assigned to this incident.', 'info');
+            return;
+        }
+        setIsAssignmentLoading(true);
+        const tableName = localReport.type === 'vehicle' ? 'vehicle_reports' : ((localReport.type === 'emergency' || localReport.type === 'roadside') ? 'emergency_reports' : 'crime_reports');
+        const { error } = await supabase
+            .from(tableName)
+            .update({ assigned_to: null, status: ReportStatus.ACTIVE })
+            .eq('id', localReport.id);
+
+        if (error) {
+            addToast('Failed to unassign self: ' + error.message, 'error');
+        } else {
+            addToast('Successfully unassigned yourself from the incident.', 'success');
+            setLocalReport(prev => ({ ...prev, assigned_to: null, status: ReportStatus.ACTIVE }));
+            await supabase.from('assignment_logs').insert({
+                report_id: localReport.id,
+                assigned_from: profile.id,
+                assigned_to: null,
+                assigned_by: profile.id
+            });
+            await supabase.from('report_updates').insert({
+                report_id: localReport.id,
+                user_id: profile.id,
+                content: `Responder ${profile.first_name} ${profile.surname} unassigned self from this incident.`
+            });
+        }
+        setIsAssignmentLoading(false);
+    };
 
     useEffect(() => {
         setLocalReport(report);
@@ -1225,6 +1290,28 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     </div>
                 )}
             </div>
+
+            {profile.role === UserRole.RESPONDER && !isTerminalStatus && (
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
+                    {isAssignedResponder ? (
+                        <button
+                            onClick={handleUnassignSelfCard}
+                            disabled={isAssignmentLoading}
+                            className="w-full py-2.5 px-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 border border-red-200 dark:border-red-800"
+                        >
+                            {isAssignmentLoading ? <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" /> : 'Unassign Self from Incident'}
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleSelfAssignCard}
+                            disabled={isAssignmentLoading}
+                            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2"
+                        >
+                            {isAssignmentLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Self-Assign Incident'}
+                        </button>
+                    )}
+                </div>
+            )}
 
             {[ReportStatus.ACTIVE, ReportStatus.ASSIGNED, ReportStatus.IN_PROGRESS, ReportStatus.ON_SCENE].includes(localReport.status) && (
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">

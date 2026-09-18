@@ -593,6 +593,62 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         });
     };
 
+    const handleUnassignSelf = (report: Report) => {
+        if (report.assigned_to !== profile.id) {
+            addToast('You are not assigned to this incident.', 'info');
+            return;
+        }
+
+        setLocalConfirmModal({
+            isOpen: true,
+            title: 'Unassign Self from Incident',
+            message: `Are you sure you want to unassign yourself from incident (OB: ${report.ob_number || report.id.slice(0, 8)})? The report will be returned to the active queue.`,
+            confirmText: 'Unassign Self',
+            confirmVariant: 'danger',
+            onConfirm: async () => {
+                setLocalConfirmModal(null);
+                try {
+                    const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
+                    const updatePromises: PromiseLike<any>[] = [];
+                    updatePromises.push(supabase.from(tableName).update({ assigned_to: null, status: ReportStatus.ACTIVE }).eq('id', report.id));
+                    updatePromises.push(supabase.from('assignment_logs').insert({
+                        report_id: report.id,
+                        assigned_from: profile.id,
+                        assigned_to: null,
+                        assigned_by: profile.id
+                    }));
+                    updatePromises.push(supabase.from('report_updates').insert({
+                        report_id: report.id,
+                        user_id: profile.id,
+                        content: `Responder ${profile.first_name} ${profile.surname} unassigned self from this incident.`
+                    }));
+
+                    const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
+                    const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
+                    const { count: emergencyCount } = await supabase.from('emergency_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
+
+                    const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0) || (emergencyCount !== null && emergencyCount > 0);
+                    if (!hasOtherActiveAssignments) {
+                        updatePromises.push(fetch('/api/update-profile', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: profile.id, responder_status: ResponderStatus.AVAILABLE })
+                        }).then(res => res.ok ? { error: null } : res.json().then(data => ({ error: { message: data.error } }))));
+                    }
+
+                    const results = await Promise.all(updatePromises);
+                    const errors = results.map((r: any) => r.error).filter(Boolean);
+                    if (errors.length > 0) throw new Error(errors.map(e => e.message).join('\n'));
+
+                    addToast('Successfully unassigned yourself from the incident.', 'success');
+                    await fetchData();
+                } catch (e: any) {
+                    addToast('An error occurred while unassigning: ' + e.message, 'error');
+                }
+            }
+        });
+    };
+
     if (emsReportToGenerate) {
         return <EMSReportGenerator report={emsReportToGenerate} profile={profile} onBack={() => setEmsReportToGenerate(null)} />;
     }
@@ -724,7 +780,20 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                                                 {report.type === 'roadside' ? `CAR: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
                                             </span>
                                         </div>
-                                        <StatusBadge status={report.status} />
+                                        <div className="flex items-center gap-1.5">
+                                            <StatusBadge status={report.status} />
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleUnassignSelf(report);
+                                                }}
+                                                className="px-2 py-0.5 bg-red-100 hover:bg-red-200 dark:bg-red-950/80 dark:hover:bg-red-900/90 text-red-700 dark:text-red-300 rounded text-[10px] font-bold transition-colors border border-red-200 dark:border-red-800 flex items-center gap-1 shadow-xs"
+                                                title="Unassign self from this incident"
+                                            >
+                                                Unassign
+                                            </button>
+                                        </div>
                                     </div>
                                     
                                     <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 truncate">
@@ -928,8 +997,8 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
     const handleStandDown = () => {
         setConfirmModalState({
             isOpen: true,
-            title: 'Stand Down from Incident',
-            message: 'Are you sure you want to stand down from this incident? The report will be returned to the active queue.',
+            title: 'Unassign Self from Incident',
+            message: 'Are you sure you want to unassign yourself from this incident? The report will be returned to the active queue.',
             onConfirm: async () => {
                 setConfirmModalState(null);
                 setIsActionLoading('stand_down');
@@ -943,7 +1012,7 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                         assigned_to: null,
                         assigned_by: profile.id
                     }));
-                    updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Responder ${profile.first_name} ${profile.surname} has stood down.` }));
+                    updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Responder ${profile.first_name} ${profile.surname} unassigned self from this incident.` }));
 
                     const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
                     const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
@@ -961,15 +1030,15 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                     const errors = results.map((r: any) => r.error).filter(Boolean);
                     if (errors.length > 0) throw new Error(errors.map(e => e.message).join('\n'));
 
-                    addToast('Successfully stood down from the incident.', 'info');
+                    addToast('Successfully unassigned yourself from the incident.', 'info');
                     await fetchData();
                 } catch (e: any) {
-                    addToast('An error occurred while standing down: ' + e.message, 'error');
+                    addToast('An error occurred while unassigning: ' + e.message, 'error');
                 } finally {
                     setIsActionLoading(null);
                 }
             },
-            confirmText: 'Confirm Stand Down',
+            confirmText: 'Unassign Self',
             confirmVariant: 'danger'
         });
     };
@@ -1026,8 +1095,8 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                             Live Chat
                         </button>
                         {isAssignedToMe ? (
-                            <button onClick={handleStandDown} disabled={isTerminalStatus || !!isActionLoading} className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors font-medium text-sm disabled:opacity-50">
-                                {isActionLoading === 'stand_down' ? <Spinner /> : 'Stand Down'}
+                            <button onClick={handleStandDown} disabled={isTerminalStatus || !!isActionLoading} className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors font-medium text-sm disabled:opacity-50 flex items-center gap-1.5">
+                                {isActionLoading === 'stand_down' ? <Spinner /> : 'Unassign Self'}
                             </button>
                         ) : (
                             <button onClick={onSelfAssign} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold text-sm shadow-lg shadow-blue-600/20">
