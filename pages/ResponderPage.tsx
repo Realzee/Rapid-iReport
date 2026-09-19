@@ -220,7 +220,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         const { data: aData, error: aError } = await aQuery.order('reported_at', { ascending: false }).limit(50);
         const { data: usersData, error: usersError } = await supabase
             .from('profiles')
-            .select('id, first_name, surname, email, phone, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
+            .select('id, first_name, surname, email, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
             .eq('company_id', profile.company_id)
             .limit(100);
 
