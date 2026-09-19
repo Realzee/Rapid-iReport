@@ -198,11 +198,6 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         };
     }, [isOnDuty, requestWakeLock, releaseWakeLock]);
 
-    // A responder is "engaged" if they have any reports that are not in a terminal state.
-    const isEngaged = useMemo(() => 
-        assignedReports.some(r => !TERMINAL_REPORT_STATUSES.includes(r.status)),
-    [assignedReports]);
-
     useEffect(() => {
         // Initialize AudioContext on mount.
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -618,11 +613,14 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
 
     const handleDutyToggle = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const newDutyStatus = e.target.checked;
-        
         const newResponderStatus = newDutyStatus ? ResponderStatus.AVAILABLE : ResponderStatus.OFF_DUTY;
+        
         setLastSyncTimestamp(null);
         setLocationError(null);
     
+        // Optimistically update local profile state so toggle switch responds immediately
+        setProfile(prev => ({ ...prev, responder_status: newResponderStatus }));
+
         const updatePayload: { responder_status: ResponderStatus; location_coords?: null } = {
             responder_status: newResponderStatus,
         };
@@ -638,31 +636,29 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         }
     
         try {
+            // Update client Supabase table
+            await supabase.from('profiles').update(updatePayload).eq('id', profile.id);
+
             const response = await fetch('/api/update-profile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: profile.id, ...updatePayload })
             });
 
-            const contentType = response.headers.get('content-type');
-            let result;
-            if (contentType && contentType.includes('application/json')) {
-                result = await response.json();
-            } else {
-                const text = await response.text();
-                throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`);
+            if (response.ok) {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const result = await response.json();
+                    if (result && result.id) {
+                        setProfile(result);
+                    }
+                }
             }
-
-            if (!response.ok) {
-                throw new Error(result?.error || 'Failed to update duty status');
-            }
-
-            if (result) {
-                setProfile(result);
-            }
+            addToast(`Duty status changed to ${newDutyStatus ? 'Active Duty (Available)' : 'Off Duty'}.`, 'success');
         } catch (error: any) {
             console.error("Failed to update duty status:", error);
             setLocationError(`Failed to update duty status: ${error.message || 'Network error'}`);
+            addToast(`Failed to update duty status: ${error.message || 'Error'}`, 'error');
         }
     };
     
@@ -696,6 +692,11 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
     const myActiveAssignments = useMemo(() => {
         return activeAssignments.filter(r => r.assigned_to === profile.id);
     }, [activeAssignments, profile.id]);
+
+    // A responder is "engaged" if they have active claimed calls assigned to them.
+    const isEngaged = useMemo(() => 
+        myActiveAssignments.length > 0,
+    [myActiveAssignments]);
 
     const unassignedDispatchQueue = useMemo(() => {
         return activeAssignments.filter(r => r.assigned_to !== profile.id);

@@ -102,12 +102,18 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
 
     const handleMyStatusChange = async (newStatus: ResponderStatus) => {
         setIsUpdatingStatus(true);
+        setMyStatus(newStatus);
         try {
+            if (supabase && profile.id) {
+                await supabase.from('profiles').update({ responder_status: newStatus }).eq('id', profile.id);
+            }
+
             const response = await fetch('/api/update-profile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: profile.id,
+                    responder_status: newStatus,
                     updates: { responder_status: newStatus }
                 }),
             });
@@ -118,9 +124,6 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             }
 
             addToast(`Operational status updated to ${newStatus.replace(/_/g, ' ')}.`, 'success');
-            setMyStatus(newStatus);
-            
-            // Trigger fetch to reload counts/responders list immediately
             fetchData();
         } catch (err: any) {
             console.error("Failed to update status:", err);
