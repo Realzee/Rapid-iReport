@@ -39,11 +39,40 @@ interface ReleaseItem {
 
 const RELEASES: ReleaseItem[] = [
     {
-        id: 'rel-3.4.0',
-        version: 'v3.4.0',
+        id: 'rel-3.5.0',
+        version: 'v3.5.0',
         date: 'September 2026',
         badge: 'Current Version',
         badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+        title: 'Dispatch Queue Persistence, Responsive Duty Toggle & Automated Incident Lifecycle',
+        summary: 'Enhanced dispatch queue stability with persistent call claiming, responsive Active Duty status toggling, and automated queue clearing upon call resolution.',
+        highlights: [
+            {
+                category: 'EMS & Medical',
+                title: 'Persistent Call Claiming & Queue Synchronization',
+                description: 'Claimed emergency dispatches, EMS medical calls, roadside callouts, and crime reports now maintain strict responder ownership across data refreshes and status updates without reverting to unassigned queues.',
+                isNew: true
+            },
+            {
+                category: 'Tech Ops & Drivers',
+                title: 'Responsive Active Duty Status & Engagement Control',
+                description: 'Optimized duty status toggling with instant optimistic state updates. The engagement lock now strictly checks responder-assigned active calls rather than system-wide open dispatches.',
+                isNew: true
+            },
+            {
+                category: 'Reporting & Security',
+                title: 'Automated Incident Queue Clearing',
+                description: 'Dispatches are instantly unassigned and cleared from active dispatch lists upon reaching terminal states (Resolved, Recovered, Closed). The detail view automatically advances to remaining active incidents.',
+                isNew: true
+            }
+        ]
+    },
+    {
+        id: 'rel-3.4.0',
+        version: 'v3.4.0',
+        date: 'September 2026',
+        badge: 'Previous Version',
+        badgeColor: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
         title: 'EMS Responder Access & Unified Brand Synchronization',
         summary: 'Added direct EMS Responder screen access for Administrators & Controllers, alongside global logo, favicon, and company branding synchronization.',
         highlights: [

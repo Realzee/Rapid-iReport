@@ -542,7 +542,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
                   <button onClick={() => { setView('profile'); setDropdownOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-black dark:hover:text-white">Profile</button>
                   <button onClick={() => { setIsChangeLogOpen(true); setDropdownOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/30 flex items-center justify-between">
                     <span>System Change Log</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">v3.4.0</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">v3.5.0</span>
                   </button>
                   <button onClick={() => { setView('about'); setDropdownOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-black dark:hover:text-white">User Manual</button>
                   <a href="#" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-black dark:hover:text-white">Settings</a>
@@ -566,7 +566,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
             <NavLinks mobile={true} />
             <div className="border-t border-gray-200 dark:border-gray-700 my-2 pt-2 space-y-2">
                  <button onClick={() => handleMobileLinkClick('profile')} className={mobileNavLinkClasses('profile')}>Profile</button>
-                 <button onClick={() => { setIsChangeLogOpen(true); setMobileMenuOpen(false); }} className="block w-full text-left px-4 py-3 text-lg font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md">System Change Log (v3.4.0)</button>
+                 <button onClick={() => { setIsChangeLogOpen(true); setMobileMenuOpen(false); }} className="block w-full text-left px-4 py-3 text-lg font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md">System Change Log (v3.5.0)</button>
                  <button onClick={() => handleMobileLinkClick('about')} className={mobileNavLinkClasses('about' as any)}>User Manual</button>
                  <button onClick={handleLogout} className="block w-full text-left px-4 py-3 text-lg text-red-500 dark:text-red-400 hover:bg-red-500/10 rounded-md">Logout</button>
             </div>
