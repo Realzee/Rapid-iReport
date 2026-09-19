@@ -369,12 +369,11 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
     // Selected Report Object
     const selectedReport = useMemo(() => {
         return (
-            assignedReports.find(r => r.id === selectedReportId) ||
-            allRoadsideReports.find(r => r.id === selectedReportId) ||
+            activeDispatches.find(r => r.id === selectedReportId) ||
             activeDispatches[0] ||
             null
         );
-    }, [selectedReportId, assignedReports, allRoadsideReports, activeDispatches]);
+    }, [selectedReportId, activeDispatches]);
 
     const handleToggleReady = () => {
         const nextStatus = isReady ? ResponderStatus.OFF_DUTY : ResponderStatus.AVAILABLE;
@@ -404,11 +403,17 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
     const handleReportStatusStep = async (report: Report, nextStatus: ReportStatus, statusNote?: string) => {
         if (!supabase) return;
 
+        const isTerminal = TERMINAL_REPORT_STATUSES.includes(nextStatus) || nextStatus === ReportStatus.RESOLVED || nextStatus === ReportStatus.RECOVERED || nextStatus === ReportStatus.CLOSED;
+
         try {
             const updates: any = {
                 status: nextStatus,
-                assigned_to: profile.id, // Ensure assigned to current driver
+                assigned_to: isTerminal ? null : profile.id, // Unassign if resolved
             };
+
+            if (isTerminal) {
+                updates.completed_at = new Date().toISOString();
+            }
 
             if (nextStatus === ReportStatus.ON_SCENE && !(report as any).on_scene_at) {
                 updates.on_scene_at = new Date().toISOString();
@@ -429,12 +434,21 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
                 content: noteText,
             });
 
-            // If en route, update driver status as well
+            // Update driver duty status if needed
             if (nextStatus === ReportStatus.IN_PROGRESS && profile.responder_status !== ResponderStatus.EN_ROUTE) {
                 handleStatusChange(ResponderStatus.EN_ROUTE);
             } else if (nextStatus === ReportStatus.ON_SCENE && profile.responder_status !== ResponderStatus.ON_SCENE) {
                 handleStatusChange(ResponderStatus.ON_SCENE);
+            } else if (isTerminal) {
+                const remainingActive = activeDispatches.filter(r => r.id !== report.id);
+                if (remainingActive.length === 0) {
+                    handleStatusChange(ResponderStatus.AVAILABLE);
+                }
             }
+
+            // Optimistically update local lists
+            setAssignedReports(prev => prev.map(r => r.id === report.id ? { ...r, ...updates } : r));
+            setAllRoadsideReports(prev => prev.map(r => r.id === report.id ? { ...r, ...updates } : r));
 
             addToast(`Callout updated to ${nextStatus.replace(/_/g, ' ')}`, 'success');
             fetchReports();

@@ -124,12 +124,15 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         const handleLocalUpdate = (e: any) => {
             if (!e.detail) return;
             const { id, status, assigned_to } = e.detail;
-            if (assigned_to === null) {
+            const isTerminal = status && (TERMINAL_REPORT_STATUSES.includes(status) || status === ReportStatus.RESOLVED || status === ReportStatus.RECOVERED || status === ReportStatus.CLOSED || status === 'completed');
+            
+            if (assigned_to === null || isTerminal) {
                 setClaimedIds(prev => {
                     const next = new Set(prev);
                     next.delete(id);
                     return next;
                 });
+                setCirculationReports(prev => prev.filter(r => r.id !== id));
             } else if (assigned_to === profile.id) {
                 setClaimedIds(prev => new Set(prev).add(id));
             }
@@ -139,7 +142,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                     return {
                         ...r,
                         status: status || r.status,
-                        assigned_to: assigned_to !== undefined ? assigned_to : r.assigned_to
+                        assigned_to: (isTerminal || assigned_to === null) ? null : (assigned_to !== undefined ? assigned_to : r.assigned_to)
                     };
                 }
                 return r;
@@ -374,6 +377,13 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
 
         // Preserve claimed report assignments so status updates or re-fetches do not return calls to queue
         combined = combined.map(r => {
+            const isTerminal = TERMINAL_REPORT_STATUSES.includes(r.status) || r.status === ReportStatus.RESOLVED || r.status === ReportStatus.RECOVERED || r.status === ReportStatus.CLOSED || (r.status as any) === 'completed';
+            if (isTerminal) {
+                return {
+                    ...r,
+                    assigned_to: undefined
+                };
+            }
             if (claimedIds.has(r.id) || r.assigned_to === profile.id) {
                 return {
                     ...r,
@@ -385,7 +395,8 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         });
 
         setAssignedReports(combined);
-        if (combined.length > 0) setSelectedReportId(currentId => currentId || combined[0].id);
+        const activeCombined = combined.filter(r => ACTIVE_REPORT_STATUSES.includes(r.status));
+        if (activeCombined.length > 0) setSelectedReportId(currentId => currentId && activeCombined.some(r => r.id === currentId) ? currentId : activeCombined[0].id);
         
         setCirculationReports(circData);
 
@@ -703,13 +714,24 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
     }, [activeAssignments, profile.id]);
 
     const selectedReport = useMemo(() => {
-        let report = assignedReports.find(r => r.id === selectedReportId) || 
+        let report = activeAssignments.find(r => r.id === selectedReportId) || 
                      circulationReports.find(r => r.id === selectedReportId);
+        if (!report) {
+            report = myActiveAssignments[0] || unassignedDispatchQueue[0] || circulationReports[0];
+        }
         if (report && isEmsResponder && !isEmergencyReport(report) && (report as any).type !== 'emergency') {
             return undefined;
         }
         return report;
-    }, [assignedReports, circulationReports, selectedReportId, isEmsResponder]);
+    }, [activeAssignments, circulationReports, selectedReportId, isEmsResponder, myActiveAssignments, unassignedDispatchQueue]);
+
+    useEffect(() => {
+        if (selectedReport && selectedReport.id !== selectedReportId) {
+            setSelectedReportId(selectedReport.id);
+        } else if (!selectedReport && selectedReportId !== null) {
+            setSelectedReportId(null);
+        }
+    }, [selectedReport, selectedReportId]);
 
     const handleAnprHit = async (reportId: string) => {
         const { data, error } = await supabase
