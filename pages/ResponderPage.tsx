@@ -619,6 +619,14 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         });
     }, [assignedReports, isEmsResponder]);
 
+    const myActiveAssignments = useMemo(() => {
+        return activeAssignments.filter(r => r.assigned_to === profile.id);
+    }, [activeAssignments, profile.id]);
+
+    const unassignedDispatchQueue = useMemo(() => {
+        return activeAssignments.filter(r => r.assigned_to !== profile.id);
+    }, [activeAssignments, profile.id]);
+
     const selectedReport = useMemo(() => {
         let report = assignedReports.find(r => r.id === selectedReportId) || 
                      circulationReports.find(r => r.id === selectedReportId);
@@ -652,41 +660,75 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
 
         setLocalConfirmModal({
             isOpen: true,
-            title: 'Assign Incident to Yourself',
-            message: `Are you sure you want to assign the incident (OB: ${report.ob_number || report.id.slice(0, 8)}) to yourself?`,
+            title: 'Claim Dispatch Call',
+            message: `Are you sure you want to claim dispatch call (OB: ${report.ob_number || report.id.slice(0, 8)})?`,
+            confirmText: 'Claim Call',
             onConfirm: async () => {
                 setLocalConfirmModal(null);
-                const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
 
-                const { error } = await supabase
-                    .from(tableName)
-                    .update({ 
-                        assigned_to: profile.id,
-                        status: ReportStatus.ASSIGNED 
-                    })
-                    .eq('id', report.id);
+                // 1. Instantly update local state so the card moves immediately to My Claimed Calls
+                setAssignedReports(prev => prev.map(r => {
+                    if (r.id === report.id) {
+                        return {
+                            ...r,
+                            assigned_to: profile.id,
+                            status: ReportStatus.ASSIGNED
+                        };
+                    }
+                    return r;
+                }));
 
-                if (error) {
-                    addToast(`Failed to assign report: ${error.message}`, 'error');
-                } else {
-                    addToast('Incident successfully assigned to you.', 'success');
-                    // Log assignment
-                    await supabase.from('assignment_logs').insert({
-                        report_id: report.id,
-                        assigned_from: report.assigned_to,
-                        assigned_to: profile.id,
-                        assigned_by: profile.id
-                    });
-                    // Add update
-                    await supabase.from('report_updates').insert({
-                        report_id: report.id,
-                        user_id: profile.id,
-                        content: `Responder ${profile.first_name} ${profile.surname} self-assigned to this incident.`
-                    });
-                    
-                    setAnprFoundReport(null);
-                    setSelectedReportId(report.id);
-                    fetchData();
+                setSelectedReportId(report.id);
+                setAnprFoundReport(null);
+                addToast('Dispatch call claimed! It is now in My Claimed Calls.', 'success');
+
+                // 2. Persist to Database
+                try {
+                    if (report.id.startsWith('ems-sample-')) {
+                        // In-memory sample report: state already updated
+                    } else if (report.id.startsWith('ems-')) {
+                        const cleanEmsId = report.id.replace('ems-', '');
+                        await supabase
+                            .from('ems_dispatches')
+                            .update({
+                                assigned_unit: `${profile.first_name} ${profile.surname}`,
+                                status: 'EN_ROUTE'
+                            })
+                            .eq('id', cleanEmsId);
+                    } else {
+                        const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
+                        await supabase
+                            .from(tableName)
+                            .update({ 
+                                assigned_to: profile.id,
+                                status: ReportStatus.ASSIGNED 
+                            })
+                            .eq('id', report.id);
+
+                        await supabase.from('assignment_logs').insert({
+                            report_id: report.id,
+                            assigned_from: report.assigned_to || null,
+                            assigned_to: profile.id,
+                            assigned_by: profile.id
+                        });
+
+                        await supabase.from('report_updates').insert({
+                            report_id: report.id,
+                            user_id: profile.id,
+                            content: `Responder ${profile.first_name} ${profile.surname} claimed call.`
+                        });
+                    }
+
+                    // Update duty status to EN_ROUTE if needed
+                    if (profile.responder_status !== ResponderStatus.EN_ROUTE && profile.responder_status !== ResponderStatus.ON_SCENE) {
+                        fetch('/api/update-profile', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: profile.id, responder_status: ResponderStatus.EN_ROUTE })
+                        }).catch(e => console.warn('Status update exception:', e));
+                    }
+                } catch (err: any) {
+                    console.error('Error in handleSelfAssign DB update:', err);
                 }
             }
         });
@@ -701,48 +743,56 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         setLocalConfirmModal({
             isOpen: true,
             title: 'Unassign Self from Incident',
-            message: `Are you sure you want to unassign yourself from incident (OB: ${report.ob_number || report.id.slice(0, 8)})? The report will be returned to the active queue.`,
+            message: `Are you sure you want to unassign yourself from incident (OB: ${report.ob_number || report.id.slice(0, 8)})? The call will be returned to the dispatch queue.`,
             confirmText: 'Unassign Self',
             confirmVariant: 'danger',
             onConfirm: async () => {
                 setLocalConfirmModal(null);
-                try {
-                    const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
-                    const updatePromises: PromiseLike<any>[] = [];
-                    updatePromises.push(supabase.from(tableName).update({ assigned_to: null, status: ReportStatus.ACTIVE }).eq('id', report.id));
-                    updatePromises.push(supabase.from('assignment_logs').insert({
-                        report_id: report.id,
-                        assigned_from: profile.id,
-                        assigned_to: null,
-                        assigned_by: profile.id
-                    }));
-                    updatePromises.push(supabase.from('report_updates').insert({
-                        report_id: report.id,
-                        user_id: profile.id,
-                        content: `Responder ${profile.first_name} ${profile.surname} unassigned self from this incident.`
-                    }));
 
-                    const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
-                    const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
-                    const { count: emergencyCount } = await supabase.from('emergency_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
-
-                    const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0) || (emergencyCount !== null && emergencyCount > 0);
-                    if (!hasOtherActiveAssignments) {
-                        updatePromises.push(fetch('/api/update-profile', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ userId: profile.id, responder_status: ResponderStatus.AVAILABLE })
-                        }).then(res => res.ok ? { error: null } : res.json().then(data => ({ error: { message: data.error } }))));
+                // 1. Instantly update local state so the card moves back to Available Queue
+                setAssignedReports(prev => prev.map(r => {
+                    if (r.id === report.id) {
+                        return {
+                            ...r,
+                            assigned_to: undefined,
+                            status: ReportStatus.ACTIVE
+                        };
                     }
+                    return r;
+                }));
 
-                    const results = await Promise.all(updatePromises);
-                    const errors = results.map((r: any) => r.error).filter(Boolean);
-                    if (errors.length > 0) throw new Error(errors.map(e => e.message).join('\n'));
+                addToast('Unassigned self. Call returned to Available Queue.', 'success');
 
-                    addToast('Successfully unassigned yourself from the incident.', 'success');
-                    await fetchData();
+                // 2. Persist to Database
+                try {
+                    if (report.id.startsWith('ems-sample-')) {
+                        // In-memory sample
+                    } else if (report.id.startsWith('ems-')) {
+                        const cleanEmsId = report.id.replace('ems-', '');
+                        await supabase
+                            .from('ems_dispatches')
+                            .update({
+                                assigned_unit: null,
+                                status: 'PENDING'
+                            })
+                            .eq('id', cleanEmsId);
+                    } else {
+                        const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
+                        await supabase.from(tableName).update({ assigned_to: null, status: ReportStatus.ACTIVE }).eq('id', report.id);
+                        await supabase.from('assignment_logs').insert({
+                            report_id: report.id,
+                            assigned_from: profile.id,
+                            assigned_to: null,
+                            assigned_by: profile.id
+                        });
+                        await supabase.from('report_updates').insert({
+                            report_id: report.id,
+                            user_id: profile.id,
+                            content: `Responder ${profile.first_name} ${profile.surname} unassigned self from call.`
+                        });
+                    }
                 } catch (e: any) {
-                    addToast('An error occurred while unassigning: ' + e.message, 'error');
+                    console.error('Error in handleUnassignSelf DB update:', e);
                 }
             }
         });
@@ -838,7 +888,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                 
                 {isOnDuty && !isEmsResponder && <LookoutScanner profile={profile} onReportHit={handleAnprHit} />}
 
-                <div className="space-y-3">
+                <div className="space-y-5">
                     {!isEmsResponder && (
                         <CirculationListManager 
                             profile={profile} 
@@ -848,76 +898,141 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                         />
                     )}
                     
-                    <div className="flex items-center justify-between px-1">
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                            {isEmsResponder ? 'EMS Dispatch Queue' : 'Dispatch Queue'}
-                        </h2>
-                        <span className="bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-bold px-2.5 py-1 rounded-full">{activeAssignments.length}</span>
-                    </div>
-                    
-                    <div className="space-y-3 lg:h-[calc(100vh-32rem)] lg:overflow-y-auto pr-1 custom-scrollbar">
-                        {loading ? (
-                            <div className="flex justify-center items-center h-32">
-                                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                            </div>
-                        ) : activeAssignments.length === 0 ? (
-                            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
-                                <p className="text-gray-500 dark:text-gray-400 text-sm">No active assignments.</p>
-                                <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Stand by for dispatch.</p>
+                    {/* 1. My Claimed Calls Section */}
+                    <div className="bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-900/50 rounded-xl p-4 shadow-xs space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                                My Claimed Calls
+                            </h2>
+                            <span className="bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 text-xs font-extrabold px-2 py-0.5 rounded-full">
+                                {myActiveAssignments.length}
+                            </span>
+                        </div>
+
+                        {myActiveAssignments.length === 0 ? (
+                            <div className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-lg border border-dashed border-gray-200 dark:border-gray-700/60 text-center">
+                                <p className="text-xs text-gray-500 dark:text-gray-400">No claimed calls assigned to you.</p>
+                                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Claim a call from the dispatch queue below.</p>
                             </div>
                         ) : (
-                            activeAssignments.map(report => (
-                                <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
-                                    className={`group relative p-4 cursor-pointer rounded-xl border transition-all duration-200 ${selectedReportId === report.id 
-                                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 shadow-md transform scale-[1.02]' 
-                                        : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm'}`}>
-                                    
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <span className={`w-2 h-2 rounded-full ${report.severity === 'critical' ? 'bg-red-500 animate-pulse' : report.severity === 'high' ? 'bg-orange-500' : 'bg-blue-500'}`}></span>
-                                            <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
-                                                {report.type === 'roadside' ? `CAR: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <StatusBadge status={report.status} />
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (report.assigned_to === profile.id) {
+                            <div className="space-y-2.5">
+                                {myActiveAssignments.map(report => (
+                                    <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
+                                        className={`group relative p-3.5 cursor-pointer rounded-xl border transition-all duration-200 ${selectedReportId === report.id 
+                                            ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-500 shadow-sm' 
+                                            : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-emerald-400 hover:shadow-xs'}`}>
+                                        
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                <span className="font-mono text-xs text-emerald-700 dark:text-emerald-400 font-bold">
+                                                    {report.type === 'roadside' ? `CAR: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold rounded">
+                                                    CLAIMED
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
                                                         handleUnassignSelf(report);
-                                                    } else {
-                                                        handleSelfAssign(report);
-                                                    }
-                                                }}
-                                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors border flex items-center gap-1 shadow-xs ${
-                                                    report.assigned_to === profile.id
-                                                        ? 'bg-red-100 hover:bg-red-200 dark:bg-red-950/80 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800'
-                                                        : 'bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                                                }`}
-                                                title={report.assigned_to === profile.id ? 'Unassign self from this call' : 'Claim call from queue'}
-                                            >
-                                                {report.assigned_to === profile.id ? 'Unassign' : 'Claim Call'}
-                                            </button>
+                                                    }}
+                                                    className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 hover:bg-red-200 dark:bg-red-950/80 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 transition-colors shadow-xs"
+                                                    title="Unassign self from this call"
+                                                >
+                                                    Unassign
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-0.5 truncate">
+                                            {isVehicleReport(report) ? report.license_plate : ((report as any).title || (report as any).emergency_type || 'Emergency Call')}
+                                        </h3>
+                                        
+                                        <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 mb-2">
+                                            {isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isEmergencyReport(report) ? report.emergency_type : report.crime_type)}
+                                        </p>
+                                        
+                                        <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-2 mt-2">
+                                            <span>{safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}</span>
+                                            <span className="text-emerald-600 dark:text-emerald-400 font-medium group-hover:underline">Active Incident →</span>
                                         </div>
                                     </div>
-                                    
-                                    <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 truncate">
-                                        {isVehicleReport(report) ? report.license_plate : ((report as any).title || (report as any).emergency_type || 'Emergency Call')}
-                                    </h3>
-                                    
-                                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 mb-3">
-                                        {isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isEmergencyReport(report) ? report.emergency_type : report.crime_type)}
-                                    </p>
-                                    
-                                    <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-2 mt-2">
-                                        <span>{safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}</span>
-                                        <span className="group-hover:text-blue-500 transition-colors">View Details →</span>
-                                    </div>
-                                </div>
-                            ))
+                                ))}
+                            </div>
                         )}
+                    </div>
+
+                    {/* 2. Available Dispatch Queue Section */}
+                    <div className="space-y-3 pt-2">
+                        <div className="flex items-center justify-between px-1">
+                            <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                                {isEmsResponder ? 'Available EMS Queue' : 'Available Dispatch Queue'}
+                            </h2>
+                            <span className="bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                                {unassignedDispatchQueue.length}
+                            </span>
+                        </div>
+                        
+                        <div className="space-y-3 lg:max-h-[calc(100vh-38rem)] lg:overflow-y-auto pr-1 custom-scrollbar">
+                            {loading ? (
+                                <div className="flex justify-center items-center h-32">
+                                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                            ) : unassignedDispatchQueue.length === 0 ? (
+                                <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                                    <p className="text-gray-500 dark:text-gray-400 text-xs font-medium">No pending calls in queue.</p>
+                                    <p className="text-gray-400 dark:text-gray-500 text-[11px] mt-0.5">All calls claimed or standing by.</p>
+                                </div>
+                            ) : (
+                                unassignedDispatchQueue.map(report => (
+                                    <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
+                                        className={`group relative p-4 cursor-pointer rounded-xl border transition-all duration-200 ${selectedReportId === report.id 
+                                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 shadow-md transform scale-[1.01]' 
+                                            : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm'}`}>
+                                        
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-2 h-2 rounded-full ${report.severity === 'critical' ? 'bg-red-500 animate-pulse' : report.severity === 'high' ? 'bg-orange-500' : 'bg-blue-500'}`}></span>
+                                                <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+                                                    {report.type === 'roadside' ? `CAR: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <StatusBadge status={report.status} />
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleSelfAssign(report);
+                                                    }}
+                                                    className="px-2.5 py-1 rounded text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-xs flex items-center gap-1"
+                                                    title="Claim call from queue"
+                                                >
+                                                    Claim Call
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 truncate">
+                                            {isVehicleReport(report) ? report.license_plate : ((report as any).title || (report as any).emergency_type || 'Emergency Call')}
+                                        </h3>
+                                        
+                                        <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 mb-3">
+                                            {isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isEmergencyReport(report) ? report.emergency_type : report.crime_type)}
+                                        </p>
+                                        
+                                        <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-2 mt-2">
+                                            <span>{safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}</span>
+                                            <span className="group-hover:text-blue-500 transition-colors">View Details →</span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
