@@ -102,6 +102,56 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
     const [emsReportToGenerate, setEmsReportToGenerate] = useState<Report | null>(null);
 
+    const [claimedIds, setClaimedIds] = useState<Set<string>>(() => {
+        try {
+            const saved = localStorage.getItem(`responder_claimed_ids_${profile?.id}`);
+            return saved ? new Set(JSON.parse(saved)) : new Set();
+        } catch {
+            return new Set();
+        }
+    });
+
+    useEffect(() => {
+        if (!profile?.id) return;
+        try {
+            localStorage.setItem(`responder_claimed_ids_${profile.id}`, JSON.stringify(Array.from(claimedIds)));
+        } catch (e) {
+            console.warn('Could not save claimedIds:', e);
+        }
+    }, [claimedIds, profile?.id]);
+
+    useEffect(() => {
+        const handleLocalUpdate = (e: any) => {
+            if (!e.detail) return;
+            const { id, status, assigned_to } = e.detail;
+            if (assigned_to === null) {
+                setClaimedIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(id);
+                    return next;
+                });
+            } else if (assigned_to === profile.id) {
+                setClaimedIds(prev => new Set(prev).add(id));
+            }
+
+            setAssignedReports(prev => prev.map(r => {
+                if (r.id === id) {
+                    return {
+                        ...r,
+                        status: status || r.status,
+                        assigned_to: assigned_to !== undefined ? assigned_to : r.assigned_to
+                    };
+                }
+                return r;
+            }));
+        };
+
+        window.addEventListener('update-local-report-status', handleLocalUpdate as EventListener);
+        return () => {
+            window.removeEventListener('update-local-report-status', handleLocalUpdate as EventListener);
+        };
+    }, [profile.id]);
+
     useEffect(() => {
         const handleOpenEmsModal = (e: any) => {
             if (e.detail) {
@@ -242,7 +292,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                         reported_at: d.created_at || new Date().toISOString(),
                         reported_by: d.caller_name || 'EMS Dispatch Control',
                         company_id: profile.company_id || undefined,
-                        assigned_to: d.assigned_unit ? profile.id : undefined,
+                        assigned_to: (d.assigned_unit && (d.assigned_unit.toLowerCase().includes((profile.first_name || '').toLowerCase()) || d.assigned_unit.toLowerCase().includes((profile.surname || '').toLowerCase()) || d.assigned_unit === profile.id)) ? profile.id : undefined,
                     }));
                 }
             } catch (err) {
@@ -326,6 +376,19 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
             }
         }
         combined.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+
+        // Preserve claimed report assignments so status updates or re-fetches do not return calls to queue
+        combined = combined.map(r => {
+            if (claimedIds.has(r.id) || r.assigned_to === profile.id) {
+                return {
+                    ...r,
+                    assigned_to: profile.id,
+                    status: r.status === ReportStatus.ACTIVE ? ReportStatus.ASSIGNED : r.status
+                };
+            }
+            return r;
+        });
+
         setAssignedReports(combined);
         if (combined.length > 0) setSelectedReportId(currentId => currentId || combined[0].id);
         
@@ -336,7 +399,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
 
         setLoading(false);
         isInitialLoad.current = false;
-    }, [profile.id, profile.company_id, profile.role, profile.company?.name, isEmsResponder]);
+    }, [profile.id, profile.company_id, profile.role, profile.company?.name, isEmsResponder, claimedIds, profile.first_name, profile.surname]);
 
     useEffect(() => {
         fetchData();
@@ -364,7 +427,18 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
             setAssignedReports(prev => {
                 const exists = prev.some(r => r.id === newReport.id);
                 if (exists) { // UPDATE
-                    return prev.map(r => r.id === newReport.id ? newReport : r);
+                    return prev.map(r => {
+                        if (r.id === newReport.id) {
+                            const wasClaimedByMe = claimedIds.has(r.id) || r.assigned_to === profile.id;
+                            const isResolving = newReport.status === ReportStatus.RESOLVED || newReport.status === ReportStatus.RECOVERED || newReport.status === ReportStatus.CLOSED;
+                            return {
+                                ...newReport,
+                                assigned_to: (wasClaimedByMe && !isResolving) ? profile.id : newReport.assigned_to,
+                                status: (wasClaimedByMe && newReport.status === ReportStatus.ACTIVE) ? ReportStatus.ASSIGNED : newReport.status
+                            };
+                        }
+                        return r;
+                    });
                 }
                 
                 // NEW assignment or new queue dispatch. Play sound if not initial load.
@@ -667,6 +741,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                 setLocalConfirmModal(null);
 
                 // 1. Instantly update local state so the card moves immediately to My Claimed Calls
+                setClaimedIds(prev => new Set(prev).add(report.id));
                 setAssignedReports(prev => prev.map(r => {
                     if (r.id === report.id) {
                         return {
@@ -750,6 +825,11 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                 setLocalConfirmModal(null);
 
                 // 1. Instantly update local state so the card moves back to Available Queue
+                setClaimedIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(report.id);
+                    return next;
+                });
                 setAssignedReports(prev => prev.map(r => {
                     if (r.id === report.id) {
                         return {
@@ -1159,61 +1239,100 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
 
     const handleStatusUpdate = async (status: ReportStatus) => {
         setIsActionLoading(status);
-        const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
-    
-        const updatePromises: PromiseLike<any>[] = [];
-    
         const isResolving = status === ReportStatus.RESOLVED || status === ReportStatus.RECOVERED || status === ReportStatus.CLOSED;
-    
-        const reportUpdatePayload: { status: ReportStatus; assigned_to?: null; completed_at?: string | null } = { status };
-        if (isResolving) {
-            reportUpdatePayload.assigned_to = null;
-            reportUpdatePayload.completed_at = new Date().toISOString();
-            updatePromises.push(supabase.from('assignment_logs').insert({
-                report_id: report.id,
-                assigned_from: profile.id,
-                assigned_to: null,
-                assigned_by: profile.id
-            }));
-        }
-    
-        updatePromises.push(supabase.from(tableName).update(reportUpdatePayload).eq('id', report.id));
-        updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Status changed to: ${status.replace(/_/g, ' ')}` }));
-    
-        let newResponderStatus: ResponderStatus | null = null;
-        if (status === ReportStatus.IN_PROGRESS) {
-            newResponderStatus = ResponderStatus.EN_ROUTE;
-        } else if (status === ReportStatus.ON_SCENE) {
-            newResponderStatus = ResponderStatus.ON_SCENE;
-        } else if (isResolving) {
-            const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
-            const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
-            const { count: emergencyCount } = await supabase.from('emergency_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
-            
-            const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0) || (emergencyCount !== null && emergencyCount > 0);
-            if (!hasOtherActiveAssignments) {
-                newResponderStatus = ResponderStatus.AVAILABLE;
+
+        // Immediately update local state so card stays in My Claimed Calls
+        window.dispatchEvent(new CustomEvent('update-local-report-status', {
+            detail: { id: report.id, status, assigned_to: isResolving ? null : profile.id }
+        }));
+
+        try {
+            if (report.id.startsWith('ems-sample-')) {
+                addToast(`Status updated to ${status.replace(/_/g, ' ')}.`, 'success');
+                setIsActionLoading(null);
+                return;
             }
+
+            if (report.id.startsWith('ems-')) {
+                const cleanEmsId = report.id.replace('ems-', '');
+                const emsStatusMap: Record<string, string> = {
+                    [ReportStatus.IN_PROGRESS]: 'EN_ROUTE',
+                    [ReportStatus.ON_SCENE]: 'ON_SCENE',
+                    [ReportStatus.RESOLVED]: 'COMPLETED',
+                    [ReportStatus.CLOSED]: 'COMPLETED',
+                };
+                const newEmsStatus = emsStatusMap[status] || status;
+                await supabase
+                    .from('ems_dispatches')
+                    .update({ 
+                        status: newEmsStatus, 
+                        assigned_unit: isResolving ? null : `${profile.first_name} ${profile.surname}` 
+                    })
+                    .eq('id', cleanEmsId);
+
+                addToast(`Status updated to ${status.replace(/_/g, ' ')}.`, 'success');
+                setIsActionLoading(null);
+                return;
+            }
+
+            const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
+            const updatePromises: PromiseLike<any>[] = [];
+
+            const reportUpdatePayload: { status: ReportStatus; assigned_to?: string | null; completed_at?: string | null } = { status };
+            if (isResolving) {
+                reportUpdatePayload.assigned_to = null;
+                reportUpdatePayload.completed_at = new Date().toISOString();
+                updatePromises.push(supabase.from('assignment_logs').insert({
+                    report_id: report.id,
+                    assigned_from: profile.id,
+                    assigned_to: null,
+                    assigned_by: profile.id
+                }));
+            } else {
+                reportUpdatePayload.assigned_to = profile.id;
+            }
+
+            updatePromises.push(supabase.from(tableName).update(reportUpdatePayload).eq('id', report.id));
+            updatePromises.push(supabase.from('report_updates').insert({ report_id: report.id, user_id: profile.id, content: `Status changed to: ${status.replace(/_/g, ' ')}` }));
+
+            let newResponderStatus: ResponderStatus | null = null;
+            if (status === ReportStatus.IN_PROGRESS) {
+                newResponderStatus = ResponderStatus.EN_ROUTE;
+            } else if (status === ReportStatus.ON_SCENE) {
+                newResponderStatus = ResponderStatus.ON_SCENE;
+            } else if (isResolving) {
+                const { count: vehicleCount } = await supabase.from('vehicle_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
+                const { count: crimeCount } = await supabase.from('crime_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
+                const { count: emergencyCount } = await supabase.from('emergency_reports').select('*', { count: 'exact', head: true }).eq('assigned_to', profile.id).neq('id', report.id).in('status', ACTIVE_REPORT_STATUSES);
+                
+                const hasOtherActiveAssignments = (vehicleCount !== null && vehicleCount > 0) || (crimeCount !== null && crimeCount > 0) || (emergencyCount !== null && emergencyCount > 0);
+                if (!hasOtherActiveAssignments) {
+                    newResponderStatus = ResponderStatus.AVAILABLE;
+                }
+            }
+
+            if (newResponderStatus && profile.responder_status !== newResponderStatus) {
+                updatePromises.push(fetch('/api/update-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: profile.id, responder_status: newResponderStatus })
+                }).then(res => res.ok ? { error: null } : res.json().then(data => ({ error: { message: data.error } }))));
+            }
+            
+            const results = await Promise.all(updatePromises);
+            const errors = results.map((r: any) => r.error).filter(Boolean);
+            if (errors.length > 0) {
+                addToast('An error occurred while updating status. Please check the console.', 'error');
+                console.error('Status update errors:', errors);
+            } else {
+                addToast(`Status updated to ${status.replace(/_/g, ' ')}.`, 'success');
+            }
+        } catch (e: any) {
+            console.error('Error updating status:', e);
+            addToast('Failed to update status: ' + e.message, 'error');
+        } finally {
+            setIsActionLoading(null);
         }
-    
-        if (newResponderStatus && profile.responder_status !== newResponderStatus) {
-            updatePromises.push(fetch('/api/update-profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: profile.id, responder_status: newResponderStatus })
-            }).then(res => res.ok ? { error: null } : res.json().then(data => ({ error: { message: data.error } }))));
-        }
-        
-        const results = await Promise.all(updatePromises);
-        const errors = results.map((r: any) => r.error).filter(Boolean);
-        if (errors.length > 0) {
-            addToast('An error occurred while updating status. Please check the console.', 'error');
-            console.error('Status update errors:', errors);
-        } else {
-            addToast(`Status updated to ${status.replace(/_/g, ' ')}.`, 'success');
-            await fetchData();
-        }
-        setIsActionLoading(null);
     };
 
     const handleStandDown = () => {
@@ -1224,7 +1343,29 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
             onConfirm: async () => {
                 setConfirmModalState(null);
                 setIsActionLoading('stand_down');
+
+                window.dispatchEvent(new CustomEvent('update-local-report-status', {
+                    detail: { id: report.id, status: ReportStatus.ACTIVE, assigned_to: null }
+                }));
+
                 try {
+                    if (report.id.startsWith('ems-sample-')) {
+                        addToast('Successfully unassigned yourself from the incident.', 'info');
+                        setIsActionLoading(null);
+                        return;
+                    }
+
+                    if (report.id.startsWith('ems-')) {
+                        const cleanEmsId = report.id.replace('ems-', '');
+                        await supabase
+                            .from('ems_dispatches')
+                            .update({ assigned_unit: null, status: 'PENDING' })
+                            .eq('id', cleanEmsId);
+                        addToast('Successfully unassigned yourself from the incident.', 'info');
+                        setIsActionLoading(null);
+                        return;
+                    }
+
                     const tableName = isVehicleReport(report) ? 'vehicle_reports' : (isEmergencyReport(report) ? 'emergency_reports' : 'crime_reports');
                     const updatePromises: PromiseLike<any>[] = [];
                     updatePromises.push(supabase.from(tableName).update({ assigned_to: null, status: ReportStatus.ACTIVE }).eq('id', report.id));
@@ -1253,7 +1394,6 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                     if (errors.length > 0) throw new Error(errors.map(e => e.message).join('\n'));
 
                     addToast('Successfully unassigned yourself from the incident.', 'info');
-                    await fetchData();
                 } catch (e: any) {
                     addToast('An error occurred while unassigning: ' + e.message, 'error');
                 } finally {
