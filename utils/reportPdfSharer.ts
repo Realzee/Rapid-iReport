@@ -2,6 +2,46 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Report, Company } from '../types';
 
+const helperCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+const helperCtx = helperCanvas ? helperCanvas.getContext('2d') : null;
+
+/**
+ * Converts any CSS color string containing oklch / oklab into a standard RGB / RGBA or HEX color string.
+ */
+function convertCssColorToRgb(colorStr: string): string {
+  if (!colorStr) return colorStr;
+  if (!colorStr.includes('oklch') && !colorStr.includes('oklab') && !colorStr.includes('color(')) {
+    return colorStr;
+  }
+
+  if (helperCtx) {
+    try {
+      helperCtx.fillStyle = '#000000';
+      helperCtx.fillStyle = colorStr;
+      if (helperCtx.fillStyle && helperCtx.fillStyle !== '#000000') {
+        return helperCtx.fillStyle;
+      }
+    } catch {
+      // Fallback below
+    }
+  }
+
+  // Fallback if canvas context is unavailable
+  return colorStr
+    .replace(/oklch\([^)]+\)/gi, 'rgb(75, 85, 99)')
+    .replace(/oklab\([^)]+\)/gi, 'rgb(75, 85, 99)');
+}
+
+/**
+ * Replaces all occurrences of oklch(...) or oklab(...) in a CSS text string.
+ */
+function replaceOklchInCssString(cssText: string): string {
+  if (!cssText || (!cssText.includes('oklch') && !cssText.includes('oklab'))) return cssText;
+  return cssText
+    .replace(/oklch\([^)]+\)/gi, (match) => convertCssColorToRgb(match))
+    .replace(/oklab\([^)]+\)/gi, (match) => convertCssColorToRgb(match));
+}
+
 /**
  * Renders an HTML element representing a printable report docket into a jsPDF document Blob.
  */
@@ -16,6 +56,79 @@ export async function generateReportPdfBlob(
     logging: false,
     backgroundColor: '#ffffff',
     windowWidth: 1024,
+    onclone: (clonedDoc, clonedElement) => {
+      // 1. Process all <style> blocks in the cloned document
+      const styleElements = clonedDoc.querySelectorAll('style');
+      styleElements.forEach((styleEl) => {
+        if (styleEl.textContent && (styleEl.textContent.includes('oklch') || styleEl.textContent.includes('oklab'))) {
+          styleEl.textContent = replaceOklchInCssString(styleEl.textContent);
+        }
+      });
+
+      // 2. Process stylesheet rules
+      try {
+        const sheets = Array.from(clonedDoc.styleSheets);
+        sheets.forEach((sheet) => {
+          try {
+            const rules = Array.from(sheet.cssRules || (sheet as any).rules || []);
+            rules.forEach((rule: any) => {
+              if (rule.style && rule.style.cssText && (rule.style.cssText.includes('oklch') || rule.style.cssText.includes('oklab'))) {
+                rule.style.cssText = replaceOklchInCssString(rule.style.cssText);
+              }
+            });
+          } catch {
+            // Ignore CORS stylesheet errors
+          }
+        });
+      } catch {
+        // Ignore
+      }
+
+      // 3. Process inline styles and computed styles for all elements
+      const elementsToClean = Array.from(clonedDoc.querySelectorAll('*')) as HTMLElement[];
+      if (clonedElement) {
+        elementsToClean.push(clonedElement as HTMLElement);
+      }
+
+      const win = clonedDoc.defaultView || window;
+
+      elementsToClean.forEach((el) => {
+        // Clean inline style attribute
+        const styleAttr = el.getAttribute('style');
+        if (styleAttr && (styleAttr.includes('oklch') || styleAttr.includes('oklab'))) {
+          el.setAttribute('style', replaceOklchInCssString(styleAttr));
+        }
+
+        // Clean computed color properties that might cause html2canvas to fail
+        try {
+          const computed = win.getComputedStyle(el);
+          const colorProps = [
+            'color',
+            'background-color',
+            'border-color',
+            'border-top-color',
+            'border-right-color',
+            'border-bottom-color',
+            'border-left-color',
+            'outline-color',
+            'box-shadow',
+            'text-decoration-color',
+            'fill',
+            'stroke'
+          ];
+
+          colorProps.forEach((prop) => {
+            const val = computed.getPropertyValue(prop);
+            if (val && (val.includes('oklch') || val.includes('oklab'))) {
+              const fixedVal = replaceOklchInCssString(val);
+              el.style.setProperty(prop, fixedVal, 'important');
+            }
+          });
+        } catch {
+          // Continue
+        }
+      });
+    },
   });
 
   const imgData = canvas.toDataURL('image/jpeg', 0.95);
