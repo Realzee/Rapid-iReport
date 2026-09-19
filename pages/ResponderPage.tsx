@@ -209,9 +209,9 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         }
 
         let aQuery = supabase.from('emergency_reports').select('*');
-        if (isAdminOrController) {
+        if (isAdminOrController || isEmsResponder) {
             if (!isGlobalAdmin && profile.company_id) {
-                aQuery = aQuery.or(`company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`);
+                aQuery = aQuery.or(`company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"},assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
             }
         } else {
             aQuery = aQuery.or(`assigned_to.eq.${profile.id},reported_by.eq.${profile.id}`);
@@ -266,8 +266,20 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         const handleUpsert = (payload: any) => {
             const newReport = payload.new as Report;
             if (isEmsResponder && !isEmergencyReport(newReport) && (newReport as any).type !== 'emergency') return;
-            // Check if relevant to us (assigned OR reported by)
-            if (newReport.assigned_to !== profile.id && newReport.reported_by !== profile.id) return;
+
+            // Check if relevant
+            let isRelevant = false;
+            if (newReport.assigned_to === profile.id || newReport.reported_by === profile.id) {
+                isRelevant = true;
+            } else if (isEmsResponder) {
+                const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
+                isRelevant = isGlobalAdmin ||
+                             newReport.is_global ||
+                             newReport.company_id === profile.company_id ||
+                             (newReport.shared_with_company_ids && newReport.shared_with_company_ids.includes(profile.company_id!));
+            }
+
+            if (!isRelevant) return;
 
             setAssignedReports(prev => {
                 const exists = prev.some(r => r.id === newReport.id);
@@ -275,9 +287,12 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                     return prev.map(r => r.id === newReport.id ? newReport : r);
                 }
                 
-                // NEW assignment. Play sound if assigned to us and not initial load.
-                if (!isInitialLoad.current && newReport.assigned_to === profile.id) {
+                // NEW assignment or new queue dispatch. Play sound if not initial load.
+                if (!isInitialLoad.current) {
                     playAssignmentSound();
+                    if (isEmsResponder) {
+                        addToast(`🚨 New EMS Dispatch in Queue: ${newReport.ob_number || (newReport as any).title || (newReport as any).emergency_type || 'Emergency Call'}`, 'info');
+                    }
                 }
 
                 const updatedReports = [newReport, ...prev];
@@ -297,8 +312,8 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
             }
 
             if (payload.eventType === 'UPDATE' && newReport) {
-                if (newReport.assigned_to !== profile.id && newReport.reported_by !== profile.id) {
-                    // No longer relevant
+                if (!isEmsResponder && newReport.assigned_to !== profile.id && newReport.reported_by !== profile.id) {
+                    // No longer relevant for standard responder
                     setAssignedReports(prev => prev.filter(r => r.id !== newReport.id));
                     setSelectedReportId(currentId => currentId === newReport.id ? null : currentId);
                 }
@@ -362,17 +377,21 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
+            // Listen for ALL changes to emergency_reports for live EMS dispatch queue updates
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, (payload) => {
+                handleUpsert(payload);
+                handlePotentialUnassignmentOrDelete(payload);
+            })
             // Listen for all changes to handle unassignments, deletions, and circulation updates
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, (payload) => {
                 handlePotentialUnassignmentOrDelete(payload);
                 handleCirculationUpdate(payload);
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports' }, handlePotentialUnassignmentOrDelete)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, handlePotentialUnassignmentOrDelete)
             .subscribe();
         
         return () => { supabase.removeChannel(channel); };
-    }, [profile.id]);
+    }, [profile.id, profile.company_id, profile.role, isEmsResponder, addToast]);
 
     // ... (existing functions)
 
@@ -786,12 +805,20 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                                                 type="button"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    handleUnassignSelf(report);
+                                                    if (report.assigned_to === profile.id) {
+                                                        handleUnassignSelf(report);
+                                                    } else {
+                                                        handleSelfAssign(report);
+                                                    }
                                                 }}
-                                                className="px-2 py-0.5 bg-red-100 hover:bg-red-200 dark:bg-red-950/80 dark:hover:bg-red-900/90 text-red-700 dark:text-red-300 rounded text-[10px] font-bold transition-colors border border-red-200 dark:border-red-800 flex items-center gap-1 shadow-xs"
-                                                title="Unassign self from this incident"
+                                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors border flex items-center gap-1 shadow-xs ${
+                                                    report.assigned_to === profile.id
+                                                        ? 'bg-red-100 hover:bg-red-200 dark:bg-red-950/80 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800'
+                                                        : 'bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                                }`}
+                                                title={report.assigned_to === profile.id ? 'Unassign self from this call' : 'Claim call from queue'}
                                             >
-                                                Unassign
+                                                {report.assigned_to === profile.id ? 'Unassign' : 'Claim Call'}
                                             </button>
                                         </div>
                                     </div>

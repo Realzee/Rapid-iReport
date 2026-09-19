@@ -322,8 +322,30 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
       );
     }
 
+    if (profile.role === UserRole.EMS_RESPONDER || (profile.role as string) === 'ems_responder') {
+      return (
+        <>
+          <button onClick={() => clickHandler('ems_dispatch')} className={classGetter('ems_dispatch')}>
+            <AmbulanceIcon className="w-4 h-4 mr-2 text-red-500 dark:text-red-400" /> Dispatch Queue
+          </button>
+          <button onClick={() => clickHandler('ems_responder')} className={classGetter('ems_responder')}>
+            <HeartPulseIcon className="w-4 h-4 mr-2 text-rose-500 dark:text-rose-400" /> EMS Responder
+          </button>
+        </>
+      );
+    }
+
     if (profile.role === UserRole.RESPONDER) {
-      return null;
+      return (
+        <>
+          <button onClick={() => clickHandler('ems_dispatch')} className={classGetter('ems_dispatch')}>
+            <AmbulanceIcon className="w-4 h-4 mr-2 text-red-500 dark:text-red-400" /> Dispatch Queue
+          </button>
+          <button onClick={() => clickHandler('ems_responder')} className={classGetter('ems_responder')}>
+            <HeartPulseIcon className="w-4 h-4 mr-2 text-rose-500 dark:text-rose-400" /> Responder Console
+          </button>
+        </>
+      );
     }
 
     if (profile.role === UserRole.EMS_CONTROLLER || (profile.role as string) === 'ems_controller') {
