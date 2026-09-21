@@ -17,7 +17,8 @@ export default async function handler(req: any, res: any) {
             const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
                 email,
                 password,
-                email_confirm: true 
+                email_confirm: true,
+                user_metadata: profileData || {}
             });
 
             if (authError) {

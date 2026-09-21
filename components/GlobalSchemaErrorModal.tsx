@@ -244,7 +244,32 @@ CREATE TRIGGER on_vehicle_report_created
 DROP TRIGGER IF EXISTS on_crime_report_created ON public.crime_reports;
 CREATE TRIGGER on_crime_report_created
   AFTER INSERT ON public.crime_reports
-  FOR EACH ROW EXECUTE FUNCTION public.notify_staff_on_new_report();`;
+  FOR EACH ROW EXECUTE FUNCTION public.notify_staff_on_new_report();
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, first_name, surname, role, status, company_id, cell, vehicle_reg, home_address, ice_no, medical_aid, psira_number)
+  VALUES (
+    new.id, new.email,
+    COALESCE(new.raw_user_meta_data ->> 'first_name', ''),
+    COALESCE(new.raw_user_meta_data ->> 'surname', ''),
+    'user', 'pending',
+    (new.raw_user_meta_data ->> 'company_id')::uuid,
+    new.raw_user_meta_data ->> 'cell',
+    new.raw_user_meta_data ->> 'vehicle_reg',
+    new.raw_user_meta_data ->> 'home_address',
+    new.raw_user_meta_data ->> 'ice_no',
+    new.raw_user_meta_data ->> 'medical_aid',
+    new.raw_user_meta_data ->> 'psira_number'
+  ) ON CONFLICT (id) DO NOTHING;
+  RETURN new;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();`;
 
     const handleAttemptFix = async () => {
         setIsFixing(true);

@@ -197,15 +197,22 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-    INSERT INTO public.profiles (id, email, first_name, surname, name, role, status)
+    INSERT INTO public.profiles (id, email, first_name, surname, role, status, company_id, cell, vehicle_reg, home_address, ice_no, medical_aid, psira_number)
     VALUES (
         NEW.id, NEW.email,
         COALESCE(NEW.raw_user_meta_data->>'first_name', ''),
         COALESCE(NEW.raw_user_meta_data->>'surname', ''),
-        COALESCE(NEW.raw_user_meta_data->>'name', CONCAT(COALESCE(NEW.raw_user_meta_data->>'first_name', ''), ' ', COALESCE(NEW.raw_user_meta_data->>'surname', ''))),
-        'user'::public.user_role, 'pending'::public.user_status
+        COALESCE((NEW.raw_user_meta_data->>'role')::public.user_role, 'user'::public.user_role),
+        COALESCE((NEW.raw_user_meta_data->>'status')::public.user_status, 'pending'::public.user_status),
+        (NEW.raw_user_meta_data->>'company_id')::uuid,
+        NEW.raw_user_meta_data->>'cell',
+        NEW.raw_user_meta_data->>'vehicle_reg',
+        NEW.raw_user_meta_data->>'home_address',
+        NEW.raw_user_meta_data->>'ice_no',
+        NEW.raw_user_meta_data->>'medical_aid',
+        NEW.raw_user_meta_data->>'psira_number'
     ) ON CONFLICT (id) DO NOTHING;
     RETURN NEW;
 END;
