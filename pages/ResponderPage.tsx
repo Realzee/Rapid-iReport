@@ -183,6 +183,49 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
     const [anprFoundReport, setAnprFoundReport] = useState<VehicleReport | null>(null);
     const [localConfirmModal, setLocalConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void } | null>(null);
 
+    const [userLinkedUnit, setUserLinkedUnit] = useState<string>(() => {
+        try {
+            return profile.assigned_unit || localStorage.getItem(`ems_linked_unit_${profile.id}`) || 'Medic Alpha-1 (ALS)';
+        } catch {
+            return 'Medic Alpha-1 (ALS)';
+        }
+    });
+
+    const [isUnitChangeModalOpen, setIsUnitChangeModalOpen] = useState(false);
+    const [customUnitInput, setCustomUnitInput] = useState('');
+
+    const availableUnits = useMemo(() => {
+        try {
+            const saved = localStorage.getItem('ems_fleet_units');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+        } catch {}
+        return [
+            { id: 'u1', name: 'Medic Alpha-1 (ALS)', type: 'Advanced Life Support', callSign: 'A-1', cert: 'ALS' },
+            { id: 'u2', name: 'Ambulance Bravo-2 (ILS)', type: 'Intermediate Life Support', callSign: 'B-2', cert: 'ILS' },
+            { id: 'u3', name: 'Medic Charlie-3 (ALS)', type: 'Rapid Response Vehicle', callSign: 'C-3', cert: 'ALS' },
+            { id: 'u4', name: 'Ambulance Delta-4 (BLS)', type: 'Basic Life Support', callSign: 'D-4', cert: 'BLS' },
+            { id: 'u5', name: 'Rescue Unit 1', type: 'Heavy Extrication', callSign: 'R-1', cert: 'RESCUE' },
+        ];
+    }, []);
+
+    const handleSelectLinkedUnit = async (unitName: string) => {
+        setUserLinkedUnit(unitName);
+        localStorage.setItem(`ems_linked_unit_${profile.id}`, unitName);
+        if (setProfile && profile) {
+            setProfile({ ...profile, assigned_unit: unitName });
+        }
+        try {
+            await supabase.from('profiles').update({ assigned_unit: unitName }).eq('id', profile.id);
+            addToast(`EMS Unit linked to ${unitName}.`, 'success');
+        } catch (e) {
+            console.warn('Could not update assigned_unit in DB:', e);
+        }
+        setIsUnitChangeModalOpen(false);
+    };
+
     const [emsShiftRole, setEmsShiftRole] = useState<'driver' | 'crew'>(() => {
         try {
             return (profile.ems_shift_role as any) || localStorage.getItem('ems_shift_role') || 'driver';
@@ -245,7 +288,15 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         oscillator.stop(context.currentTime + 0.15); // Short and sharp
     };
 
-    const isEmsResponder = Boolean(isEmsMode || profile.role === UserRole.EMS_RESPONDER || (profile.role as string) === 'ems_responder');
+    const isEmsResponder = Boolean(
+        isEmsMode || 
+        profile.role === UserRole.EMS_RESPONDER || 
+        (profile.role as string) === 'ems_responder' || 
+        (profile.role as string) === 'responder' || 
+        (profile.role as string) === 'driver' || 
+        profile.assigned_unit || 
+        localStorage.getItem(`ems_linked_unit_${profile.id}`)
+    );
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -255,8 +306,6 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         let vData: any[] = [];
         let cData: any[] = [];
 
-        // EMS Responders MUST ONLY see EMS dispatched reports (emergency_reports).
-        // Vehicle & crime reports are skipped entirely for EMS Responders.
         if (!isEmsResponder) {
             let vQuery = supabase.from('vehicle_reports').select('*');
             let cQuery = supabase.from('crime_reports').select('*');
@@ -290,34 +339,59 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         const { data: aData, error: aError } = await aQuery.order('reported_at', { ascending: false }).limit(50);
         
         let emsDispatchesMapped: any[] = [];
-        if (isEmsResponder) {
-            try {
-                const { data: emsData } = await supabase
-                    .from('ems_dispatches')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (emsData && emsData.length > 0) {
-                    emsDispatchesMapped = emsData.map((d: any) => ({
-                        id: d.id,
+        try {
+            const { data: emsData, error: emsErr } = await supabase
+                .from('ems_dispatches')
+                .select('*')
+                .order('created_at', { ascending: false });
+            
+            if (emsErr) {
+                console.warn('EMS dispatches fetch error:', emsErr);
+            }
+
+            if (emsData && emsData.length > 0) {
+                emsDispatchesMapped = emsData.map((d: any) => {
+                    const rawUnit = d.assigned_unit || '';
+                    const myUnit = (userLinkedUnit || profile.assigned_unit || '').toLowerCase();
+                    const isUnitMatch = Boolean(
+                        myUnit && rawUnit && (
+                            rawUnit.toLowerCase().includes(myUnit) ||
+                            myUnit.includes(rawUnit.toLowerCase()) ||
+                            rawUnit.toLowerCase().includes((profile.first_name || '').toLowerCase()) ||
+                            rawUnit.toLowerCase().includes((profile.surname || '').toLowerCase())
+                        )
+                    );
+
+                    const dispatchId = String(d.id).startsWith('ems-') ? String(d.id) : `ems-${d.id}`;
+                    const isClaimedLocally = claimedIds.has(dispatchId);
+
+                    return {
+                        id: dispatchId,
+                        raw_id: d.id,
                         type: 'emergency',
-                        ob_number: d.ob_number || `EMS-${d.id.slice(0, 6)}`,
+                        ob_number: d.ob_number || `EMS-${String(d.id).slice(0, 6)}`,
                         title: d.chief_complaint || `EMS Medical Call (${d.triage_level || 'P2'})`,
                         emergency_type: d.chief_complaint || `EMS Call (${d.triage_level || 'P2'})`,
                         severity: d.triage_level === 'P1' ? 'critical' : d.triage_level === 'P2' ? 'high' : 'medium',
                         description: `${d.chief_complaint || 'Medical Emergency'}\nCaller: ${d.caller_name || 'Dispatch'} (${d.caller_phone || 'N/A'})\nAssigned Unit: ${d.assigned_unit || 'Unassigned'}\nFacility: ${d.receiving_facility || 'Pending'}\nNotes: ${d.dispatch_notes || 'None'}`,
                         location: d.location || 'Johannesburg',
                         location_coords: d.location_coords || { lat: -26.2041, lng: 28.0473 },
-                        status: (d.status ? d.status.toLowerCase() : 'open') as any,
+                        status: (d.status ? d.status.toLowerCase() : 'dispatched') as any,
                         reported_at: d.created_at || new Date().toISOString(),
                         reported_by: d.caller_name || 'EMS Dispatch Control',
                         company_id: profile.company_id || undefined,
-                        assigned_to: (d.assigned_unit && (d.assigned_unit.toLowerCase().includes((profile.first_name || '').toLowerCase()) || d.assigned_unit.toLowerCase().includes((profile.surname || '').toLowerCase()) || d.assigned_unit === profile.id)) ? profile.id : undefined,
-                    }));
-                }
-            } catch (err) {
-                console.warn('Error fetching ems_dispatches:', err);
+                        assigned_unit: d.assigned_unit || '',
+                        receiving_facility: d.receiving_facility || '',
+                        triage_level: d.triage_level || 'P2',
+                        caller_phone: d.caller_phone || '',
+                        caller_name: d.caller_name || '',
+                        is_ems_dispatch: true,
+                        assigned_to: (isUnitMatch || isClaimedLocally) ? profile.id : undefined,
+                    };
+                });
             }
+        } catch (err) {
+            console.warn('Error fetching ems_dispatches:', err);
         }
 
         const { data: usersData, error: usersError } = await supabase
@@ -344,30 +418,34 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         
         let combined = [...vData, ...cData, ...(aData || []), ...emsDispatchesMapped];
         if (isEmsResponder) {
-            combined = combined.filter(r => 
-                String(r.id).startsWith('ems-') || 
-                ((r as any).type === 'emergency' && (
-                    ((r as any).emergency_type && (
-                        (r as any).emergency_type.toLowerCase().includes('medical') ||
-                        (r as any).emergency_type.toLowerCase().includes('mva') ||
-                        (r as any).emergency_type.toLowerCase().includes('ems') ||
-                        (r as any).emergency_type.toLowerCase().includes('patient') ||
-                        (r as any).emergency_type.toLowerCase().includes('cardiac') ||
-                        (r as any).emergency_type.toLowerCase().includes('trauma') ||
-                        (r as any).emergency_type.toLowerCase().includes('respiratory') ||
-                        (r as any).emergency_type.toLowerCase().includes('collision') ||
-                        (r as any).emergency_type.toLowerCase().includes('stroke')
-                    )) ||
-                    ((r as any).title && (
-                        (r as any).title.toLowerCase().includes('p1') ||
-                        (r as any).title.toLowerCase().includes('p2') ||
-                        (r as any).title.toLowerCase().includes('p3') ||
-                        (r as any).title.toLowerCase().includes('ems') ||
-                        (r as any).title.toLowerCase().includes('mva') ||
-                        (r as any).title.toLowerCase().includes('patient')
+            if (emsDispatchesMapped.length > 0) {
+                combined = emsDispatchesMapped;
+            } else {
+                combined = combined.filter(r => 
+                    String(r.id).startsWith('ems-') || 
+                    ((r as any).type === 'emergency' && (
+                        ((r as any).emergency_type && (
+                            (r as any).emergency_type.toLowerCase().includes('medical') ||
+                            (r as any).emergency_type.toLowerCase().includes('mva') ||
+                            (r as any).emergency_type.toLowerCase().includes('ems') ||
+                            (r as any).emergency_type.toLowerCase().includes('patient') ||
+                            (r as any).emergency_type.toLowerCase().includes('cardiac') ||
+                            (r as any).emergency_type.toLowerCase().includes('trauma') ||
+                            (r as any).emergency_type.toLowerCase().includes('respiratory') ||
+                            (r as any).emergency_type.toLowerCase().includes('collision') ||
+                            (r as any).emergency_type.toLowerCase().includes('stroke')
+                        )) ||
+                        ((r as any).title && (
+                            (r as any).title.toLowerCase().includes('p1') ||
+                            (r as any).title.toLowerCase().includes('p2') ||
+                            (r as any).title.toLowerCase().includes('p3') ||
+                            (r as any).title.toLowerCase().includes('ems') ||
+                            (r as any).title.toLowerCase().includes('mva') ||
+                            (r as any).title.toLowerCase().includes('patient')
+                        ))
                     ))
-                ))
-            );
+                );
+            }
             if (combined.length === 0) {
                 combined = [
                     {
@@ -384,6 +462,8 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                         reported_at: new Date(Date.now() - 12 * 60000).toISOString(),
                         reported_by: 'EMS Dispatch Control',
                         company_id: profile.company_id || undefined,
+                        assigned_unit: userLinkedUnit || 'Medic Alpha-1 (ALS)',
+                        triage_level: 'P1'
                     },
                     {
                         id: 'ems-sample-2',
@@ -399,6 +479,8 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                         reported_at: new Date(Date.now() - 28 * 60000).toISOString(),
                         reported_by: 'EMS Dispatch Control',
                         company_id: profile.company_id || undefined,
+                        assigned_unit: 'Ambulance Bravo-2 (ILS)',
+                        triage_level: 'P2'
                     },
                     {
                         id: 'ems-sample-3',
@@ -414,6 +496,8 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                         reported_at: new Date(Date.now() - 45 * 60000).toISOString(),
                         reported_by: 'Sandton Security Control',
                         company_id: profile.company_id || undefined,
+                        assigned_unit: 'Medic Charlie-3 (ALS)',
+                        triage_level: 'P1'
                     }
                 ];
             }
@@ -582,10 +666,13 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'crime_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports', filter: `reported_by=eq.${profile.id}` }, handleUpsert)
-            // Listen for ALL changes to emergency_reports for live EMS dispatch queue updates
+            // Listen for ALL changes to emergency_reports and ems_dispatches for live EMS dispatch queue updates
             .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, (payload) => {
                 handleUpsert(payload);
                 handlePotentialUnassignmentOrDelete(payload);
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ems_dispatches' }, () => {
+                fetchData();
             })
             // Listen for all changes to handle unassignments, deletions, and circulation updates
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_reports' }, (payload) => {
@@ -737,17 +824,31 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
     }, []);
     
     const activeAssignments = useMemo(() => {
-        const activeStatuses = ACTIVE_REPORT_STATUSES;
+        const terminalStatuses = ['completed', 'cancelled', 'refusal', 'not_transporting', 'closed', 'resolved', 'recovered'];
         return assignedReports.filter(r => {
-            if (!activeStatuses.includes(r.status)) return false;
-            if (isEmsResponder) return isEmergencyReport(r) || (r as any).type === 'emergency';
-            return true;
+            const rawStatus = String(r.status || '').toLowerCase();
+            if (terminalStatuses.includes(rawStatus)) return false;
+
+            if (isEmsResponder || (r as any).is_ems_dispatch) {
+                return true;
+            }
+
+            const activeStatuses = [...ACTIVE_REPORT_STATUSES, 'dispatched', 'en_route', 'on_scene', 'transporting', 'at_hospital', 'pending', 'open', 'assigned', 'in_progress', 'active'];
+            return activeStatuses.includes(rawStatus as any);
         });
     }, [assignedReports, isEmsResponder]);
 
     const myActiveAssignments = useMemo(() => {
-        return activeAssignments.filter(r => r.assigned_to === profile.id);
-    }, [activeAssignments, profile.id]);
+        return activeAssignments.filter(r => {
+            if (r.assigned_to === profile.id) return true;
+            if (isEmsResponder && userLinkedUnit && (r as any).assigned_unit) {
+                const callUnit = String((r as any).assigned_unit).toLowerCase();
+                const myUnit = userLinkedUnit.toLowerCase();
+                return callUnit.includes(myUnit) || myUnit.includes(callUnit);
+            }
+            return false;
+        });
+    }, [activeAssignments, profile.id, isEmsResponder, userLinkedUnit]);
 
     // A responder is "engaged" if they have active claimed calls assigned to them.
     const isEngaged = useMemo(() => 
@@ -755,8 +856,19 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
     [myActiveAssignments]);
 
     const unassignedDispatchQueue = useMemo(() => {
-        return activeAssignments.filter(r => r.assigned_to !== profile.id);
-    }, [activeAssignments, profile.id]);
+        const queue = activeAssignments.filter(r => !myActiveAssignments.some(m => m.id === r.id));
+        if (isEmsResponder && userLinkedUnit) {
+            return [...queue].sort((a, b) => {
+                const aUnit = (a as any).assigned_unit ? String((a as any).assigned_unit).toLowerCase() : '';
+                const bUnit = (b as any).assigned_unit ? String((b as any).assigned_unit).toLowerCase() : '';
+                const myUnit = userLinkedUnit.toLowerCase();
+                const aMatch = aUnit && (aUnit.includes(myUnit) || myUnit.includes(aUnit)) ? 1 : 0;
+                const bMatch = bUnit && (bUnit.includes(myUnit) || myUnit.includes(bUnit)) ? 1 : 0;
+                return bMatch - aMatch;
+            });
+        }
+        return queue;
+    }, [activeAssignments, myActiveAssignments, isEmsResponder, userLinkedUnit]);
 
     const selectedReport = useMemo(() => {
         let report = activeAssignments.find(r => r.id === selectedReportId) || 
@@ -955,6 +1067,46 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Left Column: Duty Status & Assignments */}
             <div className="lg:col-span-4 space-y-6">
+                 {/* Unit Linkage Banner */}
+                 {isEmsResponder && (
+                    <div className="bg-gradient-to-r from-red-950 via-rose-900 to-red-900 border border-red-500/40 rounded-2xl p-4 shadow-lg text-white space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shrink-0">
+                                    <HeartPulseIcon className="w-6 h-6 text-red-400 animate-pulse" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-black uppercase tracking-widest bg-red-500/30 text-red-200 px-2 py-0.5 rounded-md border border-red-400/30">
+                                            LINKED EMS UNIT
+                                        </span>
+                                        <span className="text-[10px] font-bold text-emerald-300 flex items-center gap-1">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Live Dispatch Feed Active
+                                        </span>
+                                    </div>
+                                    <h2 className="text-base font-black tracking-tight text-white flex items-center gap-2 mt-0.5">
+                                        <span className="text-amber-300 font-mono underline decoration-amber-400/50">{userLinkedUnit}</span>
+                                    </h2>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setIsUnitChangeModalOpen(true)}
+                                className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-black text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                            >
+                                🚑 Switch Unit
+                            </button>
+                        </div>
+
+                        <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-red-100 flex-wrap gap-2">
+                            <p className="flex items-center gap-1">
+                                <span>📡 Linked to EMS Dispatch Control. All calls shared.</span>
+                            </p>
+                        </div>
+                    </div>
+                 )}
+
                  {/* Duty Status Card */}
                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm space-y-4">
                     {isEmsResponder && (
@@ -1174,49 +1326,89 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                                     <p className="text-gray-400 dark:text-gray-500 text-[11px] mt-0.5">All calls claimed or standing by.</p>
                                 </div>
                             ) : (
-                                unassignedDispatchQueue.map(report => (
-                                    <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
-                                        className={`group relative p-4 cursor-pointer rounded-xl border transition-all duration-200 ${selectedReportId === report.id 
-                                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 shadow-md transform scale-[1.01]' 
-                                            : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm'}`}>
-                                        
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`w-2 h-2 rounded-full ${report.severity === 'critical' ? 'bg-red-500 animate-pulse' : report.severity === 'high' ? 'bg-orange-500' : 'bg-blue-500'}`}></span>
-                                                <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
-                                                    {report.type === 'roadside' ? `CAR: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
-                                                </span>
+                                unassignedDispatchQueue.map(report => {
+                                    const callUnit = (report as any).assigned_unit || '';
+                                    const isForMyUnit = Boolean(
+                                        isEmsResponder &&
+                                        userLinkedUnit &&
+                                        callUnit &&
+                                        (callUnit.toLowerCase().includes(userLinkedUnit.toLowerCase()) || userLinkedUnit.toLowerCase().includes(callUnit.toLowerCase()))
+                                    );
+
+                                    return (
+                                        <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
+                                            className={`group relative p-4 cursor-pointer rounded-xl border transition-all duration-200 ${
+                                                isForMyUnit
+                                                    ? 'bg-amber-500/10 dark:bg-amber-950/30 border-amber-500 ring-2 ring-amber-400/50 shadow-md'
+                                                    : selectedReportId === report.id 
+                                                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 shadow-md transform scale-[1.01]' 
+                                                        : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm'
+                                            }`}>
+                                            
+                                            <div className="flex justify-between items-start mb-2 flex-wrap gap-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-2 h-2 rounded-full ${report.severity === 'critical' ? 'bg-red-500 animate-pulse' : report.severity === 'high' ? 'bg-orange-500' : 'bg-blue-500'}`}></span>
+                                                    <span className="font-mono text-xs text-gray-500 dark:text-gray-400 font-bold">
+                                                        {report.type === 'roadside' ? `CAR: ${(report as any).car_number || (report as any).card_number || report.ob_number}` : report.ob_number}
+                                                    </span>
+                                                    {(report as any).triage_level && (
+                                                        <span className={`px-1.5 py-0.5 text-[10px] font-black rounded ${
+                                                            (report as any).triage_level === 'P1' ? 'bg-red-600 text-white' : (report as any).triage_level === 'P2' ? 'bg-amber-500 text-black' : 'bg-green-600 text-white'
+                                                        }`}>
+                                                            {(report as any).triage_level}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex items-center gap-1.5">
+                                                    <StatusBadge status={report.status} />
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleSelfAssign(report);
+                                                        }}
+                                                        className={`px-2.5 py-1 rounded text-[11px] font-bold text-white transition-colors shadow-xs flex items-center gap-1 ${
+                                                            isForMyUnit ? 'bg-amber-500 hover:bg-amber-600 text-gray-950 font-black' : 'bg-emerald-600 hover:bg-emerald-700'
+                                                        }`}
+                                                        title="Claim call from queue"
+                                                    >
+                                                        {isForMyUnit ? `Claim for ${userLinkedUnit.split(' ')[0]}` : 'Claim Call'}
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-1.5">
-                                                <StatusBadge status={report.status} />
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleSelfAssign(report);
-                                                    }}
-                                                    className="px-2.5 py-1 rounded text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-xs flex items-center gap-1"
-                                                    title="Claim call from queue"
-                                                >
-                                                    Claim Call
-                                                </button>
+
+                                            {isForMyUnit && (
+                                                <div className="mb-2">
+                                                    <span className="px-2 py-0.5 bg-amber-400 text-gray-950 font-black text-[10px] rounded-md shadow-xs flex items-center gap-1 w-max">
+                                                        <span>🎯</span> ASSIGNED TO YOUR UNIT: {callUnit}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {!isForMyUnit && callUnit && (
+                                                <div className="mb-2">
+                                                    <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 font-bold text-[10px] rounded-md flex items-center gap-1 w-max">
+                                                        <span>🚑</span> Assigned Unit: {callUnit}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 truncate">
+                                                {isVehicleReport(report) ? report.license_plate : ((report as any).title || (report as any).emergency_type || 'Emergency Call')}
+                                            </h3>
+                                            
+                                            <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 mb-3">
+                                                {isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isEmergencyReport(report) ? report.emergency_type : report.crime_type)}
+                                            </p>
+                                            
+                                            <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-2 mt-2">
+                                                <span>{safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}</span>
+                                                <span className="group-hover:text-blue-500 transition-colors">View Details →</span>
                                             </div>
                                         </div>
-                                        
-                                        <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 truncate">
-                                            {isVehicleReport(report) ? report.license_plate : ((report as any).title || (report as any).emergency_type || 'Emergency Call')}
-                                        </h3>
-                                        
-                                        <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 mb-3">
-                                            {isVehicleReport(report) ? `${report.vehicle_make} ${report.vehicle_model}` : (isEmergencyReport(report) ? report.emergency_type : report.crime_type)}
-                                        </p>
-                                        
-                                        <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-2 mt-2">
-                                            <span>{safeFormatDistanceToNow(report.reported_at, { addSuffix: true })}</span>
-                                            <span className="group-hover:text-blue-500 transition-colors">View Details →</span>
-                                        </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
                     </div>
@@ -1311,6 +1503,87 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                 confirmText="Self Assign"
                 confirmVariant="primary"
             />
+        )}
+
+        {/* Switch EMS Unit Modal */}
+        {isUnitChangeModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setIsUnitChangeModalOpen(false)}>
+                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-5" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                        <div className="flex items-center gap-2.5">
+                            <div className="p-2 bg-red-100 dark:bg-red-950/80 rounded-xl text-red-600 dark:text-red-400">
+                                <HeartPulseIcon className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-bold text-gray-900 dark:text-white">Switch Linked EMS Unit</h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Select or enter unit call sign to view dispatch calls</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setIsUnitChangeModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                            <XIcon className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="space-y-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                        <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider block">
+                            Available Station Fleet Units
+                        </label>
+                        {availableUnits.map(unit => {
+                            const isSelected = userLinkedUnit === unit.name || userLinkedUnit === unit.callSign;
+                            return (
+                                <button
+                                    key={unit.id}
+                                    type="button"
+                                    onClick={() => handleSelectLinkedUnit(unit.name)}
+                                    className={`w-full p-3 rounded-xl border text-left transition flex items-center justify-between ${
+                                        isSelected
+                                            ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-500 text-rose-950 dark:text-rose-100 ring-2 ring-rose-500/30'
+                                            : 'bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white'
+                                    }`}
+                                >
+                                    <div>
+                                        <div className="font-bold text-sm">{unit.name}</div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">{unit.type} • Call sign: {unit.callSign}</div>
+                                    </div>
+                                    <span className={`px-2 py-0.5 text-[10px] font-black rounded-md ${
+                                        unit.cert === 'ALS' ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'
+                                    }`}>
+                                        {unit.cert}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div className="pt-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
+                        <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider block">
+                            Or Enter Custom Vehicle Call Sign
+                        </label>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={customUnitInput}
+                                onChange={e => setCustomUnitInput(e.target.value)}
+                                placeholder="e.g. Medic Echo-5"
+                                className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium focus:ring-2 focus:ring-rose-500 outline-none text-gray-900 dark:text-white"
+                            />
+                            <button
+                                type="button"
+                                disabled={!customUnitInput.trim()}
+                                onClick={() => {
+                                    if (customUnitInput.trim()) {
+                                        handleSelectLinkedUnit(customUnitInput.trim());
+                                        setCustomUnitInput('');
+                                    }
+                                }}
+                                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition"
+                            >
+                                Set Unit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         )}
 
         </>

@@ -208,12 +208,26 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                             </select>
                         </div>
                     </div>
-                    {(formData.role === UserRole.RESPONDER || formData.role === UserRole.RAS_DRIVER || (formData.role as string) === 'roadside_driver' || (formData.role as string) === 'driver') && (
-                        <div>
-                            <label htmlFor="responder_status" className={labelClasses}>Driver / Responder Status</label>
-                            <select name="responder_status" id="responder_status" value={formData.responder_status || ''} onChange={handleChange} className={inputClasses}>
-                                {Object.values(ResponderStatus).map(status => <option key={status} value={status} className="capitalize">{status.replace(/_/g, ' ')}</option>)}
-                            </select>
+                    {(formData.role === UserRole.RESPONDER || formData.role === UserRole.EMS_RESPONDER || formData.role === UserRole.EMS_CONTROLLER || formData.role === UserRole.RAS_DRIVER || (formData.role as string) === 'roadside_driver' || (formData.role as string) === 'driver') && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="responder_status" className={labelClasses}>Driver / Responder Status</label>
+                                <select name="responder_status" id="responder_status" value={formData.responder_status || ''} onChange={handleChange} className={inputClasses}>
+                                    {Object.values(ResponderStatus).map(status => <option key={status} value={status} className="capitalize">{status.replace(/_/g, ' ')}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="assigned_unit" className={labelClasses}>Assigned EMS Unit / Vehicle Call Sign</label>
+                                <input 
+                                    type="text" 
+                                    name="assigned_unit" 
+                                    id="assigned_unit" 
+                                    value={formData.assigned_unit || ''} 
+                                    onChange={handleChange} 
+                                    placeholder="e.g. Medic Alpha-1 (ALS)" 
+                                    className={inputClasses} 
+                                />
+                            </div>
                         </div>
                     )}
                      <div>

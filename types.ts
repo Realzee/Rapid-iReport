@@ -146,6 +146,7 @@ export interface Profile {
   }[];
   psira_number?: string;
   ems_shift_role?: 'driver' | 'crew';
+  assigned_unit?: string;
 }
 
 export interface LocationCoords {
