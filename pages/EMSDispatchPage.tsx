@@ -14,7 +14,7 @@ import { supabase } from '../utils/supabase';
 import { EMSReportGenerator } from './EMSReportGenerator';
 import MapView from '../components/MapView';
 import { LocationPicker } from '../components/LocationPicker';
-import { HeartPulse, FileText, Edit2, Trash2, Plus, Building2, Truck, Phone, AlertCircle, X } from 'lucide-react';
+import { HeartPulse, FileText, Edit2, Trash2, Plus, Building2, Truck, Phone, AlertCircle, X, MapPin, ShieldAlert as ShieldAlertIcon, MapPin as MapPinIcon, Phone as PhoneIcon } from 'lucide-react';
 import { 
   PlusIcon, 
   SearchIcon, 
@@ -26,9 +26,23 @@ import {
   ChevronDownIcon, 
   RadioTowerIcon, 
   CarIcon, 
-  WrenchIcon 
+  WrenchIcon
 } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
+
+const safeFormatDistanceToNow = (dateStr?: string, _opts?: any) => {
+  if (!dateStr) return '';
+  try {
+    const diffMins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${Math.floor(diffHours / 24)}d ago`;
+  } catch {
+    return dateStr;
+  }
+};
 
 interface EMSDispatchPageProps {
   profile: Profile;
@@ -280,14 +294,43 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
     });
   }, [dispatches, searchQuery, statusFilter, triageFilter]);
 
+  // Summary Modal & Refusal Modal state
+  const [summaryModal, setSummaryModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    filterCategory: 'total' | 'p1' | 'pending' | 'active';
+  } | null>(null);
+
+  const [refusalModal, setRefusalModal] = useState<{
+    isOpen: boolean;
+    dispatchId: string;
+    obNumber: string;
+  } | null>(null);
+
   // Statistics
   const stats = useMemo(() => {
     const total = dispatches.length;
     const p1Count = dispatches.filter(d => d.triage_level === 'P1').length;
-    const activeCount = dispatches.filter(d => d.status !== EmsDispatchStatus.COMPLETED && d.status !== EmsDispatchStatus.CANCELLED).length;
+    const activeCount = dispatches.filter(d => d.status !== EmsDispatchStatus.COMPLETED && d.status !== EmsDispatchStatus.CANCELLED && d.status !== EmsDispatchStatus.REFUSAL && d.status !== EmsDispatchStatus.NOT_TRANSPORTING).length;
     const pendingCount = dispatches.filter(d => d.status === EmsDispatchStatus.PENDING).length;
     return { total, p1Count, activeCount, pendingCount };
   }, [dispatches]);
+
+  // Get Summary Calls for Pop-Up
+  const getSummaryCalls = () => {
+    if (!summaryModal) return [];
+    switch (summaryModal.filterCategory) {
+      case 'p1':
+        return dispatches.filter(d => d.triage_level === 'P1');
+      case 'pending':
+        return dispatches.filter(d => d.status === EmsDispatchStatus.PENDING);
+      case 'active':
+        return dispatches.filter(d => d.status !== EmsDispatchStatus.COMPLETED && d.status !== EmsDispatchStatus.CANCELLED && d.status !== EmsDispatchStatus.REFUSAL && d.status !== EmsDispatchStatus.NOT_TRANSPORTING);
+      case 'total':
+      default:
+        return dispatches;
+    }
+  };
 
   // Create New EMS Call
   const handleCreateNewCall = async (e: React.FormEvent) => {
@@ -359,6 +402,8 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
       [EmsDispatchStatus.COMPLETED]: 'completed_at',
       [EmsDispatchStatus.PENDING]: null,
       [EmsDispatchStatus.CANCELLED]: null,
+      [EmsDispatchStatus.REFUSAL]: 'completed_at',
+      [EmsDispatchStatus.NOT_TRANSPORTING]: 'completed_at',
     };
 
     const updatePayload: any = {
@@ -565,6 +610,8 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
       [EmsDispatchStatus.AT_HOSPITAL]: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300',
       [EmsDispatchStatus.COMPLETED]: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
       [EmsDispatchStatus.CANCELLED]: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+      [EmsDispatchStatus.REFUSAL]: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300',
+      [EmsDispatchStatus.NOT_TRANSPORTING]: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300',
     };
 
     return (
@@ -622,39 +669,67 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - Clickable Summary Cards Pop-Up */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setSummaryModal({ isOpen: true, title: 'All Total Calls', filterCategory: 'total' })}
+          className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 shadow-xs text-left hover:scale-[1.02] hover:border-blue-500 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Calls</span>
-            <RadioTowerIcon className="w-5 h-5 text-gray-400" />
+            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider group-hover:text-blue-600 transition-colors">Total Calls</span>
+            <RadioTowerIcon className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mt-2">{stats.total}</p>
-        </div>
+          <div className="flex items-baseline justify-between mt-2">
+            <p className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">{stats.total}</p>
+            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full">Click view ↗</span>
+          </div>
+        </button>
 
-        <div className="bg-white dark:bg-gray-900 border border-red-200 dark:border-red-900/50 rounded-2xl p-4 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setSummaryModal({ isOpen: true, title: 'P1 Critical Emergency Calls', filterCategory: 'p1' })}
+          className="bg-white dark:bg-gray-900 border border-red-200 dark:border-red-900/50 rounded-2xl p-4 shadow-xs text-left hover:scale-[1.02] hover:border-red-500 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">P1 Critical</span>
             <AlertTriangleIcon className="w-5 h-5 text-red-500 animate-pulse" />
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-red-600 dark:text-red-400 mt-2">{stats.p1Count}</p>
-        </div>
+          <div className="flex items-baseline justify-between mt-2">
+            <p className="text-2xl sm:text-3xl font-black text-red-600 dark:text-red-400">{stats.p1Count}</p>
+            <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/60 px-2 py-0.5 rounded-full">Click view ↗</span>
+          </div>
+        </button>
 
-        <div className="bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setSummaryModal({ isOpen: true, title: 'Pending Unit Dispatches', filterCategory: 'pending' })}
+          className="bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4 shadow-xs text-left hover:scale-[1.02] hover:border-amber-500 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Pending Unit</span>
             <ClockIcon className="w-5 h-5 text-amber-500" />
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 mt-2">{stats.pendingCount}</p>
-        </div>
+          <div className="flex items-baseline justify-between mt-2">
+            <p className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">{stats.pendingCount}</p>
+            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-full">Click view ↗</span>
+          </div>
+        </button>
 
-        <div className="bg-white dark:bg-gray-900 border border-blue-200 dark:border-blue-900/50 rounded-2xl p-4 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setSummaryModal({ isOpen: true, title: 'Active EMS Dispatches', filterCategory: 'active' })}
+          className="bg-white dark:bg-gray-900 border border-blue-200 dark:border-blue-900/50 rounded-2xl p-4 shadow-xs text-left hover:scale-[1.02] hover:border-blue-500 transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Active Dispatches</span>
             <CarIcon className="w-5 h-5 text-blue-500" />
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400 mt-2">{stats.activeCount}</p>
-        </div>
+          <div className="flex items-baseline justify-between mt-2">
+            <p className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400">{stats.activeCount}</p>
+            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full">Click view ↗</span>
+          </div>
+        </button>
       </div>
 
       {/* Tabs & Filters Bar */}
@@ -1548,6 +1623,195 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
               profile={profile}
               onBack={() => setSelectedPcrReport(null)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* SUMMARY CALLS POP-UP MODAL */}
+      {summaryModal?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in" onClick={() => setSummaryModal(null)}>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl max-w-4xl w-full p-6 shadow-2xl max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-red-100 dark:bg-red-950/80 rounded-2xl text-red-600 dark:text-red-400">
+                  <RadioTowerIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+                    {summaryModal.title}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Showing {getSummaryCalls().length} calls in this category
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSummaryModal(null)}
+                className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* List Body */}
+            <div className="flex-1 overflow-y-auto py-4 space-y-3">
+              {getSummaryCalls().length === 0 ? (
+                <div className="p-8 text-center bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                  <p className="text-sm font-bold text-gray-600 dark:text-gray-400">No dispatches found in this summary category.</p>
+                </div>
+              ) : (
+                getSummaryCalls().map(dispatch => (
+                  <div key={dispatch.id} className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl hover:border-blue-400 transition shadow-2xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {renderTriageBadge(dispatch.triage_level)}
+                        <span className="font-mono text-xs font-bold text-gray-900 dark:text-white">
+                          {dispatch.ob_number}
+                        </span>
+                        {renderStatusBadge(dispatch.status)}
+                      </div>
+                      <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                        {safeFormatDistanceToNow(dispatch.created_at, { addSuffix: true })}
+                      </span>
+                    </div>
+
+                    <h4 className="text-sm font-extrabold text-gray-900 dark:text-white mb-1">
+                      {dispatch.chief_complaint}
+                    </h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-300 my-2">
+                      <p className="flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5 text-red-500 shrink-0" /> {dispatch.location}</p>
+                      <p className="flex items-center gap-1.5"><PhoneIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" /> {dispatch.caller_name || 'Caller'} ({dispatch.caller_phone || 'N/A'})</p>
+                      <p><span className="font-bold text-gray-500">Unit:</span> {dispatch.assigned_unit || 'Unassigned'}</p>
+                      <p><span className="font-bold text-gray-500">Facility:</span> {dispatch.receiving_facility || 'Unassigned'}</p>
+                    </div>
+
+                    {/* Popup Call Actions */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-200/60 dark:border-gray-700/60 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSummaryModal(null);
+                          setSelectedPcrReport({
+                            id: dispatch.report_id || dispatch.id,
+                            ob_number: dispatch.ob_number || 'EMS-REPORT',
+                            title: dispatch.chief_complaint,
+                            location: dispatch.location,
+                            description: dispatch.chief_complaint,
+                            emergency_type: 'medical' as any,
+                            status: 'active' as any,
+                            severity: 'critical' as any,
+                            reported_at: dispatch.created_at,
+                            type: 'emergency',
+                            receiving_facility: dispatch.receiving_facility,
+                            triage_level: dispatch.triage_level,
+                            patient_name: dispatch.caller_name
+                          } as any);
+                        }}
+                        className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
+                      >
+                        📋 Open PCR Form
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSummaryModal(null);
+                          setRefusalModal({ isOpen: true, dispatchId: dispatch.id, obNumber: dispatch.ob_number || dispatch.id });
+                        }}
+                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
+                      >
+                        🚫 Refusal / Not Transporting
+                      </button>
+
+                      {dispatch.status === EmsDispatchStatus.PENDING && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleUpdateStatus(dispatch.id, EmsDispatchStatus.DISPATCHED);
+                          }}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
+                        >
+                          Dispatch Unit
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REFUSAL / NOT TRANSPORTING MODAL */}
+      {refusalModal?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in" onClick={() => setRefusalModal(null)}>
+          <div className="bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/60 rounded-3xl max-w-md w-full p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800 text-amber-600 dark:text-amber-400">
+              <ShieldAlertIcon className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-base font-extrabold text-gray-900 dark:text-white">Patient Refusal / Not Transporting</h3>
+                <p className="text-xs text-gray-500 font-mono">{refusalModal.obNumber}</p>
+              </div>
+            </div>
+
+            <div className="py-4 space-y-3">
+              <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">
+                Select the incident disposition for this call:
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleUpdateStatus(refusalModal.dispatchId, EmsDispatchStatus.REFUSAL);
+                  setRefusalModal(null);
+                  addToast(`Call ${refusalModal.obNumber} recorded as Patient Refusal.`, 'warning');
+                }}
+                className="w-full p-3 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 border border-amber-200 dark:border-amber-800 rounded-xl text-left font-bold text-xs text-amber-900 dark:text-amber-200 transition"
+              >
+                🚫 Patient Refusal of Care & Transport
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 font-normal mt-0.5">Patient signed refusal form / declined transport to hospital.</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleUpdateStatus(refusalModal.dispatchId, EmsDispatchStatus.NOT_TRANSPORTING);
+                  setRefusalModal(null);
+                  addToast(`Call ${refusalModal.obNumber} recorded as Treated On Scene.`, 'info');
+                }}
+                className="w-full p-3 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800 rounded-xl text-left font-bold text-xs text-emerald-900 dark:text-emerald-200 transition"
+              >
+                🏠 Treated On Scene (Not Transported)
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-normal mt-0.5">Medic evaluated & treated on scene. No hospital transport needed.</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleUpdateStatus(refusalModal.dispatchId, EmsDispatchStatus.CANCELLED);
+                  setRefusalModal(null);
+                  addToast(`Call ${refusalModal.obNumber} cancelled / false alarm.`, 'info');
+                }}
+                className="w-full p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 border border-gray-200 dark:border-gray-700 rounded-xl text-left font-bold text-xs text-gray-800 dark:text-gray-200 transition"
+              >
+                ❌ False Alarm / Cancelled On Scene
+                <p className="text-[11px] text-gray-500 font-normal mt-0.5">No patient found or cancelled by controller/caller.</p>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setRefusalModal(null)}
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs rounded-xl"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -145,6 +145,7 @@ export interface Profile {
     tracking_co_contact: string;
   }[];
   psira_number?: string;
+  ems_shift_role?: 'driver' | 'crew';
 }
 
 export interface LocationCoords {
@@ -744,6 +745,8 @@ export enum EmsDispatchStatus {
   TRANSPORTING = 'transporting',
   AT_HOSPITAL = 'at_hospital',
   COMPLETED = 'completed',
+  REFUSAL = 'refusal',
+  NOT_TRANSPORTING = 'not_transporting',
   CANCELLED = 'cancelled',
 }
 

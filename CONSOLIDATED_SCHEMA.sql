@@ -254,7 +254,7 @@ BEGIN
     new.raw_user_meta_data ->> 'ice_no',
     new.raw_user_meta_data ->> 'medical_aid',
     new.raw_user_meta_data ->> 'psira_number'
-  );
+  ) ON CONFLICT (id) DO NOTHING;
   RETURN new;
 END;
 $$;

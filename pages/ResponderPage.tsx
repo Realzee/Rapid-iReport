@@ -183,6 +183,28 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
     const [anprFoundReport, setAnprFoundReport] = useState<VehicleReport | null>(null);
     const [localConfirmModal, setLocalConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void } | null>(null);
 
+    const [emsShiftRole, setEmsShiftRole] = useState<'driver' | 'crew'>(() => {
+        try {
+            return (profile.ems_shift_role as any) || localStorage.getItem('ems_shift_role') || 'driver';
+        } catch {
+            return 'driver';
+        }
+    });
+
+    const handleEmsRoleChange = async (newRole: 'driver' | 'crew') => {
+        setEmsShiftRole(newRole);
+        localStorage.setItem('ems_shift_role', newRole);
+        if (setProfile && profile) {
+            setProfile({ ...profile, ems_shift_role: newRole });
+        }
+        try {
+            await supabase.from('profiles').update({ ems_shift_role: newRole }).eq('id', profile.id);
+            addToast(`EMS Shift Position updated to ${newRole === 'driver' ? 'Driver 🚗' : 'Crew Member 🚑'}.`, 'info');
+        } catch (e) {
+            console.warn('Could not update ems_shift_role in DB:', e);
+        }
+    };
+
     const isInitialLoad = useRef(true);
     const audioContextRef = useRef<AudioContext | null>(null);
     const { addToast } = useToast();
@@ -940,6 +962,44 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                         </label>
                     </div>
 
+                    {/* EMS Shift Position (Driver or Crew) */}
+                    {isOnDuty && isEmsResponder && (
+                        <div className="bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-rose-900 dark:text-rose-200 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>🚑</span> Shift Position / Role
+                                </span>
+                                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-rose-600 text-white shadow-2xs">
+                                    {emsShiftRole === 'driver' ? 'Driver 🚗' : 'Crew Member 🚑'}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                                <button
+                                    type="button"
+                                    onClick={() => handleEmsRoleChange('driver')}
+                                    className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                                        emsShiftRole === 'driver'
+                                            ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-500 ring-offset-1 dark:ring-offset-gray-900'
+                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 border border-gray-200 dark:border-gray-700'
+                                    }`}
+                                >
+                                    <span>🚗</span> Driver
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleEmsRoleChange('crew')}
+                                    className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                                        emsShiftRole === 'crew'
+                                            ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-500 ring-offset-1 dark:ring-offset-gray-900'
+                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 border border-gray-200 dark:border-gray-700'
+                                    }`}
+                                >
+                                    <span>🚑</span> Crew
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {isEngaged && (
                         <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                             <p className="text-xs text-yellow-700 dark:text-yellow-400">
@@ -1535,12 +1595,37 @@ const ResponderReportDetail: React.FC<{ report: Report, profile: Profile, allUse
                         )}
                         
                         {isEmergencyReport(report) && (
-                             <button
-                                onClick={() => document.dispatchEvent(new CustomEvent('open-ems-modal', { detail: report }))}
-                                className="col-span-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-sm transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-2 mt-2"
-                            >
-                                📋 Add Scene Report & Patient Assessment (Medic)
-                            </button>
+                            <div className="col-span-full grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => document.dispatchEvent(new CustomEvent('open-ems-modal', { detail: report }))}
+                                    className="py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-sm transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-2"
+                                >
+                                    📋 Add Scene Report & PCR
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        setConfirmModalState({
+                                            isOpen: true,
+                                            title: "Record Refusal / Not Transporting",
+                                            message: "Mark this EMS call as Patient Refusal of Transport or Treated on Scene (Not Transported)?",
+                                            onConfirm: async () => {
+                                                await handleStatusUpdate(ReportStatus.RESOLVED);
+                                                await supabase.from('report_updates').insert([{
+                                                    report_id: report.id,
+                                                    user_id: profile.id,
+                                                    content: `⚠️ PATIENT REFUSAL / NOT TRANSPORTING recorded by Medic (${(profile.ems_shift_role || 'crew').toUpperCase()}). Patient refused transport or treated on scene.`
+                                                }]);
+                                                addToast('Refusal / Not Transporting logged.', 'warning');
+                                            }
+                                        });
+                                    }}
+                                    className="py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-sm transition-all shadow-lg shadow-amber-600/20 flex items-center justify-center gap-2"
+                                >
+                                    🚫 Refusal / Not Transporting
+                                </button>
+                            </div>
                         )}
                     </div>
                 )}

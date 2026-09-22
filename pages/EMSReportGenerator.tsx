@@ -355,43 +355,75 @@ export const EMSReportGenerator: React.FC<EMSReportGeneratorProps> = ({ report, 
                 </div>
               </div>
 
-              {/* Receiving Hospital Selection */}
+              {/* Transport Decision & Receiving Hospital */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">
-                  Assign Receiving Hospital / Facility
+                  Transport Disposition
                 </label>
-                <select
-                  name="receiving_facility"
-                  value={formData.receiving_facility}
-                  onChange={handleInputChange}
-                  className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white mb-3"
-                >
-                  <option value="">-- Select Receiving Hospital --</option>
-                  {POPULAR_HOSPITALS.map(h => (
-                    <option key={h} value={h}>{h}</option>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                  {[
+                    { id: 'Transported to Hospital', label: '🚑 Hospital Transport', color: 'bg-blue-50 text-blue-700 border-blue-300' },
+                    { id: 'Patient Refusal of Care & Transport', label: '🚫 Patient Refusal', color: 'bg-amber-50 text-amber-700 border-amber-300' },
+                    { id: 'Treated On Scene - Not Transported', label: '🏠 Treated On Scene', color: 'bg-emerald-50 text-emerald-700 border-emerald-300' }
+                  ].map(item => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setFormData(prev => ({
+                        ...prev,
+                        transport_decision: item.id,
+                        receiving_facility: item.id !== 'Transported to Hospital' ? item.id : prev.receiving_facility
+                      }))}
+                      className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center ${
+                        formData.transport_decision === item.id
+                          ? 'ring-2 ring-red-500 bg-red-600 text-white border-red-600 shadow-sm'
+                          : 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
                   ))}
-                  <option value="Other">Other / Custom Facility Name...</option>
-                </select>
+                </div>
 
-                {(formData.receiving_facility === 'Other' || !POPULAR_HOSPITALS.includes(formData.receiving_facility)) && (
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                      Custom Hospital / Trauma Center Name
+                {formData.transport_decision === 'Transported to Hospital' && (
+                  <>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      Assign Receiving Hospital / Facility
                     </label>
-                    <input
-                      type="text"
-                      name="custom_hospital"
-                      value={formData.custom_hospital}
+                    <select
+                      name="receiving_facility"
+                      value={formData.receiving_facility}
                       onChange={handleInputChange}
-                      className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium"
-                      placeholder="e.g. Life Eugene Marais Hospital"
-                    />
-                  </div>
+                      className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white mb-3"
+                    >
+                      <option value="">-- Select Receiving Hospital --</option>
+                      {POPULAR_HOSPITALS.map(h => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                      <option value="Other">Other / Custom Facility Name...</option>
+                    </select>
+
+                    {(formData.receiving_facility === 'Other' || (!POPULAR_HOSPITALS.includes(formData.receiving_facility) && formData.receiving_facility !== 'Patient Refusal of Care & Transport' && formData.receiving_facility !== 'Treated On Scene - Not Transported')) && (
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                          Custom Hospital / Trauma Center Name
+                        </label>
+                        <input
+                          type="text"
+                          name="custom_hospital"
+                          value={formData.custom_hospital}
+                          onChange={handleInputChange}
+                          className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium"
+                          placeholder="e.g. Life Eugene Marais Hospital"
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
 
-                {selectedHospitalName && (
-                  <div className="mt-2 p-2.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-bold text-blue-700 dark:text-blue-300">
-                    Destination: {selectedHospitalName}
+                {formData.transport_decision !== 'Transported to Hospital' && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-300 font-semibold">
+                    ⚠️ Call will be logged as {formData.transport_decision}. Refusal form / On-scene disposition documentation generated.
                   </div>
                 )}
               </div>
