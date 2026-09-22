@@ -426,6 +426,40 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
     }
   };
 
+  // Permanently delete and immediately remove dispatch call from queue
+  const handleDeleteDispatch = async (id: string, obNumber?: string) => {
+    if (!window.confirm(`Are you sure you want to delete and remove dispatch call (${obNumber || id})? This will immediately remove it from all views.`)) {
+      return;
+    }
+
+    // 1. Immediately remove from local state for 0-latency UI update
+    setDispatches(prev => prev.filter(d => d.id !== id));
+    addToast(`Dispatch call ${obNumber || ''} removed immediately.`, 'warning');
+
+    // 2. Perform DB deletion and fallback cancellation status update
+    try {
+      const target = dispatches.find(d => d.id === id);
+
+      const { error } = await supabase.from('ems_dispatches').delete().eq('id', id);
+      if (error) {
+        console.warn('DB delete returned error, updating status to CANCELLED as fallback:', error);
+        await supabase.from('ems_dispatches').update({
+          status: EmsDispatchStatus.CANCELLED,
+          updated_at: new Date().toISOString()
+        }).eq('id', id);
+      }
+
+      if (target?.report_id) {
+        await supabase.from('emergency_reports').update({
+          status: 'resolved',
+          updated_at: new Date().toISOString()
+        }).eq('id', target.report_id);
+      }
+    } catch (err) {
+      console.error('Failed to delete dispatch from DB:', err);
+    }
+  };
+
   // Update Assigned Unit
   const handleAssignUnit = async (id: string, unitName: string) => {
     const updatePayload = {
@@ -1037,14 +1071,9 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
                       <button
                         type="button"
-                        onClick={async () => {
-                          if (window.confirm(`Are you sure you want to cancel and remove dispatch call (${dispatch.ob_number || dispatch.id}) from the queue?`)) {
-                            await handleUpdateStatus(dispatch.id, EmsDispatchStatus.CANCELLED);
-                            addToast(`Dispatch call ${dispatch.ob_number || ''} removed from active queue.`, 'warning');
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs font-bold rounded-lg transition flex items-center gap-1.5"
-                        title="Cancel & Remove Call from Active Dispatch Queue"
+                        onClick={() => handleDeleteDispatch(dispatch.id, dispatch.ob_number)}
+                        className="px-3 py-1.5 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+                        title="Delete and Remove Call from Queue Immediately"
                       >
                         <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" /> Remove Call
                       </button>
@@ -1754,13 +1783,9 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
                       <button
                         type="button"
-                        onClick={async () => {
-                          if (window.confirm(`Are you sure you want to cancel and remove dispatch call (${dispatch.ob_number || dispatch.id}) from the queue?`)) {
-                            await handleUpdateStatus(dispatch.id, EmsDispatchStatus.CANCELLED);
-                            addToast(`Dispatch call ${dispatch.ob_number || ''} removed from queue.`, 'warning');
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-red-100 dark:bg-red-950/60 hover:bg-red-200 text-red-700 dark:text-red-300 font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1"
+                        onClick={() => handleDeleteDispatch(dispatch.id, dispatch.ob_number)}
+                        className="px-3 py-1.5 bg-red-100 dark:bg-red-950/60 hover:bg-red-200 text-red-700 dark:text-red-300 font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1 cursor-pointer"
+                        title="Delete and Remove Call from Queue Immediately"
                       >
                         <Trash2 className="w-3.5 h-3.5" /> Remove
                       </button>

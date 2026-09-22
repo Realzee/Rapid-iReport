@@ -16,13 +16,23 @@ const isResponderRole = (role?: string) => {
 };
 
 export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [responders, setResponders] = useState<Responder[]>([]);
+    const [responders, setResponders] = useState<Responder[]>(() => {
+        try {
+            const cached = localStorage.getItem('cached_responders_data');
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchResponders = async () => {
+        let isMounted = true;
+        let retryTimer: any = null;
+
+        const fetchResponders = async (retryCount = 0) => {
             if (!supabase) {
-                setLoading(false);
+                if (isMounted) setLoading(false);
                 return;
             }
             try {
@@ -31,8 +41,11 @@ export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     .select('*');
 
                 if (error) {
-                    console.error('Error fetching responders:', error);
-                } else if (data) {
+                    console.warn('Notice: Responders fetch notice:', error.message || error);
+                    if (retryCount < 3 && isMounted) {
+                        retryTimer = setTimeout(() => fetchResponders(retryCount + 1), 3000);
+                    }
+                } else if (data && isMounted) {
                     const responderProfiles = data.filter((p: Profile) => isResponderRole(p.role));
                     const mappedResponders: Responder[] = responderProfiles.map((p: Profile) => ({
                         id: p.id,
@@ -42,11 +55,19 @@ export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                         location_coords: p.location_coords || undefined,
                     }));
                     setResponders(mappedResponders);
+                    try {
+                        localStorage.setItem('cached_responders_data', JSON.stringify(mappedResponders));
+                    } catch (e) {
+                        // Ignore quota issues
+                    }
                 }
-            } catch (err) {
-                console.error("Error in fetchResponders:", err);
+            } catch (err: any) {
+                console.warn("Transient network issue in fetchResponders:", err?.message || err);
+                if (retryCount < 3 && isMounted) {
+                    retryTimer = setTimeout(() => fetchResponders(retryCount + 1), 3000);
+                }
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         };
 
@@ -97,6 +118,8 @@ export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             .subscribe();
 
         return () => {
+            isMounted = false;
+            if (retryTimer) clearTimeout(retryTimer);
             if (supabase) {
                 supabase.removeChannel(channel);
             }
