@@ -1012,7 +1012,7 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <button
                         onClick={() => {
                           const mockReport: Report = {
@@ -1032,7 +1032,21 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                         }}
                         className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs font-bold rounded-lg transition flex items-center gap-1.5"
                       >
-                        <FileText className="w-3.5 h-3.5 text-red-500" /> Patient Care Report (PCR)
+                        <FileText className="w-3.5 h-3.5 text-red-500" /> PCR Form
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (window.confirm(`Are you sure you want to cancel and remove dispatch call (${dispatch.ob_number || dispatch.id}) from the queue?`)) {
+                            await handleUpdateStatus(dispatch.id, EmsDispatchStatus.CANCELLED);
+                            addToast(`Dispatch call ${dispatch.ob_number || ''} removed from active queue.`, 'warning');
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs font-bold rounded-lg transition flex items-center gap-1.5"
+                        title="Cancel & Remove Call from Active Dispatch Queue"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" /> Remove Call
                       </button>
                     </div>
                   </div>
@@ -1737,6 +1751,19 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                           Dispatch Unit
                         </button>
                       )}
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (window.confirm(`Are you sure you want to cancel and remove dispatch call (${dispatch.ob_number || dispatch.id}) from the queue?`)) {
+                            await handleUpdateStatus(dispatch.id, EmsDispatchStatus.CANCELLED);
+                            addToast(`Dispatch call ${dispatch.ob_number || ''} removed from queue.`, 'warning');
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-red-100 dark:bg-red-950/60 hover:bg-red-200 text-red-700 dark:text-red-300 font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Remove
+                      </button>
                     </div>
                   </div>
                 ))
