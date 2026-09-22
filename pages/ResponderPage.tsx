@@ -344,7 +344,30 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         
         let combined = [...vData, ...cData, ...(aData || []), ...emsDispatchesMapped];
         if (isEmsResponder) {
-            combined = combined.filter(r => isEmergencyReport(r) || (r as any).type === 'emergency');
+            combined = combined.filter(r => 
+                String(r.id).startsWith('ems-') || 
+                ((r as any).type === 'emergency' && (
+                    ((r as any).emergency_type && (
+                        (r as any).emergency_type.toLowerCase().includes('medical') ||
+                        (r as any).emergency_type.toLowerCase().includes('mva') ||
+                        (r as any).emergency_type.toLowerCase().includes('ems') ||
+                        (r as any).emergency_type.toLowerCase().includes('patient') ||
+                        (r as any).emergency_type.toLowerCase().includes('cardiac') ||
+                        (r as any).emergency_type.toLowerCase().includes('trauma') ||
+                        (r as any).emergency_type.toLowerCase().includes('respiratory') ||
+                        (r as any).emergency_type.toLowerCase().includes('collision') ||
+                        (r as any).emergency_type.toLowerCase().includes('stroke')
+                    )) ||
+                    ((r as any).title && (
+                        (r as any).title.toLowerCase().includes('p1') ||
+                        (r as any).title.toLowerCase().includes('p2') ||
+                        (r as any).title.toLowerCase().includes('p3') ||
+                        (r as any).title.toLowerCase().includes('ems') ||
+                        (r as any).title.toLowerCase().includes('mva') ||
+                        (r as any).title.toLowerCase().includes('patient')
+                    ))
+                ))
+            );
             if (combined.length === 0) {
                 combined = [
                     {
@@ -1044,7 +1067,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                         </button>
                         <button onClick={() => setIsReportModalOpen(true)} className="flex flex-col items-center justify-center gap-2 p-4 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl transition-colors shadow-sm">
                             <PlusIcon className="w-6 h-6" />
-                            <span className="text-xs">New Report</span>
+                            <span className="text-xs">{isEmsResponder ? 'New EMS Call' : 'New Report'}</span>
                         </button>
                     </div>
                 )}

@@ -25,7 +25,14 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
     const [activeChats, setActiveChats] = useState<Report[]>([]);
     const [expandedChatId, setExpandedChatId] = useState<string | null>(null);
     const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
-    const [allUsers, setAllUsers] = useState<Profile[]>([]);
+    const [allUsers, setAllUsers] = useState<Profile[]>(() => {
+        try {
+            const cached = localStorage.getItem('cached_chat_users');
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
     const { addToast } = useToast();
     const audioContextRef = useRef<AudioContext | null>(null);
 
@@ -33,7 +40,10 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
     useEffect(() => {
         if (!profile || !supabase) return;
 
-        const fetchAllUsers = async () => {
+        let isMounted = true;
+        let retryTimer: any = null;
+
+        const fetchAllUsers = async (retryCount = 0) => {
             if (!supabase) return;
             const usersQuery = supabase
                 .from('profiles')
@@ -44,10 +54,22 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
             }
             try {
                 const { data, error } = await usersQuery;
-                if (error) console.error("ChatContext: Failed to load users list:", error.message);
-                else setAllUsers(data || []);
-            } catch (err) {
-                console.error("ChatContext: Error fetching users:", err);
+                if (error) {
+                    console.warn("ChatContext: Users fetch notice:", error.message || error);
+                    if (retryCount < 3 && isMounted) {
+                        retryTimer = setTimeout(() => fetchAllUsers(retryCount + 1), 3000);
+                    }
+                } else if (data && isMounted) {
+                    setAllUsers(data);
+                    try {
+                        localStorage.setItem('cached_chat_users', JSON.stringify(data));
+                    } catch (_) {}
+                }
+            } catch (err: any) {
+                console.warn("ChatContext: Transient network issue fetching users:", err?.message || err);
+                if (retryCount < 3 && isMounted) {
+                    retryTimer = setTimeout(() => fetchAllUsers(retryCount + 1), 3000);
+                }
             }
         };
         fetchAllUsers();
@@ -55,14 +77,20 @@ export const ChatProvider: React.FC<{ children: ReactNode; profile: Profile | nu
         const profilesChannel = supabase.channel('chat-context-profiles')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
                  setAllUsers(current => {
-                    if (payload.eventType === 'INSERT') return [...current, payload.new as Profile];
-                    if (payload.eventType === 'UPDATE') return current.map(u => u.id === payload.new.id ? payload.new as Profile : u);
-                    if (payload.eventType === 'DELETE') return current.filter(u => u.id !== (payload.old as any).id);
-                    return current;
+                    let updated = current;
+                    if (payload.eventType === 'INSERT') updated = [...current, payload.new as Profile];
+                    else if (payload.eventType === 'UPDATE') updated = current.map(u => u.id === payload.new.id ? payload.new as Profile : u);
+                    else if (payload.eventType === 'DELETE') updated = current.filter(u => u.id !== (payload.old as any).id);
+                    try {
+                        localStorage.setItem('cached_chat_users', JSON.stringify(updated));
+                    } catch (_) {}
+                    return updated;
                  });
             }).subscribe();
             
         return () => {
+            isMounted = false;
+            if (retryTimer) clearTimeout(retryTimer);
             if (supabase) {
                 supabase.removeChannel(profilesChannel);
             }

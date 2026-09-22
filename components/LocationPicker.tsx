@@ -50,13 +50,13 @@ export const formatAddress = (data: any): string => {
 export const reverseGeocode = async (coords: LocationCoords): Promise<string> => {
     try {
         const response = await fetch(`/api/reverse-geocode?lat=${coords.lat}&lng=${coords.lng}`);
-        if (!response.ok) return "Unknown location";
+        if (!response.ok) return `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`;
         
         const data = await response.json();
         return formatAddress(data);
-    } catch (error) {
-        console.error("Reverse geocoding failed:", error);
-        return "Could not fetch location name";
+    } catch (error: any) {
+        console.warn("Reverse geocoding notice:", error?.message || error);
+        return `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`;
     }
 }
 
@@ -249,8 +249,8 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                             handleCoordsAndAddressSelected(data.coords, data.address);
                         }
                     }
-                } catch (error) {
-                    console.error("Failed to resolve URL in picker search:", error);
+                } catch (error: any) {
+                    console.warn("Notice resolving URL in picker search:", error?.message || error);
                 } finally {
                     setIsSearching(false);
                 }
@@ -267,8 +267,8 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                 try {
                     const address = await reverseGeocode(parsedCoords);
                     handleCoordsAndAddressSelected(parsedCoords, address);
-                } catch (error) {
-                    console.error("Failed to reverse geocode coordinates in picker search:", error);
+                } catch (error: any) {
+                    console.warn("Notice reverse geocoding in picker search:", error?.message || error);
                 } finally {
                     setIsSearching(false);
                 }
@@ -313,8 +313,8 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                 } else {
                     setSuggestions([]);
                 }
-            } catch (error) {
-                console.error("Address suggestions lookup failed:", error);
+            } catch (error: any) {
+                console.warn("Address suggestions notice:", error?.message || error);
                 setSuggestions([]);
             } finally {
                 setIsSearching(false);

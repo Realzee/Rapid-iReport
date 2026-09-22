@@ -6,8 +6,8 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, extractMissingColumn, getSafeNextObSequence } from '../utils/supabase';
-import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport, EmergencyReport } from '../types';
-import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon, CheckCircleIcon, TrashIcon, WrenchIcon } from '../components/icons';
+import { Report, Severity, ReportStatus, LocationCoords, VehicleReport, CrimeReport, EmergencyReport, Profile, UserRole } from '../types';
+import { XIcon, CarIcon, CrimeIcon, UploadCloudIcon, MapPinIcon, CrosshairIcon, LayersIcon, AlertTriangleIcon, CheckCircleIcon, TrashIcon, WrenchIcon, HeartPulseIcon } from '../components/icons';
 import { vehicleMakes, vehicleModelsByMake, vehicleColors } from '../data/vehicleData';
 import { sapsStations } from '../data/policeStations';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
@@ -67,8 +67,8 @@ const geocodeLocation = async (location: string): Promise<{coords: LocationCoord
 
             return { coords, boundary: null, boundingbox };
         }
-    } catch (error) {
-        console.error("Geocoding failed:", error);
+    } catch (error: any) {
+        console.warn("Geocoding notice:", error?.message || error);
     }
     return { coords: null, boundary: null, boundingbox: null };
 }
@@ -176,6 +176,15 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     const [pendingBoloData, setPendingBoloData] = useState<{ report: any; profile: any } | null>(null);
     const { addToast } = useToast();
     const { mainLogoUrl } = useSettings();
+    const [userProfile, setUserProfile] = useState<Profile | null>(null);
+
+    const isEmsUser = useMemo(() => {
+        if (!userProfile) return false;
+        return userProfile.role === UserRole.EMS_RESPONDER || 
+               userProfile.role === UserRole.EMS_CONTROLLER || 
+               (userProfile.role as string) === 'ems_responder' || 
+               (userProfile.role as string) === 'ems_controller';
+    }, [userProfile]);
     
     // Address suggestion state
     const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
@@ -280,18 +289,28 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
             setImagePreviews(reportToEdit?.evidence_images || []);
             setImageFiles([]);
 
-            // Auto-fetch logged-in profile to auto-populate Driver Name for Roadside reports
+            // Auto-fetch logged-in profile
             // @ts-ignore
             supabase.auth.getUser().then(({ data: { user } }: any) => {
                 if (user) {
-                    supabase.from('profiles').select('first_name, surname, email').eq('id', user.id).maybeSingle().then(({ data: prof }: any) => {
+                    supabase.from('profiles').select('*').eq('id', user.id).maybeSingle().then(({ data: prof }: any) => {
                         if (prof) {
+                            setUserProfile(prof);
                             const fullName = `${prof.first_name || ''} ${prof.surname || ''}`.trim() || prof.email || '';
+                            const isEmsRole = prof.role === UserRole.EMS_RESPONDER || prof.role === UserRole.EMS_CONTROLLER || prof.role === 'ems_responder' || prof.role === 'ems_controller';
+                            if (isEmsRole && !reportToEdit) {
+                                setReportType('emergency');
+                            }
                             setFormData((prev: any) => {
-                                if (!prev.driver_name && !(reportToEdit as any)?.driver_name) {
-                                    return { ...prev, driver_name: fullName };
+                                const nextData = { ...prev };
+                                if (!nextData.driver_name && !(reportToEdit as any)?.driver_name) {
+                                    nextData.driver_name = fullName;
                                 }
-                                return prev;
+                                if (isEmsRole && !reportToEdit) {
+                                    nextData.emergency_type = nextData.emergency_type || 'Medical Emergency';
+                                    nextData.vehicle_involved = 'false';
+                                }
+                                return nextData;
                             });
                         }
                     });
@@ -365,8 +384,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 const response = await fetch(`/api/geocode?q=${encodeURIComponent(formData.location)}&limit=5`);
                 if (response.ok) setAddressSuggestions(await response.json());
                 else setAddressSuggestions([]);
-            } catch (error) {
-                console.error("Address suggestion fetch failed:", error);
+            } catch (error: any) {
+                console.warn("Address suggestion notice:", error?.message || error);
                 setAddressSuggestions([]);
             }
             setIsGeocoding(false);
@@ -389,8 +408,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 const response = await fetch(`/api/geocode?q=${encodeURIComponent(formData.drop_off_location)}&limit=5`);
                 if (response.ok) setDropOffAddressSuggestions(await response.json());
                 else setDropOffAddressSuggestions([]);
-            } catch (error) {
-                console.error("Drop-off address suggestion fetch failed:", error);
+            } catch (error: any) {
+                console.warn("Drop-off address suggestion notice:", error?.message || error);
                 setDropOffAddressSuggestions([]);
             }
         }, 400);
@@ -1115,6 +1134,28 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                 }
 
                 logUserAction(user.id, 'CREATE_REPORT', `Created new ${reportType} report ${reportId} (${finalObNumber})`);
+
+                if (reportType === 'emergency' || isEmsUser) {
+                    try {
+                        const cleanEmsOb = finalObNumber || `EMS-${new Date().getFullYear()}/${Math.floor(1000 + Math.random() * 9000)}`;
+                        await supabase.from('ems_dispatches').insert([{
+                            company_id: userProfile?.company_id || profileData?.company_id,
+                            ob_number: cleanEmsOb,
+                            caller_name: formData.caller_name || `${profileData?.first_name || ''} ${profileData?.surname || ''}`.trim() || 'EMS Call',
+                            caller_phone: formData.caller_phone || 'N/A',
+                            location: formData.location || 'Location Not Specified',
+                            location_coords: formData.location_coords || { lat: -26.2041, lng: 28.0473 },
+                            chief_complaint: formData.emergency_type || 'Medical Emergency',
+                            triage_level: formData.severity === 'critical' ? 'P1' : formData.severity === 'high' ? 'P2' : 'P3',
+                            patient_count: 1,
+                            status: 'PENDING',
+                            dispatch_notes: formData.description || 'EMS Incident Reported',
+                            created_at: new Date().toISOString()
+                        }]);
+                    } catch (emsErr) {
+                        console.warn('Could not auto-create ems_dispatch record:', emsErr);
+                    }
+                }
                 
                 if (profileData) {
                     const reportForBolo = {
@@ -1166,17 +1207,32 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                     <XIcon className="w-6 h-6" />
                 </button>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                    {isQuickAdd ? 'Quick Add to Sought List' : (reportToEdit ? 'Edit Report' : 'File a New Report')}
+                    {isEmsUser ? 'Dispatch / File EMS Medical Call' : (isQuickAdd ? 'Quick Add to Sought List' : (reportToEdit ? 'Edit Report' : 'File a New Report'))}
                 </h3>
                 
                 {(!reportToEdit && !isQuickAdd) && (
                     <div className="mb-6">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
-                            <button type="button" onClick={() => { setReportType('vehicle'); setFormData(prev => ({ ...prev, status: ReportStatus.STOLEN, vehicle_involved: 'true' })); }} className={`py-2 text-xs sm:text-sm font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${reportType === 'vehicle' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-4 h-4" /> Vehicle</button>
-                            <button type="button" onClick={() => { setReportType('roadside'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE, emergency_type: 'Roadside Assistance', assistance_type: 'Breakdown / Mechanical', vehicle_involved: 'true', vehicles_involved: '1' })); }} className={`py-2 text-xs sm:text-sm font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${reportType === 'roadside' ? 'bg-teal-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><WrenchIcon className="w-4 h-4" /> Roadside</button>
-                            <button type="button" onClick={() => { setReportType('emergency'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE, vehicle_involved: 'false' })); }} className={`py-2 text-xs sm:text-sm font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${reportType === 'emergency' ? 'bg-orange-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><AlertTriangleIcon className="w-4 h-4" /> Emergency</button>
-                            <button type="button" onClick={() => { setReportType('crime'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE, vehicle_involved: 'false' })); }} className={`py-2 text-xs sm:text-sm font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${reportType === 'crime' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CrimeIcon className="w-4 h-4" /> Crime</button>
-                        </div>
+                        {isEmsUser ? (
+                            <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 rounded-xl p-3.5 flex items-center justify-between shadow-xs">
+                                <div className="flex items-center gap-3">
+                                    <HeartPulseIcon className="w-6 h-6 text-rose-600 dark:text-rose-400 animate-pulse shrink-0" />
+                                    <div>
+                                        <h4 className="text-sm font-bold text-rose-900 dark:text-rose-200">EMS Medical Call Entry</h4>
+                                        <p className="text-xs text-rose-700 dark:text-rose-300">Creates a medical incident directly in the EMS Dispatch queue</p>
+                                    </div>
+                                </div>
+                                <span className="text-xs px-3 py-1 bg-rose-600 text-white rounded-full font-bold uppercase tracking-wider shrink-0">
+                                    EMS ONLY
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-gray-100 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
+                                <button type="button" onClick={() => { setReportType('vehicle'); setFormData(prev => ({ ...prev, status: ReportStatus.STOLEN, vehicle_involved: 'true' })); }} className={`py-2 text-xs sm:text-sm font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${reportType === 'vehicle' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CarIcon className="w-4 h-4" /> Vehicle</button>
+                                <button type="button" onClick={() => { setReportType('roadside'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE, emergency_type: 'Roadside Assistance', assistance_type: 'Breakdown / Mechanical', vehicle_involved: 'true', vehicles_involved: '1' })); }} className={`py-2 text-xs sm:text-sm font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${reportType === 'roadside' ? 'bg-teal-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><WrenchIcon className="w-4 h-4" /> Roadside</button>
+                                <button type="button" onClick={() => { setReportType('emergency'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE, vehicle_involved: 'false' })); }} className={`py-2 text-xs sm:text-sm font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${reportType === 'emergency' ? 'bg-orange-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><AlertTriangleIcon className="w-4 h-4" /> Emergency</button>
+                                <button type="button" onClick={() => { setReportType('crime'); setFormData(prev => ({ ...prev, status: ReportStatus.ACTIVE, vehicle_involved: 'false' })); }} className={`py-2 text-xs sm:text-sm font-bold rounded-md transition-all flex items-center justify-center gap-1.5 ${reportType === 'crime' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}><CrimeIcon className="w-4 h-4" /> Crime</button>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -1700,14 +1756,30 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                                     <label htmlFor="emergency_type" className={labelClasses}>Type of Emergency</label>
                                     <select name="emergency_type" id="emergency_type" value={formData.emergency_type || ''} onChange={handleChange} className={inputClasses}>
                                         <option value="" disabled>Select Emergency Type</option>
-                                        <option value="Fire">Fire</option>
-                                        <option value="Medical Emergency">Medical Emergency</option>
-                                        <option value="Roadside Assistance">Roadside Assistance</option>
-                                        <option value="Multi-vehicle Collision">Multi-vehicle Collision</option>
-                                        <option value="Pedestrian Incident">Pedestrian Incident</option>
-                                        <option value="Natural Disaster">Natural Disaster</option>
-                                        <option value="Kidnapping (taken with vehicle)">Kidnapping (taken with vehicle)</option>
-                                        <option value="Other">Other</option>
+                                        {isEmsUser ? (
+                                            <>
+                                                <option value="Medical Emergency">Medical Emergency (General)</option>
+                                                <option value="MVA - Motor Vehicle Collision">MVA - Motor Vehicle Collision</option>
+                                                <option value="Cardiac / Chest Pain (P1)">Cardiac / Chest Pain (P1)</option>
+                                                <option value="Pedestrian Struck">Pedestrian Struck</option>
+                                                <option value="Respiratory Distress">Respiratory Distress</option>
+                                                <option value="Trauma / Fall / Injury">Trauma / Fall / Injury</option>
+                                                <option value="Stroke / Neurological">Stroke / Neurological</option>
+                                                <option value="Overdose / Intoxication">Overdose / Intoxication</option>
+                                                <option value="Other EMS Call">Other EMS Call</option>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <option value="Fire">Fire</option>
+                                                <option value="Medical Emergency">Medical Emergency</option>
+                                                <option value="Roadside Assistance">Roadside Assistance</option>
+                                                <option value="Multi-vehicle Collision">Multi-vehicle Collision</option>
+                                                <option value="Pedestrian Incident">Pedestrian Incident</option>
+                                                <option value="Natural Disaster">Natural Disaster</option>
+                                                <option value="Kidnapping (taken with vehicle)">Kidnapping (taken with vehicle)</option>
+                                                <option value="Other">Other</option>
+                                            </>
+                                        )}
                                     </select>
                                 </div>
                             </div>

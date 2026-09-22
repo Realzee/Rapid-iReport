@@ -14,7 +14,7 @@ import { supabase } from '../utils/supabase';
 import { EMSReportGenerator } from './EMSReportGenerator';
 import MapView from '../components/MapView';
 import { LocationPicker } from '../components/LocationPicker';
-import { HeartPulse, FileText, Edit2, Trash2, Plus, Building2, Truck, Phone, AlertCircle, X, MapPin, ShieldAlert as ShieldAlertIcon, MapPin as MapPinIcon, Phone as PhoneIcon } from 'lucide-react';
+import { HeartPulse, FileText, Edit2, Trash2, Plus, Building2, Truck, Phone, AlertCircle, X, MapPin, ShieldAlert as ShieldAlertIcon, MapPin as MapPinIcon, Phone as PhoneIcon, LayoutGrid, List, ExternalLink, Navigation, Eye, Activity } from 'lucide-react';
 import { 
   PlusIcon, 
   SearchIcon, 
@@ -29,6 +29,7 @@ import {
   WrenchIcon
 } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
+import ConfirmModal from '../components/ConfirmModal';
 
 const safeFormatDistanceToNow = (dateStr?: string, _opts?: any) => {
   if (!dateStr) return '';
@@ -92,7 +93,17 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [triageFilter, setTriageFilter] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [detailModalDispatch, setDetailModalDispatch] = useState<EmsDispatch | null>(null);
   const [activeTab, setActiveTab] = useState<'dispatches' | 'units' | 'hospitals' | 'map'>('dispatches');
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string | React.ReactNode;
+    confirmText?: string;
+    confirmVariant?: 'primary' | 'danger';
+    onConfirm: () => void;
+  } | null>(null);
 
   // Dynamic Fleet & Hospital State with LocalStorage persistence
   const [units, setUnits] = useState<EMSUnit[]>(() => {
@@ -426,15 +437,14 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
     }
   };
 
-  // Permanently delete and immediately remove dispatch call from queue
-  const handleDeleteDispatch = async (id: string, obNumber?: string) => {
-    if (!window.confirm(`Are you sure you want to delete and remove dispatch call (${obNumber || id})? This will immediately remove it from all views.`)) {
-      return;
-    }
-
+  // Execute permanent delete and removal of dispatch call from queue
+  const executeDeleteDispatch = async (id: string, obNumber?: string) => {
     // 1. Immediately remove from local state for 0-latency UI update
     setDispatches(prev => prev.filter(d => d.id !== id));
-    addToast(`Dispatch call ${obNumber || ''} removed immediately.`, 'warning');
+    if (selectedDispatchForMap?.id === id) {
+      setSelectedDispatchForMap(null);
+    }
+    addToast(`Dispatch call ${obNumber || ''} removed from queue.`, 'warning');
 
     // 2. Perform DB deletion and fallback cancellation status update
     try {
@@ -458,6 +468,30 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
     } catch (err) {
       console.error('Failed to delete dispatch from DB:', err);
     }
+  };
+
+  // Trigger confirmation modal before removing call from queue
+  const handleDeleteDispatch = (id: string, obNumber?: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Remove Call from Queue',
+      message: (
+        <div className="space-y-2 text-left">
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+            Are you sure you want to remove dispatch call <span className="font-mono text-red-600 dark:text-red-400 font-bold">{obNumber || id}</span> from the active queue?
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            This action will immediately remove the incident from all controller and responder dispatch screens and archive the record.
+          </p>
+        </div>
+      ),
+      confirmText: 'Remove Call',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        await executeDeleteDispatch(id, obNumber);
+      }
+    });
   };
 
   // Update Assigned Unit
@@ -543,10 +577,18 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
   };
 
   const handleDeleteUnit = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete ambulance unit "${name}"?`)) {
-      setUnits(prev => prev.filter(u => u.id !== id));
-      addToast(`Deleted unit: ${name}`, 'info');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Fleet Unit',
+      message: `Are you sure you want to delete ambulance unit "${name}"?`,
+      confirmText: 'Delete Unit',
+      confirmVariant: 'danger',
+      onConfirm: () => {
+        setConfirmModal(null);
+        setUnits(prev => prev.filter(u => u.id !== id));
+        addToast(`Deleted unit: ${name}`, 'info');
+      }
+    });
   };
 
   // Hospital Facility CRUD Handlers
@@ -596,10 +638,18 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
   };
 
   const handleDeleteHospital = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete receiving facility "${name}"?`)) {
-      setHospitals(prev => prev.filter(h => h.id !== id));
-      addToast(`Deleted facility: ${name}`, 'info');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Receiving Facility',
+      message: `Are you sure you want to delete receiving facility "${name}"?`,
+      confirmText: 'Delete Facility',
+      confirmVariant: 'danger',
+      onConfirm: () => {
+        setConfirmModal(null);
+        setHospitals(prev => prev.filter(h => h.id !== id));
+        addToast(`Deleted facility: ${name}`, 'info');
+      }
+    });
   };
 
   // Helper for Triage Badges
@@ -676,18 +726,21 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-red-600 text-white rounded-2xl shadow-lg shadow-red-500/20">
+          <div className="p-3 bg-red-600 text-white rounded-2xl shadow-lg shadow-red-500/20 animate-pulse">
             <HeartPulse className="w-8 h-8" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
-              EMS DISPATCH CONTROL
-              <span className="px-2.5 py-0.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 text-xs font-bold rounded-full border border-red-200 dark:border-red-800">
-                LIVE MODULE
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
+                EMS DISPATCH CONTROL
+              </h1>
+              <span className="px-2.5 py-0.5 bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 text-xs font-bold rounded-full border border-red-200 dark:border-red-800 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-600 animate-ping" />
+                COMMAND CENTER ACTIVE
               </span>
-            </h1>
+            </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Emergency Medical Services Command, Ambulance Dispatch & Triage Dispatching
+              Emergency Medical Services Command, Ambulance Fleet Dispatch & Triage Management
             </p>
           </div>
         </div>
@@ -695,13 +748,41 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={() => setIsNewCallModalOpen(true)}
-            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-red-500/20 transition-all flex items-center gap-2 active:scale-95"
+            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-red-500/20 transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
           >
             <PlusIcon className="w-5 h-5" />
             + New Emergency Call
           </button>
         </div>
       </div>
+
+      {/* Critical P1 Emergency Alert Notification Bar */}
+      {stats.p1Count > 0 && (
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/60 border-2 border-red-500 rounded-2xl shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-red-600 text-white rounded-xl shadow-sm animate-bounce">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-red-700 dark:text-red-300 uppercase tracking-wide flex items-center gap-2">
+                CRITICAL ATTENTION REQUIRED: {stats.p1Count} P1 EMERGENCY CALL(S) ACTIVE
+              </h3>
+              <p className="text-xs text-red-600/90 dark:text-red-400 font-medium">
+                High priority life-threatening incidents pending immediate ambulance allocation.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setTriageFilter('P1');
+              setActiveTab('dispatches');
+            }}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1 shrink-0"
+          >
+            View P1 Calls →
+          </button>
+        </div>
+      )}
 
       {/* Stats Grid - Clickable Summary Cards Pop-Up */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
@@ -768,10 +849,10 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
       {/* Tabs & Filters Bar */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 mb-6 shadow-xs flex flex-col lg:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0">
+        <div className="flex items-center gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 scrollbar-none">
           <button
             onClick={() => setActiveTab('dispatches')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'dispatches'
                 ? 'bg-red-600 text-white shadow-sm'
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
@@ -782,7 +863,7 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
           <button
             onClick={() => setActiveTab('units')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'units'
                 ? 'bg-red-600 text-white shadow-sm'
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
@@ -793,7 +874,7 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
           <button
             onClick={() => setActiveTab('hospitals')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'hospitals'
                 ? 'bg-red-600 text-white shadow-sm'
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
@@ -804,7 +885,7 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
           <button
             onClick={() => setActiveTab('map')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'map'
                 ? 'bg-red-600 text-white shadow-sm'
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
@@ -816,6 +897,36 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
         {/* Search & Select Filters */}
         <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap sm:flex-nowrap">
+          {/* View Mode Toggle */}
+          {activeTab === 'dispatches' && (
+            <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                  viewMode === 'grid'
+                    ? 'bg-white dark:bg-gray-900 text-red-600 dark:text-red-400 shadow-2xs'
+                    : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                }`}
+                title="Grid View"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                  viewMode === 'list'
+                    ? 'bg-white dark:bg-gray-900 text-red-600 dark:text-red-400 shadow-2xs'
+                    : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                }`}
+                title="List View"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           <div className="relative flex-1 sm:w-64">
             <SearchIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -825,12 +936,21 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
           <select
             value={triageFilter}
             onChange={(e) => setTriageFilter(e.target.value)}
-            className="px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
           >
             <option value="all">All Triage Levels</option>
             <option value="P1">P1 - Critical</option>
@@ -898,33 +1018,64 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                   </div>
 
                   {/* Complaint & Location */}
-                  <h3 className="text-lg font-black text-gray-900 dark:text-white leading-snug mb-1">
-                    {dispatch.chief_complaint}
-                  </h3>
-                  <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1.5 mb-3">
-                    <MapIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    {dispatch.location}
-                  </p>
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
+                    <h3 className="text-lg font-black text-gray-900 dark:text-white leading-snug">
+                      {dispatch.chief_complaint}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setDetailModalDispatch(dispatch)}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-red-600 dark:text-red-400 hover:underline shrink-0"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> Call Details
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                    <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                      <MapIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
+                      {dispatch.location}
+                    </p>
+
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dispatch.location)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-gray-700 dark:text-gray-300 text-[11px] font-bold rounded-lg transition"
+                    >
+                      <Navigation className="w-3 h-3 text-red-500" /> Directions ↗
+                    </a>
+                  </div>
 
                   {/* Caller & Special Hazards */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 bg-gray-50 dark:bg-gray-800/60 p-3 rounded-xl border border-gray-100 dark:border-gray-800 text-xs">
-                    <div>
-                      <span className="text-gray-400 font-bold uppercase text-[10px] block">Caller / Contact</span>
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">
-                        {dispatch.caller_name} ({dispatch.caller_phone})
-                      </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <span className="text-gray-400 font-bold uppercase text-[10px] block">Caller / Contact</span>
+                        <span className="font-semibold text-gray-800 dark:text-gray-200">
+                          {dispatch.caller_name || 'Emergency Caller'}
+                        </span>
+                      </div>
+                      {dispatch.caller_phone && (
+                        <a
+                          href={`tel:${dispatch.caller_phone}`}
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg transition flex items-center gap-1 shadow-2xs"
+                        >
+                          <Phone className="w-3 h-3" /> Call
+                        </a>
+                      )}
                     </div>
 
                     <div>
-                      <span className="text-gray-400 font-bold uppercase text-[10px] block">Patients / Patients Count</span>
+                      <span className="text-gray-400 font-bold uppercase text-[10px] block">Patients Count</span>
                       <span className="font-semibold text-gray-800 dark:text-gray-200">
                         {dispatch.patient_count} Patient(s)
                       </span>
                     </div>
 
                     {dispatch.special_hazards && (
-                      <div className="sm:col-span-2 text-red-600 dark:text-red-400 font-bold flex items-center gap-1">
-                        <AlertTriangleIcon className="w-3.5 h-3.5" />
+                      <div className="sm:col-span-2 text-red-600 dark:text-red-400 font-bold flex items-center gap-1 bg-red-50 dark:bg-red-950/40 p-2 rounded-lg border border-red-200 dark:border-red-900">
+                        <AlertTriangleIcon className="w-3.5 h-3.5 shrink-0" />
                         Hazards: {dispatch.special_hazards}
                       </div>
                     )}
@@ -1659,13 +1810,183 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
       {/* PATIENT CARE REPORT MODAL */}
       {selectedPcrReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl max-w-4xl w-full p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-xs animate-fade-in" onClick={() => setSelectedPcrReport(null)}>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl max-w-5xl w-full p-0 shadow-2xl max-h-[92vh] overflow-y-auto overflow-x-hidden" onClick={e => e.stopPropagation()}>
             <EMSReportGenerator
               report={selectedPcrReport}
               profile={profile}
               onBack={() => setSelectedPcrReport(null)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* FULL DISPATCH CALL DETAIL MODAL */}
+      {detailModalDispatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in" onClick={() => setDetailModalDispatch(null)}>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800 mb-4">
+              <div className="flex items-center gap-2">
+                <HeartPulse className="w-6 h-6 text-red-600 animate-pulse" />
+                <div>
+                  <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+                    INCIDENT RECORD: {detailModalDispatch.ob_number}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Logged at {new Date(detailModalDispatch.created_at).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailModalDispatch(null)}
+                className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                {renderTriageBadge(detailModalDispatch.triage_level)}
+                {renderStatusBadge(detailModalDispatch.status)}
+              </div>
+
+              <div className="bg-gray-50 dark:bg-gray-800/60 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
+                <span className="text-gray-400 font-bold uppercase text-[10px] block mb-1">Chief Complaint / Emergency</span>
+                <p className="text-base font-black text-gray-900 dark:text-white leading-snug">
+                  {detailModalDispatch.chief_complaint}
+                </p>
+              </div>
+
+              <div className="bg-gray-50 dark:bg-gray-800/60 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2">
+                <div>
+                  <span className="text-gray-400 font-bold uppercase text-[10px] block mb-0.5">Incident Location</span>
+                  <p className="font-extrabold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                    <MapPinIcon className="w-4 h-4 text-red-500 shrink-0" />
+                    {detailModalDispatch.location}
+                  </p>
+                </div>
+
+                <div className="pt-2 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(detailModalDispatch.location)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition flex items-center gap-1 shadow-xs"
+                  >
+                    <Navigation className="w-3.5 h-3.5" /> Navigate via Google Maps ↗
+                  </a>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-gray-50 dark:bg-gray-800/60 p-3 rounded-2xl border border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                  <div>
+                    <span className="text-gray-400 font-bold uppercase text-[10px] block">Caller Contact</span>
+                    <span className="font-extrabold text-gray-900 dark:text-white block">{detailModalDispatch.caller_name || 'Caller'}</span>
+                    <span className="text-gray-500 font-medium">{detailModalDispatch.caller_phone || 'N/A'}</span>
+                  </div>
+                  {detailModalDispatch.caller_phone && (
+                    <a
+                      href={`tel:${detailModalDispatch.caller_phone}`}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition flex items-center gap-1"
+                    >
+                      <Phone className="w-3.5 h-3.5" /> Call
+                    </a>
+                  )}
+                </div>
+
+                <div className="bg-gray-50 dark:bg-gray-800/60 p-3 rounded-2xl border border-gray-200 dark:border-gray-700">
+                  <span className="text-gray-400 font-bold uppercase text-[10px] block">Patient Count</span>
+                  <span className="font-extrabold text-gray-900 dark:text-white text-sm block mt-1">
+                    {detailModalDispatch.patient_count} Patient(s)
+                  </span>
+                </div>
+              </div>
+
+              {detailModalDispatch.special_hazards && (
+                <div className="bg-red-50 dark:bg-red-950/60 p-3 rounded-2xl border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 font-bold">
+                  <span className="text-[10px] uppercase font-black block mb-0.5">⚠️ Hazards / Special Warnings</span>
+                  {detailModalDispatch.special_hazards}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 block mb-1">Assigned Ambulance Unit</label>
+                  <select
+                    value={detailModalDispatch.assigned_unit || ''}
+                    onChange={(e) => {
+                      handleAssignUnit(detailModalDispatch.id, e.target.value);
+                      setDetailModalDispatch(prev => prev ? { ...prev, assigned_unit: e.target.value } : null);
+                    }}
+                    className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white"
+                  >
+                    <option value="">-- Select Ambulance Unit --</option>
+                    {units.map(u => (
+                      <option key={u.id} value={u.name}>{u.name} [{u.cert}]</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 block mb-1">Receiving Hospital Facility</label>
+                  <select
+                    value={detailModalDispatch.receiving_facility || ''}
+                    onChange={(e) => {
+                      handleAssignFacility(detailModalDispatch.id, e.target.value);
+                      setDetailModalDispatch(prev => prev ? { ...prev, receiving_facility: e.target.value } : null);
+                    }}
+                    className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white"
+                  >
+                    <option value="">-- Select Hospital --</option>
+                    {hospitals.map(h => (
+                      <option key={h.id} value={h.name}>{h.name} ({h.level})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const mockReport: Report = {
+                      id: detailModalDispatch.report_id || detailModalDispatch.id,
+                      ob_number: detailModalDispatch.ob_number || 'EMS-REPORT',
+                      title: detailModalDispatch.chief_complaint,
+                      location: detailModalDispatch.location,
+                      description: detailModalDispatch.chief_complaint,
+                      emergency_type: 'medical' as any,
+                      status: 'active' as any,
+                      severity: detailModalDispatch.triage_level === 'P1' ? 'critical' as any : 'high' as any,
+                      type: 'emergency',
+                      reported_at: detailModalDispatch.created_at,
+                      reported_by: profile.id
+                    };
+                    setDetailModalDispatch(null);
+                    setSelectedPcrReport(mockReport);
+                  }}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-xs transition flex items-center gap-1.5"
+                >
+                  <FileText className="w-4 h-4" /> Open PCR Form
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = detailModalDispatch.id;
+                    const ob = detailModalDispatch.ob_number;
+                    setDetailModalDispatch(null);
+                    handleDeleteDispatch(id, ob);
+                  }}
+                  className="px-4 py-2 bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 hover:bg-red-100 border border-red-200 dark:border-red-800 font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4 text-red-600" /> Remove Call
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1866,6 +2187,18 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
             </div>
           </div>
         </div>
+      )}
+
+      {confirmModal && (
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal(null)}
+          onConfirm={confirmModal.onConfirm}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmText={confirmModal.confirmText || 'Confirm'}
+          confirmVariant={confirmModal.confirmVariant || 'danger'}
+        />
       )}
     </div>
   );
