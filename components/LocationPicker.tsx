@@ -190,7 +190,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     onLocationSelect, 
     placeholder, 
     height = '256px',
-    autoPindrop = true 
+    autoPindrop = false 
 }) => {
     const { addToast } = useToast();
     const [isLocating, setIsLocating] = useState(false);
@@ -208,23 +208,27 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     const [suggestions, setSuggestions] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
+    const [isInputFocused, setIsInputFocused] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
     const debounceTimeoutRef = useRef<number | null>(null);
 
-    // Dynamic initial address lookup
+    // Dynamic initial address lookup (never overwrite if user is currently typing/focused)
     useEffect(() => {
+        if (isInputFocused) return;
         if (initialCoords) {
             reverseGeocode(initialCoords).then(address => {
-                if (address && address !== 'Unknown location' && address !== 'Could not fetch location name') {
+                if (!isInputFocused && address && address !== 'Unknown location' && address !== 'Could not fetch location name') {
                     setSearchQuery(address);
                 }
             });
         } else {
-            setSearchQuery('');
+            if (!isInputFocused) {
+                setSearchQuery('');
+            }
         }
-    }, [initialCoords]);
+    }, [initialCoords, isInputFocused]);
 
-    // Handle suggestions lookup & auto-pindrop as user types
+    // Handle suggestions lookup as user types (DOES NOT auto-select on debounce)
     useEffect(() => {
         const trimmedQuery = searchQuery.trim();
         if (!trimmedQuery || trimmedQuery.length < 3) {
@@ -276,15 +280,6 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             return;
         }
 
-        // Skip searching if current query matches the coordinates display name exactly
-        if (initialCoords) {
-            reverseGeocode(initialCoords).then(addr => {
-                if (addr === searchQuery) {
-                    setSuggestions([]);
-                }
-            });
-        }
-
         if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
 
         debounceTimeoutRef.current = window.setTimeout(async () => {
@@ -293,23 +288,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                 const response = await fetch(`/api/geocode?q=${encodeURIComponent(searchQuery)}&limit=5`);
                 if (response.ok) {
                     const results = await response.json();
-                    setSuggestions(results);
-
-                    // Auto-pindrop to the top match if autoPindrop is enabled
-                    if (autoPindrop && Array.isArray(results) && results.length > 0) {
-                        const top = results[0];
-                        const lat = parseFloat(top.lat);
-                        const lng = parseFloat(top.lon);
-                        if (!isNaN(lat) && !isNaN(lng)) {
-                            const coords = { lat, lng };
-                            if (onLocationChange) {
-                                onLocationChange(coords, top.display_name);
-                            }
-                            if (onLocationSelect) {
-                                onLocationSelect(coords);
-                            }
-                        }
-                    }
+                    setSuggestions(Array.isArray(results) ? results : []);
                 } else {
                     setSuggestions([]);
                 }
@@ -319,7 +298,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             } finally {
                 setIsSearching(false);
             }
-        }, 450);
+        }, 400);
 
         return () => {
             if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
@@ -370,7 +349,11 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                         if (Array.isArray(results) && results.length > 0) {
                             handleSuggestionClick(results[0]);
                         } else {
-                            addToast("Location not found. Try adding city or street name.", "info");
+                            if (onLocationChange && initialCoords) {
+                                onLocationChange(initialCoords, searchQuery.trim());
+                            }
+                            addToast("Custom address set.", "info");
+                            setIsOpen(false);
                         }
                     })
                     .catch(err => console.error(err))
@@ -440,10 +423,32 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                             setIsOpen(true);
                         }}
                         onKeyDown={handleKeyDown}
-                        onFocus={() => setIsOpen(true)}
-                        placeholder={placeholder || "Search address..."}
-                        className="w-full text-[11px] py-1.5 px-3 pr-8 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 font-sans leading-tight"
+                        onFocus={() => {
+                            setIsInputFocused(true);
+                            if (suggestions.length > 0 || searchQuery.trim().length >= 3) {
+                                setIsOpen(true);
+                            }
+                        }}
+                        onBlur={() => {
+                            setTimeout(() => setIsInputFocused(false), 250);
+                        }}
+                        placeholder={placeholder || "Search address or drop pin..."}
+                        className="w-full text-[11px] py-1.5 pl-3 pr-12 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 font-sans leading-tight"
                     />
+                    {searchQuery && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSearchQuery('');
+                                setSuggestions([]);
+                                setIsOpen(false);
+                            }}
+                            className="absolute right-7 top-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs px-1"
+                            title="Clear address search"
+                        >
+                            ✕
+                        </button>
+                    )}
                     {isSearching && (
                         <div className="absolute right-2.5 top-2.5">
                             <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -451,18 +456,33 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                     )}
                 </div>
                 
-                {isOpen && suggestions.length > 0 && (
-                    <div className="absolute w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-xl max-h-40 overflow-y-auto z-[2000] font-sans">
+                {isOpen && (suggestions.length > 0 || (searchQuery.trim().length >= 3 && !isSearching)) && (
+                    <div className="absolute w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-xl max-h-48 overflow-y-auto z-[2000] font-sans">
                         {suggestions.map((s, idx) => (
                             <button
                                 key={s.place_id || idx}
                                 type="button"
                                 onClick={() => handleSuggestionClick(s)}
-                                className="w-full text-left px-3 py-1.5 text-[10px] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors border-b border-gray-100 dark:border-gray-700/50 last:border-0 truncate"
+                                className="w-full text-left px-3 py-1.5 text-[10px] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors border-b border-gray-100 dark:border-gray-700/50 last:border-0 truncate flex items-center gap-1.5"
                             >
-                                {s.display_name}
+                                <span className="text-red-500 shrink-0">📍</span>
+                                <span className="truncate">{s.display_name}</span>
                             </button>
                         ))}
+                        {searchQuery.trim().length >= 3 && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (onLocationChange && initialCoords) {
+                                        onLocationChange(initialCoords, searchQuery.trim());
+                                    }
+                                    setIsOpen(false);
+                                }}
+                                className="w-full text-left px-3 py-1.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors border-t border-gray-100 dark:border-gray-700/50 flex items-center gap-1"
+                            >
+                                <span>Use entered address: "{searchQuery.trim()}"</span>
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

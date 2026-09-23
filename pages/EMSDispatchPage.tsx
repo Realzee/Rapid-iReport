@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Profile, 
   UserRole, 
@@ -186,6 +186,139 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
     dispatch_notes: '',
     special_hazards: '',
   });
+
+  // Dedicated Address Autocomplete & PinDrop state (does not auto-select or overwrite user typing)
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [isAddressDropdownOpen, setIsAddressDropdownOpen] = useState(false);
+  const [showNewCallMap, setShowNewCallMap] = useState(true);
+  const [isLocatingDeviceGps, setIsLocatingDeviceGps] = useState(false);
+  const addressDropdownRef = useRef<HTMLDivElement>(null);
+  const addressDebounceRef = useRef<number | null>(null);
+
+  // Address search helper for EMS
+  const handleAddressInputChange = (value: string) => {
+    setNewCallForm(prev => ({ ...prev, location: value }));
+    setIsAddressDropdownOpen(true);
+
+    if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+    const trimmed = value.trim();
+    if (trimmed.length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    addressDebounceRef.current = window.setTimeout(async () => {
+      setIsSearchingAddress(true);
+      try {
+        const res = await fetch(`/api/geocode?q=${encodeURIComponent(trimmed)}&limit=5`);
+        if (res.ok) {
+          const data = await res.json();
+          setAddressSuggestions(Array.isArray(data) ? data : []);
+        } else {
+          setAddressSuggestions([]);
+        }
+      } catch {
+        setAddressSuggestions([]);
+      } finally {
+        setIsSearchingAddress(false);
+      }
+    }, 400);
+  };
+
+  const handleSelectAddressSuggestion = (suggestion: any) => {
+    const lat = parseFloat(suggestion.lat);
+    const lng = parseFloat(suggestion.lon);
+    setNewCallForm(prev => ({
+      ...prev,
+      location: suggestion.display_name,
+      location_coords: (!isNaN(lat) && !isNaN(lng)) ? { lat, lng } : prev.location_coords
+    }));
+    setIsAddressDropdownOpen(false);
+    setAddressSuggestions([]);
+  };
+
+  const handleUseCurrentGps = () => {
+    if (!navigator.geolocation) {
+      addToast('Geolocation is not supported by your browser', 'error');
+      return;
+    }
+    setIsLocatingDeviceGps(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        try {
+          const res = await fetch(`/api/reverse-geocode?lat=${coords.lat}&lon=${coords.lng}`);
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.display_name || `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`;
+            setNewCallForm(prev => ({
+              ...prev,
+              location: addr,
+              location_coords: coords
+            }));
+            addToast('Current GPS location captured.', 'success');
+            setIsLocatingDeviceGps(false);
+            return;
+          }
+        } catch {}
+        setNewCallForm(prev => ({
+          ...prev,
+          location: `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`,
+          location_coords: coords
+        }));
+        addToast('GPS coordinates captured.', 'success');
+        setIsLocatingDeviceGps(false);
+      },
+      () => {
+        addToast('Could not retrieve current GPS position.', 'error');
+        setIsLocatingDeviceGps(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (addressDropdownRef.current && !addressDropdownRef.current.contains(e.target as Node)) {
+        setIsAddressDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Editing active dispatch location state
+  const [isEditingCallLocation, setIsEditingCallLocation] = useState(false);
+  const [editedCallLocation, setEditedCallLocation] = useState('');
+  const [editedCallCoords, setEditedCallCoords] = useState<LocationCoords | null>(null);
+
+  const handleStartEditLocation = (dispatch: EmsDispatch) => {
+    setIsEditingCallLocation(true);
+    setEditedCallLocation(dispatch.location || '');
+    setEditedCallCoords(dispatch.location_coords || { lat: -26.2041, lng: 28.0473 });
+  };
+
+  const handleSaveEditedLocation = async (dispatchId: string) => {
+    if (!editedCallLocation.trim()) {
+      addToast('Please enter a location.', 'error');
+      return;
+    }
+    const updatePayload = {
+      location: editedCallLocation.trim(),
+      location_coords: editedCallCoords || { lat: -26.2041, lng: 28.0473 },
+      updated_at: new Date().toISOString()
+    };
+    setDispatches(prev => prev.map(d => d.id === dispatchId ? { ...d, ...updatePayload } : d));
+    setDetailModalDispatch(prev => prev ? { ...prev, ...updatePayload } : null);
+    try {
+      await supabase.from('ems_dispatches').update(updatePayload).eq('id', dispatchId);
+      addToast('Incident location updated successfully.', 'success');
+    } catch (err) {
+      console.warn('DB update failed, updated locally:', err);
+    }
+    setIsEditingCallLocation(false);
+  };
 
   // Fetch EMS Dispatches from Supabase
   const fetchDispatches = async () => {
@@ -380,6 +513,8 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
         setDispatches(prev => [data[0], ...prev]);
       }
       addToast(`EMS Call ${obNum} created successfully.`, 'success');
+      setAddressSuggestions([]);
+      setIsAddressDropdownOpen(false);
       setIsNewCallModalOpen(false);
       setNewCallForm({
         caller_name: '',
@@ -1469,33 +1604,121 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                 </div>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
-                    Incident Location & GPS PinDrop
+              {/* INCIDENT LOCATION & INTERACTIVE PINDROP */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                    Incident Location / Address <span className="text-red-500">*</span>
                   </label>
-                  <span className="text-[10px] text-red-600 dark:text-red-400 font-bold">
-                    Type street name to Auto Pindrop
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleUseCurrentGps}
+                      disabled={isLocatingDeviceGps}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-red-50 dark:bg-red-950/60 hover:bg-red-100 dark:hover:bg-red-900/40 px-2 py-1 rounded-lg border border-red-200 dark:border-red-900/60 transition cursor-pointer"
+                      title="Capture current device GPS location"
+                    >
+                      {isLocatingDeviceGps ? (
+                        <div className="w-3 h-3 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <Navigation className="w-3 h-3" />
+                      )}
+                      <span>Use My GPS</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewCallMap(!showNewCallMap)}
+                      className="text-[11px] font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 transition cursor-pointer"
+                    >
+                      {showNewCallMap ? 'Hide Map' : 'Show Map'}
+                    </button>
+                  </div>
                 </div>
-                <div className="mb-2">
-                  <LocationPicker
-                    initialCoords={newCallForm.location_coords}
-                    height="200px"
-                    autoPindrop={true}
-                    placeholder="Type street name or address (e.g. 10 Oxford Rd, Rosebank)..."
-                    onLocationChange={(coords, address) => {
-                      setNewCallForm(prev => ({
-                        ...prev,
-                        location: address || prev.location,
-                        location_coords: coords
-                      }));
-                    }}
-                  />
+
+                {/* Main Address Input (Allows typing full address freely without interruption) */}
+                <div className="relative" ref={addressDropdownRef}>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      placeholder="Type complete street address, unit number, complex, or intersection..."
+                      value={newCallForm.location}
+                      onChange={e => handleAddressInputChange(e.target.value)}
+                      onFocus={() => {
+                        if (addressSuggestions.length > 0 || newCallForm.location.trim().length >= 3) {
+                          setIsAddressDropdownOpen(true);
+                        }
+                      }}
+                      className="w-full p-2.5 pr-8 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                    />
+                    {isSearchingAddress && (
+                      <div className="absolute right-3 top-3">
+                        <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Autocomplete Suggestions (Only selects when user explicitly clicks or keeps custom) */}
+                  {isAddressDropdownOpen && (addressSuggestions.length > 0 || (newCallForm.location.trim().length >= 3 && !isSearchingAddress)) && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl max-h-52 overflow-y-auto z-50">
+                      {addressSuggestions.map((s, idx) => (
+                        <button
+                          key={s.place_id || idx}
+                          type="button"
+                          onClick={() => handleSelectAddressSuggestion(s)}
+                          className="w-full text-left p-2.5 text-xs text-gray-800 dark:text-gray-200 hover:bg-red-50 dark:hover:bg-red-950/40 border-b border-gray-100 dark:border-gray-700/60 last:border-0 flex items-start gap-2 transition cursor-pointer"
+                        >
+                          <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
+                          <span className="truncate">{s.display_name}</span>
+                        </button>
+                      ))}
+
+                      {newCallForm.location.trim().length >= 3 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAddressDropdownOpen(false);
+                          }}
+                          className="w-full text-left p-2.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2 transition cursor-pointer"
+                        >
+                          <span>✓ Keep exact entered address: "{newCallForm.location.trim()}"</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                {/* Interactive Map PinDrop (Visual pinpointing without wiping typed address) */}
+                {showNewCallMap && (
+                  <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <div className="bg-gray-100 dark:bg-gray-800 px-3 py-1.5 flex items-center justify-between text-[11px] text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                      <span className="font-semibold flex items-center gap-1">
+                        <span>📍</span> Click map to fine-tune exact scene pin
+                      </span>
+                      <span className="font-mono text-[10px] text-gray-500">
+                        {newCallForm.location_coords.lat.toFixed(4)}, {newCallForm.location_coords.lng.toFixed(4)}
+                      </span>
+                    </div>
+                    <LocationPicker
+                      initialCoords={newCallForm.location_coords}
+                      height="180px"
+                      autoPindrop={false}
+                      placeholder="Search map or drop pin..."
+                      onLocationChange={(coords, address) => {
+                        setNewCallForm(prev => ({
+                          ...prev,
+                          location: prev.location.trim() ? prev.location : (address || prev.location),
+                          location_coords: coords
+                        }));
+                      }}
+                    />
+                  </div>
+                )}
+
                 {newCallForm.location && (
-                  <p className="text-[11px] text-gray-600 dark:text-gray-300 font-medium bg-gray-50 dark:bg-gray-800 p-2 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <span className="font-bold text-red-600 dark:text-red-400">Selected Location:</span> {newCallForm.location}
+                  <p className="text-[11px] text-gray-600 dark:text-gray-300 font-medium bg-gray-50 dark:bg-gray-800/80 p-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <span className="font-bold text-red-600 dark:text-red-400">Confirmed Location:</span> {newCallForm.location}
                   </p>
                 )}
               </div>
@@ -1859,25 +2082,87 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
                 </p>
               </div>
 
-              <div className="bg-gray-50 dark:bg-gray-800/60 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2">
-                <div>
-                  <span className="text-gray-400 font-bold uppercase text-[10px] block mb-0.5">Incident Location</span>
-                  <p className="font-extrabold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                    <MapPinIcon className="w-4 h-4 text-red-500 shrink-0" />
-                    {detailModalDispatch.location}
-                  </p>
+              <div className="bg-gray-50 dark:bg-gray-800/60 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400 font-bold uppercase text-[10px] block">Incident Location</span>
+                  {!isEditingCallLocation ? (
+                    <button
+                      type="button"
+                      onClick={() => handleStartEditLocation(detailModalDispatch)}
+                      className="text-[11px] font-bold text-red-600 dark:text-red-400 hover:text-red-700 inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit2 className="w-3 h-3" /> Edit Location
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingCallLocation(false)}
+                      className="text-[11px] font-bold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </div>
 
-                <div className="pt-2 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(detailModalDispatch.location)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition flex items-center gap-1 shadow-xs"
-                  >
-                    <Navigation className="w-3.5 h-3.5" /> Navigate via Google Maps ↗
-                  </a>
-                </div>
+                {!isEditingCallLocation ? (
+                  <>
+                    <p className="font-extrabold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                      <MapPinIcon className="w-4 h-4 text-red-500 shrink-0" />
+                      {detailModalDispatch.location}
+                    </p>
+
+                    <div className="pt-2 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(detailModalDispatch.location)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition flex items-center gap-1 shadow-xs"
+                      >
+                        <Navigation className="w-3.5 h-3.5" /> Navigate via Google Maps ↗
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-2 pt-1">
+                    <input
+                      type="text"
+                      value={editedCallLocation}
+                      onChange={e => setEditedCallLocation(e.target.value)}
+                      placeholder="Type complete updated address..."
+                      className="w-full p-2.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-xs font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                    />
+                    <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                      <LocationPicker
+                        initialCoords={editedCallCoords}
+                        height="160px"
+                        autoPindrop={false}
+                        placeholder="Search or pin location..."
+                        onLocationChange={(coords, address) => {
+                          setEditedCallCoords(coords);
+                          if (address && !editedCallLocation.trim()) {
+                            setEditedCallLocation(address);
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingCallLocation(false)}
+                        className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveEditedLocation(detailModalDispatch.id)}
+                        className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg cursor-pointer"
+                      >
+                        Save Location
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
