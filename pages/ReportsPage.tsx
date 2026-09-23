@@ -179,80 +179,98 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const [itemsPerPage] = useState(15);
 
     const fetchData = async () => {
+        if (!supabase) {
+            setLoading(false);
+            return;
+        }
+
         if (reports.length === 0) {
             setLoading(true);
         }
 
-        const usersQuery = supabase.from('profiles').select(SUMMARY_PROFILE_COLUMNS).limit(100);
-        const respondersQuery = supabase.from('profiles').select(SUMMARY_PROFILE_COLUMNS).eq('role', UserRole.RESPONDER).limit(100);
-        const terminalStatuses = TERMINAL_REPORT_STATUSES;
+        try {
+            const usersQuery = supabase.from('profiles').select(SUMMARY_PROFILE_COLUMNS).limit(100);
+            const respondersQuery = supabase.from('profiles').select(SUMMARY_PROFILE_COLUMNS).eq('role', UserRole.RESPONDER).limit(100);
+            const terminalStatuses = TERMINAL_REPORT_STATUSES;
 
-        const isGlobalAdminValue = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
+            const isGlobalAdminValue = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 
-        if (!isGlobalAdminValue && profile.company_id) {
-            usersQuery.eq('company_id', profile.company_id);
-            respondersQuery.eq('company_id', profile.company_id);
+            if (!isGlobalAdminValue && profile.company_id) {
+                usersQuery.eq('company_id', profile.company_id);
+                respondersQuery.eq('company_id', profile.company_id);
+            }
+
+            let vehicleQuery = supabase.from('vehicle_reports').select(VEHICLE_REPORT_COLUMNS).in('status', terminalStatuses);
+            let crimeQuery = supabase.from('crime_reports').select(CRIME_REPORT_COLUMNS).in('status', terminalStatuses);
+            let emergencyQuery = supabase.from('emergency_reports').select(EMERGENCY_REPORT_COLUMNS).in('status', terminalStatuses);
+
+            if (!isGlobalAdminValue && profile.company_id) {
+                const filterStr = `company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`;
+                vehicleQuery = vehicleQuery.or(filterStr);
+                crimeQuery = crimeQuery.or(filterStr);
+                emergencyQuery = emergencyQuery.or(filterStr);
+            }
+
+            const [
+                vRes,
+                cRes,
+                eRes,
+                uRes,
+                rRes,
+                cachedCompaniesRes,
+                sharesRes
+            ] = await Promise.allSettled([
+                vehicleQuery.order('reported_at', { ascending: false }).limit(100),
+                crimeQuery.order('reported_at', { ascending: false }).limit(100),
+                emergencyQuery.order('reported_at', { ascending: false }).limit(100),
+                usersQuery,
+                respondersQuery,
+                fetchCachedCompanies(),
+                profile.company_id 
+                    ? supabase.from('report_shares').select('*').eq('target_company_id', profile.company_id).eq('status', 'pending')
+                    : Promise.resolve({ data: [], error: null })
+            ]);
+
+            const vehicleData = vRes.status === 'fulfilled' && !vRes.value.error ? vRes.value.data : null;
+            const crimeData = cRes.status === 'fulfilled' && !cRes.value.error ? cRes.value.data : null;
+            const emergencyData = eRes.status === 'fulfilled' && !eRes.value.error ? eRes.value.data : null;
+            const usersData = uRes.status === 'fulfilled' && !uRes.value.error ? uRes.value.data : null;
+            const respondersData = rRes.status === 'fulfilled' && !rRes.value.error ? rRes.value.data : null;
+            const companiesData = (cachedCompaniesRes.status === 'fulfilled' ? cachedCompaniesRes.value : []) || [];
+            const sharesData = sharesRes.status === 'fulfilled' && !(sharesRes.value as any)?.error ? (sharesRes.value as any)?.data : [];
+
+            if (vehicleData !== null || crimeData !== null || emergencyData !== null) {
+                const combined = [
+                    ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' as const })),
+                    ...(crimeData || []).map(r => ({ ...r, type: 'crime' as const })),
+                    ...(emergencyData || []).map(r => ({
+                        ...r,
+                        type: (r.emergency_type === 'Roadside Assistance' ? 'roadside' : 'emergency') as ('roadside' | 'emergency')
+                    }))
+                ] as (Report & {type: 'vehicle' | 'crime' | 'emergency' | 'roadside'})[];
+                setReports(combined);
+            }
+
+            if (sharesData) setIncomingShares(sharesData);
+            if (usersData) setUsers(usersData);
+            if (companiesData.length > 0) setCompanies(companiesData);
+
+            if (respondersData) {
+                const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
+                setResponders((respondersData || []).map(p => ({
+                    id: p.id,
+                    first_name: p.first_name,
+                    surname: p.surname,
+                    status: p.responder_status || ResponderStatus.OFF_DUTY,
+                    location_coords: p.location_coords || undefined,
+                    company_logo_url: p.company_id ? companiesMap.get(p.company_id)?.logo_url : undefined,
+                })));
+            }
+        } catch (err: any) {
+            console.warn("ReportsPage data fetch notice:", err?.message || err);
+        } finally {
+            setLoading(false);
         }
-
-        let vehicleQuery = supabase.from('vehicle_reports').select(VEHICLE_REPORT_COLUMNS).in('status', terminalStatuses);
-        let crimeQuery = supabase.from('crime_reports').select(CRIME_REPORT_COLUMNS).in('status', terminalStatuses);
-        let emergencyQuery = supabase.from('emergency_reports').select(EMERGENCY_REPORT_COLUMNS).in('status', terminalStatuses);
-
-        if (!isGlobalAdminValue && profile.company_id) {
-            const filterStr = `company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`;
-            vehicleQuery = vehicleQuery.or(filterStr);
-            crimeQuery = crimeQuery.or(filterStr);
-            emergencyQuery = emergencyQuery.or(filterStr);
-        }
-
-        const [
-            { data: vehicleData, error: vError },
-            { data: crimeData, error: cError },
-            { data: emergencyData, error: aError },
-            { data: usersData, error: uError },
-            { data: respondersData, error: rError },
-            cachedCompaniesList,
-            { data: sharesData, error: sharesError }
-        ] = await Promise.all([
-            vehicleQuery.order('reported_at', { ascending: false }).limit(100),
-            crimeQuery.order('reported_at', { ascending: false }).limit(100),
-            emergencyQuery.order('reported_at', { ascending: false }).limit(100),
-            usersQuery,
-            respondersQuery,
-            fetchCachedCompanies(),
-            profile.company_id 
-                ? supabase.from('report_shares').select('*').eq('target_company_id', profile.company_id).eq('status', 'pending')
-                : supabase.from('report_shares').select('*').eq('status', 'non-existent')
-        ]);
-
-        const companiesData = cachedCompaniesList || [];
-
-        if (vError || cError || aError || uError || rError || sharesError) {
-            console.error("Error fetching data:", vError || cError || aError || uError || rError || sharesError);
-        } else {
-            const combined = [
-                ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' as const })),
-                ...(crimeData || []).map(r => ({ ...r, type: 'crime' as const })),
-                ...(emergencyData || []).map(r => ({
-                    ...r,
-                    type: (r.emergency_type === 'Roadside Assistance' ? 'roadside' : 'emergency') as ('roadside' | 'emergency')
-                }))
-            ] as (Report & {type: 'vehicle' | 'crime' | 'emergency' | 'roadside'})[];
-            setReports(combined);
-            setIncomingShares(sharesData || []);
-            setUsers(usersData || []);
-            setCompanies(companiesData || []);
-            const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
-            setResponders((respondersData || []).map(p => ({
-                id: p.id,
-                first_name: p.first_name,
-                surname: p.surname,
-                status: p.responder_status || ResponderStatus.OFF_DUTY,
-                location_coords: p.location_coords || undefined,
-                company_logo_url: p.company_id ? companiesMap.get(p.company_id)?.logo_url : undefined,
-            })));
-        }
-        setLoading(false);
     };
 
     useEffect(() => {

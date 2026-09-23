@@ -261,81 +261,99 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         (profile.company?.name?.toLowerCase().includes('rapid911') || false), [profile]);
 
     const fetchData = async () => {
+        if (!supabase) {
+            setLoading(false);
+            return;
+        }
+
         if (reports.length === 0) {
             setLoading(true);
         }
 
-        const usersQuery = supabase
-            .from('profiles')
-            .select(SUMMARY_PROFILE_COLUMNS)
-            .limit(100);
-        if (!isGlobalAdmin && profile.company_id) {
-            usersQuery.eq('company_id', profile.company_id);
+        try {
+            const usersQuery = supabase
+                .from('profiles')
+                .select(SUMMARY_PROFILE_COLUMNS)
+                .limit(100);
+            if (!isGlobalAdmin && profile.company_id) {
+                usersQuery.eq('company_id', profile.company_id);
+            }
+
+            let vehicleQuery = supabase.from('vehicle_reports').select(VEHICLE_REPORT_COLUMNS);
+            let crimeQuery = supabase.from('crime_reports').select(CRIME_REPORT_COLUMNS);
+            let emergencyQuery = supabase.from('emergency_reports').select(EMERGENCY_REPORT_COLUMNS);
+
+            if (!isGlobalAdmin && profile.company_id) {
+                const filterStr = `company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`;
+                vehicleQuery = vehicleQuery.or(filterStr);
+                crimeQuery = crimeQuery.or(filterStr);
+                emergencyQuery = emergencyQuery.or(filterStr);
+            }
+
+            const [
+                vRes,
+                cRes,
+                eRes,
+                uRes,
+                cachedCompaniesRes
+            ] = await Promise.allSettled([
+                vehicleQuery.order('reported_at', { ascending: false }).limit(60),
+                crimeQuery.order('reported_at', { ascending: false }).limit(60),
+                emergencyQuery.order('reported_at', { ascending: false }).limit(60),
+                usersQuery,
+                fetchCachedCompanies()
+            ]);
+
+            const vehicleData = vRes.status === 'fulfilled' && !vRes.value.error ? vRes.value.data : null;
+            const crimeData = cRes.status === 'fulfilled' && !cRes.value.error ? cRes.value.data : null;
+            const emergencyData = eRes.status === 'fulfilled' && !eRes.value.error ? eRes.value.data : null;
+            const usersData = uRes.status === 'fulfilled' && !uRes.value.error ? uRes.value.data : null;
+            const companiesList = (cachedCompaniesRes.status === 'fulfilled' ? cachedCompaniesRes.value : []) || [];
+
+            const companiesMap = new Map(companiesList.map(c => [c.id, c]));
+
+            if (vehicleData !== null || crimeData !== null || emergencyData !== null) {
+                const combinedReports = [
+                    ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
+                    ...(crimeData || []).map(r => ({ ...r, type: 'crime' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
+                    ...(emergencyData || []).map(r => ({ ...r, type: (r.emergency_type === 'Roadside Assistance' || (r as any).type === 'roadside' ? 'roadside' : 'emergency') as any, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined }))
+                ];
+
+                // Ensure we have profiles for all reporters using cached profile fetcher
+                const reporterIds = Array.from(new Set(combinedReports.map(r => r.reported_by)));
+                const loadedUserIds = new Set((usersData || []).map(u => u.id));
+                const missingReporterIds = reporterIds.filter(id => id && !loadedUserIds.has(id));
+                
+                setReports(combinedReports);
+                
+                let additionalProfiles: Profile[] = [];
+                if (missingReporterIds.length > 0) {
+                    try {
+                        const fetched = await fetchCachedProfiles(missingReporterIds);
+                        additionalProfiles = fetched.map(u => ({
+                            ...u,
+                            company: u.company_id ? companiesMap.get(u.company_id) : undefined
+                        }));
+                    } catch {
+                        // ignore profile cache errors
+                    }
+                }
+
+                if (usersData) {
+                    const usersWithCompany = (usersData || []).map(u => ({
+                        ...u,
+                        company: u.company_id ? companiesMap.get(u.company_id) : undefined
+                    }));
+
+                    setAllUsers([...usersWithCompany, ...additionalProfiles]);
+                }
+            }
+        } catch (err: any) {
+            console.warn("ControllerPage data fetch notice:", err?.message || err);
+        } finally {
+            setLoading(false);
+            isInitialLoad.current = false;
         }
-
-        let vehicleQuery = supabase.from('vehicle_reports').select(VEHICLE_REPORT_COLUMNS);
-        let crimeQuery = supabase.from('crime_reports').select(CRIME_REPORT_COLUMNS);
-        let emergencyQuery = supabase.from('emergency_reports').select(EMERGENCY_REPORT_COLUMNS);
-
-        if (!isGlobalAdmin && profile.company_id) {
-            const filterStr = `company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`;
-            vehicleQuery = vehicleQuery.or(filterStr);
-            crimeQuery = crimeQuery.or(filterStr);
-            emergencyQuery = emergencyQuery.or(filterStr);
-        }
-
-        const [
-            { data: vehicleData, error: vError },
-            { data: crimeData, error: cError },
-            { data: emergencyData, error: aError },
-            { data: usersData, error: uError },
-            cachedCompaniesList
-        ] = await Promise.all([
-            vehicleQuery.order('reported_at', { ascending: false }).limit(60),
-            crimeQuery.order('reported_at', { ascending: false }).limit(60),
-            emergencyQuery.order('reported_at', { ascending: false }).limit(60),
-            usersQuery,
-            fetchCachedCompanies()
-        ]);
-
-        if (vError && !vError.message?.includes('exceed_egress_quota')) console.error('Error fetching vehicle reports:', vError);
-        if (cError && !cError.message?.includes('exceed_egress_quota')) console.error('Error fetching crime reports:', cError);
-        if (aError && !aError.message?.includes('exceed_egress_quota')) console.error('Error fetching emergency reports:', aError);
-        if (uError && !uError.message?.includes('exceed_egress_quota')) console.error('Error fetching users:', uError);
-
-        const companiesList = cachedCompaniesList || [];
-        const companiesMap = new Map(companiesList.map(c => [c.id, c]));
-
-        const combinedReports = [
-            ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
-            ...(crimeData || []).map(r => ({ ...r, type: 'crime' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
-            ...(emergencyData || []).map(r => ({ ...r, type: (r.emergency_type === 'Roadside Assistance' || (r as any).type === 'roadside' ? 'roadside' : 'emergency') as any, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined }))
-        ];
-
-        // Ensure we have profiles for all reporters using cached profile fetcher
-        const reporterIds = Array.from(new Set(combinedReports.map(r => r.reported_by)));
-        const loadedUserIds = new Set((usersData || []).map(u => u.id));
-        const missingReporterIds = reporterIds.filter(id => id && !loadedUserIds.has(id));
-        
-        setReports(combinedReports);
-        
-        let additionalProfiles: Profile[] = [];
-        if (missingReporterIds.length > 0) {
-            const fetched = await fetchCachedProfiles(missingReporterIds);
-            additionalProfiles = fetched.map(u => ({
-                ...u,
-                company: u.company_id ? companiesMap.get(u.company_id) : undefined
-            }));
-        }
-
-        const usersWithCompany = (usersData || []).map(u => ({
-            ...u,
-            company: u.company_id ? companiesMap.get(u.company_id) : undefined
-        }));
-
-        setAllUsers([...usersWithCompany, ...additionalProfiles]);
-        setLoading(false);
-        isInitialLoad.current = false;
     };
 
     useEffect(() => {

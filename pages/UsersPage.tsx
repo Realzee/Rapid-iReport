@@ -151,40 +151,50 @@ const UsersPage: React.FC = () => {
         };
 
         const fetchData = async () => {
-            setLoading(true);
-
-            const usersQuery = supabase
-                .from('profiles')
-                .select('*')
-                .order('first_name', { ascending: true })
-                .limit(200);
-
-            if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
-                usersQuery.eq('company_id', currentUserProfile.company_id);
+            if (!supabase) {
+                setLoading(false);
+                return;
             }
+            try {
+                setLoading(true);
 
-            const [{ data: usersData, error: usersError }, cachedCompanies] = await Promise.all([
-                usersQuery,
-                fetchCachedCompanies()
-            ]);
+                const usersQuery = supabase
+                    .from('profiles')
+                    .select('*')
+                    .order('first_name', { ascending: true })
+                    .limit(200);
 
-            if (usersError) console.error('Error fetching users:', usersError);
-            else {
-                const fetchedUsers = (usersData || []) as Profile[];
-                setUsers(fetchedUsers);
-                if (fetchedUsers.length > 0) {
-                    fetchReportCounts(fetchedUsers.map(u => u.id));
+                if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
+                    usersQuery.eq('company_id', currentUserProfile.company_id);
                 }
-            }
 
-            const allCompanies = cachedCompanies || [];
-            if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
-                setCompanies(allCompanies.filter(c => c.id === currentUserProfile.company_id));
-            } else {
-                setCompanies(allCompanies);
+                const [usersRes, cachedCompaniesRes] = await Promise.allSettled([
+                    usersQuery,
+                    fetchCachedCompanies()
+                ]);
+
+                const usersData = usersRes.status === 'fulfilled' && !usersRes.value.error ? usersRes.value.data : null;
+                const cachedCompanies = (cachedCompaniesRes.status === 'fulfilled' ? cachedCompaniesRes.value : []) || [];
+
+                if (usersData) {
+                    const fetchedUsers = usersData as Profile[];
+                    setUsers(fetchedUsers);
+                    if (fetchedUsers.length > 0) {
+                        fetchReportCounts(fetchedUsers.map(u => u.id));
+                    }
+                }
+
+                const allCompanies = cachedCompanies || [];
+                if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
+                    setCompanies(allCompanies.filter(c => c.id === currentUserProfile.company_id));
+                } else if (allCompanies.length > 0) {
+                    setCompanies(allCompanies);
+                }
+            } catch (err: any) {
+                console.warn('UsersPage data fetch notice:', err?.message || err);
+            } finally {
+                setLoading(false);
             }
-            
-            setLoading(false);
         };
         fetchData();
 

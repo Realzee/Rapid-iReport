@@ -41,32 +41,43 @@ const AnalyticsPage: React.FC = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            setLoading(true);
-            const [
-                { data: vehicleData, error: vError },
-                { data: crimeData, error: cError },
-                { data: emergencyData, error: aError },
-            ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(120),
-                supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(120),
-                supabase.from('emergency_reports').select('*').order('reported_at', { ascending: false }).limit(120),
-            ]);
+            if (!supabase) {
+                setLoading(false);
+                return;
+            }
+            try {
+                setLoading(true);
+                const [
+                    vRes,
+                    cRes,
+                    eRes,
+                ] = await Promise.allSettled([
+                    supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(120),
+                    supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(120),
+                    supabase.from('emergency_reports').select('*').order('reported_at', { ascending: false }).limit(120),
+                ]);
 
-            if (vError) console.error('Error fetching vehicle reports:', vError);
-            if (cError) console.error('Error fetching crime reports:', cError);
-            if (aError) console.error('Error fetching emergency reports:', aError);
-            
-            const combined = [
-                ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
-                ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
-                ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' })),
-            ];
+                const vehicleData = vRes.status === 'fulfilled' && !vRes.value.error ? vRes.value.data : null;
+                const crimeData = cRes.status === 'fulfilled' && !cRes.value.error ? cRes.value.data : null;
+                const emergencyData = eRes.status === 'fulfilled' && !eRes.value.error ? eRes.value.data : null;
 
-            // Sort by date descending
-            combined.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+                if (vehicleData !== null || crimeData !== null || emergencyData !== null) {
+                    const combined = [
+                        ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' })),
+                        ...(crimeData || []).map(r => ({ ...r, type: 'crime' })),
+                        ...(emergencyData || []).map(r => ({ ...r, type: 'emergency' })),
+                    ];
 
-            setAllReports(combined);
-            setLoading(false);
+                    // Sort by date descending
+                    combined.sort((a, b) => new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
+
+                    setAllReports(combined);
+                }
+            } catch (err: any) {
+                console.warn('AnalyticsPage data fetch notice:', err?.message || err);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchData();
 
