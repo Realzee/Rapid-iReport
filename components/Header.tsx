@@ -116,7 +116,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
                 .from('notifications')
                 .select('*')
                 .eq('recipient_user_id', profile.id)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .limit(30);
             if (notificationsError) console.error("Error fetching notifications:", notificationsError);
             else setNotifications(notificationsData || []);
         } catch (err) {
@@ -134,7 +135,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
                 const newNotification = payload.new as Notification;
                 // Avoid duplicates from race conditions
                 if (currentNotifications.some(n => n.id === newNotification.id)) return currentNotifications;
-                return [newNotification, ...currentNotifications];
+                return [newNotification, ...currentNotifications.slice(0, 29)];
             }
             if (payload.eventType === 'UPDATE') {
                 return currentNotifications.map(n => n.id === payload.new.id ? payload.new as Notification : n);
@@ -169,15 +170,23 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const navLinkClasses = (view: string) => 
-      `relative text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white transition-colors duration-300 px-3 py-2 rounded-md whitespace-nowrap flex-shrink-0 ${
-        currentView === view ? 'bg-gray-200 dark:bg-gray-700/50 text-black dark:text-white' : ''
-      }`;
+  const navLinkClasses = (view: string) => {
+    const isActive = currentView === view;
+    return `relative inline-flex items-center px-3.5 py-1.5 rounded-xl text-xs font-bold tracking-tight whitespace-nowrap flex-shrink-0 transition-all duration-200 cursor-pointer ${
+      isActive 
+        ? 'bg-gray-900 text-white dark:bg-blue-600/25 dark:text-blue-300 dark:border dark:border-blue-500/40 shadow-xs scale-[1.02]' 
+        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800/60'
+    }`;
+  };
       
-  const mobileNavLinkClasses = (view: string) => 
-      `block w-full text-left text-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-300 px-4 py-3 rounded-md ${
-        currentView === view ? 'bg-blue-500/10 text-blue-600 dark:text-blue-300' : ''
-      }`;
+  const mobileNavLinkClasses = (view: string) => {
+    const isActive = currentView === view;
+    return `flex items-center w-full text-left text-sm font-bold px-4 py-2.5 rounded-xl transition-all duration-200 ${
+      isActive 
+        ? 'bg-blue-600 text-white shadow-xs' 
+        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/70'
+    }`;
+  };
 
   const handleLogout = async () => {
     if (profile) {

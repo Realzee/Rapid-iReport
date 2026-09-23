@@ -19,6 +19,15 @@ import TechStack from '../components/TechStack';
 import TechJobDetail from '../components/TechJobDetail';
 import TechDispatchModal from '../components/TechDispatchModal';
 import { safeSetStorage } from '../utils/storage';
+import { TacticalSkeleton } from '../components/TacticalSkeleton';
+import {
+    fetchCachedCompanies,
+    fetchCachedProfiles,
+    VEHICLE_REPORT_COLUMNS,
+    CRIME_REPORT_COLUMNS,
+    EMERGENCY_REPORT_COLUMNS,
+    SUMMARY_PROFILE_COLUMNS
+} from '../utils/cacheUtils';
 
 interface ControllerPageProps {
     profile: Profile;
@@ -258,15 +267,15 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
 
         const usersQuery = supabase
             .from('profiles')
-            .select('id, first_name, surname, email, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
-            .limit(200);
+            .select(SUMMARY_PROFILE_COLUMNS)
+            .limit(100);
         if (!isGlobalAdmin && profile.company_id) {
             usersQuery.eq('company_id', profile.company_id);
         }
 
-        let vehicleQuery = supabase.from('vehicle_reports').select('*');
-        let crimeQuery = supabase.from('crime_reports').select('*');
-        let emergencyQuery = supabase.from('emergency_reports').select('*');
+        let vehicleQuery = supabase.from('vehicle_reports').select(VEHICLE_REPORT_COLUMNS);
+        let crimeQuery = supabase.from('crime_reports').select(CRIME_REPORT_COLUMNS);
+        let emergencyQuery = supabase.from('emergency_reports').select(EMERGENCY_REPORT_COLUMNS);
 
         if (!isGlobalAdmin && profile.company_id) {
             const filterStr = `company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`;
@@ -280,43 +289,40 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             { data: crimeData, error: cError },
             { data: emergencyData, error: aError },
             { data: usersData, error: uError },
-            { data: companiesData, error: compError }
+            cachedCompaniesList
         ] = await Promise.all([
-            vehicleQuery.order('reported_at', { ascending: false }).limit(100),
-            crimeQuery.order('reported_at', { ascending: false }).limit(100),
-            emergencyQuery.order('reported_at', { ascending: false }).limit(100),
+            vehicleQuery.order('reported_at', { ascending: false }).limit(60),
+            crimeQuery.order('reported_at', { ascending: false }).limit(60),
+            emergencyQuery.order('reported_at', { ascending: false }).limit(60),
             usersQuery,
-            supabase.from('companies').select('id, name, logo_url, alias').limit(100)
+            fetchCachedCompanies()
         ]);
 
         if (vError && !vError.message?.includes('exceed_egress_quota')) console.error('Error fetching vehicle reports:', vError);
         if (cError && !cError.message?.includes('exceed_egress_quota')) console.error('Error fetching crime reports:', cError);
         if (aError && !aError.message?.includes('exceed_egress_quota')) console.error('Error fetching emergency reports:', aError);
         if (uError && !uError.message?.includes('exceed_egress_quota')) console.error('Error fetching users:', uError);
-        if (compError && !compError.message?.includes('exceed_egress_quota')) console.error('Error fetching companies:', compError);
 
-        const companiesMap = new Map((companiesData || []).map(c => [c.id, c]));
+        const companiesList = cachedCompaniesList || [];
+        const companiesMap = new Map(companiesList.map(c => [c.id, c]));
 
         const combinedReports = [
             ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
             ...(crimeData || []).map(r => ({ ...r, type: 'crime' as const, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined })),
-            ...(emergencyData || []).map(r => ({ ...r, type: (r.emergency_type === 'Roadside Assistance' || r.type === 'roadside' ? 'roadside' : 'emergency') as any, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined }))
+            ...(emergencyData || []).map(r => ({ ...r, type: (r.emergency_type === 'Roadside Assistance' || (r as any).type === 'roadside' ? 'roadside' : 'emergency') as any, company_name: r.company_id ? companiesMap.get(r.company_id)?.name : undefined }))
         ];
 
-        // Ensure we have profiles for all reporters
+        // Ensure we have profiles for all reporters using cached profile fetcher
         const reporterIds = Array.from(new Set(combinedReports.map(r => r.reported_by)));
         const loadedUserIds = new Set((usersData || []).map(u => u.id));
-        const missingReporterIds = reporterIds.filter(id => !loadedUserIds.has(id));
+        const missingReporterIds = reporterIds.filter(id => id && !loadedUserIds.has(id));
         
         setReports(combinedReports);
         
         let additionalProfiles: Profile[] = [];
         if (missingReporterIds.length > 0) {
-             const { data: missingProfiles } = await supabase
-                .from('profiles')
-                .select('id, first_name, surname, email, role, status, avatar_url, company_id, responder_status, location_coords, last_seen_at')
-                .in('id', missingReporterIds);
-             if (missingProfiles) additionalProfiles = missingProfiles.map(u => ({
+            const fetched = await fetchCachedProfiles(missingReporterIds);
+            additionalProfiles = fetched.map(u => ({
                 ...u,
                 company: u.company_id ? companiesMap.get(u.company_id) : undefined
             }));
@@ -635,8 +641,8 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-full">
-                <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="container mx-auto px-1 sm:px-4 py-3 sm:py-6">
+                <TacticalSkeleton title="LIVE INCIDENT CONTROLLER" subtitle="Command dispatch, responder grid & active incident tracking" cardsCount={4} rowsCount={6} />
             </div>
         );
     }

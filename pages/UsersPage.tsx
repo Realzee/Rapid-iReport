@@ -12,6 +12,8 @@ import StatCard from '../components/StatCard';
 import { format } from 'date-fns';
 import { logUserAction } from '../utils/logger';
 import ConfirmModal from '../components/ConfirmModal';
+import { TacticalSkeleton } from '../components/TacticalSkeleton';
+import { fetchCachedCompanies } from '../utils/cacheUtils';
 
 const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<Profile[]>(() => {
@@ -119,10 +121,12 @@ const UsersPage: React.FC = () => {
         const fetchReportCounts = async (userIds: string[]) => {
             if (userIds.length === 0) return;
             try {
+                // Limit userIds chunk and limit rows to avoid over-fetching
+                const targetIds = userIds.slice(0, 60);
                 const [vRes, cRes, eRes] = await Promise.all([
-                    supabase.from('vehicle_reports').select('reported_by').in('reported_by', userIds),
-                    supabase.from('crime_reports').select('reported_by').in('reported_by', userIds),
-                    supabase.from('emergency_reports').select('reported_by').in('reported_by', userIds)
+                    supabase.from('vehicle_reports').select('reported_by').in('reported_by', targetIds).limit(200),
+                    supabase.from('crime_reports').select('reported_by').in('reported_by', targetIds).limit(200),
+                    supabase.from('emergency_reports').select('reported_by').in('reported_by', targetIds).limit(200)
                 ]);
 
                 const counts: Record<string, number> = {};
@@ -149,30 +153,36 @@ const UsersPage: React.FC = () => {
         const fetchData = async () => {
             setLoading(true);
 
-            const usersQuery = supabase.from('profiles').select('*').order('first_name', { ascending: true }).limit(200);
+            const usersQuery = supabase
+                .from('profiles')
+                .select('*')
+                .order('first_name', { ascending: true })
+                .limit(200);
+
             if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
                 usersQuery.eq('company_id', currentUserProfile.company_id);
             }
 
-            const companiesQuery = supabase.from('companies').select('id, name, logo_url, alias').order('name', { ascending: true }).limit(100);
-            if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
-                companiesQuery.eq('id', currentUserProfile.company_id);
-            }
-
-            const { data: usersData, error: usersError } = await usersQuery;
-            const { data: companiesData, error: companiesError } = await companiesQuery;
+            const [{ data: usersData, error: usersError }, cachedCompanies] = await Promise.all([
+                usersQuery,
+                fetchCachedCompanies()
+            ]);
 
             if (usersError) console.error('Error fetching users:', usersError);
             else {
-                const fetchedUsers = usersData || [];
+                const fetchedUsers = (usersData || []) as Profile[];
                 setUsers(fetchedUsers);
                 if (fetchedUsers.length > 0) {
                     fetchReportCounts(fetchedUsers.map(u => u.id));
                 }
             }
 
-            if (companiesError) console.error('Error fetching companies:', companiesError);
-            else setCompanies(companiesData || []);
+            const allCompanies = cachedCompanies || [];
+            if (currentUserProfile.role !== UserRole.ADMIN && currentUserProfile.company_id) {
+                setCompanies(allCompanies.filter(c => c.id === currentUserProfile.company_id));
+            } else {
+                setCompanies(allCompanies);
+            }
             
             setLoading(false);
         };
@@ -771,9 +781,7 @@ const UsersPage: React.FC = () => {
 
             <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300">
                  {loading ? (
-                     <div className="flex justify-center items-center h-64">
-                        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    </div>
+                     <TacticalSkeleton title="USER DIRECTORY" subtitle="Retrieving corporate profiles, credentials & access permissions..." cardsCount={0} rowsCount={6} />
                  ) : (
                     <UserManagementTable 
                         users={filteredUsers}

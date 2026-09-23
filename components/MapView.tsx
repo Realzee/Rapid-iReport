@@ -559,19 +559,49 @@ const MapView: React.FC<MapViewProps> = ({ reports, responders, selectedReportId
 
     useEffect(() => {
         let isMounted = true;
-        const fetchSaps = async () => {
-            try {
-                const response = await fetch('/api/saps-boundaries');
-                if (response.ok) {
-                    const data = await response.json();
-                    if (isMounted) {
-                        setSapsGeoJson(data);
+        const CACHE_KEY = 'rapid911_saps_geojson_cache';
+
+        // 1. Check session storage for instant boundary display
+        try {
+            const cached = sessionStorage.getItem(CACHE_KEY);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed && parsed.features && parsed.features.length > 0) {
+                    setSapsGeoJson(parsed);
+                }
+            }
+        } catch (_) {
+            // Ignore cache read failures
+        }
+
+        // 2. Fetch fresh boundaries with retry support
+        const fetchSaps = async (retries = 3, delay = 800) => {
+            for (let attempt = 1; attempt <= retries; attempt++) {
+                if (!isMounted) return;
+                try {
+                    const response = await fetch('/api/saps-boundaries');
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (isMounted && data && data.features) {
+                            setSapsGeoJson(data);
+                            try {
+                                sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
+                            } catch (_) {
+                                // Quota exceeded or private browsing
+                            }
+                        }
+                        return; // Success
+                    }
+                } catch (err: any) {
+                    if (attempt === retries) {
+                        console.warn('SAPS boundaries currently unavailable (offline or starting up):', err?.message || err);
+                    } else {
+                        await new Promise(res => setTimeout(res, delay * attempt));
                     }
                 }
-            } catch (err) {
-                console.error('Error fetching SAPS boundaries:', err);
             }
         };
+
         fetchSaps();
         return () => {
             isMounted = false;

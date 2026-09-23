@@ -18,6 +18,15 @@ import { CONTROLLER_CHANNEL_REPORT } from '../constants';
 import { isSameDay, parseISO } from 'date-fns';
 import { CorporateSharingModal } from './CorporateSharingModal';
 import { safeSetStorage } from '../utils/storage';
+import { TacticalSkeleton } from './TacticalSkeleton';
+import { 
+    fetchCachedCompanies, 
+    fetchCachedProfiles, 
+    VEHICLE_REPORT_COLUMNS, 
+    CRIME_REPORT_COLUMNS, 
+    EMERGENCY_REPORT_COLUMNS,
+    SUMMARY_PROFILE_COLUMNS 
+} from '../utils/cacheUtils';
 
 interface DashboardProps {
     profile: Profile;
@@ -230,55 +239,31 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         }
 
         let allowedReporterIds: string[] | null = null;
-
-        if (!isGlobalAdmin && profile.company_id) {
-            const { data: companyUsers } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('company_id', profile.company_id);
-            
-            if (companyUsers && companyUsers.length > 0) {
-                allowedReporterIds = companyUsers.map(u => u.id);
-            } else {
-                allowedReporterIds = [profile.id];
-            }
-        } else if (!isGlobalAdmin) {
+        if (!isGlobalAdmin && !profile.company_id) {
             allowedReporterIds = [profile.id];
         }
 
         const profilesQuery = supabase
             .from('profiles')
-            .select('id, first_name, surname, email, role, status, avatar_url, company_id, responder_status')
-            .limit(150);
+            .select(SUMMARY_PROFILE_COLUMNS)
+            .limit(100);
         if (!isGlobalAdmin && profile.company_id) {
             profilesQuery.eq('company_id', profile.company_id);
         }
 
-        let vehicleQuery = supabase.from('vehicle_reports').select('*');
-        let crimeQuery = supabase.from('crime_reports').select('*');
-        let emergencyQuery = supabase.from('emergency_reports').select('*');
-
-        let vehicleCountQuery = supabase.from('vehicle_reports').select('*', { count: 'exact', head: true });
-        let crimeCountQuery = supabase.from('crime_reports').select('*', { count: 'exact', head: true });
-        let emergencyCountQuery = supabase.from('emergency_reports').select('*', { count: 'exact', head: true });
+        let vehicleQuery = supabase.from('vehicle_reports').select(VEHICLE_REPORT_COLUMNS);
+        let crimeQuery = supabase.from('crime_reports').select(CRIME_REPORT_COLUMNS);
+        let emergencyQuery = supabase.from('emergency_reports').select(EMERGENCY_REPORT_COLUMNS);
 
         if (!isGlobalAdmin && profile.company_id) {
             const filterStr = `company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`;
             vehicleQuery = vehicleQuery.or(filterStr);
             crimeQuery = crimeQuery.or(filterStr);
             emergencyQuery = emergencyQuery.or(filterStr);
-
-            vehicleCountQuery = vehicleCountQuery.or(filterStr);
-            crimeCountQuery = crimeCountQuery.or(filterStr);
-            emergencyCountQuery = emergencyCountQuery.or(filterStr);
         } else if (allowedReporterIds) {
             vehicleQuery = vehicleQuery.in('reported_by', allowedReporterIds);
             crimeQuery = crimeQuery.in('reported_by', allowedReporterIds);
             emergencyQuery = emergencyQuery.in('reported_by', allowedReporterIds);
-            
-            vehicleCountQuery = vehicleCountQuery.in('reported_by', allowedReporterIds);
-            crimeCountQuery = crimeCountQuery.in('reported_by', allowedReporterIds);
-            emergencyCountQuery = emergencyCountQuery.in('reported_by', allowedReporterIds);
         }
 
         const [
@@ -286,23 +271,18 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
             { data: crimeData, error: cError },
             { data: emergencyData, error: aError },
             { data: usersData, error: uError },
-            { data: companiesData, error: companiesError },
-            { count: vCount },
-            { count: cCount },
-            { count: aCount }
+            cachedCompaniesList
         ] = await Promise.all([
             vehicleQuery.order('reported_at', { ascending: false }).limit(50),
             crimeQuery.order('reported_at', { ascending: false }).limit(50),
             emergencyQuery.order('reported_at', { ascending: false }).limit(50),
             profilesQuery,
-            supabase.from('companies').select('id, name, logo_url, alias').limit(100),
-            vehicleCountQuery,
-            crimeCountQuery,
-            emergencyCountQuery
+            fetchCachedCompanies()
         ]);
-        if (vError || cError || aError || uError || companiesError) console.error('Data fetch error:', vError || cError || aError || uError || companiesError);
+        if (vError || cError || aError || uError) console.error('Data fetch error:', vError || cError || aError || uError);
 
-        const companiesMap = new Map((companiesData || []).map(c => [c.id, c.name]));
+        const companiesList = cachedCompaniesList || [];
+        const companiesMap = new Map(companiesList.map(c => [c.id, c.name]));
 
         const combinedReports = [
             ...(vehicleData || []).map(r => ({
@@ -324,26 +304,25 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
         
         setReports(combinedReports);
         setReportCounts({
-            vehicle: vCount || 0,
-            crime: cCount || 0,
-            emergency: aCount || 0
+            vehicle: (vehicleData || []).length,
+            crime: (crimeData || []).length,
+            emergency: (emergencyData || []).length
         });
         
-        // Ensure we have profiles for all reporters, even if they are outside the user's company scope
+        // Ensure we have profiles for all reporters using cached profile fetcher
         const reporterIds = Array.from(new Set(combinedReports.map(r => r.reported_by)));
         const loadedUserIds = new Set((usersData || []).map(u => u.id));
-        const missingReporterIds = reporterIds.filter(id => !loadedUserIds.has(id));
+        const missingReporterIds = reporterIds.filter(id => id && !loadedUserIds.has(id));
         
         let additionalProfiles: Profile[] = [];
         if (missingReporterIds.length > 0) {
-                const { data: missingProfiles } = await supabase.from('profiles').select('*').in('id', missingReporterIds);
-                if (missingProfiles) additionalProfiles = missingProfiles;
+            additionalProfiles = await fetchCachedProfiles(missingReporterIds);
         }
         
         setAllUsers([...(usersData || []), ...additionalProfiles]);
-        setCompanies(companiesData || []);
+        setCompanies(companiesList);
         setLoading(false);
-    }, [isGlobalAdmin, profile.company_id]);
+    }, [isGlobalAdmin, profile.company_id, profile.id]);
 
     useEffect(() => {
         fetchData();
@@ -678,7 +657,13 @@ const Dashboard: React.FC<DashboardProps> = ({ profile, initialReportId, onIniti
 
     const displayReports = showIdleReports ? idleReports : liveReports;
 
-    if (loading) return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+    if (loading) {
+        return (
+            <div className="container mx-auto px-1 sm:px-4 py-2 sm:py-6">
+                <TacticalSkeleton title="OPERATIONAL COMMAND PLATFORM" subtitle="Live tactical stream & community incident monitoring" cardsCount={4} rowsCount={6} />
+            </div>
+        );
+    }
 
     return (
         <div className="container mx-auto flex flex-col px-1 sm:px-4 py-2 sm:py-6">

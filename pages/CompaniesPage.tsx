@@ -14,6 +14,8 @@ import ConfirmModal from '../components/ConfirmModal';
 import DatabaseBackupModal from '../components/DatabaseBackupModal';
 import { safeFormat } from '../utils/dateUtils';
 import CompanyDetailModal from '../components/CompanyDetailModal';
+import { TacticalSkeleton } from '../components/TacticalSkeleton';
+import { invalidateCompaniesCache } from '../utils/cacheUtils';
 
 const AnnouncementTypeIcon: React.FC<{ type: AnnouncementType, className?: string }> = ({ type, className="w-6 h-6" }) => {
     switch (type) {
@@ -245,6 +247,7 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
             savedCompany = await response.json();
             
             if (savedCompany) {
+                invalidateCompaniesCache();
                 if (companyData.id) {
                     setCompanies(companies.map(c => c.id === savedCompany!.id ? savedCompany! : c));
                 } else {
@@ -308,6 +311,7 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                     }
                 }
                 
+                invalidateCompaniesCache();
                 addToast(`Company '${selectedCompany.name}' deleted successfully.`, 'success');
                 setCompanies(companies.filter(c => c.id !== selectedCompany.id));
             } catch (error: any) {
@@ -829,9 +833,7 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                 </div>
                 <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300">
                     {loading ? (
-                         <div className="flex justify-center items-center h-64">
-                            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                        </div>
+                        <TacticalSkeleton title="SECURITY COMPANIES" subtitle="Loading registered security service providers & dispatch units..." cardsCount={0} rowsCount={5} />
                     ) : (
                         <CompanyManagementTable 
                             companies={companies}

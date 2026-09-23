@@ -38,7 +38,8 @@ export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             try {
                 const { data, error } = await supabase
                     .from('profiles')
-                    .select('*');
+                    .select('id, first_name, surname, role, responder_status, location_coords')
+                    .limit(100);
 
                 if (error) {
                     console.warn('Notice: Responders fetch notice:', error.message || error);
@@ -46,8 +47,8 @@ export const RespondersProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                         retryTimer = setTimeout(() => fetchResponders(retryCount + 1), 3000);
                     }
                 } else if (data && isMounted) {
-                    const responderProfiles = data.filter((p: Profile) => isResponderRole(p.role));
-                    const mappedResponders: Responder[] = responderProfiles.map((p: Profile) => ({
+                    const responderProfiles = (data as any[]).filter(p => isResponderRole(p.role));
+                    const mappedResponders: Responder[] = responderProfiles.map(p => ({
                         id: p.id,
                         first_name: p.first_name,
                         surname: p.surname,

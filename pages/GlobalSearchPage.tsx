@@ -45,7 +45,8 @@ const GlobalSearchPage: React.FC<{ profile: any; isGlobalAdmin: boolean }> = ({ 
                     const { data, error } = await supabase
                        .from('vehicle_reports')
                        .select('*')
-                       .or(`license_plate.ilike.%${query}%,vehicle_make.ilike.%${query}%,vehicle_model.ilike.%${query}%,cas_number.ilike.%${query}%`);
+                       .or(`license_plate.ilike.%${query}%,vehicle_make.ilike.%${query}%,vehicle_model.ilike.%${query}%,cas_number.ilike.%${query}%`)
+                       .limit(50);
                     
                     if (error) throw error;
                     return data;

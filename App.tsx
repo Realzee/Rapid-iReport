@@ -12,6 +12,8 @@ import ResponderPage from './pages/ResponderPage';
 import RoadsideDriverPage from './pages/RoadsideDriverPage';
 import GuardDashboardPage from './pages/GuardDashboardPage';
 import UserDashboardPage from './pages/UserDashboardPage';
+import EMSDispatchPage from './pages/EMSDispatchPage';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const CompaniesPage = lazy(() => import('./pages/CompaniesPage'));
@@ -28,7 +30,6 @@ const UserActivityPage = lazy(() => import('./pages/UserActivityPage'));
 const GlobalSearchPage = lazy(() => import('./pages/GlobalSearchPage'));
 const TechnicianDashboardPage = lazy(() => import('./pages/TechnicianDashboardPage'));
 const TechOpsPage = lazy(() => import('./pages/TechOpsPage'));
-const EMSDispatchPage = lazy(() => import('./pages/EMSDispatchPage'));
 
 import AnnouncementsBanner from './components/AnnouncementsBanner';
 import { supabase } from './utils/supabase';
@@ -46,6 +47,7 @@ import { AlertTriangleIcon, ClockIcon } from './components/icons';
 import { useToast } from './contexts/ToastContext';
 import { useTheme } from './contexts/ThemeContext';
 import MatrixRain from './components/MatrixRain';
+import { TacticalSkeleton } from './components/TacticalSkeleton';
 
 type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'roadside_driver' | 'ems_dispatch' | 'ems_responder';
 
@@ -533,10 +535,9 @@ const App: React.FC = () => {
     }
   };
 
-  const renderLoadingFallback = () => (
-    <div className="flex-grow flex flex-col items-center justify-center p-12">
-        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">loading</p>
+  const renderLoadingFallback = (title = "TACTICAL INTERFACE") => (
+    <div className="container mx-auto px-4 py-6">
+        <TacticalSkeleton title={title} subtitle="Synchronizing encrypted security telemetry..." cardsCount={4} rowsCount={6} />
     </div>
   );
 
@@ -554,82 +555,84 @@ const App: React.FC = () => {
     const onInitialReportHandled = () => setInitialReportId(null);
 
     return (
-      <Suspense fallback={renderLoadingFallback()}>
-          {(() => {
-            if (profile.role === UserRole.RESPONDER || profile.role === UserRole.EMS_RESPONDER || (profile.role as string) === 'ems_responder') {
-                const isEms = profile.role === UserRole.EMS_RESPONDER || (profile.role as string) === 'ems_responder';
-                return view === 'profile' 
-                    ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
-                    : <ResponderPage profile={profile} setProfile={setProfile} isEmsMode={isEms} />;
-            }
+      <ErrorBoundary>
+        <Suspense fallback={renderLoadingFallback()}>
+            {(() => {
+              if (profile.role === UserRole.RESPONDER || profile.role === UserRole.EMS_RESPONDER || (profile.role as string) === 'ems_responder') {
+                  const isEms = profile.role === UserRole.EMS_RESPONDER || (profile.role as string) === 'ems_responder';
+                  return view === 'profile' 
+                      ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
+                      : <ResponderPage profile={profile} setProfile={setProfile} isEmsMode={isEms} />;
+              }
 
-            if (profile.role === UserRole.RAS_DRIVER || (profile.role as string) === 'roadside_driver' || (profile.role as string) === 'driver') {
-                return view === 'profile'
-                    ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
-                    : <RoadsideDriverPage profile={profile} setProfile={setProfile} />;
-            }
+              if (profile.role === UserRole.RAS_DRIVER || (profile.role as string) === 'roadside_driver' || (profile.role as string) === 'driver') {
+                  return view === 'profile'
+                      ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
+                      : <RoadsideDriverPage profile={profile} setProfile={setProfile} />;
+              }
 
-            if (profile.role === UserRole.GUARD) {
-                if (view === 'gate_access') return <GateAccessPage profile={profile} />;
-                if (view === 'patrol_scanner') return <PatrolPage profile={profile} />;
-                return view === 'profile' 
-                    ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
-                    : <GuardDashboardPage profile={profile} />;
-            }
-            
-            if (profile.role === UserRole.USER) {
+              if (profile.role === UserRole.GUARD) {
+                  if (view === 'gate_access') return <GateAccessPage profile={profile} />;
+                  if (view === 'patrol_scanner') return <PatrolPage profile={profile} />;
+                  return view === 'profile' 
+                      ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
+                      : <GuardDashboardPage profile={profile} />;
+              }
+              
+              if (profile.role === UserRole.USER) {
+                  if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
+                  return view === 'profile'
+                      ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
+                      : <UserDashboardPage profile={profile} />;
+              }
+              
+              if (profile.role === UserRole.TECHNICIAN) {
+                  return view === 'profile'
+                      ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('technician_dashboard')} />
+                      : <TechnicianDashboardPage profile={profile} />;
+              }
+              
+              if (profile.role === UserRole.EMS_CONTROLLER || (profile.role as string) === 'ems_controller') {
+                return <EMSDispatchPage profile={profile} />;
+              }
+
+              if (profile.role === UserRole.CONTROLLER) {
                 if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
+                if (view === 'attendance') return <AttendancePage />;
+                if (view === 'tech_ops') return <TechOpsPage />;
+                if (view === 'roadside_driver') return <RoadsideDriverPage profile={profile} setProfile={setProfile} />;
+                if (view === 'ems_dispatch') return <EMSDispatchPage profile={profile} />;
+                if (view === 'ems_responder') return <ResponderPage profile={profile} setProfile={setProfile} isEmsMode={true} />;
                 return view === 'profile'
                     ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
-                    : <UserDashboardPage profile={profile} />;
-            }
-            
-            if (profile.role === UserRole.TECHNICIAN) {
-                return view === 'profile'
-                    ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('technician_dashboard')} />
-                    : <TechnicianDashboardPage profile={profile} />;
-            }
-            
-            if (profile.role === UserRole.EMS_CONTROLLER || (profile.role as string) === 'ems_controller') {
-              return <EMSDispatchPage profile={profile} />;
-            }
+                    : <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
+              }
+              
+              const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
 
-            if (profile.role === UserRole.CONTROLLER) {
-              if (view === 'global_search') return <GlobalSearchPage profile={profile} isGlobalAdmin={false} />;
-              if (view === 'attendance') return <AttendancePage />;
-              if (view === 'tech_ops') return <TechOpsPage />;
-              if (view === 'roadside_driver') return <RoadsideDriverPage profile={profile} setProfile={setProfile} />;
-              if (view === 'ems_dispatch') return <EMSDispatchPage profile={profile} />;
-              if (view === 'ems_responder') return <ResponderPage profile={profile} setProfile={setProfile} isEmsMode={true} />;
-              return view === 'profile'
-                  ? <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />
-                  : <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
-            }
-            
-            const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
-
-            switch(view) {
-              case 'dashboard': return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} setView={handleSetView} />;
-              case 'controller': return <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
-              case 'ems_dispatch': return <EMSDispatchPage profile={profile} />;
-              case 'ems_responder': return <ResponderPage profile={profile} setProfile={setProfile} isEmsMode={true} />;
-              case 'tech_ops': return <TechOpsPage />;
-              case 'archives': return <ReportsPage profile={profile} />;
-              case 'attendance': return <AttendancePage />;
-              case 'global_search': return <GlobalSearchPage profile={profile} isGlobalAdmin={isGlobalAdmin} />;
-              case 'analytics': return <AnalyticsPage />;
-              case 'users': return <UsersPage />;
-              case 'activity_logs': return <UserActivityPage profile={profile} />;
-              case 'companies': return <CompaniesPage profile={profile} setProfile={setProfile} />;
-              case 'guard_monitoring': return <GuardMonitoringPage profile={profile} />;
-              case 'gate_access': return <GateAccessPage profile={profile} />;
-              case 'roadside_driver': return <RoadsideDriverPage profile={profile} setProfile={setProfile} />;
-              case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />;
-              case 'map':
-              default: return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} setView={handleSetView} />;
-            }
-          })()}
-      </Suspense>
+              switch(view) {
+                case 'dashboard': return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} setView={handleSetView} />;
+                case 'controller': return <ControllerPage profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} />;
+                case 'ems_dispatch': return <EMSDispatchPage profile={profile} />;
+                case 'ems_responder': return <ResponderPage profile={profile} setProfile={setProfile} isEmsMode={true} />;
+                case 'tech_ops': return <TechOpsPage />;
+                case 'archives': return <ReportsPage profile={profile} />;
+                case 'attendance': return <AttendancePage />;
+                case 'global_search': return <GlobalSearchPage profile={profile} isGlobalAdmin={isGlobalAdmin} />;
+                case 'analytics': return <AnalyticsPage />;
+                case 'users': return <UsersPage />;
+                case 'activity_logs': return <UserActivityPage profile={profile} />;
+                case 'companies': return <CompaniesPage profile={profile} setProfile={setProfile} />;
+                case 'guard_monitoring': return <GuardMonitoringPage profile={profile} />;
+                case 'gate_access': return <GateAccessPage profile={profile} />;
+                case 'roadside_driver': return <RoadsideDriverPage profile={profile} setProfile={setProfile} />;
+                case 'profile': return <ProfilePage profile={profile} setProfile={setProfile} onCancel={() => handleSetView('dashboard')} />;
+                case 'map':
+                default: return <Dashboard profile={profile} initialReportId={initialReportId} onInitialReportHandled={onInitialReportHandled} setView={handleSetView} />;
+              }
+            })()}
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 

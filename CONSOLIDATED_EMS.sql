@@ -31,5 +31,10 @@ DROP POLICY IF EXISTS "Allow staff to insert ems assessments" ON public.ems_asse
 CREATE POLICY "Allow staff to insert ems assessments" ON public.ems_assessments FOR INSERT WITH CHECK (public.get_user_role(auth.uid()) IN ('admin', 'moderator', 'controller', 'responder', 'ras_driver'));
 DROP POLICY IF EXISTS "Allow author to update ems assessments" ON public.ems_assessments;
 CREATE POLICY "Allow author to update ems assessments" ON public.ems_assessments FOR UPDATE USING (assessed_by = auth.uid());
+
+GRANT SELECT ON public.ems_assessments TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.ems_assessments TO authenticated;
+GRANT ALL ON public.ems_assessments TO service_role;
+
 NOTIFY pgrst, 'reload schema';
 

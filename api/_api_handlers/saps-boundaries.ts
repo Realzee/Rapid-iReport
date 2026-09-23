@@ -1,6 +1,15 @@
 import { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const getDirname = () => {
+    try {
+        return path.dirname(fileURLToPath(import.meta.url));
+    } catch {
+        return process.cwd();
+    }
+};
 
 const kznStations = [
     { name: "DURBAN CENTRAL", lng: 31.02986, lat: -29.85532 },
@@ -71,15 +80,44 @@ const getPrecinctPolygon = (lng: number, lat: number, name: string): [number, nu
     return [vertices];
 };
 
+let cachedCollection: any = null;
+
 export default async function handler(req: Request, res: Response) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
     try {
-        const filePath = path.join(process.cwd(), 'data', 'saps_gauteng.json');
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ error: 'SAPS Gauteng dataset not found' });
+        if (cachedCollection) {
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+            return res.json(cachedCollection);
         }
-        
-        const rawData = fs.readFileSync(filePath, 'utf-8');
-        const gautengCollection = JSON.parse(rawData);
+
+        const baseDir = getDirname();
+        const possiblePaths = [
+            path.join(process.cwd(), 'data', 'saps_gauteng.json'),
+            path.resolve(baseDir, '..', '..', 'data', 'saps_gauteng.json'),
+            path.resolve(baseDir, '..', 'data', 'saps_gauteng.json'),
+            path.resolve(baseDir, 'data', 'saps_gauteng.json')
+        ];
+
+        let gautengCollection: any = { features: [] };
+        for (const p of possiblePaths) {
+            if (fs.existsSync(p)) {
+                try {
+                    const rawData = fs.readFileSync(p, 'utf-8');
+                    gautengCollection = JSON.parse(rawData);
+                    break;
+                } catch (e) {
+                    console.warn(`Failed reading saps data at ${p}:`, e);
+                }
+            }
+        }
         
         // Generate KZN Features
         const kznFeatures: any[] = [];
@@ -154,16 +192,24 @@ export default async function handler(req: Request, res: Response) {
             ...wcFeatures
         ];
 
-        const combinedCollection = {
+        cachedCollection = {
             type: "FeatureCollection",
             name: "SAPS_Gauteng_KZN_WC_Boundaries_and_Stations",
             features: combinedFeatures
         };
 
         res.setHeader('Content-Type', 'application/json');
-        return res.json(combinedCollection);
+        res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+        return res.json(cachedCollection);
     } catch (error: any) {
-        console.error('Error serving SAPS boundaries:', error);
-        return res.status(500).json({ error: 'Internal server error while loading boundaries' });
+        console.warn('Warning serving SAPS boundaries, using fallback stations:', error?.message || error);
+        const fallbackCollection = {
+            type: "FeatureCollection",
+            name: "SAPS_Fallback_Boundaries_and_Stations",
+            features: []
+        };
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.json(fallbackCollection);
     }
 }

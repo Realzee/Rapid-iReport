@@ -14,6 +14,14 @@ import { safeFormat } from '../utils/dateUtils';
 import IncidentReportPreviewModal from '../components/IncidentReportPreviewModal';
 import { FileText, Printer } from 'lucide-react';
 import { safeSetStorage } from '../utils/storage';
+import { TacticalSkeleton } from '../components/TacticalSkeleton';
+import { 
+    fetchCachedCompanies, 
+    VEHICLE_REPORT_COLUMNS, 
+    CRIME_REPORT_COLUMNS, 
+    EMERGENCY_REPORT_COLUMNS, 
+    SUMMARY_PROFILE_COLUMNS 
+} from '../utils/cacheUtils';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
@@ -175,8 +183,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
             setLoading(true);
         }
 
-        const usersQuery = supabase.from('profiles').select('*');
-        const respondersQuery = supabase.from('profiles').select('*').eq('role', UserRole.RESPONDER);
+        const usersQuery = supabase.from('profiles').select(SUMMARY_PROFILE_COLUMNS).limit(100);
+        const respondersQuery = supabase.from('profiles').select(SUMMARY_PROFILE_COLUMNS).eq('role', UserRole.RESPONDER).limit(100);
         const terminalStatuses = TERMINAL_REPORT_STATUSES;
 
         const isGlobalAdminValue = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
@@ -186,9 +194,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
             respondersQuery.eq('company_id', profile.company_id);
         }
 
-        let vehicleQuery = supabase.from('vehicle_reports').select('*').in('status', terminalStatuses);
-        let crimeQuery = supabase.from('crime_reports').select('*').in('status', terminalStatuses);
-        let emergencyQuery = supabase.from('emergency_reports').select('*').in('status', terminalStatuses);
+        let vehicleQuery = supabase.from('vehicle_reports').select(VEHICLE_REPORT_COLUMNS).in('status', terminalStatuses);
+        let crimeQuery = supabase.from('crime_reports').select(CRIME_REPORT_COLUMNS).in('status', terminalStatuses);
+        let emergencyQuery = supabase.from('emergency_reports').select(EMERGENCY_REPORT_COLUMNS).in('status', terminalStatuses);
 
         if (!isGlobalAdminValue && profile.company_id) {
             const filterStr = `company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`;
@@ -203,22 +211,24 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
             { data: emergencyData, error: aError },
             { data: usersData, error: uError },
             { data: respondersData, error: rError },
-            { data: companiesData, error: compError },
+            cachedCompaniesList,
             { data: sharesData, error: sharesError }
         ] = await Promise.all([
-            vehicleQuery.order('reported_at', { ascending: false }).limit(200),
-            crimeQuery.order('reported_at', { ascending: false }).limit(200),
-            emergencyQuery.order('reported_at', { ascending: false }).limit(200),
+            vehicleQuery.order('reported_at', { ascending: false }).limit(100),
+            crimeQuery.order('reported_at', { ascending: false }).limit(100),
+            emergencyQuery.order('reported_at', { ascending: false }).limit(100),
             usersQuery,
             respondersQuery,
-            supabase.from('companies').select('*'),
+            fetchCachedCompanies(),
             profile.company_id 
                 ? supabase.from('report_shares').select('*').eq('target_company_id', profile.company_id).eq('status', 'pending')
                 : supabase.from('report_shares').select('*').eq('status', 'non-existent')
         ]);
 
-        if (vError || cError || aError || uError || rError || compError || sharesError) {
-            console.error("Error fetching data:", vError || cError || aError || uError || rError || compError || sharesError);
+        const companiesData = cachedCompaniesList || [];
+
+        if (vError || cError || aError || uError || rError || sharesError) {
+            console.error("Error fetching data:", vError || cError || aError || uError || rError || sharesError);
         } else {
             const combined = [
                 ...(vehicleData || []).map(r => ({ ...r, type: 'vehicle' as const })),
@@ -464,7 +474,11 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ profile }) => {
     const filterInputClasses = "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500";
 
     if (loading) {
-        return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+        return (
+            <div className="container mx-auto p-4 sm:p-6">
+                <TacticalSkeleton title="INCIDENT ARCHIVES & HISTORICAL RECORDS" subtitle="Loading historical incident records and audit telemetry..." cardsCount={4} rowsCount={8} />
+            </div>
+        );
     }
 
     return (

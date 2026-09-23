@@ -15,6 +15,7 @@ import {
 import { Calendar, Filter } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import { safeFormat, safeGetDate } from '../utils/dateUtils';
+import { TacticalSkeleton } from '../components/TacticalSkeleton';
 
 // Type Guard
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
@@ -46,9 +47,9 @@ const AnalyticsPage: React.FC = () => {
                 { data: crimeData, error: cError },
                 { data: emergencyData, error: aError },
             ] = await Promise.all([
-                supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(250),
-                supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(250),
-                supabase.from('emergency_reports').select('*').order('reported_at', { ascending: false }).limit(250),
+                supabase.from('vehicle_reports').select('*').order('reported_at', { ascending: false }).limit(120),
+                supabase.from('crime_reports').select('*').order('reported_at', { ascending: false }).limit(120),
+                supabase.from('emergency_reports').select('*').order('reported_at', { ascending: false }).limit(120),
             ]);
 
             if (vError) console.error('Error fetching vehicle reports:', vError);
@@ -140,7 +141,11 @@ const AnalyticsPage: React.FC = () => {
 
     const renderReportContent = () => {
         if (loading) {
-            return <div className="flex justify-center items-center h-full"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+            return (
+                <div className="py-4">
+                    <TacticalSkeleton title="ANALYTICS ENGINE" subtitle="Compiling incident metrics, frequency distributions & trends..." cardsCount={4} rowsCount={4} />
+                </div>
+            );
         }
 
         switch (selectedReport) {

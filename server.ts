@@ -21,6 +21,17 @@ const app = express();
 app.use(compression());
 const PORT = 3000;
 
+// CORS middleware for API routes and cross-origin iframe communication
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, apikey');
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
+
 // Global request logger
 app.use((req, res, next) => {
     if (req.url.startsWith('/api') || req.headers.accept?.includes('text/html')) {
@@ -103,6 +114,9 @@ async function runMigrations() {
             updated_at timestamptz DEFAULT now()
         );`,
         "ALTER TABLE public.ems_dispatches ENABLE ROW LEVEL SECURITY;",
+        "GRANT SELECT ON public.ems_dispatches TO anon;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.ems_dispatches TO authenticated;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.ems_dispatches TO service_role;",
         "DROP POLICY IF EXISTS \"Allow select ems_dispatches for authenticated\" ON public.ems_dispatches;",
         "CREATE POLICY \"Allow select ems_dispatches for authenticated\" ON public.ems_dispatches FOR SELECT TO authenticated USING (true);",
         "DROP POLICY IF EXISTS \"Allow insert ems_dispatches for authenticated\" ON public.ems_dispatches;",
@@ -136,6 +150,9 @@ async function runMigrations() {
             created_at timestamptz DEFAULT now()
         );`,
         "ALTER TABLE public.ems_assessments ENABLE ROW LEVEL SECURITY;",
+        "GRANT SELECT ON public.ems_assessments TO anon;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.ems_assessments TO authenticated;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.ems_assessments TO service_role;",
         "DROP POLICY IF EXISTS \"Allow select ems_assessments for authenticated\" ON public.ems_assessments;",
         "CREATE POLICY \"Allow select ems_assessments for authenticated\" ON public.ems_assessments FOR SELECT TO authenticated USING (true);",
         "DROP POLICY IF EXISTS \"Allow insert ems_assessments for authenticated\" ON public.ems_assessments;",
@@ -158,6 +175,9 @@ async function runMigrations() {
             updated_at timestamptz DEFAULT now()
         );`,
         "ALTER TABLE public.tech_jobs ENABLE ROW LEVEL SECURITY;",
+        "GRANT SELECT ON public.tech_jobs TO anon;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.tech_jobs TO authenticated;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.tech_jobs TO service_role;",
         "DROP POLICY IF EXISTS \"Allow select tech_jobs for authenticated\" ON public.tech_jobs;",
         "CREATE POLICY \"Allow select tech_jobs for authenticated\" ON public.tech_jobs FOR SELECT TO authenticated USING (true);",
         "DROP POLICY IF EXISTS \"Allow insert tech_jobs for authenticated\" ON public.tech_jobs;",
@@ -174,6 +194,9 @@ async function runMigrations() {
             created_at timestamptz DEFAULT now()
         );`,
         "ALTER TABLE public.tech_chat_messages ENABLE ROW LEVEL SECURITY;",
+        "GRANT SELECT ON public.tech_chat_messages TO anon;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.tech_chat_messages TO authenticated;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.tech_chat_messages TO service_role;",
         "DROP POLICY IF EXISTS \"Allow select tech_chat for authenticated\" ON public.tech_chat_messages;",
         "CREATE POLICY \"Allow select tech_chat for authenticated\" ON public.tech_chat_messages FOR SELECT TO authenticated USING (true);",
         "DROP POLICY IF EXISTS \"Allow insert tech_chat for authenticated\" ON public.tech_chat_messages;",
@@ -207,6 +230,9 @@ async function runMigrations() {
             CONSTRAINT unique_report_target UNIQUE (report_id, target_company_id)
         );`,
         "ALTER TABLE public.report_shares ENABLE ROW LEVEL SECURITY;",
+        "GRANT SELECT ON public.report_shares TO anon;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.report_shares TO authenticated;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.report_shares TO service_role;",
         "DROP POLICY IF EXISTS \"Allow select for authenticated report_shares\" ON public.report_shares;",
         "CREATE POLICY \"Allow select for authenticated report_shares\" ON public.report_shares FOR SELECT TO authenticated USING (true);",
         "DROP POLICY IF EXISTS \"Allow insert for authenticated report_shares\" ON public.report_shares;",
@@ -226,6 +252,9 @@ async function runMigrations() {
             created_at timestamp with time zone DEFAULT now()
         );`,
         "ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;",
+        "GRANT SELECT ON public.notifications TO anon;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.notifications TO authenticated;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.notifications TO service_role;",
         "DROP POLICY IF EXISTS \"Allow select for authenticated notifications\" ON public.notifications;",
         "CREATE POLICY \"Allow select for authenticated notifications\" ON public.notifications FOR SELECT TO authenticated USING (auth.uid() = recipient_user_id);",
         "DROP POLICY IF EXISTS \"Allow insert for authenticated notifications\" ON public.notifications;",

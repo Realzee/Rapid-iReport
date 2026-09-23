@@ -282,25 +282,30 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
         }
 
         try {
-            // Fetch all roadside reports (emergency_type = 'Roadside Assistance' or type = 'roadside')
+            // Fetch all roadside reports (emergency_type containing 'Roadside')
             const { data, error } = await supabase
                 .from('emergency_reports')
                 .select('*')
-                .or(`emergency_type.eq.Roadside Assistance,type.eq.roadside`)
+                .ilike('emergency_type', '%Roadside%')
                 .order('reported_at', { ascending: false })
                 .limit(200);
 
             if (error) throw error;
 
             if (data) {
-                const assigned = data.filter(
+                const formattedData: Report[] = data.map((d: any) => ({
+                    ...d,
+                    type: 'roadside',
+                }));
+
+                const assigned = formattedData.filter(
                     (r: Report) =>
                         r.assigned_to === profile.id ||
                         (r.assigned_to === null && r.status === ReportStatus.PENDING)
                 );
 
                 setAssignedReports(assigned);
-                setAllRoadsideReports(data);
+                setAllRoadsideReports(formattedData);
 
                 try {
                     localStorage.setItem(assignedReportsCacheKey, JSON.stringify(assigned));
@@ -337,7 +342,7 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
                     const newReport = payload.new as any;
                     if (
                         newReport &&
-                        (newReport.emergency_type === 'Roadside Assistance' || newReport.type === 'roadside')
+                        ((newReport.emergency_type && newReport.emergency_type.toLowerCase().includes('roadside')) || newReport.type === 'roadside')
                     ) {
                         if (payload.eventType === 'INSERT') {
                             playChime();
