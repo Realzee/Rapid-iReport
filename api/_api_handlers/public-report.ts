@@ -231,6 +231,7 @@ export default async function publicReportHandler(req: Request, res: Response) {
           date_of_incident: date_of_incident || now.toISOString().split('T')[0],
           company_id: targetCompanyId,
           vehicle_involved: true,
+          is_global: true,
         };
 
         const { data, error } = await supabaseAdmin.from('vehicle_reports').insert(vehiclePayload).select().single();
@@ -250,6 +251,7 @@ export default async function publicReportHandler(req: Request, res: Response) {
           reported_at: now.toISOString(),
           date_of_incident: date_of_incident || now.toISOString().split('T')[0],
           company_id: targetCompanyId,
+          is_global: true,
           injuries_reported: cleanCrimeType.toLowerCase().includes('medical') || cleanCrimeType.toLowerCase().includes('injury'),
         };
 
@@ -271,6 +273,7 @@ export default async function publicReportHandler(req: Request, res: Response) {
           reported_at: now.toISOString(),
           date_of_incident: date_of_incident || now.toISOString().split('T')[0],
           company_id: targetCompanyId,
+          is_global: true,
           vehicle_involved: !!vehicle_involved,
           license_plate: vehicle_involved ? (license_plate || null) : null,
           vehicle_make: vehicle_involved ? (vehicle_make || null) : null,

@@ -116,6 +116,11 @@ const LiveEventItem: React.FC<{
                                         {report.is_global && (
                                             <GlobeIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Global Report" />
                                         )}
+                                        {(report.ob_number?.startsWith('PUB') || !report.reported_by) && (
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800 leading-none flex-shrink-0" title="Public Community Tip-off">
+                                                Public Tip
+                                            </span>
+                                        )}
                                         {!report.is_global && report.shared_with_company_ids && report.shared_with_company_ids.length > 0 && (
                                             <UsersIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" title="Shared with specific companies" />
                                         )}
@@ -383,7 +388,7 @@ const LiveEventStack: React.FC<LiveEventStackProps> = ({
                                     isUnviewed={unviewedReportIds?.has(report.id) || false}
                                     onSelect={() => onReportSelect(report.id)}
                                     responderMap={responderMap}
-                                    reporterName={userMap.get(report.reported_by) || 'Unknown User'}
+                                    reporterName={userMap.get(report.reported_by) || (report.ob_number?.startsWith('PUB') || !report.reported_by ? 'Public Community Tip' : 'Unknown User')}
                                     profile={profile}
                                 />
                             ))}

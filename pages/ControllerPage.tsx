@@ -255,7 +255,7 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
             let emergencyQuery = supabase.from('emergency_reports').select(EMERGENCY_REPORT_COLUMNS);
 
             if (!isGlobalAdmin && profile.company_id) {
-                const filterStr = `company_id.eq.${profile.company_id},is_global.eq.true,shared_with_company_ids.cs.{"${profile.company_id}"}`;
+                const filterStr = `company_id.eq.${profile.company_id},is_global.eq.true,company_id.is.null,shared_with_company_ids.cs.{"${profile.company_id}"}`;
                 vehicleQuery = vehicleQuery.or(filterStr);
                 crimeQuery = crimeQuery.or(filterStr);
                 emergencyQuery = emergencyQuery.or(filterStr);
@@ -340,21 +340,29 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
 
             // Filter incoming reports for non-global admins
             if (!isGlobalAdmin && profile.company_id) {
-                // Check if reporter is in our loaded users list
-                let reporter = allUsersRef.current.find(u => u.id === newReport.reported_by);
-                
-                if (!reporter) {
-                    // Fetch reporter if not found locally
-                    const { data } = await supabase.from('profiles').select('*').eq('id', newReport.reported_by).single();
-                    if (data) {
-                        reporter = data;
-                        // Optimistically add to allUsers to avoid re-fetching
-                        setAllUsers(prev => [...prev, data]);
-                    }
-                }
+                const isGlobal = Boolean(newReport.is_global);
+                const isOurCompany = newReport.company_id === profile.company_id;
+                const isPublicReport = !newReport.company_id || !newReport.reported_by || newReport.ob_number?.startsWith('PUB');
+                const isSharedWithUs = Array.isArray(newReport.shared_with_company_ids) && newReport.shared_with_company_ids.includes(profile.company_id);
+                const isAssignedToMe = newReport.assigned_to === profile.id;
 
-                if (!reporter || reporter.company_id !== profile.company_id) {
-                    return; // Ignore report from other company
+                if (!isGlobal && !isOurCompany && !isPublicReport && !isSharedWithUs && !isAssignedToMe) {
+                    // Check if reporter is in our loaded users list
+                    let reporter = allUsersRef.current.find(u => u.id === newReport.reported_by);
+                    
+                    if (!reporter && newReport.reported_by) {
+                        // Fetch reporter if not found locally
+                        const { data } = await supabase.from('profiles').select('*').eq('id', newReport.reported_by).single();
+                        if (data) {
+                            reporter = data;
+                            // Optimistically add to allUsers to avoid re-fetching
+                            setAllUsers(prev => [...prev, data]);
+                        }
+                    }
+
+                    if (!reporter || reporter.company_id !== profile.company_id) {
+                        return; // Ignore report from other company
+                    }
                 }
             }
 

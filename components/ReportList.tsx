@@ -142,7 +142,7 @@ const ReportList: React.FC<ReportListProps> = ({ reports, selectedReportId, onRe
             <div ref={scrollContainerRef} onScroll={handleScroll} className="space-y-3 overflow-y-auto h-full pr-2 -mr-2">
                 {filteredReports.map((report) => {
                     const reporter = userMap[report.reported_by];
-                    const reporterName = reporter ? `${reporter.first_name} ${reporter.surname}` : 'Unknown User';
+                    const reporterName = reporter ? `${reporter.first_name} ${reporter.surname}` : (report.ob_number?.startsWith('PUB') || !report.reported_by ? 'Public Community Tip' : 'Unknown User');
                     const company = report.company_id ? companyMap[report.company_id] : (reporter?.company_id ? companyMap[reporter.company_id] : undefined);
                     const companyLogoUrl = company?.logo_url;
 

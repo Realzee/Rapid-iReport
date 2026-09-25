@@ -114,7 +114,7 @@ const ControllerReportDetail: React.FC<{
             ] = await Promise.all([
                 supabase.from('report_updates').select('*, profile:profiles(first_name, surname)').eq('report_id', report.id).order('created_at', { ascending: true }).limit(100),
                 supabase.from('assignment_logs').select(`*, assigned_from_profile:profiles!assignment_logs_assigned_from_fkey(first_name, surname), assigned_to_profile:profiles!assignment_logs_assigned_to_fkey(first_name, surname), assigned_by_profile:profiles!assignment_logs_assigned_by_fkey(first_name, surname)`).eq('report_id', report.id).order('created_at', { ascending: false }).limit(100),
-                supabase.from('profiles').select('first_name, surname').eq('id', report.reported_by).maybeSingle(),
+                report.reported_by ? supabase.from('profiles').select('first_name, surname').eq('id', report.reported_by).maybeSingle() : Promise.resolve({ data: null, error: null } as any),
                 supabase.from('companies').select('id, name, logo_url, alias').order('name').limit(100),
                 supabase.from('report_shares').select('*, target_company:companies!report_shares_target_company_id_fkey(id, name, logo_url)').eq('report_id', report.id).limit(50)
             ]);
@@ -1492,7 +1492,7 @@ const ControllerReportDetail: React.FC<{
                 onClose={() => setIncidentReportModalOpen(false)}
                 report={report}
                 timelineEvents={timelineEvents}
-                reporterName={reporter ? `${reporter.first_name} ${reporter.surname}` : 'Unknown'}
+                reporterName={reporter ? `${reporter.first_name} ${reporter.surname}` : (report.ob_number?.startsWith('PUB') || !report.reported_by ? 'Public Community Tip' : 'Unknown')}
                 company={profile.company}
             />
         </div>

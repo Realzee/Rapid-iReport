@@ -250,7 +250,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
     useEffect(() => {
         const fetchReporter = async () => {
-            if ((localReport as any).is_legacy || localReport.id.startsWith('legacy-') || localReport.reported_by === 'system') {
+            if ((localReport as any).is_legacy || localReport.id.startsWith('legacy-') || localReport.reported_by === 'system' || !localReport.reported_by) {
                 return;
             }
             const { data, error } = await supabase
@@ -1172,10 +1172,19 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{localReport.description}</p>
                 </div>
 
-                 {reporter && (
+                 {reporter ? (
                     <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported By</p>
-                        <p className="text-gray-700 dark:text-gray-300">{reporter.first_name} {reporter.surname} ({reporter.email})</p>
+                        <p className="text-gray-700 dark:text-gray-300 font-semibold">{reporter.first_name} {reporter.surname} ({reporter.email})</p>
+                    </div>
+                 ) : (
+                    <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reported By</p>
+                        <p className="text-gray-700 dark:text-gray-300 font-semibold">
+                            {localReport.ob_number?.startsWith('PUB') || !localReport.reported_by 
+                                ? '📢 Public Community Tip-off (Anonymous / Citizen Submission)' 
+                                : 'System / Control Room'}
+                        </p>
                     </div>
                  )}
 
