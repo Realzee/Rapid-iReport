@@ -4,6 +4,7 @@ import { VehicleReport, ReportStatus, Severity, Profile, UserRole, ACTIVE_REPORT
 import { useToast } from '../contexts/ToastContext';
 import { PlusIcon, SearchIcon, AlertTriangleIcon, FilterIcon, TrashIcon, EyeIcon } from './icons';
 import ConfirmModal from './ConfirmModal';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface CirculationListManagerProps {
     profile: Profile;
@@ -90,7 +91,7 @@ const CirculationListManager: React.FC<CirculationListManagerProps> = ({ profile
                 <div className="max-h-80 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
                     {loading ? (
                         <div className="flex justify-center py-8">
-                            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            <LoadingSpinner size="md" variant="tactical" label="Loading vehicles..." />
                         </div>
                     ) : filteredReports.length === 0 ? (
                         <div className="text-sm text-gray-500 text-center py-8 bg-gray-50 dark:bg-gray-800/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">

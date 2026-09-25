@@ -3,6 +3,7 @@ import { Profile } from '../types';
 import { XIcon, RadioTowerIcon } from './icons';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
+import { LoadingSpinner } from './LoadingSpinner';
 
 // Helper function to play a beep sound using Web Audio API
 const playBeep = (audioContext: AudioContext | null, frequency = 1000, duration = 0.15, volume = 0.3) => {
@@ -321,7 +322,11 @@ const PTTModal: React.FC<PTTModalProps> = ({ isOpen, onClose, profile }) => {
 
 
                 <div className="flex-grow space-y-2 h-56 overflow-y-auto pr-2">
-                    {isLoading ? <p>loading</p> : companyUsers.map(user => {
+                    {isLoading ? (
+                        <div className="flex justify-center items-center h-full py-8">
+                            <LoadingSpinner size="md" variant="tactical" label="Connecting channels..." />
+                        </div>
+                    ) : companyUsers.map(user => {
                         const isSelected = target === user.id;
                         const isSpeaking = activeSpeakerId === user.id;
                         return (

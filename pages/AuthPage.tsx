@@ -9,9 +9,11 @@ import { Company } from '../types';
 
 interface AuthPageProps {
     onViewAbout: () => void;
+    onViewPublicCrimeReport?: () => void;
+    onViewBulletins?: () => void;
 }
 
-const AuthPage: React.FC<AuthPageProps> = ({ onViewAbout }) => {
+const AuthPage: React.FC<AuthPageProps> = ({ onViewAbout, onViewPublicCrimeReport, onViewBulletins }) => {
     const [isLoginView, setIsLoginView] = useState(true);
     const [companies, setCompanies] = useState<Company[]>([]);
     const { mainLogoUrl, defaultLogoUrl } = useSettings();
@@ -60,7 +62,55 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewAbout }) => {
                    </h2>
                 </div>
 
+                {/* Public Incident & Crime Reporting CTA Banner */}
+                <div className="w-full max-w-md mb-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <button
+                        onClick={onViewPublicCrimeReport}
+                        className="w-full p-4 bg-gradient-to-r from-red-600 via-rose-600 to-indigo-600 hover:from-red-700 hover:to-indigo-700 text-white rounded-2xl shadow-xl shadow-red-600/20 hover:shadow-red-600/30 transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-between text-left group"
+                    >
+                        <div className="flex items-center gap-3.5">
+                            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 transition-transform">
+                                🚨
+                            </div>
+                            <div>
+                                <span className="text-[10px] font-mono font-black uppercase tracking-widest bg-white/25 px-2 py-0.5 rounded-full">
+                                    PUBLIC ACCESS (NO LOGIN REQUIRED)
+                                </span>
+                                <h3 className="text-base sm:text-lg font-black mt-1 leading-tight flex items-center gap-1.5">
+                                    <span>Report a Crime or Incident</span>
+                                </h3>
+                                <p className="text-xs text-white/80 mt-0.5">
+                                    Hijackings, burglaries, suspicious activity, stolen vehicles & emergencies
+                                </p>
+                            </div>
+                        </div>
+                        <div className="text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all pl-2">
+                            ➔
+                        </div>
+                    </button>
+                    
+                    <div className="flex items-center justify-between mt-2.5 px-2 text-xs">
+                        <button
+                            onClick={onViewPublicCrimeReport}
+                            className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-semibold transition-colors flex items-center gap-1"
+                        >
+                            🔍 Track Reference Code
+                        </button>
+                        <button
+                            onClick={onViewBulletins || onViewPublicCrimeReport}
+                            className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-semibold transition-colors flex items-center gap-1"
+                        >
+                            📢 Safety Bulletins
+                        </button>
+                    </div>
+                </div>
+
                 <div className="w-full max-w-md p-8 bg-white/75 dark:bg-gray-950/60 backdrop-blur-3xl border border-gray-200 dark:border-gray-800/80 rounded-3xl shadow-2xl transition-all duration-300 dark:ring-1 dark:ring-white/5">
+                    <div className="text-center mb-6 pb-4 border-b border-gray-100 dark:border-gray-850">
+                        <p className="text-xs font-mono font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                            {isLoginView ? 'Operator & Member Portal' : 'New Account Registration'}
+                        </p>
+                    </div>
                     {isLoginView ? (
                         <LoginForm 
                             onSwitchToRegister={() => setIsLoginView(false)} 

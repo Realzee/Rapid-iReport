@@ -3,6 +3,7 @@ import { supabase } from '../utils/supabase';
 import { Report, Responder, ResponderStatus, Profile, UserRole } from '../types';
 import MapView from '../components/MapView';
 import { XIcon } from './icons';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface GlobalMapModalProps {
     isOpen: boolean;
@@ -175,7 +176,7 @@ const GlobalMapModal: React.FC<GlobalMapModalProps> = ({ isOpen, onClose, profil
                 <div className="flex-grow relative min-h-0">
                     {loading ? (
                          <div className="absolute inset-0 flex justify-center items-center">
-                            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            <LoadingSpinner size="xl" variant="tactical" label="Loading global tactical grid..." />
                         </div>
                     ) : (
                         <div className="absolute inset-0">

@@ -5,8 +5,9 @@ import { useSettings } from '../contexts/SettingsContext';
 import ThemeToggle from '../components/ThemeToggle';
 import { ZapIcon } from '../components/icons';
 import AnnouncementsPanel from '../components/AnnouncementsPanel';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
-const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackToLogin }) => {
+const PublicDashboardPage: React.FC<{ onBackToLogin: () => void; onViewReport?: () => void }> = ({ onBackToLogin, onViewReport }) => {
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
     const { mainLogoUrl, defaultLogoUrl } = useSettings();
@@ -50,11 +51,19 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                             Community Safety Portal
                         </h1>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                         <ThemeToggle />
+                        {onViewReport && (
+                            <button 
+                                onClick={onViewReport} 
+                                className="px-3.5 py-2 text-xs sm:text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                            >
+                                <span>🚨 Report a Crime</span>
+                            </button>
+                        )}
                         <button 
                             onClick={onBackToLogin} 
-                            className="px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 rounded-lg hover:bg-blue-500/20 active:scale-95 transition-all duration-200"
+                            className="px-3.5 py-2 text-xs sm:text-sm font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 rounded-xl hover:bg-blue-500/20 active:scale-95 transition-all duration-200"
                         >
                             Operator Login
                         </button>
@@ -67,8 +76,7 @@ const PublicDashboardPage: React.FC<{ onBackToLogin: () => void }> = ({ onBackTo
                     <div className="flex-grow p-6 sm:p-8 flex flex-col">
                         {loading ? (
                             <div className="flex-grow flex flex-col items-center justify-center py-12">
-                                <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-4 font-medium">Loading community notices...</p>
+                                <LoadingSpinner size="lg" variant="tactical" label="Loading community notices..." />
                             </div>
                         ) : announcements.length === 0 ? (
                             <div className="flex-grow flex flex-col items-center justify-center text-center py-12 px-4 my-auto">

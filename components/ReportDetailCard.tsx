@@ -14,6 +14,7 @@ import { generateAndShareBolo } from '../utils/boloUtils';
 import ImagePreviewModal from './ImagePreviewModal';
 import IncidentReportPreviewModal from './IncidentReportPreviewModal';
 import { FileText, Printer } from 'lucide-react';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface ReportDetailCardProps {
     report: Report;
@@ -1234,11 +1235,11 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                                 <button
                                     onClick={handleSaveSharing}
                                     disabled={isSavingShares}
-                                    className="w-full btn-primary text-xs py-1.5 font-bold flex items-center justify-center gap-1"
+                                    className="w-full btn-primary text-xs py-1.5 font-bold flex items-center justify-center gap-1.5"
                                 >
                                     {isSavingShares ? (
                                         <>
-                                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            <LoadingSpinner size="xs" variant="white" />
                                             Updating Sharing Settings...
                                         </>
                                     ) : (
@@ -1299,7 +1300,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                             disabled={isAssignmentLoading}
                             className="w-full py-2.5 px-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 border border-red-200 dark:border-red-800"
                         >
-                            {isAssignmentLoading ? <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" /> : 'Unassign Self from Incident'}
+                            {isAssignmentLoading ? <LoadingSpinner size="xs" variant="danger" /> : 'Unassign Self from Incident'}
                         </button>
                     ) : (
                         <button
@@ -1307,7 +1308,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                             disabled={isAssignmentLoading}
                             className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2"
                         >
-                            {isAssignmentLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Self-Assign Incident'}
+                            {isAssignmentLoading ? <LoadingSpinner size="xs" variant="white" /> : 'Self-Assign Incident'}
                         </button>
                     )}
                 </div>
@@ -1351,7 +1352,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                         </button>
                         <button onClick={() => generateBoloImage('download')} disabled={isGeneratingBolo} className="flex items-center justify-center gap-2 btn-primary text-sm disabled:opacity-50 disabled:cursor-wait">
                             {isGeneratingBolo ? (
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <LoadingSpinner size="xs" variant="white" />
                             ) : (
                                 <DownloadIcon className="w-5 h-5"/>
                             )}

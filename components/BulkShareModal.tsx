@@ -3,6 +3,7 @@ import { supabase } from '../utils/supabase';
 import { Report, Company, Profile } from '../types';
 import { XIcon, CheckIcon, BuildingIcon, ShareIcon, SearchIcon, CarIcon, AlertTriangleIcon, CrimeIcon } from './icons';
 import { useToast } from '../contexts/ToastContext';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface BulkShareModalProps {
   isOpen: boolean;
@@ -253,8 +254,7 @@ export const BulkShareModal: React.FC<BulkShareModalProps> = ({
             <div className="border border-gray-200 dark:border-gray-850 rounded-xl overflow-hidden bg-white dark:bg-gray-950 divide-y divide-gray-100 dark:divide-gray-900">
               {isLoadingCompanies ? (
                 <div className="p-8 text-center text-xs text-gray-500 flex flex-col items-center justify-center gap-2">
-                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                  Loading partner companies...
+                  <LoadingSpinner size="sm" variant="themed" label="Loading partner companies..." />
                 </div>
               ) : companies.length === 0 ? (
                 <div className="p-8 text-center text-sm text-gray-500">
@@ -343,7 +343,7 @@ export const BulkShareModal: React.FC<BulkShareModalProps> = ({
             >
               {isSharing ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <LoadingSpinner size="xs" variant="white" />
                   Sharing...
                 </>
               ) : (

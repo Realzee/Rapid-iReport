@@ -23,6 +23,7 @@ const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const PatrolPage = lazy(() => import('./pages/PatrolPage'));
 const AttendancePage = lazy(() => import('./pages/AttendancePage'));
 const PublicDashboardPage = lazy(() => import('./pages/PublicDashboardPage'));
+const PublicCrimeReportPage = lazy(() => import('./pages/PublicCrimeReportPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const GuardMonitoringPage = lazy(() => import('./pages/GuardMonitoringPage'));
 const GateAccessPage = lazy(() => import('./pages/GateAccessPage'));
@@ -48,6 +49,7 @@ import { useToast } from './contexts/ToastContext';
 import { useTheme } from './contexts/ThemeContext';
 import MatrixRain from './components/MatrixRain';
 import { TacticalSkeleton } from './components/TacticalSkeleton';
+import { LoadingSpinner, LoadingScreen } from './components/LoadingSpinner';
 
 type View = 'dashboard' | 'archives' | 'analytics' | 'map' | 'users' | 'companies' | 'profile' | 'controller' | 'activity_logs' | 'guard_monitoring' | 'global_search' | 'gate_access' | 'patrol_scanner' | 'technician_dashboard' | 'tech_ops' | 'attendance' | 'about' | 'roadside_driver' | 'ems_dispatch' | 'ems_responder';
 
@@ -115,6 +117,15 @@ const App: React.FC = () => {
   const [initialReportId, setInitialReportId] = useState<string | null>(null);
   const [schemaError, setSchemaError] = useState<string | null>(null);
   const [showPublicView, setShowPublicView] = useState(false);
+  const [showPublicCrimeReport, setShowPublicCrimeReport] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('view') === 'report' || params.get('report') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [publicPortalTab, setPublicPortalTab] = useState<'report' | 'bulletins' | 'track'>('report');
   const [showAboutPage, setShowAboutPage] = useState(false);
   const { mainLogoUrl, faviconUrl, defaultLogoUrl } = useSettings();
   const [isGlobalMapModalOpen, setIsGlobalMapModalOpen] = useState(false);
@@ -642,14 +653,14 @@ const App: React.FC = () => {
 
   if (loading || (session && profileLoading)) {
     return (
-        <div className="fixed inset-0 flex flex-col items-center justify-center bg-black text-white z-[9999] overflow-hidden">
-             <div className="mb-6 animate-pulse px-4">
-                 <img src={mainLogoUrl} alt="Rapid911 Logo" className="max-w-xs md:max-w-md h-auto mx-auto opacity-90 object-contain" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
-             </div>
-             <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-             <p className="mt-6 text-xs tracking-widest text-gray-400 uppercase font-medium">loading</p>
-        </div>
-    )
+      <LoadingScreen
+        logoUrl={mainLogoUrl}
+        defaultLogoUrl={defaultLogoUrl}
+        message="INITIALIZING RAPID DISPATCH TELEMETRY"
+        submessage="Synchronizing real-time security grid and tactical feeds..."
+        fullscreen={true}
+      />
+    );
   }
   
   if (session && error) {
@@ -670,6 +681,16 @@ const App: React.FC = () => {
   }
 
   if (!session) {
+      if (showPublicCrimeReport) {
+        return (
+            <Suspense fallback={renderLoadingFallback("PUBLIC INCIDENT PORTAL")}>
+                <PublicCrimeReportPage
+                    onBackToLogin={() => setShowPublicCrimeReport(false)}
+                    initialTab={publicPortalTab}
+                />
+            </Suspense>
+        );
+      }
       if (showPublicView) {
         return (
             <Suspense fallback={renderLoadingFallback()}>
@@ -686,7 +707,17 @@ const App: React.FC = () => {
       }
       return (
           <Suspense fallback={renderLoadingFallback()}>
-              <AuthPage onViewAbout={() => setShowAboutPage(true)} />
+              <AuthPage
+                  onViewAbout={() => setShowAboutPage(true)}
+                  onViewPublicCrimeReport={() => {
+                      setPublicPortalTab('report');
+                      setShowPublicCrimeReport(true);
+                  }}
+                  onViewBulletins={() => {
+                      setPublicPortalTab('bulletins');
+                      setShowPublicCrimeReport(true);
+                  }}
+              />
           </Suspense>
       );
   }

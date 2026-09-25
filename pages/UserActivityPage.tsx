@@ -4,6 +4,7 @@ import { UserActivityLog, UserRole, Profile } from '../types';
 import { safeFormat } from '../utils/dateUtils';
 import { DownloadIcon, FilterIcon, ClockIcon, SearchIcon } from '../components/icons';
 import { useToast } from '../contexts/ToastContext';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 interface UserActivityPageProps {
     profile: Profile;
@@ -194,8 +195,7 @@ const UserActivityPage: React.FC<UserActivityPageProps> = ({ profile }) => {
                 <div className="overflow-x-auto">
                     {loading ? (
                         <div className="py-20 flex flex-col items-center justify-center">
-                            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                            <p className="text-gray-500 dark:text-gray-400">Loading activity data...</p>
+                            <LoadingSpinner size="lg" variant="tactical" label="Loading activity logs..." />
                         </div>
                     ) : filteredLogs.length === 0 ? (
                         <div className="py-20 text-center">

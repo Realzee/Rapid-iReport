@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Profile, Company, UserRole, UserStatus } from '../types';
 import { EditIcon, TrashIcon, EyeIcon, UsersIcon } from './icons';
 import { safeFormatDistanceToNow } from '../utils/dateUtils';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface RoleBadgeProps { role: UserRole; }
 const RoleBadge: React.FC<RoleBadgeProps> = memo(({ role }) => {
@@ -110,7 +111,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                              {isPending && canEditUser ? (
                                 <div className="col-span-2">
                                     {isUpdatingStatus ? (
-                                         <div className="flex justify-center items-center h-full"><div className="w-5 h-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div></div>
+                                         <div className="flex justify-center items-center h-full py-1"><LoadingSpinner size="xs" variant="themed" /></div>
                                     ) : (
                                         <div className="flex gap-2">
                                             <button onClick={() => onStatusChange(user.id, UserStatus.ACTIVE)} className="w-full btn-success text-sm">Approve</button>
@@ -262,7 +263,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                                         <option key={company.id} value={company.id}>{company.name}</option>
                                                     ))}
                                                 </select>
-                                                {isUpdatingCompany && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>}
+                                                {isUpdatingCompany && <LoadingSpinner size="xs" variant="themed" />}
                                             </div>
                                         ) : (
                                             getCompanyName(user.company_id)
@@ -282,7 +283,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                                         <option key={role} value={role} className="capitalize">{role}</option>
                                                     ))}
                                                 </select>
-                                                {isUpdatingRole && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>}
+                                                {isUpdatingRole && <LoadingSpinner size="xs" variant="themed" />}
                                             </div>
                                         ) : (
                                             <RoleBadge role={user.role} />
@@ -293,17 +294,17 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({ users, compan
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                            {userReportCounts[user.id] || 0}
+                                             {userReportCounts[user.id] || 0}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {renderLastSeen(user.last_seen_at)}
+                                         {renderLastSeen(user.last_seen_at)}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         {isPending && canEditUser ? (
                                             <div className="flex items-center justify-end space-x-2">
                                                 {isUpdatingStatus ? (
-                                                    <div className="w-5 h-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+                                                    <LoadingSpinner size="xs" variant="themed" />
                                                 ) : (
                                                     <>
                                                         <button onClick={() => onStatusChange(user.id, UserStatus.ACTIVE)} className="btn-success text-xs py-1 px-2">Approve</button>

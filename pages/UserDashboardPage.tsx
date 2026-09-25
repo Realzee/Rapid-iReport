@@ -7,6 +7,7 @@ import ReportModal from '../components/ReportModal';
 import UserReportDetail from '../components/UserReportDetail';
 import StatusBadge from '../components/StatusBadge';
 import { safeFormatDistanceToNow } from '../utils/dateUtils';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 const isVehicleReport = (report: Report): report is VehicleReport => 'license_plate' in report;
 const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report;
@@ -198,7 +199,11 @@ const UserDashboardPage: React.FC<{ profile: Profile }> = ({ profile }) => {
     };
 
     if (loading) {
-        return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+        return (
+            <div className="flex justify-center items-center min-h-[50vh]">
+                <LoadingSpinner size="xl" variant="tactical" label="Loading reports..." />
+            </div>
+        );
     }
 
     return (

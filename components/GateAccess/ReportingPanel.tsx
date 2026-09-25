@@ -4,6 +4,7 @@ import { GateAccessLog } from '../../types';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { safeFormat } from '../../utils/dateUtils';
 import { ChartBarIcon, DownloadIcon, AlertTriangleIcon } from '../icons';
+import { LoadingSpinner } from '../LoadingSpinner';
 
 const ReportingPanel: React.FC<{ profileId: string, companyId?: string }> = ({ profileId, companyId }) => {
     const [logs, setLogs] = useState<GateAccessLog[]>([]);
@@ -106,7 +107,7 @@ const ReportingPanel: React.FC<{ profileId: string, companyId?: string }> = ({ p
 
             {loading ? (
                 <div className="flex justify-center py-20">
-                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <LoadingSpinner size="lg" variant="tactical" label="Compiling gate telemetry report..." />
                 </div>
             ) : (
                 <>

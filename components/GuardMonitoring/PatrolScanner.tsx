@@ -4,6 +4,7 @@ import { Guard, Checkpoint } from '../../types';
 import { getDistance } from '../../utils/geo';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { QrCode, X, Check, AlertTriangle, Camera } from 'lucide-react';
+import { LoadingSpinner } from '../LoadingSpinner';
 
 interface PatrolScannerProps {
     guards: Guard[];
@@ -349,8 +350,8 @@ const PatrolScanner: React.FC<PatrolScannerProps> = ({ guards, checkpoints, onSc
             </div>
             
             {loading && (
-                <div className="absolute inset-0 bg-white/50 dark:bg-gray-800/50 backdrop-blur-[1px] flex items-center justify-center rounded-2xl">
-                    <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="absolute inset-0 bg-white/70 dark:bg-gray-900/70 backdrop-blur-[1px] flex items-center justify-center rounded-2xl z-10">
+                    <LoadingSpinner size="lg" variant="emerald" label="Recording checkpoint..." />
                 </div>
             )}
         </div>

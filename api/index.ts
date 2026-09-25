@@ -16,6 +16,7 @@ import resetPasswordHandler from './_api_handlers/reset-password.js';
 import resolveMapsLinkHandler from './_api_handlers/resolve-maps-link.js';
 import sapsBoundariesHandler from './_api_handlers/saps-boundaries.js';
 import databaseBackupHandler from './_api_handlers/database-backup.js';
+import publicReportHandler from './_api_handlers/public-report.js';
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
@@ -69,6 +70,8 @@ app.all(['/api/reset-password', '/api/reset-password/'], handle(resetPasswordHan
 app.all(['/api/resolve-maps-link', '/api/resolve-maps-link/'], handle(resolveMapsLinkHandler));
 app.all(['/api/saps-boundaries', '/api/saps-boundaries/'], handle(sapsBoundariesHandler));
 app.all(['/api/database-backup', '/api/database-backup/'], handle(databaseBackupHandler));
+app.all(['/api/public-report', '/api/public-report/'], handle(publicReportHandler));
+app.all(['/api/public-report/track', '/api/public-report/track/'], handle(publicReportHandler));
 
 // Specific API Route Aliases for consolidated endpoints
 app.all(['/api/update-profile', '/api/update-profile/'], handle(profilesHandler));

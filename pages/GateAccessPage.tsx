@@ -7,6 +7,7 @@ import { SearchIcon, ScanIcon, LogOutIcon, LogInIcon, AlertTriangleIcon, CarIcon
 import { safeFormat } from '../utils/dateUtils';
 import { logUserAction } from '../utils/logger';
 import ReportingPanel from '../components/GateAccess/ReportingPanel';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
     const [activeTab, setActiveTab] = useState<'log' | 'reports'>('log');
@@ -370,8 +371,7 @@ const GateAccessPage: React.FC<{ profile: Profile }> = ({ profile }) => {
 
                         {loading && logs.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 bg-gray-50 dark:bg-gray-800/30 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
-                                <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                                <p className="mt-4 text-gray-500">Scanning history...</p>
+                                <LoadingSpinner size="lg" variant="tactical" label="Scanning gate access history..." />
                             </div>
                         ) : logs.length === 0 ? (
                             <div className="text-center py-20 bg-gray-50 dark:bg-gray-800/30 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">

@@ -4,6 +4,7 @@ import StatusBadge from './StatusBadge';
 import ReportTypeBadge from './ReportTypeBadge';
 import { safeFormatDistanceToNow } from '../utils/dateUtils';
 import { CarIcon, AlertTriangleIcon, CrimeIcon, GlobeIcon, UsersIcon } from './icons';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface ReportListItemProps {
   report: Report;
@@ -215,7 +216,7 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                             </select>
                             {isUpdating ? (
                                 <div className="absolute top-1/2 right-1.5 -translate-y-1/2 pointer-events-none">
-                                    <div className="w-2.5 h-2.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                    <LoadingSpinner size="xs" variant="themed" />
                                 </div>
                             ) : (
                                 <div className="absolute top-1/2 right-1.5 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">

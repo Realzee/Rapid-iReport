@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { ReportShare, Company, Profile, UserRole } from '../types';
 import { XIcon, CheckIcon, BuildingIcon, HistoryIcon, UsersIcon, GlobeIcon, ShareIcon } from './icons';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface CorporateSharingModalProps {
   isOpen: boolean;
@@ -207,8 +208,7 @@ export const CorporateSharingModal: React.FC<CorporateSharingModalProps> = ({ is
         <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/50 dark:bg-black/10">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-16 space-y-3">
-              <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">loading</p>
+              <LoadingSpinner size="lg" variant="tactical" label="Loading sharing requests..." />
             </div>
           ) : activeTab === 'incoming' ? (
             /* INCOMING SHARES TAB */

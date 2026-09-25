@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { LegacyObEntry } from '../types';
 import { DatabaseIcon } from './icons';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface LegacyObLogProps {
     onRowClick: (entry: LegacyObEntry) => void;
@@ -46,7 +47,7 @@ const LegacyObLog: React.FC<LegacyObLogProps> = ({ onRowClick }) => {
     if (loading) {
         return (
             <div className="flex justify-center items-center py-8">
-                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <LoadingSpinner size="md" variant="themed" label="Loading legacy OB..." />
             </div>
         );
     }

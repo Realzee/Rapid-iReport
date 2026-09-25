@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabase';
 import { Attendance, Profile } from '../types';
 import { useToast } from '../contexts/ToastContext';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 const AttendancePage: React.FC = () => {
     const [records, setRecords] = useState<(Attendance & { profile: Profile })[]>([]);
@@ -26,7 +27,13 @@ const AttendancePage: React.FC = () => {
         fetchAttendance();
     }, []);
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) {
+        return (
+            <div className="min-h-[400px] flex items-center justify-center">
+                <LoadingSpinner size="lg" variant="tactical" label="Loading attendance logs..." />
+            </div>
+        );
+    }
 
     return (
         <div className="p-6">

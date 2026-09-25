@@ -3,6 +3,7 @@ import { UserIcon, MailIcon, LockIcon, UploadCloudIcon, BuildingIcon } from './i
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
 import { Company, UserRole } from '../types';
+import { LoadingSpinner } from './LoadingSpinner';
 
 const TurnstileHandler: React.FC<{ onToken: (token: string) => void }> = ({ onToken }) => {
     useEffect(() => {
@@ -277,7 +278,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 dark:shadow-blue-900/10 hover:shadow-blue-500/30 transition-all duration-200 flex justify-center items-center hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Create Account'}
+            {loading ? <LoadingSpinner size="sm" variant="white" /> : 'Create Account'}
           </button>
         </div>
 

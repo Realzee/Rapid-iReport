@@ -6,6 +6,7 @@ import { Fingerprint, Camera } from 'lucide-react';
 import { isBiometricsSupported, hasBiometricsRegistered, authenticateBiometrics } from '../utils/webauthn';
 import { isFaceAuthSupported, hasFaceRegistered, decryptFaceData } from '../utils/faceAuth';
 import { FaceScanModal } from './FaceScanModal';
+import { LoadingSpinner } from './LoadingSpinner';
 
 const TurnstileHandler: React.FC<{ onToken: (token: string) => void }> = ({ onToken }) => {
     useEffect(() => {
@@ -182,7 +183,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 dark:shadow-blue-900/10 hover:shadow-blue-500/30 transition-all duration-200 flex justify-center items-center hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Sign In'}
+            {loading ? <LoadingSpinner size="sm" variant="white" /> : 'Sign In'}
           </button>
 
           {biometricsSupported && (
