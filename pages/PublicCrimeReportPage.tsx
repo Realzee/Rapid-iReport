@@ -5,6 +5,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { useToast } from '../contexts/ToastContext';
 import ThemeToggle from '../components/ThemeToggle';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import StatusBadge from '../components/StatusBadge';
 import AnnouncementsPanel from '../components/AnnouncementsPanel';
 import { 
   CrimeIcon, 
@@ -1027,10 +1028,8 @@ export const PublicCrimeReportPage: React.FC<PublicCrimeReportPageProps> = ({ on
                       </p>
                     </div>
 
-                    <div className="sm:text-right">
-                      <span className="inline-block px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-blue-600 text-white shadow-sm">
-                        {trackedReport.status_info.label}
-                      </span>
+                    <div className="sm:text-right flex flex-col sm:items-end gap-1">
+                      <StatusBadge status={trackedReport.status} size="lg" />
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-mono">
                         {trackedReport.responding_agency}
                       </p>

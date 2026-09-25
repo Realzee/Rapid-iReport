@@ -208,10 +208,20 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                                 onChange={handleStatusChange}
                                 disabled={isUpdating || isTerminalStatus}
                                 onClick={(e) => e.stopPropagation()}
-                                className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full py-0.5 pl-2.5 pr-6 text-[10px] font-bold text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70 appearance-none w-full max-w-[90px] sm:max-w-[120px] whitespace-nowrap overflow-hidden text-ellipsis uppercase"
+                                className={`rounded-full py-0.5 pl-2.5 pr-6 text-[10px] font-black uppercase border transition-all duration-300 disabled:opacity-70 appearance-none w-full max-w-[100px] sm:max-w-[130px] whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-xs ${
+                                    report.status === ReportStatus.RESOLVED || report.status === ReportStatus.RECOVERED
+                                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 shadow-emerald-500/10'
+                                        : report.status === ReportStatus.IN_PROGRESS || report.status === ReportStatus.ON_SCENE || report.status === ReportStatus.ASSIGNED
+                                        ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/40'
+                                        : report.status === ReportStatus.ACTIVE
+                                        ? 'bg-blue-500/15 text-blue-700 dark:text-cyan-300 border-blue-500/40'
+                                        : report.status === ReportStatus.STOLEN || report.status === ReportStatus.HIJACKED
+                                        ? 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/50'
+                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700'
+                                }`}
                             >
                                 {statusOptions.map(status => (
-                                    <option key={status} value={status} className="uppercase font-bold">{status.replace(/_/g, ' ').toUpperCase()}</option>
+                                    <option key={status} value={status} className="uppercase font-bold bg-white dark:bg-gray-900 text-gray-900 dark:text-white">{status.replace(/_/g, ' ').toUpperCase()}</option>
                                 ))}
                             </select>
                             {isUpdating ? (
@@ -219,8 +229,8 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
                                     <LoadingSpinner size="xs" variant="themed" />
                                 </div>
                             ) : (
-                                <div className="absolute top-1/2 right-1.5 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                <div className="absolute top-1/2 right-1.5 -translate-y-1/2 pointer-events-none text-current opacity-70">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                 </div>
                             )}
                         </div>

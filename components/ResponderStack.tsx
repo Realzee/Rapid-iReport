@@ -3,17 +3,25 @@ import { Report, Responder, ResponderStatus } from '../types';
 import { PhoneIcon, ClockIcon } from './icons';
 
 const ResponderStatusBadge: React.FC<{ status: ResponderStatus }> = ({ status }) => {
-    const styles: Record<ResponderStatus, { dot: string, text: string }> = {
-        [ResponderStatus.AVAILABLE]: { dot: 'bg-green-500', text: 'text-green-700 dark:text-green-300' },
-        [ResponderStatus.EN_ROUTE]: { dot: 'bg-blue-500', text: 'text-blue-700 dark:text-blue-300' },
-        [ResponderStatus.ON_SCENE]: { dot: 'bg-yellow-500', text: 'text-yellow-700 dark:text-yellow-300' },
-        [ResponderStatus.OFF_DUTY]: { dot: 'bg-gray-500', text: 'text-gray-600 dark:text-gray-400' },
+    const styles: Record<ResponderStatus, { dot: string, text: string, bg: string, border: string }> = {
+        [ResponderStatus.AVAILABLE]: { dot: 'bg-emerald-500 shadow-emerald-500/50', text: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' },
+        [ResponderStatus.EN_ROUTE]: { dot: 'bg-blue-500 shadow-blue-500/50 animate-ping', text: 'text-blue-700 dark:text-cyan-300', bg: 'bg-blue-500/15', border: 'border-blue-500/40' },
+        [ResponderStatus.ON_SCENE]: { dot: 'bg-amber-500 shadow-amber-500/50', text: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-500/15', border: 'border-amber-500/40' },
+        [ResponderStatus.OFF_DUTY]: { dot: 'bg-gray-400', text: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/20' },
     };
-    const style = styles[status] || styles.off_duty;
+    const style = styles[status] || styles[ResponderStatus.OFF_DUTY];
     return (
-        <div className="flex items-center gap-2">
-            <div className={`w-2.5 h-2.5 rounded-full ${style.dot}`}></div>
-            <span className={`text-sm font-semibold capitalize ${style.text}`}>{status.replace(/_/g, ' ')}</span>
+        <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-bold uppercase transition-all duration-300 ${style.bg} ${style.border}`}>
+            <span className="relative flex h-2 w-2">
+                {status === ResponderStatus.EN_ROUTE && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                )}
+                {status === ResponderStatus.AVAILABLE && (
+                    <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-50"></span>
+                )}
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${style.dot}`}></span>
+            </span>
+            <span className={`font-mono text-xs ${style.text}`}>{status.replace(/_/g, ' ')}</span>
         </div>
     );
 };

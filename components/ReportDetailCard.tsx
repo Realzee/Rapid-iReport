@@ -825,21 +825,38 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                     <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Status</p>
                         {canUpdateStatus && !(localReport as any).is_legacy && !localReport.id.startsWith('legacy-') ? (
-                             <select
-                                value={localReport.status}
-                                onChange={handleStatusChange}
-                                disabled={statusUpdateLoading || isTerminalStatus}
-                                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-1 px-2 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition disabled:opacity-70 uppercase font-bold"
-                            >
-                                <option value={ReportStatus.PENDING} className="uppercase">PENDING</option>
-                                <option value={ReportStatus.ACTIVE} className="uppercase">ACTIVE</option>
-                                <option value={ReportStatus.IN_PROGRESS} className="uppercase">IN PROGRESS</option>
-                                <option value={ReportStatus.RESOLVED} className="uppercase">RESOLVED</option>
-                                <option value={ReportStatus.REJECTED} className="uppercase">REJECTED</option>
-                                {localReport.type === 'vehicle' && <option value={ReportStatus.RECOVERED} className="uppercase">RECOVERED</option>}
-                            </select>
+                             <div className="relative mt-1">
+                                 <select
+                                    value={localReport.status}
+                                    onChange={handleStatusChange}
+                                    disabled={statusUpdateLoading || isTerminalStatus}
+                                    className={`w-full rounded-xl py-1.5 pl-3 pr-8 text-xs font-black uppercase tracking-wide border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer disabled:opacity-70 appearance-none shadow-xs ${
+                                        localReport.status === ReportStatus.RESOLVED || localReport.status === ReportStatus.RECOVERED
+                                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40 shadow-emerald-500/10'
+                                            : localReport.status === ReportStatus.IN_PROGRESS || localReport.status === ReportStatus.ON_SCENE
+                                            ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/40'
+                                            : localReport.status === ReportStatus.ACTIVE
+                                            ? 'bg-blue-500/15 text-blue-700 dark:text-cyan-300 border-blue-500/40'
+                                            : localReport.status === ReportStatus.STOLEN || localReport.status === ReportStatus.HIJACKED
+                                            ? 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/50'
+                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-700'
+                                    }`}
+                                >
+                                    <option value={ReportStatus.PENDING} className="uppercase bg-white dark:bg-gray-900 text-gray-900 dark:text-white">PENDING</option>
+                                    <option value={ReportStatus.ACTIVE} className="uppercase bg-white dark:bg-gray-900 text-gray-900 dark:text-white">ACTIVE</option>
+                                    <option value={ReportStatus.IN_PROGRESS} className="uppercase bg-white dark:bg-gray-900 text-gray-900 dark:text-white">IN PROGRESS</option>
+                                    <option value={ReportStatus.RESOLVED} className="uppercase bg-white dark:bg-gray-900 text-gray-900 dark:text-white">RESOLVED</option>
+                                    <option value={ReportStatus.REJECTED} className="uppercase bg-white dark:bg-gray-900 text-gray-900 dark:text-white">REJECTED</option>
+                                    {localReport.type === 'vehicle' && <option value={ReportStatus.RECOVERED} className="uppercase bg-white dark:bg-gray-900 text-gray-900 dark:text-white">RECOVERED</option>}
+                                </select>
+                                <div className="absolute top-1/2 right-2.5 -translate-y-1/2 pointer-events-none text-current opacity-60">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                </div>
+                             </div>
                         ) : (
-                            <StatusBadge status={localReport.status} />
+                            <div className="mt-1">
+                                <StatusBadge status={localReport.status} size="md" />
+                            </div>
                         )}
                     </div>
                     <div>

@@ -29,15 +29,25 @@ const isVehicleReport = (report: Report): report is VehicleReport => 'license_pl
 const isEmergencyReport = (report: Report): report is EmergencyReport => 'emergency_type' in report || (report as any).type === 'emergency' || 'caller_name' in report || 'patient_name' in report;
 
 const ResponderStatusBadge: React.FC<{ status: ResponderStatus }> = ({ status }) => {
-    const styles: Record<ResponderStatus, string> = {
-        [ResponderStatus.AVAILABLE]: 'bg-green-500/20 text-green-400 border-green-500/30',
-        [ResponderStatus.EN_ROUTE]: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-        [ResponderStatus.ON_SCENE]: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-        [ResponderStatus.OFF_DUTY]: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+    const styles: Record<ResponderStatus, { bg: string, text: string, border: string, dot: string }> = {
+        [ResponderStatus.AVAILABLE]: { bg: 'bg-emerald-500/15', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-500/30', dot: 'bg-emerald-500 shadow-emerald-500/50' },
+        [ResponderStatus.EN_ROUTE]: { bg: 'bg-blue-500/15', text: 'text-blue-700 dark:text-cyan-300', border: 'border-blue-500/40', dot: 'bg-blue-500 shadow-blue-500/50' },
+        [ResponderStatus.ON_SCENE]: { bg: 'bg-amber-500/15', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-500/40', dot: 'bg-amber-500 shadow-amber-500/50' },
+        [ResponderStatus.OFF_DUTY]: { bg: 'bg-gray-500/10', text: 'text-gray-600 dark:text-gray-400', border: 'border-gray-500/20', dot: 'bg-gray-400' },
     };
+    const s = styles[status] || styles[ResponderStatus.OFF_DUTY];
     return (
-        <span className={`px-3 py-1 text-xs font-bold rounded-full capitalize border ${styles[status] || styles.off_duty}`}>
-            {status.replace(/_/g, ' ')}
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full uppercase border transition-all duration-300 ${s.bg} ${s.text} ${s.border}`}>
+            <span className="relative flex h-2 w-2">
+                {status === ResponderStatus.EN_ROUTE && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                )}
+                {status === ResponderStatus.AVAILABLE && (
+                    <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-50"></span>
+                )}
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${s.dot}`}></span>
+            </span>
+            <span className="font-mono">{status.replace(/_/g, ' ')}</span>
         </span>
     );
 };
