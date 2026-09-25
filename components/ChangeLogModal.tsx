@@ -39,31 +39,63 @@ interface ReleaseItem {
 
 const RELEASES: ReleaseItem[] = [
     {
+        id: 'rel-3.6.0',
+        version: 'v3.6.0',
+        date: 'September 2026',
+        badge: 'Latest Release',
+        badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+        title: 'Public Crime & Tip-Off Portal, Animated Status Transitions & Tactical UI Engine',
+        summary: 'Launched open public crime & emergency reporting with anonymous whistleblowing, live status tracking by OB reference, smooth reactive status transitions, and tactical cybernetic theme loaders.',
+        highlights: [
+            {
+                category: 'Reporting & Security',
+                title: 'Public Crime & Incident Reporting Desk',
+                description: 'Members of the public and community watch can now report crimes, hijackings, burglaries, suspicious activity, and vehicle sightings directly without requiring an operator account. Includes one-tap GPS geocoding, suspect & vehicle detail expanders, and photo evidence attachments.',
+                isNew: true
+            },
+            {
+                category: 'Reporting & Security',
+                title: 'Anonymous Whistleblower Mode & Live Reference Tracking',
+                description: 'Citizens can file 100% confidential anonymous tips or leave contact details for responder follow-ups. Every public report receives an official OB reference number (e.g., PUB0024/09/2026) and live multi-stage tracking (Logged ➔ En Route ➔ On Scene ➔ Resolved).',
+                isNew: true
+            },
+            {
+                category: 'Reporting & Security',
+                title: 'Smooth Incident Status Transition Animations',
+                description: 'Status badges and controller dropdowns now feature reactive spring physics (animate-badge-pop), status aura glow bursts, dynamic radar pings for active calls, orbital beacons for in-progress operations, and checkmark pops for resolved cases.',
+                isNew: true
+            },
+            {
+                category: 'Branding & Admin',
+                title: 'Tactical Dual-Ring Loading & Splash Engine',
+                description: 'Upgraded system loading states with cybernetic dual concentric spinners, telemetry sweep lines, and adaptive styling across Dark, Light, and Phosphor Matrix themes.',
+                isNew: true
+            }
+        ]
+    },
+    {
         id: 'rel-3.5.0',
         version: 'v3.5.0',
         date: 'September 2026',
-        badge: 'Current Version',
-        badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+        badge: 'Previous Version',
+        badgeColor: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
         title: 'Dispatch Queue Persistence, Responsive Duty Toggle & Automated Incident Lifecycle',
         summary: 'Enhanced dispatch queue stability with persistent call claiming, responsive Active Duty status toggling, and automated queue clearing upon call resolution.',
         highlights: [
             {
                 category: 'EMS & Medical',
                 title: 'Persistent Call Claiming & Queue Synchronization',
-                description: 'Claimed emergency dispatches, EMS medical calls, roadside callouts, and crime reports now maintain strict responder ownership across data refreshes and status updates without reverting to unassigned queues.',
-                isNew: true
+                description: 'Claimed emergency dispatches, EMS medical calls, roadside callouts, and crime reports now maintain strict responder ownership across data refreshes and status updates without reverting to unassigned queues.'
             },
             {
                 category: 'Tech Ops & Drivers',
                 title: 'Responsive Active Duty Status & Engagement Control',
-                description: 'Optimized duty status toggling with instant optimistic state updates. The engagement lock now strictly checks responder-assigned active calls rather than system-wide open dispatches.',
-                isNew: true
+                description: 'Optimized duty status toggling with instant optimistic state updates. The engagement lock now strictly checks responder-assigned active calls rather than system-wide open dispatches.'
             },
             {
                 category: 'Reporting & Security',
                 title: 'Automated Incident Queue Clearing',
-                description: 'Dispatches are instantly unassigned and cleared from active dispatch lists upon reaching terminal states (Resolved, Recovered, Closed). The detail view automatically advances to remaining active incidents.',
-                isNew: true
+                description: 'Dispatches are instantly unassigned and cleared from active dispatch lists upon reaching terminal states (Resolved, Recovered, Closed). The detail view automatically advances to remaining active incidents.'
             }
         ]
     },
@@ -362,7 +394,7 @@ export const ChangeLogModal: React.FC<ChangeLogModalProps> = ({ isOpen, onClose 
 
                 {/* Footer */}
                 <div className="p-4 bg-gray-50 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                    <span>Rapid911 Executive Change Log • Version 3.4.0</span>
+                    <span>Rapid911 Executive Change Log • Version 3.6.0</span>
                     <button 
                         onClick={onClose}
                         className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors text-xs"
