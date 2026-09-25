@@ -17,6 +17,7 @@ import { logUserAction } from '../utils/logger';
 import { LocationPicker } from './LocationPicker';
 import { getRecoveryInsights, RecoveryInsight } from '../utils/aiService';
 import { BrainIcon, MapPinIcon as LuMapPinIcon, HistoryIcon, FileText } from 'lucide-react';
+import IncidentTimeline from './IncidentTimeline';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import { getCartoTileUrl, CARTO_ATTRIBUTION } from '../utils/mapTileUtils';
 
@@ -913,23 +914,8 @@ const ControllerReportDetail: React.FC<{
                      </button>
                 </div>
                 
-                 <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isTimelineVisible ? 'max-h-[500px] mt-4' : 'max-h-0'}`}>
-                    <h4 className="font-bold text-sm mb-2">Incident Timeline</h4>
-                    <div className="space-y-1 max-h-48 overflow-y-auto bg-gray-100 dark:bg-gray-800/50 p-2 rounded-md">
-                        <TimelineItem icon={<CheckCircleIcon className="w-4 h-4 text-green-500" />} time={safeFormat(report.reported_at, 'MMM d, HH:mm')}>
-                            Report filed by <span className="font-semibold">{reporter?.first_name || '...'} {reporter?.surname || ''}</span>
-                        </TimelineItem>
-                        {timelineEvents.map((event) => (
-                           <TimelineItem
-                                key={`${event.type}-${event.id}`}
-                                time={safeFormatDistanceToNow(event.created_at, { addSuffix: true })}
-                                author={event.author}
-                                icon={event.type === 'assignment' ? <AssignResponderIcon className="w-4 h-4 text-gray-500" /> : <ZapIcon className="w-4 h-4 text-gray-500" />}
-                            >
-                                <p>{event.content}</p>
-                            </TimelineItem>
-                        ))}
-                    </div>
+                 <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isTimelineVisible ? 'max-h-[900px] mt-4' : 'max-h-0'}`}>
+                    <IncidentTimeline report={report} profile={profile} compact={false} />
                  </div>
             </div>
 

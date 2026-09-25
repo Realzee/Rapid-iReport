@@ -22,6 +22,7 @@ import RoadsideQuickReportModal from '../components/RoadsideQuickReportModal';
 import IncidentReportPreviewModal from '../components/IncidentReportPreviewModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { InvoiceGenerator } from '../components/InvoiceGenerator';
+import { playLoudReportAlarm } from '../utils/notificationUtils';
 import {
     Wrench,
     Truck,
@@ -504,6 +505,13 @@ export const RoadsideDriverPage: React.FC<RoadsideDriverPageProps> = ({ profile,
                 reported_at: new Date().toISOString(),
                 company_id: profile.company_id || null,
                 ob_number: obNumber,
+            });
+
+            playLoudReportAlarm({
+                ob_number: obNumber,
+                title: `DRIVER PANIC SOS: ${profile.first_name} ${profile.surname}`,
+                type: 'emergency',
+                severity: 'critical',
             });
 
             addToast('🚨 EMERGENCY SOS SENT TO ALL CONTROLLERS!', 'error');

@@ -14,6 +14,7 @@ import UserReportDetail from '../components/UserReportDetail';
 import { useChat } from '../contexts/ChatContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { playLoudReportAlarm } from '../utils/notificationUtils';
 import ReportModal from '../components/ReportModal';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 import { EMSReportGenerator } from './EMSReportGenerator';
@@ -281,21 +282,8 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }, []);
 
-    const playAssignmentSound = () => {
-        const context = audioContextRef.current;
-        if (!context) return;
-        if (context.state === 'suspended') {
-            context.resume();
-        }
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-        oscillator.type = 'sawtooth'; // A more urgent sound
-        oscillator.frequency.setValueAtTime(660, context.currentTime); // E5 note
-        gainNode.gain.setValueAtTime(0.3, context.currentTime);
-        oscillator.start(context.currentTime);
-        oscillator.stop(context.currentTime + 0.15); // Short and sharp
+    const playAssignmentSound = (details?: any) => {
+        playLoudReportAlarm(details);
     };
 
     const isEmsResponder = Boolean(

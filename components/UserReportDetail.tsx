@@ -11,6 +11,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useChat } from '../contexts/ChatContext';
 import ImagePreviewModal from './ImagePreviewModal';
 import IncidentReportPreviewModal from './IncidentReportPreviewModal';
+import IncidentTimeline from './IncidentTimeline';
 import { FileText, Printer } from 'lucide-react';
 import { getCartoTileUrl, CARTO_ATTRIBUTION } from '../utils/mapTileUtils';
 
@@ -340,21 +341,7 @@ const UserReportDetail: React.FC<{
                 </div>
                 
                 <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-2">Incident Timeline</p>
-                    <div className="space-y-2 max-h-48 overflow-y-auto bg-gray-100 dark:bg-gray-800/50 p-2 rounded-md">
-                        {timelineEvents.length > 0 ? timelineEvents.map(event => (
-                           <TimelineItem
-                                key={`${event.type}-${event.id}`}
-                                time={safeFormatDistanceToNow(event.created_at, { addSuffix: true })}
-                                author={event.author}
-                                icon={event.type === 'assignment' ? <AssignResponderIcon className="w-4 h-4 text-gray-500" /> : <ZapIcon className="w-4 h-4 text-gray-500" />}
-                            >
-                                <p>{event.content}</p>
-                            </TimelineItem>
-                        )) : (
-                            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No official updates posted yet.</p>
-                        )}
-                    </div>
+                    <IncidentTimeline report={report} profile={profile} className="mt-2" />
                 </div>
                  
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700/50 space-y-3">

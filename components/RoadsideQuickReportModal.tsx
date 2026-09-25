@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Profile, ReportStatus, Severity } from '../types';
 import { supabase } from '../utils/supabase';
 import { useToast } from '../contexts/ToastContext';
+import { playLoudReportAlarm } from '../utils/notificationUtils';
 import { X, Wrench, MapPin, Truck, Car, Phone, User, CheckCircle2, Navigation } from 'lucide-react';
 
 interface RoadsideQuickReportModalProps {
@@ -132,6 +133,16 @@ export const RoadsideQuickReportModal: React.FC<RoadsideQuickReportModalProps> =
                 if (error) throw error;
 
                 if (data) {
+                    // Play loud alarm
+                    playLoudReportAlarm({
+                        id: data.id,
+                        ob_number: obNumber,
+                        title: reportTitle,
+                        type: 'roadside',
+                        location: breakdownLocation,
+                        severity: severity,
+                    });
+
                     // Log to report_updates
                     await supabase.from('report_updates').insert({
                         report_id: data.id,

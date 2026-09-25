@@ -22,6 +22,7 @@ import { generateRoadsideCardNumber, getWeekNumber } from '../utils/cardNumber';
 
 import { useSettings } from '../contexts/SettingsContext';
 import { generateAndShareBolo } from '../utils/boloUtils';
+import { playLoudReportAlarm } from '../utils/notificationUtils';
 
 interface ReportModalProps {
     isOpen: boolean;
@@ -1063,6 +1064,16 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         success = true;
                         finalObNumber = ob_number;
                         successfulInsertData = currentInsertPayload;
+
+                        // Trigger loud emergency dispatch alarm immediately upon filing report
+                        playLoudReportAlarm({
+                            id: reportId,
+                            ob_number: ob_number,
+                            title: formData.title || formData.license_plate || formData.emergency_type || formData.crime_type || 'New Incident Report',
+                            type: reportType,
+                            location: formData.location,
+                            severity: formData.severity,
+                        });
 
                         // Save new vehicle report to the legacy system
                         if (tableName === 'vehicle_reports') {

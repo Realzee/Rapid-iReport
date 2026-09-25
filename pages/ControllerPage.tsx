@@ -14,6 +14,7 @@ import { useToast } from '../contexts/ToastContext';
 import { CONTROLLER_CHANNEL_REPORT } from '../constants';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { CorporateSharingModal } from '../components/CorporateSharingModal';
+import { playLoudReportAlarm } from '../utils/notificationUtils';
 
 import TechStack from '../components/TechStack';
 import TechJobDetail from '../components/TechJobDetail';
@@ -208,44 +209,14 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }, []);
 
-    const playAlertSound = () => {
-        try {
-            const context = audioContextRef.current || new (window.AudioContext || (window as any).webkitAudioContext)();
-            audioContextRef.current = context;
-            if (context.state === 'suspended') {
-                context.resume();
-            }
-
-            const now = context.currentTime;
-            const oscillator = context.createOscillator();
-            const gainNode = context.createGain();
-
-            oscillator.type = 'sawtooth';
-            oscillator.connect(gainNode);
-            gainNode.connect(context.destination);
-
-            gainNode.gain.setValueAtTime(0.8, now);
-
-            oscillator.frequency.setValueAtTime(1400, now);
-            oscillator.frequency.setValueAtTime(900, now + 0.15);
-            oscillator.frequency.setValueAtTime(1400, now + 0.30);
-            oscillator.frequency.setValueAtTime(900, now + 0.45);
-            oscillator.frequency.setValueAtTime(1400, now + 0.60);
-
-            gainNode.gain.setValueAtTime(0.8, now + 0.75);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
-
-            oscillator.start(now);
-            oscillator.stop(now + 0.85);
-        } catch (e) {
-            console.error('Alert sound failed:', e);
-        }
+    const playAlertSound = (details?: any) => {
+        playLoudReportAlarm(details);
     };
 
     const startAlertLoop = () => {
         if (alertLoopRef.current) return;
         playAlertSound();
-        alertLoopRef.current = window.setInterval(playAlertSound, 1000);
+        alertLoopRef.current = window.setInterval(() => playAlertSound(), 2200);
     };
 
     const stopAlertLoop = () => {
@@ -393,7 +364,14 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
                     setNewPanicReportId(crimeReport.id);
                     startAlertLoop();
                 } else {
-                    playAlertSound();
+                    playAlertSound({
+                        id: newReport.id,
+                        ob_number: newReport.ob_number,
+                        title: (newReport as any).title || (newReport as any).license_plate || (newReport as any).emergency_type || (newReport as any).crime_type || 'New Incident Report',
+                        type: reportType,
+                        location: (newReport as any).location || (newReport as any).last_seen_location,
+                        severity: (newReport as any).severity,
+                    });
                 }
                 
                 // Mark as unviewed

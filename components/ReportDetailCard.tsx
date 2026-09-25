@@ -13,6 +13,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { generateAndShareBolo } from '../utils/boloUtils';
 import ImagePreviewModal from './ImagePreviewModal';
 import IncidentReportPreviewModal from './IncidentReportPreviewModal';
+import IncidentTimeline from './IncidentTimeline';
 import { FileText, Printer } from 'lucide-react';
 import { LoadingSpinner } from './LoadingSpinner';
 
@@ -265,6 +266,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
     const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newStatus = e.target.value as ReportStatus;
+        const oldStatus = localReport.status;
         setStatusUpdateLoading(true);
 
         const tableName = localReport.type === 'vehicle' ? 'vehicle_reports' : ((localReport.type === 'emergency' || localReport.type === 'roadside') ? 'emergency_reports' : 'crime_reports');
@@ -278,6 +280,25 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
         } else {
             // Update local state immediately
             setLocalReport(prev => ({ ...prev, status: newStatus }));
+            addToast(`Status updated to ${newStatus.replace(/_/g, ' ').toUpperCase()}`, 'success');
+
+            // Record audit logs for incident timeline
+            try {
+                await Promise.allSettled([
+                    supabase.from('report_updates').insert({
+                        report_id: localReport.id,
+                        user_id: profile.id,
+                        content: `Status updated to: ${newStatus.replace(/_/g, ' ').toUpperCase()}`
+                    }),
+                    supabase.from('user_activity_logs').insert({
+                        user_id: profile.id,
+                        action: 'STATUS_UPDATE',
+                        details: `Updated ${localReport.ob_number} status from ${oldStatus} to ${newStatus}`
+                    })
+                ]);
+            } catch (auditErr) {
+                console.warn('Could not record status audit log:', auditErr);
+            }
         }
         setStatusUpdateLoading(false);
     };
@@ -1307,6 +1328,13 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                         )}
                     </div>
                 )}
+
+                {/* Chronological Incident Timeline & Audit Trail */}
+                <IncidentTimeline
+                    report={localReport}
+                    profile={profile}
+                    className="mt-4"
+                />
             </div>
 
             {profile.role === UserRole.RESPONDER && !isTerminalStatus && (

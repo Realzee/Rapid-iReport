@@ -7,7 +7,8 @@ import ThemeToggle from './ThemeToggle';
 import NotificationsPanel from './NotificationsPanel';
 import PTTModal from './PTTModal';
 import LedClock from './LedClock';
-import { updateFaviconBadge, updateDocumentTitle, playNotificationSound } from '../utils/notificationUtils';
+import { updateFaviconBadge, updateDocumentTitle, playNotificationSound, playLoudReportAlarm, isAlarmMuted, toggleAlarmMute } from '../utils/notificationUtils';
+import { Volume2, VolumeX, Siren } from 'lucide-react';
 import { logUserAction } from '../utils/logger';
 import { CorporateSharingModal } from './CorporateSharingModal';
 import ChangeLogModal from './ChangeLogModal';
@@ -28,6 +29,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   const [pendingSharesCount, setPendingSharesCount] = useState(0);
   const [isSharingModalOpen, setIsSharingModalOpen] = useState(false);
   const [isChangeLogOpen, setIsChangeLogOpen] = useState(false);
+  const [alarmMuted, setAlarmMutedState] = useState(() => isAlarmMuted());
   const { mainLogoUrl, faviconUrl, defaultLogoUrl } = useSettings();
 
   const notificationsRef = useRef<HTMLDivElement>(null);
@@ -74,6 +76,61 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
         if (supabase) {
             supabase.removeChannel(sharesChannel);
         }
+    };
+  }, [profile]);
+
+  // Sync mute state on custom events
+  useEffect(() => {
+    const handleMuteSync = (e: any) => {
+      if (e.detail && typeof e.detail.muted === 'boolean') {
+        setAlarmMutedState(e.detail.muted);
+      }
+    };
+    window.addEventListener('alarm-mute-changed' as any, handleMuteSync);
+    return () => window.removeEventListener('alarm-mute-changed' as any, handleMuteSync);
+  }, []);
+
+  // Global Real-time Dispatch Alarm: Trigger loud siren whenever any new report is filed across the network
+  useEffect(() => {
+    if (!profile || !supabase) return;
+
+    const handleIncomingReport = (payload: any, reportType: 'crime' | 'vehicle' | 'emergency') => {
+      const newReport = payload.new;
+      if (!newReport) return;
+
+      // Do not re-alarm if filed directly by this active user session (already played on submit)
+      if (newReport.reported_by === profile.id) return;
+
+      // Check relevancy for non-global admin
+      const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
+      const isRelevant = isGlobalAdmin || 
+                         newReport.is_global || 
+                         newReport.company_id === profile.company_id ||
+                         (newReport.shared_with_company_ids && newReport.shared_with_company_ids.includes(profile.company_id)) ||
+                         newReport.assigned_to === profile.id ||
+                         profile.role === UserRole.CONTROLLER;
+
+      if (!isRelevant) return;
+
+      // Sound loud tactical emergency alarm
+      playLoudReportAlarm({
+        id: newReport.id,
+        ob_number: newReport.ob_number,
+        title: newReport.title || newReport.license_plate || newReport.emergency_type || newReport.crime_type || 'Incoming Incident Report',
+        type: reportType,
+        location: newReport.location || newReport.last_seen_location,
+        severity: newReport.severity,
+      });
+    };
+
+    const globalAlarmChannel = supabase.channel(`global-alarm-reports-${profile.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'crime_reports' }, p => handleIncomingReport(p, 'crime'))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'vehicle_reports' }, p => handleIncomingReport(p, 'vehicle'))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'emergency_reports' }, p => handleIncomingReport(p, 'emergency'))
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(globalAlarmChannel);
     };
   }, [profile]);
 
@@ -520,6 +577,33 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
                   )}
                 </button>
             )}
+            {/* Loud Report Alarm Status & Quick Control */}
+            <div className="relative flex items-center">
+              <button
+                onClick={() => {
+                  const newMuted = toggleAlarmMute();
+                  setAlarmMutedState(newMuted);
+                }}
+                className={`relative p-1.5 sm:p-2 rounded-xl transition-all duration-300 flex items-center gap-1.5 ${
+                  alarmMuted
+                    ? 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 bg-gray-100/60 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800'
+                    : 'text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 shadow-xs'
+                }`}
+                title={alarmMuted ? 'Loud Dispatch Alarm: MUTED (Click to activate siren)' : 'Loud Dispatch Alarm: ACTIVE (Click to mute)'}
+              >
+                {alarmMuted ? (
+                  <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                ) : (
+                  <div className="flex items-center">
+                    <Siren className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 dark:text-red-400 animate-pulse" />
+                    <span className="hidden xl:inline text-[10px] font-black uppercase tracking-wider ml-1 text-red-700 dark:text-red-300">
+                      Alarm
+                    </span>
+                  </div>
+                )}
+              </button>
+            </div>
+
             <div ref={notificationsRef} className="relative">
                 <button onClick={toggleNotifications} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300">
                   <BellIcon className="w-4.5 h-4.5 sm:w-6 h-6" />

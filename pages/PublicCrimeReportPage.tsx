@@ -27,6 +27,7 @@ import {
 } from '../components/icons';
 import { reverseGeocode } from '../components/LocationPicker';
 import { Camera, FileText, ArrowRight, ShieldAlert, ShieldCheck, CheckCircle2, ChevronRight, Eye, PhoneCall } from 'lucide-react';
+import { playLoudReportAlarm } from '../utils/notificationUtils';
 
 interface PublicCrimeReportPageProps {
   onBackToLogin: () => void;
@@ -272,6 +273,17 @@ export const PublicCrimeReportPage: React.FC<PublicCrimeReportPageProps> = ({ on
         reportedAt: data.reported_at || new Date().toISOString(),
         category,
         location: locationText,
+      });
+
+      // Sound loud confirmation alarm for filed report
+      playLoudReportAlarm({
+        id: data.report_id,
+        ob_number: data.ob_number,
+        title: customTitle.trim() || `${category} - ${locationText.split(',')[0]}`,
+        type: 'crime',
+        category: category,
+        location: locationText,
+        severity: severity,
       });
 
       addToast('Incident report logged successfully to the emergency response grid!', 'success');

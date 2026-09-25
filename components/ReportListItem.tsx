@@ -1,4 +1,5 @@
 import React, { useState, useMemo, memo } from 'react';
+import { supabase } from '../utils/supabase';
 import { Report, VehicleReport, Severity, Profile, UserRole, ReportStatus, Company } from '../types';
 import StatusBadge from './StatusBadge';
 import ReportTypeBadge from './ReportTypeBadge';
@@ -57,8 +58,28 @@ const ReportListItem: React.FC<ReportListItemProps> = ({ report, isSelected, onC
   
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value as ReportStatus;
+    const oldStatus = report.status;
     setIsUpdating(true);
     await onStatusUpdate(report.id, newStatus, report.type as 'vehicle' | 'crime' | 'emergency');
+
+    // Also record audit log for timeline
+    try {
+      await Promise.allSettled([
+        supabase.from('report_updates').insert({
+          report_id: report.id,
+          user_id: profile.id,
+          content: `Status updated to: ${newStatus.replace(/_/g, ' ').toUpperCase()}`
+        }),
+        supabase.from('user_activity_logs').insert({
+          user_id: profile.id,
+          action: 'STATUS_UPDATE',
+          details: `Updated report ${report.ob_number} status from ${oldStatus} to ${newStatus}`
+        })
+      ]);
+    } catch (auditErr) {
+      console.warn('Could not record status audit log in list item:', auditErr);
+    }
+
     setIsUpdating(false);
   };
   

@@ -33,6 +33,7 @@ const TechnicianDashboardPage = lazy(() => import('./pages/TechnicianDashboardPa
 const TechOpsPage = lazy(() => import('./pages/TechOpsPage'));
 
 import AnnouncementsBanner from './components/AnnouncementsBanner';
+import LoudAlarmBanner from './components/LoudAlarmBanner';
 import { supabase } from './utils/supabase';
 import type { AuthSession as Session } from '@supabase/supabase-js';
 import { Profile, UserRole, Notification, UserStatus } from './types';
@@ -802,6 +803,17 @@ const App: React.FC = () => {
             <RespondersProvider>
               <EventsProvider>
                 <div className="flex flex-col min-h-screen">
+                  <LoudAlarmBanner 
+                    onViewReport={(reportId) => {
+                      if (profile?.role === UserRole.CONTROLLER) {
+                        handleSetView('controller');
+                      } else if (profile?.role === UserRole.RESPONDER) {
+                        handleSetView('dashboard');
+                      } else {
+                        handleSetView('dashboard');
+                      }
+                    }} 
+                  />
                   <Header 
                     currentView={isGlobalMapModalOpen ? 'map' : view}
                     setView={handleSetView} 
