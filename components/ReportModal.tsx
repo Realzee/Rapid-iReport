@@ -186,6 +186,13 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                (userProfile.role as string) === 'ems_responder' || 
                (userProfile.role as string) === 'ems_controller';
     }, [userProfile]);
+
+    // Force EMS responder & controller users to ONLY create EMS medical calls
+    useEffect(() => {
+        if (isEmsUser && reportType !== 'emergency') {
+            setReportType('emergency');
+        }
+    }, [isEmsUser, reportType]);
     
     // Address suggestion state
     const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
@@ -1212,8 +1219,8 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
     const inputClasses = "mt-1 w-full bg-gray-50 dark:bg-gray-800/70 border border-gray-300 dark:border-gray-700 rounded-md py-2 px-3 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition";
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm print:hidden">
-            <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-8 w-full max-w-lg lg:max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto print:hidden">
+            <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-lg lg:max-w-2xl my-auto max-h-[92vh] overflow-y-auto">
                 <button onClick={handleClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
                     <XIcon className="w-6 h-6" />
                 </button>
@@ -1761,6 +1768,34 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, reportToEdit
                         </div>
                     ) : reportType === 'emergency' ? (
                         <div className="space-y-4">
+                            {isEmsUser && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3.5 bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl">
+                                    <div>
+                                        <label htmlFor="caller_name" className={labelClasses}>Caller / Informant Name</label>
+                                        <input
+                                            type="text"
+                                            name="caller_name"
+                                            id="caller_name"
+                                            value={formData.caller_name || ''}
+                                            onChange={handleChange}
+                                            className={inputClasses}
+                                            placeholder="e.g. Bystander / Family Member"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="caller_phone" className={labelClasses}>Caller Contact Number</label>
+                                        <input
+                                            type="text"
+                                            name="caller_phone"
+                                            id="caller_phone"
+                                            value={formData.caller_phone || ''}
+                                            onChange={handleChange}
+                                            className={inputClasses}
+                                            placeholder="e.g. 082 123 4567"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div><label htmlFor="title" className={labelClasses}>Emergency Title</label><input type="text" name="title" id="title" value={formData.title || ''} onChange={handleChange} className={inputClasses} placeholder="e.g. Multi-vehicle collision, Fire, Medical" /></div>
                                 <div>

@@ -46,6 +46,11 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     const [isSavingShares, setIsSavingShares] = useState(false);
     const [isAssignmentLoading, setIsAssignmentLoading] = useState(false);
 
+    // Scroll window to top when card mounts or report changes so details & evidence images are immediately visible
+    useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }, [report.id]);
+
     const handleSelfAssignCard = async () => {
         if (localReport.assigned_to === profile.id) {
             addToast('You are already assigned to this incident.', 'info');

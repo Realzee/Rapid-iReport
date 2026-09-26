@@ -888,6 +888,16 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         }
     }, [selectedReport, selectedReportId]);
 
+    // On mobile, smoothly scroll to the detail section when a call is selected to eliminate scrolling through empty vertical space
+    useEffect(() => {
+        if (selectedReportId) {
+            const detailElement = document.getElementById('responder-detail-section');
+            if (detailElement && window.innerWidth < 1024) {
+                detailElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    }, [selectedReportId]);
+
     const handleAnprHit = async (reportId: string) => {
         const { data, error } = await supabase
             .from('vehicle_reports')
@@ -1414,10 +1424,9 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
             </div>
 
             {/* Right Column: Detail View & Map */}
-            <div className="lg:col-span-8 lg:sticky lg:top-24 space-y-6">
-                <div className="h-[35vh] rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-800 relative group">
+            <div id="responder-detail-section" className="lg:col-span-8 lg:sticky lg:top-24 space-y-4">
+                <div className="h-[30vh] sm:h-[35vh] rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-800 relative group">
                     <ResponderMapView report={selectedReport} responderProfile={profile} />
-                    {/* Map overlay gradient for better text visibility if needed, or controls */}
                 </div>
                 
                 {selectedReport ? (
@@ -1430,7 +1439,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                         onSelfAssign={() => handleSelfAssign(selectedReport)}
                     />
                 ) : (
-                    <div className="h-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-8 flex flex-col items-center justify-center text-center shadow-sm">
+                    <div className="hidden lg:flex h-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-8 flex-col items-center justify-center text-center shadow-sm">
                         <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
                             <NavigationIcon className="w-8 h-8 text-gray-400" />
                         </div>

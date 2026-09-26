@@ -126,6 +126,11 @@ const ControllerPage: React.FC<ControllerPageProps> = ({ profile, initialReportI
     const [isMobile, setIsMobile] = useState(false);
     const [mobileView, setMobileView] = useState<'feed' | 'map' | 'detail' | 'bolo'>('feed');
 
+    // Instantly scroll window to top when switching mobile views or selecting a report so details and images are immediately visible
+    useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }, [mobileView, selectedReportId]);
+
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 1024);
         checkMobile();

@@ -129,9 +129,9 @@ const App: React.FC = () => {
   });
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>('dashboard');
-  
   const [initialReportId, setInitialReportId] = useState<string | null>(null);
   const [schemaError, setSchemaError] = useState<string | null>(null);
+
   const [showPublicView, setShowPublicView] = useState(false);
   const [showPublicCrimeReport, setShowPublicCrimeReport] = useState(() => {
     try {
@@ -143,6 +143,11 @@ const App: React.FC = () => {
   });
   const [publicPortalTab, setPublicPortalTab] = useState<'report' | 'bulletins' | 'track'>('report');
   const [showAboutPage, setShowAboutPage] = useState(false);
+
+  // Reset scroll position immediately on view change to prevent mobile viewport scroll entrapment
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [view, showPublicView, showPublicCrimeReport, showAboutPage]);
   const { mainLogoUrl, faviconUrl, defaultLogoUrl } = useSettings();
   const [isGlobalMapModalOpen, setIsGlobalMapModalOpen] = useState(false);
   const [isAnnouncementVisible, setIsAnnouncementVisible] = useState(false);

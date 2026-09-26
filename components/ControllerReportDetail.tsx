@@ -93,6 +93,11 @@ const ControllerReportDetail: React.FC<{
     
     const canManageReport = useMemo(() => [UserRole.ADMIN, UserRole.MODERATOR, UserRole.CONTROLLER].includes(profile.role), [profile.role]);
 
+    // Scroll window to top when report details open so header details & images are immediately visible
+    useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }, [report.id]);
+
     useEffect(() => {
         setSelectedStatus(report.status);
         setSelectedResponder(report.assigned_to || '');

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Report, Responder, Profile } from '../types';
 import ControllerReportDetail from './ControllerReportDetail';
 import { XIcon } from './icons';
@@ -15,6 +15,15 @@ interface ReportDetailModalProps {
 }
 
 const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ isOpen, onClose, report, responders, profile, allUsers, onRefresh, onEdit }) => {
+    const contentRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (isOpen && contentRef.current) {
+            contentRef.current.scrollTop = 0;
+        }
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }, [isOpen, report?.id]);
+
     if (!isOpen || !report) {
         return null;
     }
@@ -25,7 +34,7 @@ const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ isOpen, onClose, 
                 <button onClick={onClose} className="absolute top-2 right-2 z-20 p-2 rounded-full bg-white/20 hover:bg-white/40 text-white transition-colors print:hidden" title="Close detail view">
                     <XIcon className="w-6 h-6" />
                 </button>
-                <div className="flex-grow overflow-y-auto">
+                <div ref={contentRef} className="flex-grow overflow-y-auto">
                     <ControllerReportDetail
                         report={report}
                         responders={responders}
