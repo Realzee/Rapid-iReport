@@ -1453,8 +1453,8 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         </div>
 
         {anprFoundReport && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setAnprFoundReport(null)}>
-                <div className="relative w-full max-w-lg flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto" onClick={() => setAnprFoundReport(null)}>
+                <div className="relative w-full max-w-lg flex flex-col gap-4 my-auto max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                     <div className="absolute -top-3 -right-3 z-10">
                         <button onClick={() => setAnprFoundReport(null)} className="p-2 bg-gray-800/80 rounded-full text-white hover:bg-gray-700 transition">
                             <XIcon className="w-5 h-5" />
@@ -1514,8 +1514,8 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
 
         {/* Switch EMS Unit Modal */}
         {isUnitChangeModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setIsUnitChangeModalOpen(false)}>
-                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-5" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto animate-fadeIn" onClick={() => setIsUnitChangeModalOpen(false)}>
+                <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-md p-4 sm:p-6 shadow-2xl space-y-5 my-auto max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
                         <div className="flex items-center gap-2.5">
                             <div className="p-2 bg-red-100 dark:bg-red-950/80 rounded-xl text-red-600 dark:text-red-400">

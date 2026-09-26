@@ -421,6 +421,39 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
     };
   }, []);
 
+  // Summary Modal & Refusal Modal state
+  const [summaryModal, setSummaryModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    filterCategory: 'total' | 'p1' | 'pending' | 'active';
+  } | null>(null);
+
+  const [refusalModal, setRefusalModal] = useState<{
+    isOpen: boolean;
+    dispatchId: string;
+    obNumber: string;
+  } | null>(null);
+
+  // Auto-scroll window to top when any modal opens or tab changes on mobile to eliminate top empty spaces
+  useEffect(() => {
+    if (isNewCallModalOpen || detailModalDispatch || isUnitModalOpen || isHospitalModalOpen || selectedPcrReport || summaryModal || refusalModal) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+  }, [isNewCallModalOpen, detailModalDispatch, isUnitModalOpen, isHospitalModalOpen, selectedPcrReport, summaryModal, refusalModal]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [activeTab]);
+
+  // Statistics
+  const stats = useMemo(() => {
+    const total = dispatches.length;
+    const p1Count = dispatches.filter(d => d.triage_level === 'P1').length;
+    const activeCount = dispatches.filter(d => d.status !== EmsDispatchStatus.COMPLETED && d.status !== EmsDispatchStatus.CANCELLED && d.status !== EmsDispatchStatus.REFUSAL && d.status !== EmsDispatchStatus.NOT_TRANSPORTING).length;
+    const pendingCount = dispatches.filter(d => d.status === EmsDispatchStatus.PENDING).length;
+    return { total, p1Count, activeCount, pendingCount };
+  }, [dispatches]);
+
   // Filtered Dispatches
   const filteredDispatches = useMemo(() => {
     return dispatches.filter(d => {
@@ -437,28 +470,6 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
       return matchesSearch && matchesStatus && matchesTriage;
     });
   }, [dispatches, searchQuery, statusFilter, triageFilter]);
-
-  // Summary Modal & Refusal Modal state
-  const [summaryModal, setSummaryModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    filterCategory: 'total' | 'p1' | 'pending' | 'active';
-  } | null>(null);
-
-  const [refusalModal, setRefusalModal] = useState<{
-    isOpen: boolean;
-    dispatchId: string;
-    obNumber: string;
-  } | null>(null);
-
-  // Statistics
-  const stats = useMemo(() => {
-    const total = dispatches.length;
-    const p1Count = dispatches.filter(d => d.triage_level === 'P1').length;
-    const activeCount = dispatches.filter(d => d.status !== EmsDispatchStatus.COMPLETED && d.status !== EmsDispatchStatus.CANCELLED && d.status !== EmsDispatchStatus.REFUSAL && d.status !== EmsDispatchStatus.NOT_TRANSPORTING).length;
-    const pendingCount = dispatches.filter(d => d.status === EmsDispatchStatus.PENDING).length;
-    return { total, p1Count, activeCount, pendingCount };
-  }, [dispatches]);
 
   // Get Summary Calls for Pop-Up
   const getSummaryCalls = () => {
@@ -1562,8 +1573,8 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
       {/* NEW EMERGENCY CALL INTAKE MODAL */}
       {isNewCallModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-black/75 backdrop-blur-sm">
+          <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl my-auto max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800 mb-4">
               <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-black text-lg">
                 <HeartPulse className="w-6 h-6" />
@@ -1829,8 +1840,8 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
       {/* ADD / EDIT FLEET UNIT MODAL */}
       {isUnitModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-black/75 backdrop-blur-sm">
+          <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-2xl my-auto max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800 mb-4">
               <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-black text-base">
                 <Truck className="w-5 h-5" />
@@ -1933,8 +1944,8 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
       {/* ADD / EDIT HOSPITAL FACILITY MODAL */}
       {isHospitalModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-black/75 backdrop-blur-sm">
+          <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-2xl my-auto max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800 mb-4">
               <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-black text-base">
                 <Building2 className="w-5 h-5" />
@@ -2033,8 +2044,8 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
       {/* PATIENT CARE REPORT MODAL */}
       {selectedPcrReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-xs animate-fade-in" onClick={() => setSelectedPcrReport(null)}>
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl max-w-5xl w-full p-0 shadow-2xl max-h-[92vh] overflow-y-auto overflow-x-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-black/75 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedPcrReport(null)}>
+          <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl max-w-5xl w-full p-0 shadow-2xl my-auto max-h-[92vh] overflow-y-auto overflow-x-hidden" onClick={e => e.stopPropagation()}>
             <EMSReportGenerator
               report={selectedPcrReport}
               profile={profile}
@@ -2046,8 +2057,8 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
       {/* FULL DISPATCH CALL DETAIL MODAL */}
       {detailModalDispatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in" onClick={() => setDetailModalDispatch(null)}>
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-black/75 backdrop-blur-sm animate-fade-in" onClick={() => setDetailModalDispatch(null)}>
+          <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl my-auto max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800 mb-4">
               <div className="flex items-center gap-2">
                 <HeartPulse className="w-6 h-6 text-red-600 animate-pulse" />
@@ -2278,8 +2289,8 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
       {/* SUMMARY CALLS POP-UP MODAL */}
       {summaryModal?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in" onClick={() => setSummaryModal(null)}>
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl max-w-4xl w-full p-6 shadow-2xl max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-black/75 backdrop-blur-sm animate-fade-in" onClick={() => setSummaryModal(null)}>
+          <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl my-auto max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-3">
@@ -2406,8 +2417,8 @@ export const EMSDispatchPage: React.FC<EMSDispatchPageProps> = ({ profile, allUs
 
       {/* REFUSAL / NOT TRANSPORTING MODAL */}
       {refusalModal?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in" onClick={() => setRefusalModal(null)}>
-          <div className="bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/60 rounded-3xl max-w-md w-full p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-black/75 backdrop-blur-sm animate-fade-in" onClick={() => setRefusalModal(null)}>
+          <div className="relative bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-900/60 rounded-3xl max-w-md w-full p-4 sm:p-6 shadow-2xl my-auto max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800 text-amber-600 dark:text-amber-400">
               <ShieldAlertIcon className="w-6 h-6 shrink-0" />
               <div>

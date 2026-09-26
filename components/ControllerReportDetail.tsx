@@ -1344,8 +1344,8 @@ const ControllerReportDetail: React.FC<{
             </div>
 
             {assignmentModalOpen && (
-                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setAssignmentModalOpen(false)}>
-                    <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+                 <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-black/70 backdrop-blur-sm" onClick={() => setAssignmentModalOpen(false)}>
+                    <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-4 sm:p-6 w-full max-w-sm my-auto max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <h4 className="text-lg font-bold mb-4">Manage Incident</h4>
                         <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
                             <div>
