@@ -220,20 +220,20 @@ const AnalyticsPage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8">
+            <div className="flex flex-col lg:flex-row gap-6">
                 <aside className="lg:w-64 flex-shrink-0">
-                    <nav className="space-y-2 sticky top-6">
+                    <nav className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-2 pb-2 lg:pb-0 custom-scrollbar sticky top-20 z-10">
                         {navItems.map(item => (
                             <button 
                                 key={item.id}
                                 onClick={() => setSelectedReport(item.id as ReportType)}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left font-medium transition-all duration-200 ${
+                                className={`flex-shrink-0 lg:w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${
                                     selectedReport === item.id 
-                                    ? 'bg-blue-600 text-white shadow-md' 
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
+                                    : 'bg-white/80 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-700/80 text-gray-700 dark:text-gray-200 border border-gray-200/80 dark:border-gray-750'
                                 }`}
                             >
-                                <item.icon className="w-5 h-5" />
+                                <item.icon className="w-4 h-4 flex-shrink-0" />
                                 <span>{item.name}</span>
                             </button>
                         ))}

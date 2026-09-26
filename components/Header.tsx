@@ -229,18 +229,18 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
 
   const navLinkClasses = (view: string) => {
     const isActive = currentView === view;
-    return `relative inline-flex items-center px-3.5 py-1.5 rounded-xl text-xs font-bold tracking-tight whitespace-nowrap flex-shrink-0 transition-all duration-200 cursor-pointer ${
+    return `relative inline-flex items-center px-3.5 py-1.5 rounded-xl text-xs font-black tracking-wider uppercase whitespace-nowrap flex-shrink-0 transition-all duration-200 cursor-pointer ${
       isActive 
-        ? 'bg-gray-900 text-white dark:bg-blue-600/25 dark:text-blue-300 dark:border dark:border-blue-500/40 shadow-xs scale-[1.02]' 
-        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800/60'
+        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 dark:bg-blue-600 dark:text-white dark:shadow-blue-500/30 scale-[1.02]' 
+        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/60'
     }`;
   };
       
   const mobileNavLinkClasses = (view: string) => {
     const isActive = currentView === view;
-    return `flex items-center w-full text-left text-sm font-bold px-4 py-2.5 rounded-xl transition-all duration-200 ${
+    return `flex items-center w-full text-left text-xs font-black tracking-wider uppercase px-4 py-3 rounded-xl transition-all duration-200 ${
       isActive 
-        ? 'bg-blue-600 text-white shadow-xs' 
+        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
         : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/70'
     }`;
   };

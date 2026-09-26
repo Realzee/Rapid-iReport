@@ -822,7 +822,9 @@ const App: React.FC = () => {
                   />
                   <AnnouncementsBanner onVisibilityChange={setIsAnnouncementVisible} />
                   <main className={`${mainClasses} ${mainPaddingTopClass} flex-grow flex flex-col`}>
-                    {renderView()}
+                    <div key={view} className="animate-fade-in flex-grow flex flex-col">
+                      {renderView()}
+                    </div>
                   </main>
                   <footer className="text-center py-4 text-xs text-gray-500 dark:text-gray-400 print:hidden flex items-center justify-center gap-2">
                       <img src={mainLogoUrl || defaultLogoUrl} alt="Rapid911 Mini Logo" className="w-auto min-w-[32px] h-4 opacity-0 transition-opacity duration-300" onLoad={(e) => { e.currentTarget.style.opacity = '1'; }} onError={(e) => { 
