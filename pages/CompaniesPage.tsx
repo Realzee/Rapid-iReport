@@ -641,77 +641,200 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
 
 
     return (
-        <div className="container mx-auto px-4 py-6 space-y-8">
+        <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-6 sm:space-y-10 max-w-7xl">
             {currentUserProfile?.role === UserRole.ADMIN && (
-                <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 backdrop-blur-lg shadow-lg">
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-                        <img 
-                            src={mainLogoUrl || defaultLogoUrl} 
-                            alt="Main Logo" 
-                            className="w-8 h-8 object-contain rounded-md bg-gray-950 p-1 border border-gray-700/50 shadow-sm flex-shrink-0" 
-                            onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} 
-                        /> 
-                        <span>Global Settings & Branding</span>
-                    </h3>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-12">
+                <div className="bg-white/80 dark:bg-gray-900/80 border border-gray-200/90 dark:border-gray-800 rounded-3xl p-4 sm:p-6 lg:p-8 backdrop-blur-xl shadow-xl space-y-6">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-gray-100 dark:border-gray-800">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-11 h-11 rounded-2xl bg-gray-950 p-1.5 border border-gray-700/60 shadow-inner flex items-center justify-center flex-shrink-0">
+                                <img 
+                                    src={mainLogoUrl || defaultLogoUrl} 
+                                    alt="Main Logo" 
+                                    className="max-w-full max-h-full object-contain" 
+                                    onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} 
+                                /> 
+                            </div>
+                            <div className="min-w-0">
+                                <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight truncate">
+                                    Global Settings & Branding
+                                </h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                                    Manage master branding, application logo, and browser favicon icons
+                                </p>
+                            </div>
+                        </div>
+                        <span className="self-start sm:self-center px-2.5 py-1 rounded-full text-[10px] font-mono font-black uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                            System Control
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                         {/* Logo Section */}
-                        <div>
-                             <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Main Application Logo</h4>
-                            <div className="flex items-start gap-6">
-                                <div className="flex-shrink-0">
-                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Logo Preview</p>
-                                    <div className="w-64 h-32 bg-gray-950/80 rounded-lg flex items-center justify-center border border-gray-300 dark:border-gray-700 shadow-inner overflow-hidden p-2">
-                                        <img src={logoPreview || mainLogoUrl || defaultLogoUrl} alt="Main Logo Preview" className="max-w-full max-h-full object-contain p-2" onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} />
+                        <div className="bg-gray-50/70 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4">
+                            <div className="flex items-center justify-between gap-2">
+                                <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span>Main Application Logo</span>
+                                </h4>
+                                <span className="text-[10px] font-mono font-semibold uppercase px-2 py-0.5 rounded bg-gray-200/70 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                    PNG / SVG
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 min-w-0">
+                                {/* Logo Preview */}
+                                <div className="w-full sm:w-56 flex flex-col items-center sm:items-start flex-shrink-0">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1.5 text-center sm:text-left">
+                                        Logo Preview
+                                    </span>
+                                    <div className="w-full h-32 bg-gray-950 rounded-2xl flex items-center justify-center border-2 border-dashed border-gray-800 dark:border-gray-700 p-3 shadow-inner overflow-hidden relative">
+                                        <img 
+                                            src={logoPreview || mainLogoUrl || defaultLogoUrl} 
+                                            alt="Main Logo Preview" 
+                                            className="max-w-full max-h-full object-contain filter drop-shadow-sm" 
+                                            onError={(e) => { e.currentTarget.src = defaultLogoUrl; }} 
+                                        />
                                     </div>
                                 </div>
-                                <div className="flex-grow">
-                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upload New Logo</p>
-                                    <div className="flex items-center gap-4">
-                                        <label htmlFor="global-logo-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                            <UploadCloudIcon className="w-5 h-5"/>
-                                            <span>Choose File</span>
+
+                                {/* Logo Upload & Action Controls */}
+                                <div className="flex-1 w-full min-w-0 space-y-3">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1.5 text-center sm:text-left">
+                                        Upload New Logo
+                                    </span>
+                                    
+                                    <div className="space-y-2">
+                                        <label 
+                                            htmlFor="global-logo-upload" 
+                                            className="cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 px-4 text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/60 border border-gray-300 dark:border-gray-600 rounded-xl shadow-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                                        >
+                                            <UploadCloudIcon className="w-4 h-4 text-blue-500 flex-shrink-0"/>
+                                            <span className="truncate">Choose Logo File</span>
                                         </label>
-                                        <input id="global-logo-upload" type="file" className="sr-only" accept="image/png, image/jpeg, image/svg+xml" onChange={handleGlobalLogoFileChange} />
-                                        {newLogoFile && <span className="text-sm text-gray-500 dark:text-gray-400">{newLogoFile.name}</span>}
+                                        <input 
+                                            id="global-logo-upload" 
+                                            type="file" 
+                                            className="sr-only" 
+                                            accept="image/png, image/jpeg, image/svg+xml" 
+                                            onChange={handleGlobalLogoFileChange} 
+                                        />
+                                        
+                                        {newLogoFile ? (
+                                            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 flex items-center justify-between gap-2 text-xs">
+                                                <span className="text-blue-700 dark:text-blue-300 truncate font-mono font-medium flex-1">
+                                                    📄 {newLogoFile.name}
+                                                </span>
+                                                <span className="text-blue-500 font-mono text-[10px] flex-shrink-0">
+                                                    {(newLogoFile.size / 1024).toFixed(0)} KB
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center sm:text-left leading-tight">
+                                                Transparent background PNG or vector SVG recommended.
+                                            </p>
+                                        )}
                                     </div>
-                                    <div className="mt-4 flex items-center gap-3">
-                                        <button onClick={handleSaveGlobalLogo} disabled={!newLogoFile || isUploadingGlobalLogo} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-                                            {isUploadingGlobalLogo ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : null}
-                                            Save Logo
+
+                                    <div className="flex items-center gap-2 pt-1">
+                                        <button 
+                                            onClick={handleSaveGlobalLogo} 
+                                            disabled={!newLogoFile || isUploadingGlobalLogo} 
+                                            className="flex-1 py-2.5 px-4 text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-xl shadow-xs transition flex items-center justify-center gap-2"
+                                        >
+                                            {isUploadingGlobalLogo && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                                            <span>Save Logo</span>
                                         </button>
-                                        <button onClick={handleResetGlobalLogo} disabled={isUploadingGlobalLogo} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50">
+                                        <button 
+                                            onClick={handleResetGlobalLogo} 
+                                            disabled={isUploadingGlobalLogo} 
+                                            className="py-2.5 px-3.5 text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-200 bg-gray-200/80 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-40 rounded-xl transition"
+                                        >
                                             Reset
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
                         {/* Favicon Section */}
-                        <div>
-                             <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Application Icon (Favicon)</h4>
-                             <div className="flex items-start gap-6">
-                                <div className="flex-shrink-0">
-                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Icon Preview</p>
-                                    <div className="w-16 h-16 bg-gray-950/80 rounded-lg flex items-center justify-center border border-gray-300 dark:border-gray-700 shadow-inner overflow-hidden p-1.5">
-                                        <img src={faviconPreview || faviconUrl || defaultFaviconUrl} alt="Favicon Preview" className="w-12 h-12 object-contain" onError={(e) => { e.currentTarget.src = defaultFaviconUrl; }} />
+                        <div className="bg-gray-50/70 dark:bg-gray-800/40 border border-gray-200/80 dark:border-gray-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4">
+                            <div className="flex items-center justify-between gap-2">
+                                <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span>Application Icon (Favicon)</span>
+                                </h4>
+                                <span className="text-[10px] font-mono font-semibold uppercase px-2 py-0.5 rounded bg-gray-200/70 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                    ICO / PNG / SVG
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 min-w-0">
+                                {/* Favicon Preview */}
+                                <div className="w-full sm:w-auto flex flex-col items-center sm:items-start flex-shrink-0">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1.5 text-center sm:text-left">
+                                        Icon Preview
+                                    </span>
+                                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-950 rounded-2xl flex items-center justify-center border-2 border-dashed border-gray-800 dark:border-gray-700 p-2 shadow-inner overflow-hidden">
+                                        <img 
+                                            src={faviconPreview || faviconUrl || defaultFaviconUrl} 
+                                            alt="Favicon Preview" 
+                                            className="w-12 h-12 sm:w-16 sm:h-16 object-contain filter drop-shadow-sm" 
+                                            onError={(e) => { e.currentTarget.src = defaultFaviconUrl; }} 
+                                        />
                                     </div>
                                 </div>
-                                <div className="flex-grow">
-                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upload New Icon</p>
-                                    <div className="flex items-center gap-4">
-                                        <label htmlFor="favicon-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                            <UploadCloudIcon className="w-5 h-5"/>
-                                            <span>Choose File</span>
+
+                                {/* Favicon Upload & Action Controls */}
+                                <div className="flex-1 w-full min-w-0 space-y-3">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-1.5 text-center sm:text-left">
+                                        Upload New Icon
+                                    </span>
+                                    
+                                    <div className="space-y-2">
+                                        <label 
+                                            htmlFor="favicon-upload" 
+                                            className="cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 px-4 text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/60 border border-gray-300 dark:border-gray-600 rounded-xl shadow-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                                        >
+                                            <UploadCloudIcon className="w-4 h-4 text-blue-500 flex-shrink-0"/>
+                                            <span className="truncate">Choose Icon File</span>
                                         </label>
-                                        <input id="favicon-upload" type="file" className="sr-only" accept="image/png, image/jpeg, image/svg+xml, image/x-icon" onChange={handleFaviconFileChange} />
-                                        {newFaviconFile && <span className="text-sm text-gray-500 dark:text-gray-400">{newFaviconFile.name}</span>}
+                                        <input 
+                                            id="favicon-upload" 
+                                            type="file" 
+                                            className="sr-only" 
+                                            accept="image/png, image/jpeg, image/svg+xml, image/x-icon" 
+                                            onChange={handleFaviconFileChange} 
+                                        />
+                                        
+                                        {newFaviconFile ? (
+                                            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 flex items-center justify-between gap-2 text-xs">
+                                                <span className="text-blue-700 dark:text-blue-300 truncate font-mono font-medium flex-1">
+                                                    📄 {newFaviconFile.name}
+                                                </span>
+                                                <span className="text-blue-500 font-mono text-[10px] flex-shrink-0">
+                                                    {(newFaviconFile.size / 1024).toFixed(0)} KB
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center sm:text-left leading-tight">
+                                                Used for browser tabs, bookmarks, and PWA shortcuts.
+                                            </p>
+                                        )}
                                     </div>
-                                    <div className="mt-4 flex items-center gap-3">
-                                        <button onClick={handleSaveFavicon} disabled={!newFaviconFile || isUploadingFavicon} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-                                            {isUploadingFavicon ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : null}
-                                            Save Icon
+
+                                    <div className="flex items-center gap-2 pt-1">
+                                        <button 
+                                            onClick={handleSaveFavicon} 
+                                            disabled={!newFaviconFile || isUploadingFavicon} 
+                                            className="flex-1 py-2.5 px-4 text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-xl shadow-xs transition flex items-center justify-center gap-2"
+                                        >
+                                            {isUploadingFavicon && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                                            <span>Save Icon</span>
                                         </button>
-                                        <button onClick={handleResetFavicon} disabled={isUploadingFavicon} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50">
+                                        <button 
+                                            onClick={handleResetFavicon} 
+                                            disabled={isUploadingFavicon} 
+                                            className="py-2.5 px-3.5 text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-200 bg-gray-200/80 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-40 rounded-xl transition"
+                                        >
                                             Reset
                                         </button>
                                     </div>
@@ -723,22 +846,31 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
             )}
             
             {currentUserProfile?.role === UserRole.ADMIN && (
-                <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 backdrop-blur-lg shadow-lg">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                                <DatabaseIcon className="w-7 h-7 text-blue-500" />
-                                Database Backup & Disaster Recovery
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 max-w-2xl">
+                <div className="bg-gradient-to-br from-blue-900/10 via-indigo-900/5 to-white/70 dark:from-blue-950/30 dark:via-indigo-950/15 dark:to-gray-900/60 border border-blue-500/20 dark:border-blue-500/30 rounded-3xl p-4 sm:p-6 lg:p-8 backdrop-blur-lg shadow-lg">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2.5 sm:gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0 border border-blue-500/20">
+                                    <DatabaseIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h3 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                                        Database Backup & Disaster Recovery
+                                    </h3>
+                                    <span className="text-[11px] font-mono text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">
+                                        Host: {dbHost}
+                                    </span>
+                                </div>
+                            </div>
+                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-2 max-w-2xl leading-relaxed">
                                 Full database backup and restore utility for Administrators. Generate portable JSON or SQL snapshots, restore previous database points, view real-time table record counts, or copy CLI commands.
                             </p>
                         </div>
                         <button 
                             onClick={() => setIsBackupModalOpen(true)}
-                            className="px-5 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition flex items-center space-x-2 whitespace-nowrap self-start sm:self-auto"
+                            className="w-full md:w-auto px-5 py-3 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 flex-shrink-0"
                         >
-                            <DatabaseIcon className="w-4 h-4" />
+                            <DatabaseIcon className="w-4 h-4 flex-shrink-0" />
                             <span>Backup & Restore Center</span>
                         </button>
                     </div>
@@ -746,21 +878,93 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
             )}
 
             {canManageSettings && (
-                 <div>
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                        <div>
-                            <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                                <MegaphoneIcon className="w-8 h-8"/> Announcements
+                 <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="min-w-0">
+                            <h2 className="text-xl sm:text-3xl font-black text-gray-900 dark:text-white flex items-center gap-2.5 truncate">
+                                <MegaphoneIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0"/> 
+                                <span>Announcements</span>
                             </h2>
-                            <p className="text-gray-500 dark:text-gray-400 mt-1">Create and manage global announcements for all users.</p>
+                            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                                Create and broadcast operational notices to all active users
+                            </p>
                         </div>
-                        <button onClick={handleAddAnnouncement} className="mt-4 md:mt-0 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2">
-                            <PlusIcon className="w-5 h-5" />
+                        <button 
+                            onClick={handleAddAnnouncement} 
+                            className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:scale-[1.02] active:scale-[0.98] transition-transform duration-200 flex items-center justify-center gap-2 flex-shrink-0"
+                        >
+                            <PlusIcon className="w-4 h-4" />
                             <span>New Announcement</span>
                         </button>
                     </div>
-                    <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300">
-                        <div className="overflow-x-auto">
+
+                    <div className="bg-white/80 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-3 sm:p-4 backdrop-blur-lg shadow-lg">
+                        {/* Mobile Card View for Announcements (< md) */}
+                        <div className="grid grid-cols-1 gap-3 md:hidden">
+                            {announcements.length === 0 ? (
+                                <p className="text-center py-8 text-xs text-gray-500 dark:text-gray-400">
+                                    No announcements logged yet.
+                                </p>
+                            ) : (
+                                announcements.map((announcement) => {
+                                    const isExpired = announcement.expires_at && new Date(announcement.expires_at) < new Date();
+                                    return (
+                                        <div 
+                                            key={announcement.id} 
+                                            className="p-3.5 bg-white/90 dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700/60 rounded-xl space-y-2.5"
+                                        >
+                                            <div className="flex items-start gap-3 min-w-0">
+                                                {announcement.image_url ? (
+                                                    <img src={announcement.image_url} alt="" className="w-12 h-12 object-cover rounded-xl border border-gray-200 dark:border-gray-700 flex-shrink-0" />
+                                                ) : (
+                                                    <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                                        <AnnouncementTypeIcon type={announcement.type} />
+                                                    </div>
+                                                )}
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                                                            {announcement.type.replace('_', ' ')}
+                                                        </span>
+                                                        {isExpired ? (
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                                                Expired
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                                                Active
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <h4 className="text-sm font-bold text-gray-900 dark:text-white mt-1 truncate">
+                                                        {announcement.title}
+                                                    </h4>
+                                                </div>
+                                            </div>
+
+                                            <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 break-words">
+                                                {announcement.content}
+                                            </p>
+
+                                            <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700/60 text-[11px] text-gray-500 dark:text-gray-400">
+                                                <span className="truncate">Expires: {announcement.expires_at ? safeFormat(announcement.expires_at, 'MMM d, yyyy HH:mm') : 'Never'}</span>
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                    <button onClick={() => handleEditAnnouncement(announcement)} className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition">
+                                                        <EditIcon className="w-4 h-4" />
+                                                    </button>
+                                                    <button onClick={() => handleDeleteAnnouncement(announcement)} className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 transition">
+                                                        <TrashIcon className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        {/* Desktop Table View for Announcements (>= md) */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead className="bg-gray-50 dark:bg-gray-800/50">
                                     <tr>
@@ -816,22 +1020,28 @@ const CompaniesPage: React.FC<CompaniesPageProps> = ({ profile, setProfile }) =>
                 </div>
             )}
 
-            <div>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                    <div>
-                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                            <BuildingIcon className="w-8 h-8"/> Company Management
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div className="min-w-0">
+                        <h2 className="text-xl sm:text-3xl font-black text-gray-900 dark:text-white flex items-center gap-2.5 truncate">
+                            <BuildingIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0"/> 
+                            <span>Company Management</span>
                         </h2>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1">Manage all companies and organizations.</p>
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                            Manage all registered security providers, response units, and organizations
+                        </p>
                     </div>
                     {currentUserProfile?.role === UserRole.ADMIN && (
-                         <button onClick={handleAddCompany} className="mt-4 md:mt-0 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-transform duration-300 flex items-center space-x-2">
-                            <PlusIcon className="w-5 h-5" />
+                         <button 
+                            onClick={handleAddCompany} 
+                            className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:scale-[1.02] active:scale-[0.98] transition-transform duration-200 flex items-center justify-center gap-2 flex-shrink-0"
+                         >
+                            <PlusIcon className="w-4 h-4" />
                             <span>Add New Company</span>
                         </button>
                     )}
                 </div>
-                <div className="bg-white/70 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 backdrop-blur-lg shadow-lg dark:shadow-none transition-colors duration-300">
+                <div className="bg-white/80 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-3 sm:p-4 backdrop-blur-lg shadow-lg">
                     {loading ? (
                         <TacticalSkeleton title="SECURITY COMPANIES" subtitle="Loading registered security service providers & dispatch units..." cardsCount={0} rowsCount={5} />
                     ) : (
