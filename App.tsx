@@ -15,22 +15,37 @@ import UserDashboardPage from './pages/UserDashboardPage';
 import EMSDispatchPage from './pages/EMSDispatchPage';
 import ErrorBoundary from './components/ErrorBoundary';
 
-const UsersPage = lazy(() => import('./pages/UsersPage'));
-const CompaniesPage = lazy(() => import('./pages/CompaniesPage'));
-const GlobalMapModal = lazy(() => import('./components/GlobalMapModal'));
-const ReportsPage = lazy(() => import('./pages/ReportsPage'));
-const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
-const PatrolPage = lazy(() => import('./pages/PatrolPage'));
-const AttendancePage = lazy(() => import('./pages/AttendancePage'));
-const PublicDashboardPage = lazy(() => import('./pages/PublicDashboardPage'));
-const PublicCrimeReportPage = lazy(() => import('./pages/PublicCrimeReportPage'));
-const AboutPage = lazy(() => import('./pages/AboutPage'));
-const GuardMonitoringPage = lazy(() => import('./pages/GuardMonitoringPage'));
-const GateAccessPage = lazy(() => import('./pages/GateAccessPage'));
-const UserActivityPage = lazy(() => import('./pages/UserActivityPage'));
-const GlobalSearchPage = lazy(() => import('./pages/GlobalSearchPage'));
-const TechnicianDashboardPage = lazy(() => import('./pages/TechnicianDashboardPage'));
-const TechOpsPage = lazy(() => import('./pages/TechOpsPage'));
+const lazyWithRetry = <T extends React.ComponentType<any>>(
+    factory: () => Promise<{ default: T }>
+) => lazy(async () => {
+    try {
+        return await factory();
+    } catch (error) {
+        console.warn('Retrying failed dynamic import...', error);
+        return new Promise<{ default: T }>((resolve, reject) => {
+            setTimeout(() => {
+                factory().then(resolve).catch(reject);
+            }, 1000);
+        });
+    }
+});
+
+const UsersPage = lazyWithRetry(() => import('./pages/UsersPage'));
+const CompaniesPage = lazyWithRetry(() => import('./pages/CompaniesPage'));
+const GlobalMapModal = lazyWithRetry(() => import('./components/GlobalMapModal'));
+const ReportsPage = lazyWithRetry(() => import('./pages/ReportsPage'));
+const AnalyticsPage = lazyWithRetry(() => import('./pages/AnalyticsPage'));
+const PatrolPage = lazyWithRetry(() => import('./pages/PatrolPage'));
+const AttendancePage = lazyWithRetry(() => import('./pages/AttendancePage'));
+const PublicDashboardPage = lazyWithRetry(() => import('./pages/PublicDashboardPage'));
+const PublicCrimeReportPage = lazyWithRetry(() => import('./pages/PublicCrimeReportPage'));
+const AboutPage = lazyWithRetry(() => import('./pages/AboutPage'));
+const GuardMonitoringPage = lazyWithRetry(() => import('./pages/GuardMonitoringPage'));
+const GateAccessPage = lazyWithRetry(() => import('./pages/GateAccessPage'));
+const UserActivityPage = lazyWithRetry(() => import('./pages/UserActivityPage'));
+const GlobalSearchPage = lazyWithRetry(() => import('./pages/GlobalSearchPage'));
+const TechnicianDashboardPage = lazyWithRetry(() => import('./pages/TechnicianDashboardPage'));
+const TechOpsPage = lazyWithRetry(() => import('./pages/TechOpsPage'));
 
 import AnnouncementsBanner from './components/AnnouncementsBanner';
 import LoudAlarmBanner from './components/LoudAlarmBanner';
