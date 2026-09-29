@@ -128,6 +128,11 @@ export default async function handler(req: any, res: any) {
             }
         }
 
+        // Community members and unassigned users can have company_id as null
+        if ('company_id' in cleanedPayload && (!cleanedPayload.company_id || cleanedPayload.company_id === '')) {
+            cleanedPayload.company_id = null;
+        }
+
         try {
             console.log(`Updating profile for ${userId} with filtered payload:`, cleanedPayload);
             

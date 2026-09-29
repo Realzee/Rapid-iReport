@@ -66,8 +66,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
         addToast('Please upload a selfie to complete registration.', 'error');
         return;
     }
-    if (!companyId) {
-        addToast('Please select the company you are registering for.', 'error');
+    if (role !== UserRole.USER && !companyId) {
+        addToast('Please select your security/responder company organization.', 'warning');
         return;
     }
     setLoading(true);
@@ -86,7 +86,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
                 ice_no: iceNo,
                 medical_aid: medicalAid || null,
                 psira_number: psiraNumber || null,
-                company_id: companyId,
+                company_id: companyId || null,
                 role: role,
             }
         }
@@ -107,6 +107,28 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
 
     // Now upload avatar
     const user = signUpData.user;
+
+    // Resilient fallback: Ensure profile row exists in profiles table
+    try {
+        await supabase.from('profiles').upsert({
+            id: user.id,
+            email,
+            first_name: firstName,
+            surname: surname,
+            cell: cell || null,
+            vehicle_reg: vehicleReg || null,
+            home_address: homeAddress || null,
+            ice_no: iceNo || null,
+            medical_aid: medicalAid || null,
+            psira_number: psiraNumber || null,
+            company_id: (role === UserRole.USER ? (companyId || null) : (companyId || null)),
+            role,
+            status: 'pending'
+        }, { onConflict: 'id' });
+    } catch (e) {
+        console.warn('Fallback direct profile creation exception:', e);
+    }
+
     const fileExt = avatarFile.name.split('.').pop();
     const filePath = `${user.id}/avatar.${fileExt}`;
     const { error: uploadError } = await supabase.storage
@@ -184,23 +206,29 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
         </div>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="company_id_reg" className={labelClasses}>Company</label>
+              <label htmlFor="company_id_reg" className={labelClasses}>
+                Company {role === UserRole.USER ? <span className="text-xs text-gray-400 font-normal">(Optional)</span> : <span className="text-xs text-blue-500 font-normal">*</span>}
+              </label>
               <div className={inputContainerClasses}>
                 <div className={iconClasses}><BuildingIcon className="w-5 h-5 text-gray-400" /></div>
                 <select
                     id="company_id_reg"
                     name="companyId"
-                    required
                     value={companyId}
                     onChange={(e) => setCompanyId(e.target.value)}
                     className={inputClasses}
                 >
-                    <option value="" disabled>Select your company...</option>
+                    <option value="">Independent Community Member (No Company)</option>
                     {companies.map(company => (
                         <option key={company.id} value={company.id}>{company.name}</option>
                     ))}
                 </select>
               </div>
+              {role === UserRole.USER && (
+                <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                  ✓ Community members do not need to specify a company.
+                </p>
+              )}
             </div>
             <div>
               <label htmlFor="role_reg" className={labelClasses}>Role</label>

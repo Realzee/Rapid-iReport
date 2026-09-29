@@ -93,8 +93,25 @@ const UsersPage: React.FC = () => {
 
     // Filters
     const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
-    const [statusFilter, setStatusFilter] = useState<UserStatus | 'all'>('all');
+    const [statusFilter, setStatusFilter] = useState<UserStatus | 'all'>(() => {
+        try {
+            const saved = localStorage.getItem('users_page_status_filter');
+            if (saved === 'pending' || saved === UserStatus.PENDING) {
+                localStorage.removeItem('users_page_status_filter');
+                return UserStatus.PENDING;
+            }
+        } catch {}
+        return 'all';
+    });
     const [companyFilter, setCompanyFilter] = useState<string>('all');
+
+    useEffect(() => {
+        const handleFilterPending = () => {
+            setStatusFilter(UserStatus.PENDING);
+        };
+        window.addEventListener('filter-pending-users', handleFilterPending);
+        return () => window.removeEventListener('filter-pending-users', handleFilterPending);
+    }, []);
 
     useEffect(() => {
         const fetchCurrentUserProfile = async () => {
@@ -723,11 +740,36 @@ const UsersPage: React.FC = () => {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <StatCard title="Total Users" value={stats.total.toString()} icon={<UsersIcon />} color="blue" />
-                <StatCard title="Active Users" value={stats.active.toString()} icon={<CheckCircleIcon />} color="green" />
-                <StatCard title="Pending Approval" value={stats.pending.toString()} icon={<ClockIcon />} color="yellow" />
-                <StatCard title="Suspended" value={stats.suspended.toString()} icon={<AlertTriangleIcon />} color="red" />
+                <div onClick={() => setStatusFilter('all')} className="cursor-pointer transition-transform hover:scale-[1.01]" title="Show all users">
+                    <StatCard title="Total Users" value={stats.total.toString()} icon={<UsersIcon />} color="blue" />
+                </div>
+                <div onClick={() => setStatusFilter(UserStatus.ACTIVE)} className="cursor-pointer transition-transform hover:scale-[1.01]" title="Filter by active users">
+                    <StatCard title="Active Users" value={stats.active.toString()} icon={<CheckCircleIcon />} color="green" />
+                </div>
+                <div onClick={() => setStatusFilter(UserStatus.PENDING)} className={`cursor-pointer transition-transform hover:scale-[1.02] ${stats.pending > 0 ? 'ring-2 ring-amber-500 rounded-2xl shadow-md' : ''}`} title="Filter by pending approval alerts">
+                    <StatCard title="Pending Approval" value={stats.pending.toString()} icon={<ClockIcon />} color="yellow" />
+                </div>
+                <div onClick={() => setStatusFilter(UserStatus.SUSPENDED)} className="cursor-pointer transition-transform hover:scale-[1.01]" title="Filter by suspended users">
+                    <StatCard title="Suspended" value={stats.suspended.toString()} icon={<AlertTriangleIcon />} color="red" />
+                </div>
             </div>
+
+            {statusFilter === UserStatus.PENDING && (
+                <div className="mb-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                        <ClockIcon className="w-5 h-5 text-amber-600 dark:text-amber-400 animate-pulse" />
+                        <span className="font-bold text-amber-900 dark:text-amber-200 text-sm">
+                            Filtering: Pending User Registrations ({filteredUsers.length} awaiting review)
+                        </span>
+                    </div>
+                    <button
+                        onClick={() => setStatusFilter('all')}
+                        className="px-3 py-1 text-xs font-bold rounded-lg bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 hover:bg-amber-300 transition-colors"
+                    >
+                        Clear Filter (View All)
+                    </button>
+                </div>
+            )}
 
             {/* Filters and Search */}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-6">

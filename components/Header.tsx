@@ -12,6 +12,7 @@ import { Volume2, VolumeX, Siren } from 'lucide-react';
 import { logUserAction } from '../utils/logger';
 import { CorporateSharingModal } from './CorporateSharingModal';
 import ChangeLogModal from './ChangeLogModal';
+import { useToast } from '../contexts/ToastContext';
 
 interface HeaderProps {
     currentView: string;
@@ -27,21 +28,99 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isPTTModalOpen, setIsPTTModalOpen] = useState(false);
   const [pendingSharesCount, setPendingSharesCount] = useState(0);
+  const [pendingUsersCount, setPendingUsersCount] = useState(0);
+  const [pendingUsers, setPendingUsers] = useState<Profile[]>([]);
+  const [isAlertBannerDismissed, setIsAlertBannerDismissed] = useState(false);
   const [isSharingModalOpen, setIsSharingModalOpen] = useState(false);
   const [isChangeLogOpen, setIsChangeLogOpen] = useState(false);
   const [alarmMuted, setAlarmMutedState] = useState(() => isAlarmMuted());
   const { mainLogoUrl, faviconUrl, defaultLogoUrl } = useSettings();
+  const { addToast } = useToast();
 
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const prevUnreadCount = useRef(0);
   
-  const unreadCount = useMemo(() => notifications.filter(n => !n.is_read).length, [notifications]);
   const canAccessAdminPages = [UserRole.ADMIN, UserRole.MODERATOR].includes(profile.role);
+  const totalAlertCount = useMemo(() => {
+    const rawUnread = notifications.filter(n => !n.is_read).length;
+    return rawUnread + (canAccessAdminPages ? pendingUsersCount : 0) + pendingSharesCount;
+  }, [notifications, pendingUsersCount, pendingSharesCount, canAccessAdminPages]);
+
+  const handleNavigateToPendingUsers = () => {
+    try {
+      localStorage.setItem('users_page_status_filter', 'pending');
+    } catch {}
+    window.dispatchEvent(new CustomEvent('filter-pending-users'));
+    setView('users');
+  };
+
+  const handleQuickApproveUser = async (userId: string, userName: string) => {
+    try {
+      const response = await fetch('/api/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, status: 'active' })
+      });
+      if (response.ok) {
+        addToast(`✅ User "${userName}" approved and activated successfully!`, 'success');
+        setPendingUsers(prev => prev.filter(u => u.id !== userId));
+        setPendingUsersCount(prev => Math.max(0, prev - 1));
+        logUserAction(profile.id, 'APPROVE_USER_REGISTRATION', `Approved pending registration for ${userName} (${userId})`);
+      } else {
+        const data = await response.json().catch(() => ({}));
+        addToast(`Failed to approve user: ${data.error || response.statusText}`, 'error');
+      }
+    } catch (err: any) {
+      addToast(`Error approving user: ${err.message}`, 'error');
+    }
+  };
+
+  // Subscribe and fetch pending user registration requests for administrators
+  useEffect(() => {
+    if (!profile || !canAccessAdminPages || !supabase) return;
+
+    const fetchPendingUsers = async () => {
+      try {
+        const isGlobalAdmin = profile.role === UserRole.ADMIN && (profile.company?.name?.toLowerCase().includes('rapid911') || false);
+        let query = supabase.from('profiles').select('id, email, first_name, surname, role, status, company_id, cell, avatar_url').eq('status', 'pending');
+        if (!isGlobalAdmin && profile.company_id) {
+          query = query.or(`company_id.eq.${profile.company_id},company_id.is.null`);
+        }
+        const { data, error } = await query;
+        if (!error && data) {
+          setPendingUsers(data as Profile[]);
+          setPendingUsersCount(data.length);
+        }
+      } catch (err) {
+        console.debug("Error fetching pending users:", err);
+      }
+    };
+
+    fetchPendingUsers();
+
+    const profilesChannel = supabase
+      .channel(`pending-users-${profile.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+        fetchPendingUsers();
+        if (payload.eventType === 'INSERT' && (payload.new as any)?.status === 'pending') {
+          playNotificationSound();
+          const newUser = payload.new as any;
+          const name = [newUser.first_name, newUser.surname].filter(Boolean).join(' ') || newUser.email || 'Applicant';
+          const roleLabel = newUser.role === 'user' ? 'Community Member' : (newUser.role ? newUser.role.toUpperCase() : 'Resident');
+          addToast(`🚨 Pending Approval Alert: New ${roleLabel} registration (${name}) requires administrator approval.`, 'warning');
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(profilesChannel);
+    };
+  }, [profile, canAccessAdminPages]);
 
   // Subscribe and fetch pending report shares count dynamically
   useEffect(() => {
-    if (!profile || !profile.company_id) return;
+    if (!profile || !profile.company_id || !supabase) return;
     
     const fetchPendingShares = async () => {
         try {
@@ -59,23 +138,23 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
     
     fetchPendingShares();
 
-    if (!supabase) return;
-
     const sharesChannel = supabase
         .channel(`shares-${profile.company_id}`)
         .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
             table: 'report_shares'
-        }, () => {
+        }, (payload) => {
             fetchPendingShares();
+            playNotificationSound();
+            if (payload.eventType === 'INSERT' && (payload.new as any)?.status === 'pending') {
+                addToast('🚨 Pending Approval Alert: Incoming shared incident report awaiting corporate decision.', 'warning');
+            }
         })
         .subscribe();
 
     return () => {
-        if (supabase) {
-            supabase.removeChannel(sharesChannel);
-        }
+        supabase.removeChannel(sharesChannel);
     };
   }, [profile]);
 
@@ -137,20 +216,20 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
   // Handle notification enhancements (Favicon, Title, Sound)
   useEffect(() => {
     // Update Document Title
-    updateDocumentTitle(unreadCount);
+    updateDocumentTitle(totalAlertCount);
 
     // Update Favicon Badge
     if (faviconUrl) {
-        updateFaviconBadge(unreadCount, faviconUrl);
+        updateFaviconBadge(totalAlertCount, faviconUrl);
     }
 
-    // Play Sound on new unread notifications
-    if (unreadCount > prevUnreadCount.current) {
+    // Play Sound on new unread notifications or pending items
+    if (totalAlertCount > prevUnreadCount.current) {
         playNotificationSound();
     }
     
-    prevUnreadCount.current = unreadCount;
-  }, [unreadCount, faviconUrl]);
+    prevUnreadCount.current = totalAlertCount;
+  }, [totalAlertCount, faviconUrl]);
 
   // Cleanup on unmount (e.g. logout)
   useEffect(() => {
@@ -505,6 +584,11 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
           <>
             <button onClick={() => clickHandler('users')} className={classGetter('users')}>
               <UsersIcon className="w-4 h-4 mr-2" /> Users
+              {pendingUsersCount > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 text-[9px] font-black rounded-full bg-amber-500 text-white animate-pulse shadow-xs">
+                  {pendingUsersCount}
+                </span>
+              )}
             </button>
             <button onClick={() => clickHandler('activity_logs')} className={classGetter('activity_logs')}>
               <ClipboardCheckIcon className="w-4 h-4 mr-2" /> Logs
@@ -605,10 +689,20 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
             </div>
 
             <div ref={notificationsRef} className="relative">
-                <button onClick={toggleNotifications} className="relative text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-300">
+                <button 
+                  onClick={toggleNotifications} 
+                  className={`relative p-1.5 rounded-xl transition-all duration-300 ${
+                    totalAlertCount > 0 
+                      ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20' 
+                      : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white'
+                  }`}
+                  title={totalAlertCount > 0 ? `${totalAlertCount} alerts & pending items` : 'Notifications'}
+                >
                   <BellIcon className="w-4.5 h-4.5 sm:w-6 h-6" />
-                  {unreadCount > 0 && (
-                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full text-[8px] flex items-center justify-center text-white">{unreadCount}</span>
+                  {totalAlertCount > 0 && (
+                     <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-1 bg-red-600 rounded-full text-[8px] flex items-center justify-center text-white font-black animate-pulse">
+                       {totalAlertCount}
+                     </span>
                   )}
                 </button>
                  {isNotificationsOpen && (
@@ -617,6 +711,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
                         onNotificationClick={handleNotificationItemClick}
                         onMarkAllAsRead={handleMarkAllAsRead}
                         onClose={() => setIsNotificationsOpen(false)}
+                        pendingUsersCount={pendingUsersCount}
+                        pendingSharesCount={pendingSharesCount}
+                        pendingUsers={pendingUsers}
+                        onNavigateToUsers={handleNavigateToPendingUsers}
+                        onOpenSharing={() => setIsSharingModalOpen(true)}
+                        onQuickApproveUser={handleQuickApproveUser}
                     />
                 )}
             </div>
@@ -665,6 +765,57 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, profile, onNotifi
             </div>
           </nav>
       </div>
+      {/* PENDING APPROVALS ALERT BANNER FOR ADMINS */}
+      {canAccessAdminPages && (pendingUsersCount > 0 || pendingSharesCount > 0) && !isAlertBannerDismissed && (
+        <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-orange-600 text-white text-xs sm:text-sm font-semibold shadow-md px-3 sm:px-6 py-2 flex items-center justify-between gap-3 border-t border-amber-400/40 animate-fade-in print:hidden">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="flex h-2.5 w-2.5 relative flex-shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-200"></span>
+            </span>
+            <div className="truncate">
+              <span className="font-extrabold uppercase tracking-wide bg-amber-800/60 px-2 py-0.5 rounded text-[10px] sm:text-[11px] mr-2">
+                Pending Approvals Alert
+              </span>
+              <span>
+                {pendingUsersCount > 0 && pendingSharesCount > 0
+                  ? `${pendingUsersCount} user registration${pendingUsersCount > 1 ? 's' : ''} & ${pendingSharesCount} shared report${pendingSharesCount > 1 ? 's' : ''} require action`
+                  : pendingUsersCount > 0
+                  ? `${pendingUsersCount} new user registration${pendingUsersCount > 1 ? 's' : ''} awaiting administrator review`
+                  : `${pendingSharesCount} shared report request${pendingSharesCount > 1 ? 's' : ''} awaiting decision`}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {pendingUsersCount > 0 && (
+              <button
+                type="button"
+                onClick={handleNavigateToPendingUsers}
+                className="px-2.5 py-1 text-xs font-bold rounded-md bg-white text-amber-900 hover:bg-amber-100 shadow-xs transition-colors cursor-pointer"
+              >
+                Review Registrations ({pendingUsersCount})
+              </button>
+            )}
+            {pendingSharesCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsSharingModalOpen(true)}
+                className="px-2.5 py-1 text-xs font-bold rounded-md bg-white text-amber-900 hover:bg-amber-100 shadow-xs transition-colors cursor-pointer"
+              >
+                Review Shares ({pendingSharesCount})
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsAlertBannerDismissed(true)}
+              className="p-1 rounded text-white/80 hover:text-white hover:bg-black/20 transition-colors ml-1"
+              title="Dismiss alert for now"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </header>
     <PTTModal isOpen={isPTTModalOpen} onClose={() => setIsPTTModalOpen(false)} profile={profile} />
     <CorporateSharingModal isOpen={isSharingModalOpen} onClose={() => setIsSharingModalOpen(false)} profile={profile} />

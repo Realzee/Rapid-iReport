@@ -263,6 +263,24 @@ async function runMigrations() {
         "CREATE POLICY \"Allow update for authenticated notifications\" ON public.notifications FOR UPDATE TO authenticated USING (auth.uid() = recipient_user_id) WITH CHECK (auth.uid() = recipient_user_id);",
         "DROP POLICY IF EXISTS \"Allow delete for authenticated notifications\" ON public.notifications;",
         "CREATE POLICY \"Allow delete for authenticated notifications\" ON public.notifications FOR DELETE TO authenticated USING (auth.uid() = recipient_user_id);",
+        `CREATE TABLE IF NOT EXISTS public.user_activity_logs (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+            action text NOT NULL,
+            details text,
+            ip_address text,
+            created_at timestamptz DEFAULT now()
+        );`,
+        "ALTER TABLE public.user_activity_logs ENABLE ROW LEVEL SECURITY;",
+        "GRANT SELECT, INSERT ON public.user_activity_logs TO anon;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_activity_logs TO authenticated;",
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_activity_logs TO service_role;",
+        "DROP POLICY IF EXISTS \"Allow select user activity logs\" ON public.user_activity_logs;",
+        "CREATE POLICY \"Allow select user activity logs\" ON public.user_activity_logs FOR SELECT TO authenticated USING (true);",
+        "DROP POLICY IF EXISTS \"Allow insert user activity logs\" ON public.user_activity_logs;",
+        "CREATE POLICY \"Allow insert user activity logs\" ON public.user_activity_logs FOR INSERT TO authenticated WITH CHECK (true);",
+        "DROP POLICY IF EXISTS \"Allow anon insert user activity logs\" ON public.user_activity_logs;",
+        "CREATE POLICY \"Allow anon insert user activity logs\" ON public.user_activity_logs FOR INSERT TO anon WITH CHECK (true);",
         "NOTIFY pgrst, 'reload schema';",
         "SELECT pg_notify('pgrst', 'reload schema');"
     ];

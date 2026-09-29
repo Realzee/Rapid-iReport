@@ -773,8 +773,102 @@ BEGIN
 END;
 $$;
 
+-- Ensure created_at exists on public.profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- 9.2 Auth User Creation Trigger (Supports Community Members with NULL company_id)
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_company_id uuid := NULL;
+    v_role public.user_role := 'user'::public.user_role;
+    v_status public.user_status := 'pending'::public.user_status;
+BEGIN
+    -- Parse company_id safely (community members register with NULL company_id)
+    IF new.raw_user_meta_data->>'company_id' IS NOT NULL AND TRIM(new.raw_user_meta_data->>'company_id') <> '' THEN
+        BEGIN
+            v_company_id := (new.raw_user_meta_data->>'company_id')::uuid;
+        EXCEPTION WHEN OTHERS THEN
+            v_company_id := NULL;
+        END;
+    END IF;
+
+    -- Parse user role safely
+    IF new.raw_user_meta_data->>'role' IS NOT NULL AND TRIM(new.raw_user_meta_data->>'role') <> '' THEN
+        BEGIN
+            v_role := (new.raw_user_meta_data->>'role')::public.user_role;
+        EXCEPTION WHEN OTHERS THEN
+            v_role := 'user'::public.user_role;
+        END;
+    END IF;
+
+    -- User status defaults to 'pending' awaiting administrator review
+    IF new.raw_user_meta_data->>'status' IS NOT NULL AND TRIM(new.raw_user_meta_data->>'status') <> '' THEN
+        BEGIN
+            v_status := (new.raw_user_meta_data->>'status')::public.user_status;
+        EXCEPTION WHEN OTHERS THEN
+            v_status := 'pending'::public.user_status;
+        END;
+    END IF;
+
+    INSERT INTO public.profiles (
+        id, 
+        email, 
+        first_name, 
+        surname, 
+        role, 
+        status, 
+        company_id, 
+        cell, 
+        vehicle_reg, 
+        home_address, 
+        ice_no, 
+        medical_aid, 
+        psira_number,
+        created_at,
+        updated_at
+    ) VALUES (
+        new.id,
+        new.email,
+        COALESCE(new.raw_user_meta_data->>'first_name', ''),
+        COALESCE(new.raw_user_meta_data->>'surname', ''),
+        v_role,
+        v_status,
+        v_company_id,
+        new.raw_user_meta_data->>'cell',
+        new.raw_user_meta_data->>'vehicle_reg',
+        new.raw_user_meta_data->>'home_address',
+        new.raw_user_meta_data->>'ice_no',
+        new.raw_user_meta_data->>'medical_aid',
+        new.raw_user_meta_data->>'psira_number',
+        now(),
+        now()
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        email = EXCLUDED.email,
+        first_name = CASE WHEN profiles.first_name = '' THEN EXCLUDED.first_name ELSE profiles.first_name END,
+        surname = CASE WHEN profiles.surname = '' THEN EXCLUDED.surname ELSE profiles.surname END,
+        company_id = COALESCE(profiles.company_id, EXCLUDED.company_id),
+        role = CASE WHEN profiles.role = 'user' THEN EXCLUDED.role ELSE profiles.role END,
+        updated_at = now();
+
+    RETURN new;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+GRANT EXECUTE ON FUNCTION public.handle_new_user() TO service_role;
+
 -- ------------------------------------------------------------------------------
--- 10. ROW LEVEL SECURITY (RLS) POLICIES
+-- 10. ROW LEVEL SECURITY (RLS) POLICIES & PERMISSIONS
 -- ------------------------------------------------------------------------------
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -785,6 +879,9 @@ ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.assignment_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.report_shares ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.gate_access_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tracking_units ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.guard_checkpoints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.guard_patrol_logs ENABLE ROW LEVEL SECURITY;
@@ -792,16 +889,24 @@ ALTER TABLE public.guard_attendances ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tech_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tech_job_updates ENABLE ROW LEVEL SECURITY;
 
+-- Grants
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+
 DO $$ BEGIN
+    -- Companies
     DROP POLICY IF EXISTS "Allow select for authenticated" ON public.companies;
     CREATE POLICY "Allow select for authenticated" ON public.companies FOR SELECT TO authenticated USING (true);
 
+    -- Profiles
     DROP POLICY IF EXISTS "Allow select profiles" ON public.profiles;
     CREATE POLICY "Allow select profiles" ON public.profiles FOR SELECT TO authenticated USING (true);
 
     DROP POLICY IF EXISTS "Allow manage own profile" ON public.profiles;
     CREATE POLICY "Allow manage own profile" ON public.profiles FOR ALL TO authenticated USING (auth.uid() = id);
 
+    -- Vehicle Reports
     DROP POLICY IF EXISTS "Allow select vehicle reports" ON public.vehicle_reports;
     CREATE POLICY "Allow select vehicle reports" ON public.vehicle_reports FOR SELECT TO authenticated USING (true);
 
@@ -811,6 +916,7 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "Allow update vehicle reports" ON public.vehicle_reports;
     CREATE POLICY "Allow update vehicle reports" ON public.vehicle_reports FOR UPDATE TO authenticated USING (true);
 
+    -- Crime Reports
     DROP POLICY IF EXISTS "Allow select crime reports" ON public.crime_reports;
     CREATE POLICY "Allow select crime reports" ON public.crime_reports FOR SELECT TO authenticated USING (true);
 
@@ -820,6 +926,7 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "Allow update crime reports" ON public.crime_reports;
     CREATE POLICY "Allow update crime reports" ON public.crime_reports FOR UPDATE TO authenticated USING (true);
 
+    -- Emergency Reports
     DROP POLICY IF EXISTS "Allow select emergency reports" ON public.emergency_reports;
     CREATE POLICY "Allow select emergency reports" ON public.emergency_reports FOR SELECT TO authenticated USING (true);
 
@@ -829,15 +936,94 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "Allow update emergency reports" ON public.emergency_reports;
     CREATE POLICY "Allow update emergency reports" ON public.emergency_reports FOR UPDATE TO authenticated USING (true);
 
+    -- Report Updates
     DROP POLICY IF EXISTS "Allow report updates select" ON public.report_updates;
     CREATE POLICY "Allow report updates select" ON public.report_updates FOR SELECT TO authenticated USING (true);
 
     DROP POLICY IF EXISTS "Allow report updates insert" ON public.report_updates;
     CREATE POLICY "Allow report updates insert" ON public.report_updates FOR INSERT TO authenticated WITH CHECK (true);
 
+    -- Chat Messages
     DROP POLICY IF EXISTS "Allow chat select" ON public.chat_messages;
     CREATE POLICY "Allow chat select" ON public.chat_messages FOR SELECT TO authenticated USING (true);
 
     DROP POLICY IF EXISTS "Allow chat insert" ON public.chat_messages;
     CREATE POLICY "Allow chat insert" ON public.chat_messages FOR INSERT TO authenticated WITH CHECK (true);
+
+    -- User Activity Logs
+    DROP POLICY IF EXISTS "Allow select user activity logs" ON public.user_activity_logs;
+    CREATE POLICY "Allow select user activity logs" ON public.user_activity_logs FOR SELECT TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "Allow insert user activity logs" ON public.user_activity_logs;
+    CREATE POLICY "Allow insert user activity logs" ON public.user_activity_logs FOR INSERT TO authenticated WITH CHECK (true);
+
+    -- Assignment Logs
+    DROP POLICY IF EXISTS "Allow select assignment logs" ON public.assignment_logs;
+    CREATE POLICY "Allow select assignment logs" ON public.assignment_logs FOR SELECT TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "Allow insert assignment logs" ON public.assignment_logs;
+    CREATE POLICY "Allow insert assignment logs" ON public.assignment_logs FOR INSERT TO authenticated WITH CHECK (true);
+
+    -- Report Shares
+    DROP POLICY IF EXISTS "Allow select report shares" ON public.report_shares;
+    CREATE POLICY "Allow select report shares" ON public.report_shares FOR SELECT TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "Allow insert report shares" ON public.report_shares;
+    CREATE POLICY "Allow insert report shares" ON public.report_shares FOR INSERT TO authenticated WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Allow update report shares" ON public.report_shares;
+    CREATE POLICY "Allow update report shares" ON public.report_shares FOR UPDATE TO authenticated USING (true);
+
+    -- Gate Access Logs
+    DROP POLICY IF EXISTS "Allow select gate access logs" ON public.gate_access_logs;
+    CREATE POLICY "Allow select gate access logs" ON public.gate_access_logs FOR SELECT TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "Allow insert gate access logs" ON public.gate_access_logs;
+    CREATE POLICY "Allow insert gate access logs" ON public.gate_access_logs FOR INSERT TO authenticated WITH CHECK (true);
+
+    -- Tracking Units
+    DROP POLICY IF EXISTS "Allow select tracking units" ON public.tracking_units;
+    CREATE POLICY "Allow select tracking units" ON public.tracking_units FOR SELECT TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "Allow manage tracking units" ON public.tracking_units;
+    CREATE POLICY "Allow manage tracking units" ON public.tracking_units FOR ALL TO authenticated USING (true);
+
+    -- Sites & Checkpoints
+    DROP POLICY IF EXISTS "Allow select sites" ON public.sites;
+    CREATE POLICY "Allow select sites" ON public.sites FOR SELECT TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "Allow manage sites" ON public.sites;
+    CREATE POLICY "Allow manage sites" ON public.sites FOR ALL TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "Allow select checkpoints" ON public.guard_checkpoints;
+    CREATE POLICY "Allow select checkpoints" ON public.guard_checkpoints FOR SELECT TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "Allow manage checkpoints" ON public.guard_checkpoints;
+    CREATE POLICY "Allow manage checkpoints" ON public.guard_checkpoints FOR ALL TO authenticated USING (true);
+
+    -- Patrol Logs & Attendances
+    DROP POLICY IF EXISTS "Allow select patrol logs" ON public.guard_patrol_logs;
+    CREATE POLICY "Allow select patrol logs" ON public.guard_patrol_logs FOR SELECT TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "Allow insert patrol logs" ON public.guard_patrol_logs;
+    CREATE POLICY "Allow insert patrol logs" ON public.guard_patrol_logs FOR INSERT TO authenticated WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Allow select attendances" ON public.guard_attendances;
+    CREATE POLICY "Allow select attendances" ON public.guard_attendances FOR SELECT TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "Allow manage attendances" ON public.guard_attendances;
+    CREATE POLICY "Allow manage attendances" ON public.guard_attendances FOR ALL TO authenticated USING (true);
+
+    -- Tech Jobs
+    DROP POLICY IF EXISTS "Allow select tech jobs" ON public.tech_jobs;
+    CREATE POLICY "Allow select tech jobs" ON public.tech_jobs FOR SELECT TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "Allow manage tech jobs" ON public.tech_jobs;
+    CREATE POLICY "Allow manage tech jobs" ON public.tech_jobs FOR ALL TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "Allow select tech job updates" ON public.tech_job_updates;
+    CREATE POLICY "Allow select tech job updates" ON public.tech_job_updates FOR SELECT TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "Allow insert tech job updates" ON public.tech_job_updates;
+    CREATE POLICY "Allow insert tech job updates" ON public.tech_job_updates FOR INSERT TO authenticated WITH CHECK (true);
 END $$;

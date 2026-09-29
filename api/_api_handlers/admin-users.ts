@@ -13,6 +13,9 @@ export default async function handler(req: any, res: any) {
 
     if (req.method === 'POST') {
         const { email, password, profileData } = req.body;
+        if (profileData && (!profileData.company_id || profileData.company_id === '')) {
+            profileData.company_id = null;
+        }
         try {
             const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
                 email,
