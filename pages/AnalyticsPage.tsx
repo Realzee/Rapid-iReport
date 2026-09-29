@@ -12,7 +12,7 @@ import {
     CarIcon, CrimeIcon, ChartBarIcon, ChartPieIcon, MapIcon, ZapIcon, 
     CheckCircleIcon, AlertTriangleIcon, DownloadIcon, ClockIcon, ClipboardCheckIcon
 } from '../components/icons';
-import { Calendar, Filter } from 'lucide-react';
+import { Calendar, Filter, ShieldCheck, ShieldAlert } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import { safeFormat, safeGetDate } from '../utils/dateUtils';
 import { TacticalSkeleton } from '../components/TacticalSkeleton';
@@ -252,29 +252,38 @@ const AnalyticsPage: React.FC = () => {
 
 const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
     const totalReports = reports.length;
-    const vehicleReports = reports.filter(r => isVehicleReport(r)).length;
-    const emergencyReports = reports.filter(r => isEmergencyReport(r)).length;
-    const crimeReportsList = reports.filter(r => r.type === 'crime');
+    const falseAlarms = reports.filter(r => r.status === ReportStatus.FALSE_ALARM || (r.status as any) === 'false_alarm').length;
+    const verifiedReports = reports.filter(r => r.status === ReportStatus.VERIFIED || (r.status as any) === 'verified').length;
+    
+    // Genuine / Valid incidents (excluding False Alarms to guarantee data integrity)
+    const validReports = useMemo(() => {
+        return reports.filter(r => r.status !== ReportStatus.FALSE_ALARM && (r.status as any) !== 'false_alarm');
+    }, [reports]);
+
+    const vehicleReports = validReports.filter(r => isVehicleReport(r)).length;
+    const emergencyReports = validReports.filter(r => isEmergencyReport(r)).length;
+    const crimeReportsList = validReports.filter(r => r.type === 'crime');
     const crimeReportsCount = crimeReportsList.length;
-    const resolved = reports.filter(r => r.status === ReportStatus.RESOLVED || r.status === ReportStatus.RECOVERED).length;
-    const pending = reports.filter(r => r.status === ReportStatus.PENDING).length;
+    const resolved = validReports.filter(r => r.status === ReportStatus.RESOLVED || r.status === ReportStatus.RECOVERED).length;
+    const pending = validReports.filter(r => r.status === ReportStatus.PENDING).length;
     
     // Calculate combined stats for summary
     const combinedStats = useMemo(() => {
-        return reports.reduce((acc, r: any) => {
+        return validReports.reduce((acc, r: any) => {
             if (r.type === 'crime' && r.cit_success) acc.citSuccess++;
             acc.arrests += (r.arrests || 0);
             acc.gunsRecovered += (r.guns_recovered || 0);
             return acc;
         }, { citSuccess: 0, arrests: 0, gunsRecovered: 0 });
-    }, [reports]);
+    }, [validReports]);
 
-    // Calculate resolution rate
-    const resolutionRate = totalReports > 0 ? Math.round((resolved / totalReports) * 100) : 0;
+    // Calculate resolution rate based on genuine incidents
+    const resolutionRate = validReports.length > 0 ? Math.round((resolved / validReports.length) * 100) : 0;
+    const falseAlarmRate = totalReports > 0 ? Math.round((falseAlarms / totalReports) * 100) : 0;
 
     // Calculate Average Response Time (for resolved/recovered/closed reports)
     const avgResponseTime = useMemo(() => {
-        const completedReports = reports.filter(r => 
+        const completedReports = validReports.filter(r => 
             (r.status === ReportStatus.RESOLVED || r.status === ReportStatus.RECOVERED || r.status === ReportStatus.CLOSED) && 
             r.completed_at
         );
@@ -292,14 +301,25 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
         
         if (avgMinutes < 60) return `${Math.round(avgMinutes)} mins`;
         return `${Math.round(avgMinutes / 60)} hours`;
-    }, [reports]);
+    }, [validReports]);
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Key Performance Indicators</h3>
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Authentic Incident Performance</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Real incident telemetry with false alarms filtered out to protect statistical accuracy</p>
+                    </div>
+                    {falseAlarms > 0 && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                            {falseAlarms} False Alarms Filtered ({falseAlarmRate}%)
+                        </span>
+                    )}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard title="Total Reports" value={totalReports.toString()} icon={<ZapIcon />} color="blue" />
+                    <StatCard title="Authentic Incidents" value={validReports.length.toString()} icon={<ZapIcon />} color="blue" />
                     <StatCard title="Vehicle Incidents" value={vehicleReports.toString()} icon={<CarIcon />} color="yellow" />
                     <StatCard title="Crime Incidents" value={crimeReportsCount.toString()} icon={<CrimeIcon />} color="red" />
                     <StatCard title="Emergency" value={emergencyReports.toString()} icon={<AlertTriangleIcon />} color="orange" />
@@ -307,16 +327,16 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
             </div>
 
             <div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Operational Success</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Verification & Operational Integrity</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard title="Arrests" value={combinedStats.arrests.toString()} icon={<CheckCircleIcon />} color="green" />
-                    <StatCard title="CIT Success" value={combinedStats.citSuccess.toString()} icon={<ChartBarIcon />} color="indigo" />
-                    <StatCard title="Guns Recovered" value={combinedStats.gunsRecovered.toString()} icon={<ZapIcon />} color="teal" />
+                    <StatCard title="Verified Reports" value={verifiedReports.toString()} icon={<ShieldCheck className="w-6 h-6 text-emerald-500" />} color="green" />
+                    <StatCard title="False Alarm Filter" value={`${falseAlarms} (${falseAlarmRate}%)`} icon={<ShieldAlert className="w-6 h-6 text-amber-500" />} color="yellow" />
+                    <StatCard title="Arrests" value={combinedStats.arrests.toString()} icon={<CheckCircleIcon />} color="teal" />
                     <StatCard title="Resolution Rate" value={`${resolutionRate}%`} icon={<ChartPieIcon />} color="purple" />
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700">
                     <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Avg. Resolution Time</p>
                     <p className="text-3xl font-black text-gray-900 dark:text-white mt-1">{avgResponseTime}</p>
@@ -327,6 +347,11 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
                     <p className="text-3xl font-black text-gray-900 dark:text-white mt-1">{pending}</p>
                     <p className="text-xs text-gray-400 mt-2">Active reports currently awaiting investigation.</p>
                 </div>
+                <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Total Ingested Log</p>
+                    <p className="text-3xl font-black text-gray-900 dark:text-white mt-1">{totalReports}</p>
+                    <p className="text-xs text-gray-400 mt-2">All intake logs including {falseAlarms} dismissed false alarms.</p>
+                </div>
             </div>
         </div>
     );
@@ -334,8 +359,10 @@ const SummaryReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
 
 const TrendsReport: React.FC<{ reports: Report[], theme: string }> = ({ reports, theme }) => {
     const data = useMemo(() => {
+        // Exclude false alarms from incident trends
+        const valid = reports.filter(r => r.status !== ReportStatus.FALSE_ALARM && (r.status as any) !== 'false_alarm');
         // Group by date
-        const grouped = reports.reduce((acc, report) => {
+        const grouped = valid.reduce((acc, report) => {
             if (!report.reported_at) return acc;
             try {
                 const date = safeFormat(report.reported_at, 'yyyy-MM-dd');
@@ -547,8 +574,12 @@ const TimeAnalysisReport: React.FC<{ reports: Report[], theme: string }> = ({ re
 };
 
 const HotspotsReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
+    const validReports = useMemo(() => {
+        return reports.filter(r => r.status !== ReportStatus.FALSE_ALARM && (r.status as any) !== 'false_alarm');
+    }, [reports]);
+
     const hotspots = useMemo(() => {
-        const stats = reports.reduce((acc, report) => {
+        const stats = validReports.reduce((acc, report) => {
             const location = (isVehicleReport(report) ? report.last_seen_location : report.location)?.trim();
             if (!location) return acc;
 
@@ -593,7 +624,7 @@ const HotspotsReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
         return (Object.values(stats) as any[])
             .sort((a, b) => b.count - a.count)
             .slice(0, 10);
-    }, [reports]);
+    }, [validReports]);
 
     const getRiskLevel = (item: typeof hotspots[0]) => {
         const score = (item.critical * 3) + (item.high * 2) + (item.medium * 1);
@@ -610,7 +641,7 @@ const HotspotsReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
             <div className="grid grid-cols-1 gap-4">
                 {hotspots.map((spot, index) => {
                     const risk = getRiskLevel(spot);
-                    const percentage = Math.round((spot.count / reports.length) * 100);
+                    const percentage = Math.round((spot.count / (validReports.length || 1)) * 100);
                     
                     return (
                         <div key={spot.location} className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4 transition-all hover:shadow-md">
@@ -674,7 +705,7 @@ const HotspotsReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
 };
 
 const CrimePerformanceReport: React.FC<{ reports: Report[] }> = ({ reports }) => {
-    const crimeReports = reports.filter(r => r.type === 'crime');
+    const crimeReports = reports.filter(r => r.type === 'crime' && r.status !== ReportStatus.FALSE_ALARM && (r.status as any) !== 'false_alarm');
     
     const stats = useMemo(() => {
         return crimeReports.reduce((acc, r: any) => {
@@ -740,7 +771,7 @@ const CrimePerformanceReport: React.FC<{ reports: Report[] }> = ({ reports }) =>
 };
 
 const VehicleAnalysisReport: React.FC<{ reports: Report[], theme: string }> = ({ reports, theme }) => {
-    const vehicleReports = reports.filter(r => r.type === 'vehicle') as VehicleReport[];
+    const vehicleReports = reports.filter(r => r.type === 'vehicle' && r.status !== ReportStatus.FALSE_ALARM && (r.status as any) !== 'false_alarm') as VehicleReport[];
     
     const makeStats = useMemo(() => {
         const stats = vehicleReports.reduce((acc, r) => {

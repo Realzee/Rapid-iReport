@@ -213,10 +213,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, companies 
                     onChange={(e) => setRole(e.target.value as UserRole)}
                     className={`${inputClasses} !pl-3`}
                 >
-                    <option value={UserRole.USER}>User</option>
-                    <option value={UserRole.GUARD}>Guard</option>
-                    <option value={UserRole.RESPONDER}>Responder</option>
-                    <option value={UserRole.RAS_DRIVER}>RASDriver (Roadside Assistance)</option>
+                    <option value={UserRole.USER}>Community Member / Resident</option>
+                    <option value={UserRole.GUARD}>Guard / Security Officer</option>
+                    <option value={UserRole.RESPONDER}>Armed Tactical Responder</option>
+                    <option value={UserRole.EMS_RESPONDER}>EMS Ambulance Responder</option>
+                    <option value={UserRole.RAS_DRIVER}>Roadside Assistance Driver</option>
                 </select>
               </div>
             </div>

@@ -11,12 +11,17 @@ interface AuthPageProps {
     onViewAbout: () => void;
     onViewPublicCrimeReport?: () => void;
     onViewBulletins?: () => void;
+    initialIsLogin?: boolean;
 }
 
-const AuthPage: React.FC<AuthPageProps> = ({ onViewAbout, onViewPublicCrimeReport, onViewBulletins }) => {
-    const [isLoginView, setIsLoginView] = useState(true);
+const AuthPage: React.FC<AuthPageProps> = ({ onViewAbout, onViewPublicCrimeReport, onViewBulletins, initialIsLogin = true }) => {
+    const [isLoginView, setIsLoginView] = useState(initialIsLogin);
     const [companies, setCompanies] = useState<Company[]>([]);
     const { mainLogoUrl, defaultLogoUrl } = useSettings();
+
+    useEffect(() => {
+        setIsLoginView(initialIsLogin);
+    }, [initialIsLogin]);
 
     useEffect(() => {
         const fetchCompanies = async () => {
@@ -62,10 +67,16 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewAbout, onViewPublicCrimeRepor
                    </h2>
                 </div>
 
-                {/* Public Incident & Crime Reporting CTA Banner */}
+                {/* Community Incident & Crime Reporting Banner with Mandatory Registration Notice */}
                 <div className="w-full max-w-md mb-6 animate-in fade-in slide-in-from-top-4 duration-300">
                     <button
-                        onClick={onViewPublicCrimeReport}
+                        onClick={() => {
+                            if (isLoginView) {
+                                setIsLoginView(false);
+                            } else {
+                                onViewPublicCrimeReport?.();
+                            }
+                        }}
                         className="w-full p-4 bg-gradient-to-r from-red-600 via-rose-600 to-indigo-600 hover:from-red-700 hover:to-indigo-700 text-white rounded-2xl shadow-xl shadow-red-600/20 hover:shadow-red-600/30 transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-between text-left group"
                     >
                         <div className="flex items-center gap-3.5">
@@ -73,18 +84,18 @@ const AuthPage: React.FC<AuthPageProps> = ({ onViewAbout, onViewPublicCrimeRepor
                                 🚨
                             </div>
                             <div>
-                                <span className="text-[10px] font-mono font-black uppercase tracking-widest bg-white/25 px-2 py-0.5 rounded-full">
-                                    PUBLIC ACCESS (NO LOGIN REQUIRED)
+                                <span className="text-[10px] font-mono font-black uppercase tracking-widest bg-white/25 px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                                    <span>🔒</span> REGISTRATION REQUIRED TO REPORT
                                 </span>
                                 <h3 className="text-base sm:text-lg font-black mt-1 leading-tight flex items-center gap-1.5">
                                     <span>Report a Crime or Incident</span>
                                 </h3>
                                 <p className="text-xs text-white/80 mt-0.5">
-                                    Hijackings, burglaries, suspicious activity, stolen vehicles & emergencies
+                                    Community members must register an account to eliminate false reporting & ensure immediate dispatch
                                 </p>
                             </div>
                         </div>
-                        <div className="text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all pl-2">
+                        <div className="text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all pl-2 shrink-0">
                             ➔
                         </div>
                     </button>

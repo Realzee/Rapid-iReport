@@ -45,7 +45,7 @@ const LiveEventItem: React.FC<{
 }> = ({ report, isSelected, isPanic, isUnviewed, onSelect, responderMap, reporterName, profile }) => {
     const title = report.type === 'vehicle' ? (report as any).license_plate : report.title;
     
-    const isRecoveredOrDeleted = report.status === 'recovered' || report.status === 'deleted' || report.status === 'resolved' || report.status === 'closed' || report.status === 'rejected';
+    const isRecoveredOrDeleted = report.status === 'recovered' || report.status === 'deleted' || report.status === 'resolved' || report.status === 'closed' || report.status === 'rejected' || report.status === 'false_alarm' || report.status === ReportStatus.FALSE_ALARM;
 
     // Report is considered opened if it is currently selected or has been viewed/opened
     const isOpened = isSelected || !isUnviewed;
@@ -72,6 +72,7 @@ const LiveEventItem: React.FC<{
     const hasImages = report.evidence_images && report.evidence_images.length > 0;
     const assignedResponderName = report.assigned_to ? responderMap.get(report.assigned_to) : null;
 
+    const isFalseAlarm = report.status === 'false_alarm' || report.status === ReportStatus.FALSE_ALARM;
     const isGreenStamp = report.status === 'recovered' || report.status === 'resolved' || report.status === ReportStatus.RECOVERED || report.status === ReportStatus.RESOLVED;
 
     return (
@@ -82,13 +83,17 @@ const LiveEventItem: React.FC<{
             {isRecoveredOrDeleted && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 select-none bg-black/5 dark:bg-black/10">
                     <div className={`border-4 border-double ${
-                        isGreenStamp 
-                            ? 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400 bg-emerald-50/95 dark:bg-emerald-950/95 shadow-emerald-500/10' 
-                            : 'border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400 bg-rose-50/95 dark:bg-rose-950/95 shadow-rose-500/10'
+                        isFalseAlarm
+                            ? 'border-amber-600 text-amber-600 dark:border-amber-400 dark:text-amber-400 bg-amber-50/95 dark:bg-amber-950/95 shadow-amber-500/10'
+                            : isGreenStamp 
+                                ? 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400 bg-emerald-50/95 dark:bg-emerald-950/95 shadow-emerald-500/10' 
+                                : 'border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400 bg-rose-50/95 dark:bg-rose-950/95 shadow-rose-500/10'
                         } font-black text-sm tracking-widest px-4 py-1.5 uppercase rounded-md transform -rotate-12 shadow-2xl ring-2 ring-offset-2 ${
-                        isGreenStamp 
-                            ? 'ring-emerald-500/20 dark:ring-emerald-400/20 ring-offset-emerald-50 dark:ring-offset-emerald-950' 
-                            : 'ring-rose-500/20 dark:ring-rose-400/20 ring-offset-rose-50 dark:ring-offset-rose-950'
+                        isFalseAlarm
+                            ? 'ring-amber-500/20 dark:ring-amber-400/20 ring-offset-amber-50 dark:ring-offset-amber-950'
+                            : isGreenStamp 
+                                ? 'ring-emerald-500/20 dark:ring-emerald-400/20 ring-offset-emerald-50 dark:ring-offset-emerald-950' 
+                                : 'ring-rose-500/20 dark:ring-rose-400/20 ring-offset-rose-50 dark:ring-offset-rose-950'
                         } font-mono`}
                     >
                         {report.status.replace(/_/g, ' ')}

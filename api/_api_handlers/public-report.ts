@@ -83,9 +83,32 @@ export default async function publicReportHandler(req: Request, res: Response) {
     }
   }
 
-  // POST: Submit a new public crime / incident report
+  // POST: Submit a new crime / incident report (Registration enforced)
   if (req.method === 'POST') {
     try {
+      // Enforce community member registration to prevent false reporting
+      const authHeader = req.headers.authorization;
+      let authenticatedUser: any = null;
+
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.replace('Bearer ', '').trim();
+        try {
+          const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+          authenticatedUser = user;
+        } catch {
+          // Token invalid
+        }
+      }
+
+      const bodyUserId = req.body.user_id || req.body.reporter_user_id;
+
+      if (!authenticatedUser && !bodyUserId) {
+        return res.status(401).json({
+          error: 'Registration Required',
+          message: 'Community members must be registered and authenticated before submitting incident reports to prevent false reporting.'
+        });
+      }
+
       const {
         crime_type,
         incident_category,

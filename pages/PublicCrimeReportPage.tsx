@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
-import { Company, LocationCoords, Announcement } from '../types';
+import { Company, Announcement } from '../types';
 import { useSettings } from '../contexts/SettingsContext';
 import { useToast } from '../contexts/ToastContext';
 import ThemeToggle from '../components/ThemeToggle';
@@ -9,91 +9,27 @@ import StatusBadge from '../components/StatusBadge';
 import AnnouncementsPanel from '../components/AnnouncementsPanel';
 import { 
   CrimeIcon, 
-  CarIcon, 
-  AlertTriangleIcon, 
-  MapPinIcon, 
-  CrosshairIcon, 
   CheckIcon, 
   SearchIcon, 
   LockIcon, 
   UserIcon, 
-  PhoneIcon, 
-  BuildingIcon, 
-  UploadCloudIcon, 
-  XIcon, 
-  ShareIcon,
   ZapIcon,
   ClockIcon
 } from '../components/icons';
-import { reverseGeocode } from '../components/LocationPicker';
-import { Camera, FileText, ArrowRight, ShieldAlert, ShieldCheck, CheckCircle2, ChevronRight, Eye, PhoneCall } from 'lucide-react';
-import { playLoudReportAlarm } from '../utils/notificationUtils';
+import { ArrowRight, ShieldCheck, PhoneCall } from 'lucide-react';
 
 interface PublicCrimeReportPageProps {
   onBackToLogin: () => void;
+  onGoToRegister?: () => void;
   initialTab?: 'report' | 'bulletins' | 'track';
 }
 
-const CRIME_CATEGORIES = [
-  { id: 'Hijacking / Carjacking', icon: '🚗', color: 'border-red-500 bg-red-500/10 text-red-600 dark:text-red-400', desc: 'Armed vehicle theft or carjacking' },
-  { id: 'Armed Robbery / Mugging', icon: '🦹', color: 'border-red-500 bg-red-500/10 text-red-600 dark:text-red-400', desc: 'Robbery involving weapons or physical threat' },
-  { id: 'House / Business Burglary', icon: '🏠', color: 'border-orange-500 bg-orange-500/10 text-orange-600 dark:text-orange-400', desc: 'Break-in, trespassing, or theft from property' },
-  { id: 'Stolen Vehicle / Plate Sighting', icon: '🚙', color: 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400', desc: 'Stolen vehicle, clone plate, or vehicle sighting' },
-  { id: 'Suspicious Activity / Persons', icon: '👁️', color: 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400', desc: 'Suspicious loitering, vehicle scoping, or scouting' },
-  { id: 'Theft / Shoplifting', icon: '📦', color: 'border-yellow-500 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400', desc: 'Petty theft, cable theft, or missing assets' },
-  { id: 'Assault / Violence', icon: '💥', color: 'border-purple-500 bg-purple-500/10 text-purple-600 dark:text-purple-400', desc: 'Physical altercation, GBH, or domestic violence' },
-  { id: 'Vandalism / Property Damage', icon: '⚠️', color: 'border-teal-500 bg-teal-500/10 text-teal-600 dark:text-teal-400', desc: 'Infrastructure damage, graffiti, or destruction' },
-  { id: 'Medical / Rescue Emergency', icon: '🆘', color: 'border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400', desc: 'Medical trauma, vehicle collision, or fire' },
-  { id: 'Other Community Incident', icon: '📝', color: 'border-gray-500 bg-gray-500/10 text-gray-700 dark:text-gray-300', desc: 'Other community safety concern or tip-off' },
-];
-
-export const PublicCrimeReportPage: React.FC<PublicCrimeReportPageProps> = ({ onBackToLogin, initialTab = 'report' }) => {
+export const PublicCrimeReportPage: React.FC<PublicCrimeReportPageProps> = ({ onBackToLogin, onGoToRegister, initialTab = 'report' }) => {
   const [activeTab, setActiveTab] = useState<'report' | 'bulletins' | 'track'>(initialTab);
   const { mainLogoUrl, defaultLogoUrl } = useSettings();
   const { addToast } = useToast();
 
-  // Form State
-  const [category, setCategory] = useState<string>('Suspicious Activity / Persons');
-  const [customTitle, setCustomTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [severity, setSeverity] = useState<'critical' | 'high' | 'medium' | 'low'>('high');
-  const [locationText, setLocationText] = useState('');
-  const [coords, setCoords] = useState<LocationCoords | null>(null);
-  const [isLocating, setIsLocating] = useState(false);
-  const [dateOfIncident, setDateOfIncident] = useState(() => new Date().toISOString().split('T')[0]);
-
-  // Suspects & Vehicles
-  const [hasSuspectDetails, setHasSuspectDetails] = useState(false);
-  const [suspectDetails, setSuspectDetails] = useState('');
-  const [vehicleInvolved, setVehicleInvolved] = useState(false);
-  const [licensePlate, setLicensePlate] = useState('');
-  const [vehicleMake, setVehicleMake] = useState('');
-  const [vehicleModel, setVehicleModel] = useState('');
-  const [vehicleColor, setVehicleColor] = useState('');
-
-  // Reporter Info & Confidentiality
-  const [isAnonymous, setIsAnonymous] = useState(true);
-  const [reporterName, setReporterName] = useState('');
-  const [reporterPhone, setReporterPhone] = useState('');
-  const [reporterEmail, setReporterEmail] = useState('');
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
-
-  // Evidence Photos
-  const [evidenceImages, setEvidenceImages] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Submission State
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submittedReport, setSubmittedReport] = useState<{
-    obNumber: string;
-    reportId: string;
-    reportedAt: string;
-    category: string;
-    location: string;
-  } | null>(null);
-
-  // Companies Directory & Announcements
-  const [companies, setCompanies] = useState<Company[]>([]);
+  // Announcements
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
 
@@ -102,25 +38,6 @@ export const PublicCrimeReportPage: React.FC<PublicCrimeReportPageProps> = ({ on
   const [isSearchingTrack, setIsSearchingTrack] = useState(false);
   const [trackedReport, setTrackedReport] = useState<any | null>(null);
   const [trackError, setTrackError] = useState<string | null>(null);
-
-  // Load Companies & Bulletins on Mount
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        if (supabase) {
-          const { data: compData } = await supabase
-            .from('companies')
-            .select('id, name, logo_url, alias')
-            .order('name')
-            .limit(100);
-          if (compData) setCompanies(compData);
-        }
-      } catch (e) {
-        console.warn('Error loading companies for public portal:', e);
-      }
-    };
-    loadInitialData();
-  }, []);
 
   const loadBulletins = async () => {
     setLoadingAnnouncements(true);
@@ -146,173 +63,6 @@ export const PublicCrimeReportPage: React.FC<PublicCrimeReportPageProps> = ({ on
       loadBulletins();
     }
   }, [activeTab]);
-
-  // GPS Auto-detect
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      addToast('Geolocation is not supported by your browser.', 'error');
-      return;
-    }
-
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const detectedCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setCoords(detectedCoords);
-        try {
-          const address = await reverseGeocode(detectedCoords);
-          setLocationText(address);
-          addToast('Location pinned successfully!', 'success');
-        } catch {
-          setLocationText(`${detectedCoords.lat.toFixed(5)}, ${detectedCoords.lng.toFixed(5)}`);
-        } finally {
-          setIsLocating(false);
-        }
-      },
-      (err) => {
-        setIsLocating(false);
-        console.warn('Geolocation error:', err);
-        addToast('Unable to detect GPS position. Please type the address or area manually.', 'warning');
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
-
-  // Image Upload Handler (Converts to Base64)
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    if (evidenceImages.length + files.length > 5) {
-      addToast('You can attach up to 5 photos per incident report.', 'warning');
-      return;
-    }
-
-    Array.from(files).forEach((file: File) => {
-      if (!file.type.startsWith('image/')) {
-        addToast(`File ${file.name} is not a valid image.`, 'error');
-        return;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        addToast(`Image ${file.name} exceeds the 10MB limit.`, 'error');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setEvidenceImages((prev) => [...prev, reader.result as string]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-
-    e.target.value = '';
-  };
-
-  const handleRemoveImage = (index: number) => {
-    setEvidenceImages((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // Submit Incident Report
-  const handleSubmitReport = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!description.trim()) {
-      addToast('Please provide an incident description or details.', 'warning');
-      return;
-    }
-    if (!locationText.trim()) {
-      addToast('Please specify the location or tap "Use My GPS".', 'warning');
-      return;
-    }
-    if (!isAnonymous && !reporterPhone.trim() && !reporterEmail.trim()) {
-      addToast('Please provide a phone number or email for non-anonymous submissions.', 'warning');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const payload = {
-        crime_type: category,
-        title: customTitle.trim() || `${category} - ${locationText.split(',')[0]}`,
-        description: description.trim(),
-        severity,
-        location: locationText.trim(),
-        location_coords: coords,
-        date_of_incident: dateOfIncident,
-        evidence_images: evidenceImages,
-        vehicle_involved: vehicleInvolved,
-        license_plate: vehicleInvolved ? licensePlate.trim().toUpperCase() : undefined,
-        vehicle_make: vehicleInvolved ? vehicleMake.trim() : undefined,
-        vehicle_model: vehicleInvolved ? vehicleModel.trim() : undefined,
-        vehicle_color: vehicleInvolved ? vehicleColor.trim() : undefined,
-        suspect_details: hasSuspectDetails ? suspectDetails.trim() : undefined,
-        reporter_type: isAnonymous ? 'anonymous' : 'named',
-        reporter_name: isAnonymous ? undefined : reporterName.trim(),
-        reporter_phone: isAnonymous ? undefined : reporterPhone.trim(),
-        reporter_email: isAnonymous ? undefined : reporterEmail.trim(),
-        company_id: selectedCompanyId || undefined,
-      };
-
-      const res = await fetch('/api/public-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || data.message || 'Failed to submit report');
-      }
-
-      setSubmittedReport({
-        obNumber: data.ob_number,
-        reportId: data.report_id,
-        reportedAt: data.reported_at || new Date().toISOString(),
-        category,
-        location: locationText,
-      });
-
-      // Sound loud confirmation alarm for filed report
-      playLoudReportAlarm({
-        id: data.report_id,
-        ob_number: data.ob_number,
-        title: customTitle.trim() || `${category} - ${locationText.split(',')[0]}`,
-        type: 'crime',
-        category: category,
-        location: locationText,
-        severity: severity,
-      });
-
-      addToast('Incident report logged successfully to the emergency response grid!', 'success');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err: any) {
-      console.error('Submission error:', err);
-      addToast(err.message || 'Error transmitting report. Please try again or call 10111.', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Reset form to submit another report
-  const handleResetForm = () => {
-    setSubmittedReport(null);
-    setDescription('');
-    setCustomTitle('');
-    setSuspectDetails('');
-    setHasSuspectDetails(false);
-    setVehicleInvolved(false);
-    setLicensePlate('');
-    setVehicleMake('');
-    setVehicleModel('');
-    setVehicleColor('');
-    setEvidenceImages([]);
-    setLocationText('');
-    setCoords(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
   // Track Report Search Handler
   const handleTrackSearch = async (e?: React.FormEvent) => {
@@ -407,7 +157,7 @@ export const PublicCrimeReportPage: React.FC<PublicCrimeReportPageProps> = ({ on
         {/* Tab Selector Bar */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 sm:space-x-4 border-t border-gray-100 dark:border-gray-850 pt-2 pb-2 overflow-x-auto custom-scrollbar">
           <button
-            onClick={() => { setActiveTab('report'); setSubmittedReport(null); }}
+            onClick={() => setActiveTab('report')}
             className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'report'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
@@ -447,541 +197,111 @@ export const PublicCrimeReportPage: React.FC<PublicCrimeReportPageProps> = ({ on
       {/* Main Content Area */}
       <main className="flex-grow max-w-4xl w-full mx-auto p-4 sm:p-6 md:p-8 z-10">
 
-        {/* ----------------- VIEW 1: REPORT A CRIME FORM / SUCCESS ----------------- */}
+        {/* ----------------- VIEW 1: MANDATORY COMMUNITY REGISTRATION REQUIREMENT ----------------- */}
         {activeTab === 'report' && (
-          <div>
-            {submittedReport ? (
-              /* SUCCESS STATE CARD */
-              <div className="bg-white dark:bg-gray-900 border border-emerald-500/30 dark:border-emerald-500/20 rounded-3xl p-6 sm:p-10 shadow-2xl text-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
-                <div className="w-20 h-20 bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                  <CheckCircle2 className="w-10 h-10 animate-pulse" />
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden">
+              {/* Top ambient color bar */}
+              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-red-600 via-blue-600 to-indigo-600" />
+              
+              <div className="text-center max-w-2xl mx-auto space-y-5">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 text-blue-600 dark:text-cyan-400 rounded-3xl flex items-center justify-center mx-auto shadow-inner">
+                  <ShieldCheck className="w-10 h-10 animate-pulse" />
                 </div>
 
                 <div>
-                  <span className="px-3 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 font-bold text-xs rounded-full uppercase tracking-wider">
-                    Incident Dispatched & Logged
+                  <span className="px-3.5 py-1.5 bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 font-mono font-black text-[11px] rounded-full uppercase tracking-wider border border-red-200 dark:border-red-900 inline-flex items-center gap-1.5">
+                    <span>🔒</span> MANDATORY COMMUNITY REGISTRATION REQUIRED
                   </span>
-                  <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mt-3">
-                    Report Received Successfully
+                  <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mt-3 tracking-tight">
+                    Register Before Submitting Incident Reports
                   </h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto mt-2">
-                    Your report has been logged in the central emergency dispatch grid and circulated to active response units in your area.
+                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">
+                    To eliminate false reporting, protect community safety, and ensure emergency response units are dispatched immediately with verified details, all community members and residents must create an account before reporting.
                   </p>
                 </div>
 
-                {/* OB Reference Box */}
-                <div className="bg-slate-50 dark:bg-slate-950 border-2 border-blue-500/40 rounded-2xl p-6 max-w-md mx-auto shadow-sm">
-                  <p className="text-xs font-mono uppercase tracking-widest text-gray-400">Official OB Reference Number</p>
-                  <p className="text-2xl sm:text-3xl font-mono font-black text-blue-600 dark:text-cyan-400 mt-1 select-all tracking-wider">
-                    {submittedReport.obNumber}
-                  </p>
-                  <p className="text-[11px] text-gray-400 mt-2">
-                    Please save this reference number. You can provide it to police, insurance, or use it on this portal to track progress.
-                  </p>
-                </div>
-
-                {/* Incident Summary Review */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-md mx-auto text-xs bg-gray-50 dark:bg-gray-800/40 p-4 rounded-xl border border-gray-200 dark:border-gray-800">
-                  <div>
-                    <span className="text-gray-400">Category:</span>
-                    <p className="font-bold text-gray-900 dark:text-white">{submittedReport.category}</p>
+                {/* 3 Core Security & Response Pillars */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-left pt-2">
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80">
+                    <div className="w-8 h-8 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center font-bold text-base mb-2.5">
+                      🛡️
+                    </div>
+                    <h3 className="font-bold text-xs uppercase tracking-wider text-gray-900 dark:text-white">
+                      Anti-Hoax Protection
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-normal">
+                      Verified member profiles prevent fake or prank alarms, ensuring priority response from armed patrol and emergency units.
+                    </p>
                   </div>
-                  <div>
-                    <span className="text-gray-400">Location:</span>
-                    <p className="font-bold text-gray-900 dark:text-white truncate">{submittedReport.location}</p>
+
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80">
+                    <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-base mb-2.5">
+                      ⚡
+                    </div>
+                    <h3 className="font-bold text-xs uppercase tracking-wider text-gray-900 dark:text-white">
+                      Live Telemetry & GPS
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-normal">
+                      Receive real-time tactical dispatch telemetry, officer ETA updates, and direct encrypted chat with control room dispatchers.
+                    </p>
                   </div>
-                </div>
 
-                {/* Actions */}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(submittedReport.obNumber);
-                      addToast('Reference number copied to clipboard!', 'success');
-                    }}
-                    className="w-full sm:w-auto px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl font-bold text-sm transition-all"
-                  >
-                    📋 Copy Reference Code
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setTrackQuery(submittedReport.obNumber);
-                      setActiveTab('track');
-                      handleTrackSearch();
-                    }}
-                    className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
-                  >
-                    <span>Track Status Live</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    onClick={handleResetForm}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold"
-                  >
-                    + File Another Incident Report
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* REPORTING FORM */
-              <form onSubmit={handleSubmitReport} className="space-y-8">
-                {/* Intro Hero Banner */}
-                <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-                  <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none translate-x-10 translate-y-10">
-                    <ShieldAlert className="w-64 h-64" />
-                  </div>
-                  <div className="max-w-xl relative z-10">
-                    <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-mono font-bold uppercase tracking-wider">
-                      Public Incident Hotline
-                    </span>
-                    <h2 className="text-2xl sm:text-3xl font-black mt-2 tracking-tight">
-                      Report a Crime or Incident
-                    </h2>
-                    <p className="text-sm text-blue-100 mt-2 leading-relaxed">
-                      Submit suspicious activity, theft, break-ins, or vehicle sightings in seconds. Reports are immediately relayed to active security patrols and control room dispatchers.
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-base mb-2.5">
+                      📑
+                    </div>
+                    <h3 className="font-bold text-xs uppercase tracking-wider text-gray-900 dark:text-white">
+                      Official OB Logbook
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-normal">
+                      Automated official OB reference numbers, digital photo evidence vault, and instant PDF extracts for insurance or SAPS.
                     </p>
                   </div>
                 </div>
 
-                {/* STEP 1: Select Incident Category */}
-                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-4">
-                    <div>
-                      <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-mono">1</span>
-                        Incident Category
-                      </h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Select what best describes the situation</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {CRIME_CATEGORIES.map((cat) => {
-                      const isSelected = category === cat.id;
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => {
-                            setCategory(cat.id);
-                            if (cat.id.includes('Vehicle') || cat.id.includes('Carjacking') || cat.id.includes('Hijacking')) {
-                              setVehicleInvolved(true);
-                            }
-                          }}
-                          className={`p-3.5 rounded-2xl border text-left transition-all flex items-start gap-3.5 ${
-                            isSelected
-                              ? 'border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 ring-2 ring-blue-500/20 shadow-sm'
-                              : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 bg-white dark:bg-gray-950/40'
-                          }`}
-                        >
-                          <span className="text-2xl shrink-0 p-2 rounded-xl bg-gray-100 dark:bg-gray-800">
-                            {cat.icon}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="font-bold text-sm text-gray-900 dark:text-white leading-snug">{cat.id}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-tight">{cat.desc}</p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Urgency / Severity Selection */}
-                  <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 mb-2">
-                      Urgency Level
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {[
-                        { id: 'critical', label: '🚨 Critical (In Progress)', desc: 'Active threat right now' },
-                        { id: 'high', label: '⚡ Urgent / Recent', desc: 'Happened within 30 min' },
-                        { id: 'medium', label: '⚠️ Standard Incident', desc: 'Happened today / earlier' },
-                        { id: 'low', label: '📝 Tip-off / Past', desc: 'Information / Past log' },
-                      ].map((lvl) => (
-                        <button
-                          key={lvl.id}
-                          type="button"
-                          onClick={() => setSeverity(lvl.id as any)}
-                          className={`p-2.5 rounded-xl border text-left transition-all ${
-                            severity === lvl.id
-                              ? 'border-red-500 bg-red-50 dark:bg-red-950/40 font-bold text-red-600 dark:text-red-400 ring-1 ring-red-500'
-                              : 'border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                          }`}
-                        >
-                          <p className="text-xs font-bold">{lvl.label}</p>
-                          <p className="text-[10px] opacity-75 mt-0.5">{lvl.desc}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* STEP 2: Location & GPS */}
-                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-4">
-                    <div>
-                      <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-mono">2</span>
-                        Location of Incident
-                      </h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Where did this occur?</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleDetectLocation}
-                      disabled={isLocating}
-                      className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-cyan-400 border border-blue-500/30 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all disabled:opacity-50"
-                    >
-                      {isLocating ? <LoadingSpinner size="xs" variant="themed" /> : <CrosshairIcon className="w-4 h-4" />}
-                      <span>{isLocating ? 'Detecting GPS...' : '📍 Use My Current GPS'}</span>
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 mb-1">
-                        Street Address, Suburb or Landmark *
-                      </label>
-                      <div className="relative">
-                        <MapPinIcon className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="text"
-                          required
-                          value={locationText}
-                          onChange={(e) => setLocationText(e.target.value)}
-                          placeholder="e.g. 45 Main Rd, Bryanston, Sandton or Cnr 5th Ave & 2nd St"
-                          className="w-full pl-11 pr-4 py-3 bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 mb-1">
-                          Date of Incident
-                        </label>
-                        <input
-                          type="date"
-                          value={dateOfIncident}
-                          onChange={(e) => setDateOfIncident(e.target.value)}
-                          className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 mb-1">
-                          Preferred Security Responder Grid (Optional)
-                        </label>
-                        <select
-                          value={selectedCompanyId}
-                          onChange={(e) => setSelectedCompanyId(e.target.value)}
-                          className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        >
-                          <option value="">General Emergency Dispatch (All Responders)</option>
-                          {companies.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* STEP 3: Incident Details & Suspect Info */}
-                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-5">
-                  <div className="border-b border-gray-100 dark:border-gray-800 pb-4">
-                    <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-mono">3</span>
-                      Incident Details & Narrative
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Describe what occurred with as much detail as possible</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 mb-1">
-                      Incident Summary / Title (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={customTitle}
-                      onChange={(e) => setCustomTitle(e.target.value)}
-                      placeholder="e.g. 2 suspects attempted gate break-in with crowbars"
-                      className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 mb-1">
-                      Detailed Narrative / What Happened *
-                    </label>
-                    <textarea
-                      required
-                      rows={4}
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Please explain the sequence of events, what was stolen or attempted, weapons seen, direction of flight, etc."
-                      className="w-full p-4 bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 leading-relaxed font-sans"
-                    />
-                  </div>
-
-                  {/* Toggle: Suspect Descriptions */}
-                  <div className="p-4 bg-gray-50 dark:bg-gray-950/60 rounded-2xl border border-gray-200 dark:border-gray-800 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={hasSuspectDetails}
-                          onChange={(e) => setHasSuspectDetails(e.target.checked)}
-                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
-                        />
-                        <span>Add Suspect Descriptions (Clothing, Physical traits, Weapons)</span>
-                      </label>
-                    </div>
-
-                    {hasSuspectDetails && (
-                      <textarea
-                        rows={2}
-                        value={suspectDetails}
-                        onChange={(e) => setSuspectDetails(e.target.value)}
-                        placeholder="e.g. 2 males, one in black hoodie and blue jeans with silver handgun, fled on foot toward Main Road."
-                        className="w-full p-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                      />
-                    )}
-                  </div>
-
-                  {/* Toggle: Vehicle Involved */}
-                  <div className="p-4 bg-gray-50 dark:bg-gray-950/60 rounded-2xl border border-gray-200 dark:border-gray-800 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={vehicleInvolved}
-                          onChange={(e) => setVehicleInvolved(e.target.checked)}
-                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
-                        />
-                        <span>Vehicle Involved / Suspect Getaway Vehicle</span>
-                      </label>
-                    </div>
-
-                    {vehicleInvolved && (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-500 mb-1">Registration Plate</label>
-                          <input
-                            type="text"
-                            value={licensePlate}
-                            onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
-                            placeholder="e.g. CA 123-456"
-                            className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-xs font-mono font-bold"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-500 mb-1">Make</label>
-                          <input
-                            type="text"
-                            value={vehicleMake}
-                            onChange={(e) => setVehicleMake(e.target.value)}
-                            placeholder="e.g. Toyota"
-                            className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-500 mb-1">Model</label>
-                          <input
-                            type="text"
-                            value={vehicleModel}
-                            onChange={(e) => setVehicleModel(e.target.value)}
-                            placeholder="e.g. Hilux / Polo"
-                            className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-500 mb-1">Color</label>
-                          <input
-                            type="text"
-                            value={vehicleColor}
-                            onChange={(e) => setVehicleColor(e.target.value)}
-                            placeholder="e.g. White / Silver"
-                            className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-xs"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* STEP 4: Photo / Evidence Uploads */}
-                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-4">
-                    <div>
-                      <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-mono">4</span>
-                        Photo & Evidence Attachments
-                      </h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Upload photos of suspect, vehicle, damage, or CCTV screenshots (Optional)</p>
-                    </div>
-                  </div>
-
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                  />
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {evidenceImages.map((img, idx) => (
-                      <div key={idx} className="relative group rounded-2xl overflow-hidden aspect-video border border-gray-200 dark:border-gray-700 shadow-sm bg-black">
-                        <img src={img} alt={`Evidence ${idx + 1}`} className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveImage(idx)}
-                          className="absolute top-1.5 right-1.5 p-1 bg-red-600 text-white rounded-full opacity-90 hover:opacity-100 transition-opacity"
-                        >
-                          <XIcon className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-
-                    {evidenceImages.length < 5 && (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 rounded-2xl flex flex-col items-center justify-center p-4 aspect-video bg-gray-50/50 dark:bg-gray-950/50 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-all cursor-pointer"
-                      >
-                        <Camera className="w-6 h-6 mb-1" />
-                        <span className="text-xs font-bold">+ Add Photo</span>
-                        <span className="text-[10px] text-gray-400">Max 5 photos</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* STEP 5: Confidentiality & Reporter Info */}
-                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
-                  <div className="border-b border-gray-100 dark:border-gray-800 pb-4">
-                    <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-mono">5</span>
-                      Reporter Contact & Confidentiality
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">You may submit completely anonymously for your protection</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsAnonymous(true)}
-                      className={`p-4 rounded-2xl border text-left flex items-start gap-3 transition-all ${
-                        isAnonymous
-                          ? 'border-blue-600 bg-blue-50/60 dark:bg-blue-950/40 ring-1 ring-blue-500'
-                          : 'border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800'
-                      }`}
-                    >
-                      <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                        <LockIcon className="w-5 h-5" />
-                      </span>
-                      <div>
-                        <p className="font-bold text-sm text-gray-900 dark:text-white">Report Anonymously</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-tight">
-                          100% confidential tip-off. No personal contact details required.
-                        </p>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setIsAnonymous(false)}
-                      className={`p-4 rounded-2xl border text-left flex items-start gap-3 transition-all ${
-                        !isAnonymous
-                          ? 'border-blue-600 bg-blue-50/60 dark:bg-blue-950/40 ring-1 ring-blue-500'
-                          : 'border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800'
-                      }`}
-                    >
-                      <span className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                        <UserIcon className="w-5 h-5" />
-                      </span>
-                      <div>
-                        <p className="font-bold text-sm text-gray-900 dark:text-white">Provide Contact Info</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-tight">
-                          Allow security dispatchers or investigators to call/SMS you for follow-up.
-                        </p>
-                      </div>
-                    </button>
-                  </div>
-
-                  {!isAnonymous && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Your Full Name</label>
-                        <input
-                          type="text"
-                          required={!isAnonymous}
-                          value={reporterName}
-                          onChange={(e) => setReporterName(e.target.value)}
-                          placeholder="e.g. Sarah Jenkins"
-                          className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Phone Number *</label>
-                        <input
-                          type="tel"
-                          required={!isAnonymous}
-                          value={reporterPhone}
-                          onChange={(e) => setReporterPhone(e.target.value)}
-                          placeholder="e.g. 082 123 4567"
-                          className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Email (Optional)</label>
-                        <input
-                          type="email"
-                          value={reporterEmail}
-                          onChange={(e) => setReporterEmail(e.target.value)}
-                          placeholder="e.g. sarah@example.com"
-                          className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Submit Action Bar */}
-                <div className="pt-2">
+                {/* Action Buttons */}
+                <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-4 px-6 bg-gradient-to-r from-red-600 via-rose-600 to-blue-600 hover:from-red-700 hover:to-blue-700 text-white font-black text-base rounded-2xl shadow-xl shadow-red-600/20 hover:shadow-red-600/30 transition-all duration-200 flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-wait"
+                    type="button"
+                    onClick={onGoToRegister || onBackToLogin}
+                    className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-sm sm:text-base rounded-2xl shadow-xl shadow-blue-600/25 transition-all flex items-center justify-center gap-2.5 transform hover:-translate-y-0.5 active:translate-y-0"
                   >
-                    {isSubmitting ? (
-                      <>
-                        <LoadingSpinner size="sm" variant="white" />
-                        <span>Transmitting Report to Security Network...</span>
-                      </>
-                    ) : (
-                      <>
-                        <ShieldAlert className="w-5 h-5" />
-                        <span>Submit Incident Report to Emergency Grid</span>
-                        <ArrowRight className="w-5 h-5" />
-                      </>
-                    )}
+                    <UserIcon className="w-5 h-5" />
+                    <span>Create Community Account</span>
+                    <ArrowRight className="w-5 h-5" />
                   </button>
 
-                  <p className="text-center text-[11px] text-gray-500 dark:text-gray-400 mt-3 font-mono">
-                    🔒 All submissions are encrypted and instantly forwarded to registered control rooms and emergency responders.
-                  </p>
+                  <button
+                    type="button"
+                    onClick={onBackToLogin}
+                    className="w-full sm:w-auto px-6 py-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-sm rounded-2xl transition-all flex items-center justify-center gap-2 border border-gray-300/60 dark:border-gray-700"
+                  >
+                    <LockIcon className="w-4 h-4" />
+                    <span>Sign In to Existing Account</span>
+                  </button>
                 </div>
-              </form>
-            )}
+
+                {/* Additional navigation shortcuts */}
+                <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('track')}
+                    className="hover:text-blue-600 dark:hover:text-blue-400 font-semibold transition-colors flex items-center gap-1"
+                  >
+                    🔍 Track an Existing Case by OB Number
+                  </button>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('bulletins')}
+                    className="hover:text-blue-600 dark:hover:text-blue-400 font-semibold transition-colors flex items-center gap-1"
+                  >
+                    📢 Read Community Safety Bulletins
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1059,7 +379,6 @@ export const PublicCrimeReportPage: React.FC<PublicCrimeReportPageProps> = ({ on
                         { step: 4, title: '4. Resolved & Concluded' },
                       ].map((s) => {
                         const isDone = trackedReport.status_info.stage >= s.step;
-                        const isCurrent = trackedReport.status_info.stage === s.step;
                         return (
                           <div
                             key={s.step}

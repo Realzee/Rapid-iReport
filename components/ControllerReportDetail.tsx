@@ -16,10 +16,11 @@ import { generateAndShareBolo } from '../utils/boloUtils';
 import { logUserAction } from '../utils/logger';
 import { LocationPicker } from './LocationPicker';
 import { getRecoveryInsights, RecoveryInsight } from '../utils/aiService';
-import { BrainIcon, MapPinIcon as LuMapPinIcon, HistoryIcon, FileText } from 'lucide-react';
+import { BrainIcon, MapPinIcon as LuMapPinIcon, HistoryIcon, FileText, ShieldCheck, ShieldAlert } from 'lucide-react';
 import IncidentTimeline from './IncidentTimeline';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import { getCartoTileUrl, CARTO_ATTRIBUTION } from '../utils/mapTileUtils';
+import VerifyReportModal from './VerifyReportModal';
 
 const DetailField: React.FC<{ label: string, children: React.ReactNode, className?: string }> = ({ label, children, className }) => (
     <div className={className}>
@@ -83,6 +84,7 @@ const ControllerReportDetail: React.FC<{
     const [recoveredAt, setRecoveredAt] = useState<string>((report as any).recovered_at || new Date().toISOString().slice(0, 16));
     const [aiInsights, setAiInsights] = useState<RecoveryInsight[] | null>(null);
     const [isLoadingInsights, setIsLoadingInsights] = useState(false);
+    const [verifyModalOpen, setVerifyModalOpen] = useState(false);
     const { addToast } = useToast();
     const { openChat } = useChat();
     const { mainLogoUrl } = useSettings();
@@ -903,11 +905,23 @@ const ControllerReportDetail: React.FC<{
             <div className="flex-shrink-0">
                 <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <ReportTypeBadge type={report.type as any} className="p-1.5" />
                             <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate flex-1 min-w-0 pr-2">{report.type === 'vehicle' ? (report as any).license_plate : report.title}</h3>
                             {report.is_global && (
                                 <GlobeIcon className="w-5 h-5 text-blue-500 flex-shrink-0" title="Global Report" />
+                            )}
+                            {report.status === ReportStatus.VERIFIED && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 shadow-sm flex-shrink-0">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                    <span>Verified</span>
+                                </span>
+                            )}
+                            {report.status === ReportStatus.FALSE_ALARM && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-sm flex-shrink-0">
+                                    <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                                    <span>False Alarm</span>
+                                </span>
                             )}
                         </div>
                         <p className="font-mono text-sm text-gray-500 dark:text-gray-400">
@@ -1320,6 +1334,37 @@ const ControllerReportDetail: React.FC<{
                     <button onClick={() => setAssignmentModalOpen(true)} disabled={!canManageReport || isTerminalStatus || (report as any).is_legacy || report.id.startsWith('legacy-')} className="w-full py-2 px-4 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 transition disabled:opacity-50 disabled:cursor-not-allowed">Manage Status</button>
                 </div>
                 
+                {/* Admin / Controller 'Verify Report' Action Button */}
+                {canManageReport && (
+                    <button 
+                        onClick={() => setVerifyModalOpen(true)} 
+                        className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 font-bold rounded-lg shadow-sm hover:shadow transition-all text-sm ${
+                            report.status === ReportStatus.VERIFIED
+                                ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                                : report.status === ReportStatus.FALSE_ALARM
+                                    ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+                                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-600/20'
+                        }`}
+                    >
+                        {report.status === ReportStatus.VERIFIED ? (
+                            <>
+                                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                <span>Verified Incident (Re-verify / Modify)</span>
+                            </>
+                        ) : report.status === ReportStatus.FALSE_ALARM ? (
+                            <>
+                                <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                                <span>False Alarm Recorded (Review / Change)</span>
+                            </>
+                        ) : (
+                            <>
+                                <ShieldCheck className="w-4 h-4" />
+                                <span>Verify Report (Mark Verified / False Alarm)</span>
+                            </>
+                        )}
+                    </button>
+                )}
+
                 {/* Incident Information Report Preview & Print Action */}
                 <button 
                     onClick={() => setIncidentReportModalOpen(true)} 
@@ -1499,6 +1544,15 @@ const ControllerReportDetail: React.FC<{
                 timelineEvents={timelineEvents}
                 reporterName={reporter ? `${reporter.first_name} ${reporter.surname}` : (report.ob_number?.startsWith('PUB') || !report.reported_by ? 'Public Community Tip' : 'Unknown')}
                 company={profile.company}
+            />
+            <VerifyReportModal
+                isOpen={verifyModalOpen}
+                onClose={() => setVerifyModalOpen(false)}
+                report={report}
+                profile={profile}
+                onSuccess={() => {
+                    if (onRefresh) onRefresh();
+                }}
             />
         </div>
         </>

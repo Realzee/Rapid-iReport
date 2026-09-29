@@ -141,6 +141,7 @@ const App: React.FC = () => {
       return false;
     }
   });
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [publicPortalTab, setPublicPortalTab] = useState<'report' | 'bulletins' | 'track'>('report');
   const [showAboutPage, setShowAboutPage] = useState(false);
 
@@ -704,9 +705,16 @@ const App: React.FC = () => {
   if (!session) {
       if (showPublicCrimeReport) {
         return (
-            <Suspense fallback={renderLoadingFallback("PUBLIC INCIDENT PORTAL")}>
+            <Suspense fallback={renderLoadingFallback("COMMUNITY INCIDENT DESK")}>
                 <PublicCrimeReportPage
-                    onBackToLogin={() => setShowPublicCrimeReport(false)}
+                    onBackToLogin={() => {
+                        setShowPublicCrimeReport(false);
+                        setAuthMode('login');
+                    }}
+                    onGoToRegister={() => {
+                        setShowPublicCrimeReport(false);
+                        setAuthMode('register');
+                    }}
                     initialTab={publicPortalTab}
                 />
             </Suspense>
@@ -730,6 +738,7 @@ const App: React.FC = () => {
           <Suspense fallback={renderLoadingFallback()}>
               <AuthPage
                   onViewAbout={() => setShowAboutPage(true)}
+                  initialIsLogin={authMode === 'login'}
                   onViewPublicCrimeReport={() => {
                       setPublicPortalTab('report');
                       setShowPublicCrimeReport(true);

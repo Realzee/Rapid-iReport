@@ -63,6 +63,18 @@ const statusStyles: Record<ReportStatus, {
     glow: 'rgba(244, 63, 94, 0.45)',
     iconType: 'alert',
   },
+  [ReportStatus.VERIFIED]: {
+    container: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/50 dark:border-emerald-500/60 font-black shadow-sm shadow-emerald-500/20 ring-1 ring-emerald-500/30',
+    dot: 'bg-emerald-500 dark:bg-emerald-400 shadow-emerald-500/60',
+    glow: 'rgba(16, 185, 129, 0.6)',
+    iconType: 'check',
+  },
+  [ReportStatus.FALSE_ALARM]: {
+    container: 'bg-amber-600/20 text-amber-800 dark:text-amber-200 border-amber-500/50 dark:border-amber-500/60 font-black shadow-sm shadow-amber-500/20 ring-1 ring-amber-500/30',
+    dot: 'bg-amber-500 dark:bg-amber-400 shadow-amber-500/60',
+    glow: 'rgba(217, 119, 6, 0.6)',
+    iconType: 'alert',
+  },
   [ReportStatus.CLOSED]: {
     container: 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-400/30 dark:border-slate-600/40',
     dot: 'bg-slate-500 shadow-slate-500/30',

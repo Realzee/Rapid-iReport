@@ -14,8 +14,9 @@ import { generateAndShareBolo } from '../utils/boloUtils';
 import ImagePreviewModal from './ImagePreviewModal';
 import IncidentReportPreviewModal from './IncidentReportPreviewModal';
 import IncidentTimeline from './IncidentTimeline';
-import { FileText, Printer } from 'lucide-react';
+import { FileText, Printer, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { LoadingSpinner } from './LoadingSpinner';
+import VerifyReportModal from './VerifyReportModal';
 
 interface ReportDetailCardProps {
     report: Report;
@@ -34,6 +35,7 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
     const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
     const [incidentReportModalOpen, setIncidentReportModalOpen] = useState(false);
+    const [verifyModalOpen, setVerifyModalOpen] = useState(false);
     const { addToast } = useToast();
     const { openChat } = useChat();
     const { mainLogoUrl } = useSettings();
@@ -1395,6 +1397,37 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
 
 
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex-shrink-0 space-y-3">
+                {/* Admin / Controller 'Verify Report' Action Button */}
+                {canManageReport && (
+                    <button 
+                        onClick={() => setVerifyModalOpen(true)} 
+                        className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 font-bold rounded-lg shadow-sm hover:shadow transition-all text-sm ${
+                            localReport.status === ReportStatus.VERIFIED
+                                ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                                : localReport.status === ReportStatus.FALSE_ALARM
+                                    ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+                                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-600/20'
+                        }`}
+                    >
+                        {localReport.status === ReportStatus.VERIFIED ? (
+                            <>
+                                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                <span>Verified Incident (Re-verify / Modify)</span>
+                            </>
+                        ) : localReport.status === ReportStatus.FALSE_ALARM ? (
+                            <>
+                                <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                                <span>False Alarm Recorded (Review / Change)</span>
+                            </>
+                        ) : (
+                            <>
+                                <ShieldCheck className="w-4 h-4" />
+                                <span>Verify Report (Mark Verified / False Alarm)</span>
+                            </>
+                        )}
+                    </button>
+                )}
+
                 {/* Incident Information Report Preview & Print Action */}
                 <button 
                     onClick={() => setIncidentReportModalOpen(true)} 
@@ -1438,6 +1471,17 @@ const ReportDetailCard: React.FC<ReportDetailCardProps> = ({ report, onClose, pr
                 report={localReport}
                 reporterName={reporter ? `${reporter.first_name} ${reporter.surname}` : 'Unknown'}
                 company={profile.company}
+            />
+            <VerifyReportModal
+                isOpen={verifyModalOpen}
+                onClose={() => setVerifyModalOpen(false)}
+                report={localReport}
+                profile={profile}
+                onSuccess={(updatedFields) => {
+                    if (updatedFields) {
+                        setLocalReport(prev => ({ ...prev, ...updatedFields }));
+                    }
+                }}
             />
         </div>
     );

@@ -36,6 +36,8 @@ export enum ReportStatus {
   SOUGHT = 'sought',
   HIJACKED = 'hijacked',
   USED_IN_COMMISSION_OF_CRIME = 'used_in_commission_of_crime',
+  VERIFIED = 'verified',
+  FALSE_ALARM = 'false_alarm',
 }
 
 export const TERMINAL_REPORT_STATUSES = [
@@ -44,6 +46,7 @@ export const TERMINAL_REPORT_STATUSES = [
   ReportStatus.REJECTED,
   ReportStatus.RECOVERED,
   ReportStatus.DELETED,
+  ReportStatus.FALSE_ALARM,
 ];
 
 export const ACTIVE_REPORT_STATUSES = [
@@ -58,6 +61,7 @@ export const ACTIVE_REPORT_STATUSES = [
   ReportStatus.SOUGHT,
   ReportStatus.HIJACKED,
   ReportStatus.USED_IN_COMMISSION_OF_CRIME,
+  ReportStatus.VERIFIED,
 ];
 
 export enum Severity {
@@ -213,6 +217,10 @@ export interface VehicleReport {
   suspect_vehicle_make?: string;
   suspect_vehicle_model?: string;
   suspect_vehicle_color?: string;
+  verification_status?: 'verified' | 'false_alarm' | 'unverified' | 'pending_verification';
+  verified_by?: string;
+  verified_at?: string;
+  verification_notes?: string;
 }
 
 export interface CrimeReport {
@@ -264,6 +272,10 @@ export interface CrimeReport {
   pound_name?: string;
   has_arrests?: boolean;
   has_firearms?: boolean;
+  verification_status?: 'verified' | 'false_alarm' | 'unverified' | 'pending_verification';
+  verified_by?: string;
+  verified_at?: string;
+  verification_notes?: string;
 }
 
 export interface GateAccessLog {
@@ -346,6 +358,10 @@ export interface EmergencyReport {
   company_name?: string;
   is_global?: boolean;
   shared_with_company_ids?: string[];
+  verification_status?: 'verified' | 'false_alarm' | 'unverified' | 'pending_verification';
+  verified_by?: string;
+  verified_at?: string;
+  verification_notes?: string;
 }
 
 export interface InvoiceItem {
