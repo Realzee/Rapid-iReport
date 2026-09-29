@@ -1,6 +1,6 @@
 -- ==============================================================================
 -- RAPID iREPORT / RAPID911 - COMPLETE UPDATED DATABASE SQL SCHEMA
--- Version: 2026.09 (Fully Updated with Report Verification & False Alarm Protocol)
+-- Version: 2026.09 (Fully Idempotent: Works on Both Fresh & Existing Databases)
 -- PostgreSQL / Supabase Compatible
 -- ==============================================================================
 
@@ -61,7 +61,7 @@ ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'technician';
 ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'ras_driver';
 
 -- ------------------------------------------------------------------------------
--- 2. CORE MASTER TABLES
+-- 2. MASTER ENTITY TABLES
 -- ------------------------------------------------------------------------------
 
 -- Companies / Organizations
@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS public.announcements (
     created_at timestamptz DEFAULT now()
 );
 
--- Company Auto-Incrementing OB Sequence Tracker
+-- Auto-Incrementing OB Sequence Tracker
 CREATE TABLE IF NOT EXISTS public.company_sequences (
     company_id uuid PRIMARY KEY REFERENCES public.companies(id) ON DELETE CASCADE,
     last_sequence integer NOT NULL DEFAULT 0,
@@ -202,7 +202,6 @@ CREATE TABLE IF NOT EXISTS public.vehicle_reports (
     recovered_at timestamptz,
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     deleted_at timestamptz,
-    -- Verification & False Alarm Tracking Fields
     verification_status text DEFAULT 'unverified',
     verified_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     verified_at timestamptz,
@@ -260,7 +259,6 @@ CREATE TABLE IF NOT EXISTS public.crime_reports (
     has_firearms boolean DEFAULT false,
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     deleted_at timestamptz,
-    -- Verification & False Alarm Tracking Fields
     verification_status text DEFAULT 'unverified',
     verified_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     verified_at timestamptz,
@@ -328,7 +326,6 @@ CREATE TABLE IF NOT EXISTS public.emergency_reports (
     pound_name text,
     has_arrests boolean DEFAULT false,
     has_firearms boolean DEFAULT false,
-    -- EMS Specialized Fields
     triage_level text DEFAULT 'Pending Assessment',
     patient_count integer DEFAULT 1,
     assigned_unit text,
@@ -337,7 +334,6 @@ CREATE TABLE IF NOT EXISTS public.emergency_reports (
     dispatch_notes text,
     deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     deleted_at timestamptz,
-    -- Verification & False Alarm Tracking Fields
     verification_status text DEFAULT 'unverified',
     verified_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     verified_at timestamptz,
@@ -347,10 +343,189 @@ CREATE TABLE IF NOT EXISTS public.emergency_reports (
 );
 
 -- ------------------------------------------------------------------------------
--- 4. COLLABORATION, AUDIT LOGS & DISPATCH TRACKING
+-- 4. ENSURE ALL COLUMNS EXIST ON EXISTING TABLES (IDEMPOTENT MIGRATIONS)
+-- ------------------------------------------------------------------------------
+-- Companies
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS allowed_modules text[] DEFAULT '{}'::text[];
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS bolo_background_url text;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS owners_name text;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS address text;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS contact_person text;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS cell_number text;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS psira_number text;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true;
+
+-- Profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS responder_status public.responder_status DEFAULT 'off_duty'::public.responder_status;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS location_coords jsonb;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS cell text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS vehicle_reg text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS home_address text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS work_address text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS ice_no text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS medical_aid text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS medical_aid_policy_number text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS allergies text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS insurance_company text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS insurance_policy_number text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS insurance_type text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS insurance_contact text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS vehicles jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS psira_number text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS assigned_unit text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS ems_shift_role text;
+
+-- Vehicle Reports (Verification & Specialized Fields)
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS verification_status text DEFAULT 'unverified';
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS verified_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS verified_at timestamptz;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS verification_notes text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS is_wanted boolean DEFAULT false;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS wanted_report_id text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS crime_outcome text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS cit_success boolean DEFAULT false;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS arrests integer DEFAULT 0;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS guns_recovered integer DEFAULT 0;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS other_recoveries text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS saps_13 text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS pound_name text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS has_arrests boolean DEFAULT false;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS has_firearms boolean DEFAULT false;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS vehicle_involved boolean DEFAULT false;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_license_plate text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_vehicle_make text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_vehicle_model text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS suspect_vehicle_color text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS recovered_location_coords jsonb;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS recovered_at timestamptz;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS is_global boolean DEFAULT false;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS shared_with_company_ids text[] DEFAULT '{}'::text[];
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS responded_at timestamptz;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS completed_at timestamptz;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS resolved_at timestamptz;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS location_coords jsonb;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS location_boundary jsonb;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS location_boundingbox real[4];
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS evidence_images text[] DEFAULT '{}'::text[];
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS date_of_incident date;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS vin_number text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS engine_number text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS year text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS cas_number text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS station_name text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS io_name text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS io_contact text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS cos_name text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS cos_contact_number text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS has_tracker boolean DEFAULT false;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS tracker_company text;
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS circulation_number text;
+
+-- Crime Reports (Verification & Specialized Fields)
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS verification_status text DEFAULT 'unverified';
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS verified_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS verified_at timestamptz;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS verification_notes text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS cas_number text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS station_name text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS io_name text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS io_contact text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS crime_outcome text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS cit_success boolean DEFAULT false;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS arrests integer DEFAULT 0;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS guns_recovered integer DEFAULT 0;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS guns_stolen integer DEFAULT 0;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS license_plate text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS vehicle_make text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS vehicle_model text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS vehicle_color text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS vin_number text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS engine_number text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS recovered_location_coords jsonb;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS recovered_at timestamptz;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS other_recoveries text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS saps_13 text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS pound_name text;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS has_arrests boolean DEFAULT false;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS has_firearms boolean DEFAULT false;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS is_global boolean DEFAULT false;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS shared_with_company_ids text[] DEFAULT '{}'::text[];
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS responded_at timestamptz;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS completed_at timestamptz;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS resolved_at timestamptz;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS location_coords jsonb;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS location_boundary jsonb;
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS location_boundingbox real[4];
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS evidence_images text[] DEFAULT '{}'::text[];
+ALTER TABLE public.crime_reports ADD COLUMN IF NOT EXISTS date_of_incident date;
+
+-- Emergency Reports (Verification & Specialized Fields)
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS verification_status text DEFAULT 'unverified';
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS verified_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS verified_at timestamptz;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS verification_notes text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS assistance_type text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS card_number text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS car_number text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS driver_name text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS drop_off_location text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS drop_off_location_coords jsonb;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS rollback boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS recovery boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS dreamtec boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS family_run boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS incident_time text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS vehicle_involved boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS vehicles_involved integer DEFAULT 1;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS injuries_reported boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS fatalities_reported boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS license_plate text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS vehicle_make text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS vehicle_model text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS vehicle_color text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS vin_number text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS engine_number text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS cas_number text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS station_name text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS date_of_incident date;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS crime_outcome text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS cit_success boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS arrests integer DEFAULT 0;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS guns_recovered integer DEFAULT 0;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS other_recoveries text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS recovered_location_coords jsonb;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS recovered_at timestamptz;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS saps_13 text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS pound_name text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS has_arrests boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS has_firearms boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS triage_level text DEFAULT 'Pending Assessment';
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS patient_count integer DEFAULT 1;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS assigned_unit text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS receiving_facility text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS special_hazards text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS dispatch_notes text;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS is_global boolean DEFAULT false;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS shared_with_company_ids text[] DEFAULT '{}'::text[];
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS responded_at timestamptz;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS completed_at timestamptz;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS resolved_at timestamptz;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS location_coords jsonb;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS location_boundary jsonb;
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS location_boundingbox real[4];
+ALTER TABLE public.emergency_reports ADD COLUMN IF NOT EXISTS evidence_images text[] DEFAULT '{}'::text[];
+
+-- ------------------------------------------------------------------------------
+-- 5. DISPATCH COLLABORATION, CHAT & AUDIT TRAILS
 -- ------------------------------------------------------------------------------
 
--- Incident Updates & Timeline Audit Trail
 CREATE TABLE IF NOT EXISTS public.report_updates (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     report_id uuid NOT NULL,
@@ -359,7 +534,6 @@ CREATE TABLE IF NOT EXISTS public.report_updates (
     created_at timestamptz DEFAULT now()
 );
 
--- Responder Assignment History
 CREATE TABLE IF NOT EXISTS public.assignment_logs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     report_id uuid NOT NULL,
@@ -369,7 +543,6 @@ CREATE TABLE IF NOT EXISTS public.assignment_logs (
     created_at timestamptz DEFAULT now()
 );
 
--- Cross-Company Corporate Report Sharing
 CREATE TABLE IF NOT EXISTS public.report_shares (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     report_id uuid NOT NULL,
@@ -381,7 +554,6 @@ CREATE TABLE IF NOT EXISTS public.report_shares (
     updated_at timestamptz DEFAULT now()
 );
 
--- Incident Chat & Controller Dispatch Messaging
 CREATE TABLE IF NOT EXISTS public.chat_messages (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     report_id text NOT NULL,
@@ -393,7 +565,6 @@ CREATE TABLE IF NOT EXISTS public.chat_messages (
     created_at timestamptz DEFAULT now()
 );
 
--- User Activity & Audit Logs
 CREATE TABLE IF NOT EXISTS public.user_activity_logs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -402,7 +573,7 @@ CREATE TABLE IF NOT EXISTS public.user_activity_logs (
     created_at timestamptz DEFAULT now()
 );
 
--- Gate Access Logs (ANPR / Guarding)
+-- ANPR / Gate Access
 CREATE TABLE IF NOT EXISTS public.gate_access_logs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     license_plate text NOT NULL,
@@ -418,7 +589,7 @@ CREATE TABLE IF NOT EXISTS public.gate_access_logs (
     created_at timestamptz DEFAULT now()
 );
 
--- Tracking Units / GPS Fleet
+-- GPS Fleet Tracking Units
 CREATE TABLE IF NOT EXISTS public.tracking_units (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name text NOT NULL,
@@ -433,10 +604,9 @@ CREATE TABLE IF NOT EXISTS public.tracking_units (
 );
 
 -- ------------------------------------------------------------------------------
--- 5. GUARDING & SITE MANAGEMENT TABLES
+-- 6. GUARDING & PATROL MODULES
 -- ------------------------------------------------------------------------------
 
--- Guarding Sites
 CREATE TABLE IF NOT EXISTS public.sites (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE,
@@ -448,7 +618,6 @@ CREATE TABLE IF NOT EXISTS public.sites (
     created_at timestamptz DEFAULT now()
 );
 
--- Guard Checkpoints (QR / NFC / GPS)
 CREATE TABLE IF NOT EXISTS public.guard_checkpoints (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     site_id uuid REFERENCES public.sites(id) ON DELETE CASCADE,
@@ -461,7 +630,6 @@ CREATE TABLE IF NOT EXISTS public.guard_checkpoints (
     created_at timestamptz DEFAULT now()
 );
 
--- Guard Patrol Logs
 CREATE TABLE IF NOT EXISTS public.guard_patrol_logs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     site_id uuid REFERENCES public.sites(id) ON DELETE CASCADE,
@@ -474,7 +642,6 @@ CREATE TABLE IF NOT EXISTS public.guard_patrol_logs (
     created_at timestamptz DEFAULT now()
 );
 
--- Guard Attendance & Duty Register
 CREATE TABLE IF NOT EXISTS public.guard_attendances (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     site_id uuid REFERENCES public.sites(id) ON DELETE CASCADE,
@@ -488,7 +655,7 @@ CREATE TABLE IF NOT EXISTS public.guard_attendances (
 );
 
 -- ------------------------------------------------------------------------------
--- 6. TECHNICAL OPERATIONS & DISPATCH JOBS
+-- 7. TECH OPS & JOB DISPATCH
 -- ------------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS public.tech_jobs (
@@ -522,7 +689,7 @@ CREATE TABLE IF NOT EXISTS public.tech_job_updates (
 );
 
 -- ------------------------------------------------------------------------------
--- 7. ESSENTIAL INDEXES
+-- 8. PERFORMANCE INDEXES (Created safely AFTER column verification)
 -- ------------------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_vehicle_reports_status ON public.vehicle_reports(status);
 CREATE INDEX IF NOT EXISTS idx_vehicle_reports_company_id ON public.vehicle_reports(company_id);
@@ -546,10 +713,9 @@ CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
 CREATE INDEX IF NOT EXISTS idx_profiles_company_id ON public.profiles(company_id);
 
 -- ------------------------------------------------------------------------------
--- 8. HELPER RPC FUNCTIONS (OB SEQUENCE & HELPERS)
+-- 9. HELPER RPC FUNCTIONS (OB SEQUENCE GENERATOR & GLOBAL SEARCH)
 -- ------------------------------------------------------------------------------
 
--- Safely generate next OB sequence number per company/month
 CREATE OR REPLACE FUNCTION public.get_next_ob_sequence(
     p_company_id uuid DEFAULT NULL,
     p_report_date timestamptz DEFAULT now()
@@ -578,7 +744,6 @@ BEGIN
 END;
 $$;
 
--- Global Unified Incident Search RPC
 CREATE OR REPLACE FUNCTION public.search_incidents(search_term text, p_company_id uuid DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -609,7 +774,7 @@ END;
 $$;
 
 -- ------------------------------------------------------------------------------
--- 9. ROW LEVEL SECURITY (RLS) POLICIES
+-- 10. ROW LEVEL SECURITY (RLS) POLICIES
 -- ------------------------------------------------------------------------------
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -627,7 +792,6 @@ ALTER TABLE public.guard_attendances ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tech_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tech_job_updates ENABLE ROW LEVEL SECURITY;
 
--- Allow authenticated users to view active records
 DO $$ BEGIN
     DROP POLICY IF EXISTS "Allow select for authenticated" ON public.companies;
     CREATE POLICY "Allow select for authenticated" ON public.companies FOR SELECT TO authenticated USING (true);

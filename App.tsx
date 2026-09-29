@@ -808,13 +808,13 @@ const App: React.FC = () => {
     );
   }
 
-  const isFullWidthView = view === 'controller' || view === 'ems_responder' || profile?.role === UserRole.RESPONDER || profile?.role === UserRole.EMS_RESPONDER;
+  const isFullWidthView = view === 'controller' || view === 'ems_responder' || view === 'ems_dispatch' || view === 'roadside_driver' || profile?.role === UserRole.RESPONDER || profile?.role === UserRole.EMS_RESPONDER || profile?.role === UserRole.EMS_CONTROLLER;
   const isUserView = profile?.role === UserRole.USER;
   
-  const mainPaddingTopClass = isAnnouncementVisible ? 'pt-[90px] sm:pt-[120px]' : 'pt-[60px] sm:pt-[80px]';
+  const mainPaddingTopClass = isAnnouncementVisible ? 'pt-[86px] sm:pt-[108px]' : 'pt-[52px] sm:pt-[68px]';
 
   const mainClasses = isFullWidthView
-    ? `pb-4 sm:pb-8 px-2 sm:px-6 lg:px-8`
+    ? `pb-4 sm:pb-8 px-2 sm:px-4 lg:px-6`
     : `container mx-auto px-2 sm:px-6 lg:px-8 pb-4 sm:pb-8 ${isUserView ? 'max-w-7xl' : ''}`;
 
   return (

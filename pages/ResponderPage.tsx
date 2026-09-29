@@ -888,15 +888,15 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
         }
     }, [selectedReport, selectedReportId]);
 
-    // On mobile, smoothly scroll to the detail section when a call is selected to eliminate scrolling through empty vertical space
-    useEffect(() => {
-        if (selectedReportId) {
+    const handleSelectReport = (reportId: string, isUserClick = false) => {
+        setSelectedReportId(reportId);
+        if (isUserClick && window.innerWidth < 1024) {
             const detailElement = document.getElementById('responder-detail-section');
-            if (detailElement && window.innerWidth < 1024) {
+            if (detailElement) {
                 detailElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
-    }, [selectedReportId]);
+    };
 
     const handleAnprHit = async (reportId: string) => {
         const { data, error } = await supabase
@@ -1264,7 +1264,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                         ) : (
                             <div className="space-y-2.5">
                                 {myActiveAssignments.map(report => (
-                                    <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
+                                    <div key={report.id} onClick={() => handleSelectReport(report.id, true)} 
                                         className={`group relative p-3.5 cursor-pointer rounded-xl border transition-all duration-200 ${selectedReportId === report.id 
                                             ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-500 shadow-sm' 
                                             : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-emerald-400 hover:shadow-xs'}`}>
@@ -1344,7 +1344,7 @@ const ResponderPage: React.FC<ResponderPageProps> = ({ profile, setProfile, isEm
                                     );
 
                                     return (
-                                        <div key={report.id} onClick={() => setSelectedReportId(report.id)} 
+                                        <div key={report.id} onClick={() => handleSelectReport(report.id, true)} 
                                             className={`group relative p-4 cursor-pointer rounded-xl border transition-all duration-200 ${
                                                 isForMyUnit
                                                     ? 'bg-amber-500/10 dark:bg-amber-950/30 border-amber-500 ring-2 ring-amber-400/50 shadow-md'
